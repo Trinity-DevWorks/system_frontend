@@ -1,0 +1,41 @@
+{
+  "Metadata": {
+    "title": "النظام",
+    "description": "واجهة نظام المؤسسة"
+  },
+  "Home": {
+    "title": "واجهة النظام",
+    "subtitle": "Next.js · Ant Design · TanStack Query",
+    "cta": "Ant Design"
+  },
+  "Login": {
+    "title": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "submit": "دخول",
+    "centralHint": "إدارة المنصة المركزية",
+    "tenantHint": "المستأجر: {name}",
+    "error": "فشل تسجيل الدخول",
+    "changeLanguage": "تغيير اللغة",
+    "languageEn": "English",
+    "languageAr": "العربية",
+    "switchToDarkTheme": "الوضع الداكن",
+    "switchToLightTheme": "الوضع الفاتح"
+  },
+  "Central": {
+    "title": "الإدارة المركزية",
+    "subtitle": "لوحة المنصة",
+    "logout": "خروج"
+  },
+  "NotFound": {
+    "title": "404",
+    "subtitle": "عذرًا، مساحة العمل التي زرتها غير موجودة.",
+    "backHome": "العودة للرئيسية"
+  },
+  "NetworkError": {
+    "title": "500",
+    "subtitle": "عذرًا، حدث خطأ. لم نتمكن من التحقق من مساحة العمل. تحقق من الاتصال وحاول مرة أخرى.",
+    "tryAgain": "إعادة المحاولة",
+    "backHome": "العودة للرئيسية"
+  }
+}

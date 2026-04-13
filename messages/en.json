@@ -1,0 +1,41 @@
+{
+  "Metadata": {
+    "title": "System",
+    "description": "Enterprise system frontend"
+  },
+  "Home": {
+    "title": "System frontend",
+    "subtitle": "Next.js · Ant Design · TanStack Query",
+    "cta": "Ant Design"
+  },
+  "Login": {
+    "title": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "centralHint": "Central administration",
+    "tenantHint": "Tenant: {name}",
+    "error": "Sign-in failed",
+    "changeLanguage": "Change language",
+    "languageEn": "English",
+    "languageAr": "العربية",
+    "switchToDarkTheme": "Dark theme",
+    "switchToLightTheme": "Light theme"
+  },
+  "Central": {
+    "title": "Central administration",
+    "subtitle": "Platform console",
+    "logout": "Sign out"
+  },
+  "NotFound": {
+    "title": "404",
+    "subtitle": "Sorry, the workspace you visited does not exist.",
+    "backHome": "Back home"
+  },
+  "NetworkError": {
+    "title": "500",
+    "subtitle": "Sorry, something went wrong. We could not verify this workspace. Check your connection and try again.",
+    "tryAgain": "Try again",
+    "backHome": "Back home"
+  }
+}
