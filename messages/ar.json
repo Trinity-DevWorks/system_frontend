@@ -22,6 +22,24 @@
     "switchToDarkTheme": "الوضع الداكن",
     "switchToLightTheme": "الوضع الفاتح"
   },
+  "Shell": {
+    "brand": "النظام",
+    "navOverview": "نظرة عامة",
+    "logout": "خروج",
+    "loggedOut": "تم تسجيل الخروج",
+    "expandSidebar": "توسيع الشريط",
+    "collapseSidebar": "طي الشريط",
+    "searchNavPlaceholder": "بحث في القائمة…",
+    "bookmarks": "الإشارات المرجعية",
+    "addBookmark": "إشارة مرجعية لهذه الصفحة",
+    "removeBookmark": "إزالة الإشارة",
+    "breadcrumbRoot": "مساحة العمل",
+    "breadcrumbNav": "مسار التصفح"
+  },
+  "Overview": {
+    "title": "نظرة عامة",
+    "subtitle": "مساحة مؤقتة — للتحقق من الهيكل."
+  },
   "Central": {
     "title": "الإدارة المركزية",
     "subtitle": "لوحة المنصة",

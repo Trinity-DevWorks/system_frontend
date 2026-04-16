@@ -20,6 +20,18 @@ html {
   color-scheme: light;
 }
 
+/* Scroll still works (wheel / touch / keys); bars hidden in Chromium, Firefox, legacy Edge. */
+.app-hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 html.dark {
   color-scheme: dark;
 }
@@ -27,13 +39,86 @@ html.dark {
 @theme inline {
   --color-background: var(--app-page-bg);
   --color-foreground: var(--app-page-fg);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-locale);
 }
 
 body {
   min-height: 100%;
   background-color: var(--app-page-bg);
   color: var(--app-page-fg);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-locale), sans-serif;
+}
+
+html {
+  --font-locale: var(--font-inter);
+}
+
+/* English / LTR — same structure as Arabic (inventory-management-frontend) */
+[dir="ltr"] {
+  --font-locale: var(--font-inter);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+[dir="ltr"] * {
+  font-family: inherit;
+}
+
+[dir="ltr"] h1,
+[dir="ltr"] h2,
+[dir="ltr"] h3,
+[dir="ltr"] h4,
+[dir="ltr"] h5,
+[dir="ltr"] h6 {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+[dir="ltr"] p,
+[dir="ltr"] span,
+[dir="ltr"] div {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+[dir="ltr"] button,
+[dir="ltr"] input,
+[dir="ltr"] textarea,
+[dir="ltr"] select {
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+/* Arabic / RTL (inventory-management-frontend) */
+[dir="rtl"] {
+  --font-locale: var(--font-cairo);
+  font-family: var(--font-cairo), system-ui, sans-serif;
+}
+
+[dir="rtl"] * {
+  font-family: inherit;
+}
+
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3,
+[dir="rtl"] h4,
+[dir="rtl"] h5,
+[dir="rtl"] h6 {
+  font-family: var(--font-cairo), system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+[dir="rtl"] p,
+[dir="rtl"] span,
+[dir="rtl"] div {
+  font-family: var(--font-cairo), system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+[dir="rtl"] button,
+[dir="rtl"] input,
+[dir="rtl"] textarea,
+[dir="rtl"] select {
+  font-family: var(--font-cairo), system-ui, sans-serif;
 }
