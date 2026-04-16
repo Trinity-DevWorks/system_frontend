@@ -20,28 +20,88 @@ const INITIAL_RETRY_DELAY_MS = 200;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Same rules as inventory-management-frontend/middleware.js `getTenantFromHost`.
+ */
+function getTenantFromHost(host, centralDomain, prodRoot) {
+  if (!host) return null;
+  if (host === "localhost" || host === "127.0.0.1") return null;
+  if (host === centralDomain || host === `www.${centralDomain}`) return null;
+
+  if (host.endsWith(".localhost")) {
+    const sub = host.slice(0, -".localhost".length);
+    if (!sub || sub === "app") return null;
+    return sub.toLowerCase();
+  }
+
+  if (host.endsWith(`.${prodRoot}`)) {
+    const sub = host.slice(0, -`.${prodRoot}`.length);
+    if (!sub || sub === "www" || sub === "app") return null;
+    return sub.toLowerCase();
+  }
+
+  return null;
+}
+
+/** Bump when lookup semantics change so stale `false` entries are not reused forever. */
+const TENANT_CACHE_KEY_PREFIX = "v3:";
+
 const getCachedTenantStatus = (tenantName) => {
-  const cached = tenantExistenceCache.get(tenantName);
+  const cached = tenantExistenceCache.get(TENANT_CACHE_KEY_PREFIX + tenantName);
   if (!cached) return null;
   if (Date.now() - cached.timestamp > TENANT_CACHE_TTL_MS) {
-    tenantExistenceCache.delete(tenantName);
+    tenantExistenceCache.delete(TENANT_CACHE_KEY_PREFIX + tenantName);
     return null;
   }
   return cached.exists;
 };
 
 const setCachedTenantStatus = (tenantName, exists) => {
+  const key = TENANT_CACHE_KEY_PREFIX + tenantName;
   if (
-    !tenantExistenceCache.has(tenantName) &&
+    !tenantExistenceCache.has(key) &&
     tenantExistenceCache.size >= TENANT_CACHE_MAX
   ) {
     const oldestKey = tenantExistenceCache.keys().next().value;
     tenantExistenceCache.delete(oldestKey);
   }
-  tenantExistenceCache.set(tenantName, { exists, timestamp: Date.now() });
+  tenantExistenceCache.set(key, {
+    exists,
+    timestamp: Date.now(),
+  });
 };
 
-const fetchTenantStatusOnce = async (tenantName, centralApiBase, centralDomain) => {
+/**
+ * Same rules as inventory-management-frontend/middleware.js `fetchTenantStatusOnce`:
+ * `Boolean(json && (json.tenant || /Tenant\s+found/i.test(json.message || "")))`
+ * Plus `data.tenant` for ApiResponse envelopes before the flat `tenant` shim was added.
+ */
+function tenantExistsFromCentralJson(json) {
+  if (!json || typeof json !== "object") {
+    return false;
+  }
+  if (json.success === false) {
+    return false;
+  }
+  const nested =
+    json.data &&
+    typeof json.data === "object" &&
+    json.data.tenant != null;
+  const flatMessage =
+    typeof json.message === "string" &&
+    /Tenant\s+found/i.test(json.message);
+  return Boolean(
+    json.tenant != null || nested || flatMessage,
+  );
+}
+
+/**
+ * Central API is registered on Laravel `Route::domain(central_domains)`.
+ * Use a request URL whose host is that domain (e.g. http://app.localhost:8000/api).
+ * Runtime evidence: fetch to http://localhost:8000/api with Host: app.localhost still got HTTP 404
+ * (Host header not honored / overridden in this runtime), so domain routes never matched.
+ */
+const fetchTenantStatusOnce = async (tenantName, centralApiBase) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TENANT_LOOKUP_TIMEOUT_MS);
   const url = `${centralApiBase}/tenant/get-tenant-by-name/${encodeURIComponent(tenantName)}`;
@@ -50,9 +110,6 @@ const fetchTenantStatusOnce = async (tenantName, centralApiBase, centralDomain) 
     const res = await fetch(url, {
       method: "GET",
       signal: controller.signal,
-      headers: {
-        Host: centralDomain,
-      },
     });
 
     if (res.status === 404) {
@@ -66,15 +123,9 @@ const fetchTenantStatusOnce = async (tenantName, centralApiBase, centralDomain) 
     let exists = true;
     try {
       const json = await res.json();
-      const payload = json?.data ?? json;
-      exists = Boolean(
-        payload?.tenant ||
-        json?.tenant ||
-        (typeof json?.message === "string" &&
-          /Tenant\s+found/i.test(json.message)),
-      );
+      exists = tenantExistsFromCentralJson(json);
     } catch {
-      // assume exists on parse failure
+      /* inventory: ignore parsing errors and assume tenant exists to avoid false negatives */
     }
 
     return exists;
@@ -83,7 +134,7 @@ const fetchTenantStatusOnce = async (tenantName, centralApiBase, centralDomain) 
   }
 };
 
-const resolveTenantExistence = async (tenantName, centralApiBase, centralDomain) => {
+const resolveTenantExistence = async (tenantName, centralApiBase) => {
   if (!tenantName) return null;
 
   const cached = getCachedTenantStatus(tenantName);
@@ -91,17 +142,20 @@ const resolveTenantExistence = async (tenantName, centralApiBase, centralDomain)
     return cached;
   }
 
+  const lookupUrl = `${centralApiBase}/tenant/get-tenant-by-name/${encodeURIComponent(tenantName)}`;
   let delay = INITIAL_RETRY_DELAY_MS;
   for (let attempt = 0; attempt <= MAX_TENANT_LOOKUP_RETRIES; attempt++) {
     try {
-      const exists = await fetchTenantStatusOnce(
-        tenantName,
-        centralApiBase,
-        centralDomain,
-      );
+      const exists = await fetchTenantStatusOnce(tenantName, centralApiBase);
       setCachedTenantStatus(tenantName, exists);
       return exists;
-    } catch {
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          `[proxy] Tenant lookup failed (attempt ${attempt + 1}/${MAX_TENANT_LOOKUP_RETRIES + 1}): ${lookupUrl}`,
+          err?.cause ?? err?.message ?? err,
+        );
+      }
       if (attempt === MAX_TENANT_LOOKUP_RETRIES) {
         break;
       }
@@ -110,10 +164,18 @@ const resolveTenantExistence = async (tenantName, centralApiBase, centralDomain)
     }
   }
 
+  /* Unknown (network, timeout): allow request to continue — same as inventory-management-frontend */
+  if (process.env.NODE_ENV === "development") {
+    console.warn(
+      `[proxy] Tenant "${tenantName}" could not be verified; allowing request through.`,
+    );
+  }
+
   return null;
 };
 
-export default async function middleware(request) {
+/** Next.js 16+: `proxy` replaces the deprecated `middleware` file convention. */
+export default async function proxy(request) {
   const intlResponse = intlMiddleware(request);
 
   const { pathname } = request.nextUrl;
@@ -134,6 +196,8 @@ export default async function middleware(request) {
     process.env.NEXT_PUBLIC_CENTRAL_DOMAIN ||
     (isDevelopment ? "app.localhost" : "binbothub.com");
   const API_PORT = process.env.NEXT_PUBLIC_CENTRAL_API_PORT || "8000";
+  const TENANT_ROOT =
+    process.env.NEXT_PUBLIC_TENANT_ROOT_DOMAIN || "binbothub.com";
   const centralApiBase =
     EXPLICIT_BASE && EXPLICIT_BASE.trim().length > 0
       ? EXPLICIT_BASE.replace(/\/$/, "")
@@ -141,8 +205,13 @@ export default async function middleware(request) {
         ? `http://localhost:${API_PORT}/api`
         : `http://backend:8000/api`;
 
+  const hostLower = effectiveHost.toLowerCase();
+  const tenantFromHost = getTenantFromHost(
+    hostLower,
+    CENTRAL_DOMAIN,
+    TENANT_ROOT,
+  );
   const hostMode = resolveHostMode(effectiveHost);
-  const tenantFromHost = hostMode.tenantSlug;
   const isCentralHost = hostMode.isCentral;
 
   const isNetworkErrorPath =
@@ -151,7 +220,7 @@ export default async function middleware(request) {
   const isNotFoundPath =
     barePath === "/notfound" || barePath.startsWith("/notfound/");
   const isLoginPath = barePath === "/login" || barePath.startsWith("/login/");
-  const isCentralPath =
+  const isMainCentralPath =
     barePath === "/central" || barePath.startsWith("/central/");
 
   if (isNetworkErrorPath) {
@@ -163,7 +232,6 @@ export default async function middleware(request) {
     tenantLookupResult = await resolveTenantExistence(
       tenantFromHost,
       centralApiBase,
-      CENTRAL_DOMAIN,
     );
   }
 
@@ -172,11 +240,6 @@ export default async function middleware(request) {
       const cleanedUrl = request.nextUrl.clone();
       cleanedUrl.pathname = withLocalePrefix(currentLocale, "/");
       return NextResponse.redirect(cleanedUrl);
-    }
-    if (tenantFromHost && tenantLookupResult === null) {
-      const url = request.nextUrl.clone();
-      url.pathname = withLocalePrefix(currentLocale, "/network-error");
-      return NextResponse.redirect(url);
     }
     return intlResponse;
   }
@@ -187,11 +250,7 @@ export default async function middleware(request) {
       notFoundUrl.pathname = withLocalePrefix(currentLocale, "/notfound");
       return NextResponse.redirect(notFoundUrl);
     }
-    if (tenantLookupResult === null) {
-      const url = request.nextUrl.clone();
-      url.pathname = withLocalePrefix(currentLocale, "/network-error");
-      return NextResponse.redirect(url);
-    }
+    /* exists === null: lookup failed; continue (inventory behavior — no network-error redirect) */
   }
 
   if (isLoginPath) {
@@ -207,7 +266,7 @@ export default async function middleware(request) {
     } else if (tenantFromHost) {
       if (hasTenantToken) {
         const url = request.nextUrl.clone();
-        url.pathname = withLocalePrefix(currentLocale, "/");
+        url.pathname = withLocalePrefix(currentLocale, "/main/overview");
         return NextResponse.redirect(url);
       }
     } else if (hasCentralToken) {
@@ -216,7 +275,7 @@ export default async function middleware(request) {
       return NextResponse.redirect(url);
     } else if (hasTenantToken) {
       const url = request.nextUrl.clone();
-      url.pathname = withLocalePrefix(currentLocale, "/");
+      url.pathname = withLocalePrefix(currentLocale, "/main/overview");
       return NextResponse.redirect(url);
     }
 
@@ -232,7 +291,7 @@ export default async function middleware(request) {
     (barePath === "/" || barePath === "");
   const isPublicPath = isLoginPath || isNotFoundPath || isCentralHome;
 
-  if (isCentralPath) {
+  if (isMainCentralPath) {
     if (!hasCentralToken && !isPublicPath) {
       const url = request.nextUrl.clone();
       url.pathname = withLocalePrefix(currentLocale, "/login");

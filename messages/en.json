@@ -22,6 +22,24 @@
     "switchToDarkTheme": "Dark theme",
     "switchToLightTheme": "Light theme"
   },
+  "Shell": {
+    "brand": "System",
+    "navOverview": "Overview",
+    "logout": "Sign out",
+    "loggedOut": "Signed out",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "searchNavPlaceholder": "Search navigation…",
+    "bookmarks": "Bookmarks",
+    "addBookmark": "Bookmark this page",
+    "removeBookmark": "Remove bookmark",
+    "breadcrumbRoot": "Workspace",
+    "breadcrumbNav": "Breadcrumb"
+  },
+  "Overview": {
+    "title": "Overview",
+    "subtitle": "Placeholder — use this area to verify the app shell."
+  },
   "Central": {
     "title": "Central administration",
     "subtitle": "Platform console",

@@ -56,12 +56,13 @@ function LoginFormInner({ initialHost }) {
     mutationFn: async ({ email, password }) => {
       const response = isCentralLogin
         ? await centralApiService("POST", "login", { email, password })
-        : await tenantApiService("POST", "login", { email, password });
+        : await tenantApiService("POST", "auth/login", { email, password });
 
-      if (response?.access_token) {
+      const bearerToken = response?.access_token ?? response?.token;
+      if (bearerToken) {
         setSessionToken(
           isCentralLogin ? "central" : "tenant",
-          response.access_token,
+          bearerToken,
         );
 
         if (!isCentralLogin) {
@@ -84,11 +85,7 @@ function LoginFormInner({ initialHost }) {
       throw new Error(t("error"));
     },
     onSuccess: () => {
-      if (isCentralLogin) {
-        router.replace("/central");
-        return;
-      }
-      router.replace("/");
+      router.replace(isCentralLogin ? "/central" : "/main/overview");
     },
     onError: (err) => {
       message.error(err?.message || t("error"));
@@ -135,9 +132,7 @@ function LoginFormInner({ initialHost }) {
           placement="bottomRight"
           trigger={["click"]}
         >
-          <Tooltip title={t("changeLanguage")}>
-            <Button type="text" icon={<GlobalOutlined />} aria-label={t("changeLanguage")} />
-          </Tooltip>
+          <Button type="text" icon={<GlobalOutlined />} aria-label={t("changeLanguage")} />
         </Dropdown>
         <Tooltip
           title={
