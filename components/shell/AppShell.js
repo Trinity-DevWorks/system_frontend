@@ -146,7 +146,7 @@ export default function AppShell({ children }) {
             menuItems={menuItems}
           />
           <Content
-            className="m-4 flex min-h-0 flex-1 flex-col overflow-hidden p-4"
+            className="m-2 flex min-h-0 flex-1 flex-col overflow-hidden p-2"
             style={{
               background: colorBgContainer,
               borderRadius: borderRadiusLG,

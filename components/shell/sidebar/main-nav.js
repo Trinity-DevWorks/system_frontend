@@ -1,4 +1,18 @@
-import { DashboardOutlined } from "@ant-design/icons";
+import {
+  AppstoreOutlined,
+  DashboardOutlined,
+  DeploymentUnitOutlined,
+  DropboxOutlined,
+  FileSearchOutlined,
+  GoldOutlined,
+  SafetyCertificateOutlined,
+  ShopOutlined,
+  ShoppingCartOutlined,
+  ShoppingOutlined,
+  TagsOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 
 /**
  * Single place for main-app routes shown in the sidebar.
@@ -13,6 +27,22 @@ import { DashboardOutlined } from "@ant-design/icons";
  */
 export const ROUTES = {
   overview: "/main/overview",
+  categories: "/main/categories",
+  subCategories: "/main/sub-categories",
+  vatGroups: "/main/vat-groups",
+  unitGroups: "/main/unit-groups",
+  unitOfMeasurements: "/main/unit-of-measurements",
+  warehouses: "/main/warehouses",
+  currencies: "/main/currencies",
+  items: "/main/items",
+  customerGroups: "/main/customer-groups",
+  customers: "/main/customers",
+  supplierGroups: "/main/supplier-groups",
+  suppliers: "/main/suppliers",
+  users: "/main/users",
+  roles: "/main/roles",
+  permissions: "/main/permissions",
+  
 };
 
 /**
@@ -27,6 +57,73 @@ export function buildMainNavItems(t) {
       icon: <DashboardOutlined />,
       label: t("navOverview"),
     },
+    {
+      key: "master-data",
+      icon: <AppstoreOutlined />,
+      label: t("navMasterData"),
+      children: [
+        { key: ROUTES.categories, icon: <TagsOutlined />, label: t("navCategories") },
+        {
+          key: ROUTES.subCategories,
+          icon: <TagsOutlined />,
+          label: t("navSubCategories"),
+        },
+        { key: ROUTES.vatGroups, icon: <GoldOutlined />, label: t("navVatGroups") },
+        { key: ROUTES.unitGroups, icon: <DeploymentUnitOutlined />, label: t("navUnitGroups") },
+        {
+          key: ROUTES.unitOfMeasurements,
+          icon: <DeploymentUnitOutlined />,
+          label: t("navUnitOfMeasurements"),
+        },
+        { key: ROUTES.warehouses, icon: <ShopOutlined />, label: t("navWarehouses") },
+        { key: ROUTES.currencies, icon: <GoldOutlined />, label: t("navCurrencies") },
+      ],
+    },
+    {
+      key: "inventory",
+      icon: <DropboxOutlined />,
+      label: t("navInventory"),
+      children: [{ key: ROUTES.items, icon: <DropboxOutlined />, label: t("navItems") }],
+    },
+    {
+      key: "sales",
+      icon: <ShoppingCartOutlined />,
+      label: t("navSales"),
+      children: [
+        {
+          key: ROUTES.customerGroups,
+          icon: <TeamOutlined />,
+          label: t("navCustomerGroups"),
+        },
+        { key: ROUTES.customers, icon: <UserOutlined />, label: t("navCustomers") },
+      ],
+    },
+    {
+      key: "purchasing",
+      icon: <ShoppingOutlined />,
+      label: t("navPurchasing"),
+      children: [
+        {
+          key: ROUTES.supplierGroups,
+          icon: <TeamOutlined />,
+          label: t("navSupplierGroups"),
+        },
+        { key: ROUTES.suppliers, icon: <UserOutlined />, label: t("navSuppliers") },
+      ],
+    },
+    {
+      key: "administration",
+      icon: <SafetyCertificateOutlined />,
+      label: t("navAdministration"),
+      children: [
+        { key: ROUTES.users, icon: <UserOutlined />, label: t("navUsers") },
+        { key: ROUTES.roles, icon: <SafetyCertificateOutlined />, label: t("navRoles") },
+        { key: ROUTES.permissions, icon: <FileSearchOutlined />, label: t("navPermissions") },
+      ],
+    },
+    {
+      
+    }
   ];
 }
 
