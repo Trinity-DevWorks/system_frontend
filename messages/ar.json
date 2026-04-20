@@ -25,6 +25,26 @@
   "Shell": {
     "brand": "النظام",
     "navOverview": "نظرة عامة",
+    "navMasterData": "البيانات الأساسية",
+    "navCategories": "التصنيفات",
+    "navSubCategories": "التصنيفات الفرعية",
+    "navVatGroups": "مجموعات الضريبة",
+    "navUnitGroups": "مجموعات الوحدات",
+    "navUnitOfMeasurements": "وحدات القياس",
+    "navWarehouses": "المستودعات",
+    "navCurrencies": "العملات",
+    "navInventory": "المخزون",
+    "navItems": "الأصناف",
+    "navSales": "المبيعات",
+    "navCustomerGroups": "مجموعات العملاء",
+    "navCustomers": "العملاء",
+    "navPurchasing": "المشتريات",
+    "navSupplierGroups": "مجموعات الموردين",
+    "navSuppliers": "الموردون",
+    "navAdministration": "الإدارة",
+    "navUsers": "المستخدمون",
+    "navRoles": "الأدوار",
+    "navPermissions": "الصلاحيات",
     "logout": "خروج",
     "loggedOut": "تم تسجيل الخروج",
     "expandSidebar": "توسيع الشريط",
@@ -35,6 +55,9 @@
     "removeBookmark": "إزالة الإشارة",
     "breadcrumbRoot": "مساحة العمل",
     "breadcrumbNav": "مسار التصفح"
+  },
+  "PlaceholderPage": {
+    "subtitle": "هذه الصفحة جاهزة. سيتم إضافة المحتوى في المرحلة التالية."
   },
   "Overview": {
     "title": "نظرة عامة",
@@ -55,5 +78,6 @@
     "subtitle": "عذرًا، حدث خطأ. لم نتمكن من التحقق من مساحة العمل. تحقق من الاتصال وحاول مرة أخرى.",
     "tryAgain": "إعادة المحاولة",
     "backHome": "العودة للرئيسية"
-  }
+  },
+  "addCustomerGroup" : "إضافة مجموعة عملاء"
 }

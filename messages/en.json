@@ -25,6 +25,26 @@
   "Shell": {
     "brand": "System",
     "navOverview": "Overview",
+    "navMasterData": "Master Data",
+    "navCategories": "Categories",
+    "navSubCategories": "Sub Categories",
+    "navVatGroups": "VAT Groups",
+    "navUnitGroups": "Unit Groups",
+    "navUnitOfMeasurements": "Units of Measurement",
+    "navWarehouses": "Warehouses",
+    "navCurrencies": "Currencies",
+    "navInventory": "Inventory",
+    "navItems": "Items",
+    "navSales": "Sales",
+    "navCustomerGroups": "Customer Groups",
+    "navCustomers": "Customers",
+    "navPurchasing": "Purchasing",
+    "navSupplierGroups": "Supplier Groups",
+    "navSuppliers": "Suppliers",
+    "navAdministration": "Administration",
+    "navUsers": "Users",
+    "navRoles": "Roles",
+    "navPermissions": "Permissions",
     "logout": "Sign out",
     "loggedOut": "Signed out",
     "expandSidebar": "Expand sidebar",
@@ -35,6 +55,9 @@
     "removeBookmark": "Remove bookmark",
     "breadcrumbRoot": "Workspace",
     "breadcrumbNav": "Breadcrumb"
+  },
+  "PlaceholderPage": {
+    "subtitle": "This page is ready. Content will be added in the next phase."
   },
   "Overview": {
     "title": "Overview",
