@@ -2,8 +2,6 @@ import EmptyModulePage from "@/components/shared/EmptyModulePage";
 import { useTranslations } from "next-intl";
 
 
-
- 
 export default function CategoriesPage() {
   const t = useTranslations("Shell");
   

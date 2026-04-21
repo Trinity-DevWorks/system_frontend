@@ -20,29 +20,6 @@ const INITIAL_RETRY_DELAY_MS = 200;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Same rules as inventory-management-frontend/middleware.js `getTenantFromHost`.
- */
-function getTenantFromHost(host, centralDomain, prodRoot) {
-  if (!host) return null;
-  if (host === "localhost" || host === "127.0.0.1") return null;
-  if (host === centralDomain || host === `www.${centralDomain}`) return null;
-
-  if (host.endsWith(".localhost")) {
-    const sub = host.slice(0, -".localhost".length);
-    if (!sub || sub === "app") return null;
-    return sub.toLowerCase();
-  }
-
-  if (host.endsWith(`.${prodRoot}`)) {
-    const sub = host.slice(0, -`.${prodRoot}`.length);
-    if (!sub || sub === "www" || sub === "app") return null;
-    return sub.toLowerCase();
-  }
-
-  return null;
-}
-
 /** Bump when lookup semantics change so stale `false` entries are not reused forever. */
 const TENANT_CACHE_KEY_PREFIX = "v3:";
 
@@ -192,12 +169,7 @@ export default async function proxy(request) {
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const EXPLICIT_BASE = process.env.NEXT_PUBLIC_CENTRAL_API_BASE;
-  const CENTRAL_DOMAIN =
-    process.env.NEXT_PUBLIC_CENTRAL_DOMAIN ||
-    (isDevelopment ? "app.localhost" : "binbothub.com");
   const API_PORT = process.env.NEXT_PUBLIC_CENTRAL_API_PORT || "8000";
-  const TENANT_ROOT =
-    process.env.NEXT_PUBLIC_TENANT_ROOT_DOMAIN || "binbothub.com";
   const centralApiBase =
     EXPLICIT_BASE && EXPLICIT_BASE.trim().length > 0
       ? EXPLICIT_BASE.replace(/\/$/, "")
@@ -205,13 +177,9 @@ export default async function proxy(request) {
         ? `http://localhost:${API_PORT}/api`
         : `http://backend:8000/api`;
 
-  const hostLower = effectiveHost.toLowerCase();
-  const tenantFromHost = getTenantFromHost(
-    hostLower,
-    CENTRAL_DOMAIN,
-    TENANT_ROOT,
-  );
   const hostMode = resolveHostMode(effectiveHost);
+  /** Same reserved labels as `lib/runtime-mode.js` (e.g. `www.localhost` is central, not tenant `www`). */
+  const tenantFromHost = hostMode.tenantSlug;
   const isCentralHost = hostMode.isCentral;
 
   const isNetworkErrorPath =
@@ -251,6 +219,31 @@ export default async function proxy(request) {
       return NextResponse.redirect(notFoundUrl);
     }
     /* exists === null: lookup failed; continue (inventory behavior — no network-error redirect) */
+  }
+
+  const isTenantShellPath =
+    barePath === "/main" || barePath.startsWith("/main/");
+
+  /** Central hosts (e.g. `www.localhost`, `app.localhost`) must not load tenant shell routes. */
+  if (isCentralHost && isTenantShellPath) {
+    const hasCentralToken = request.cookies.get(CENTRAL_TOKEN_KEY)?.value;
+    const url = request.nextUrl.clone();
+    url.pathname = withLocalePrefix(
+      currentLocale,
+      hasCentralToken ? "/central" : "/login",
+    );
+    return NextResponse.redirect(url);
+  }
+
+  /** Tenant workspace hosts must not load central-only routes. */
+  if (tenantFromHost && isMainCentralPath) {
+    const hasTenantToken = request.cookies.get(TENANT_TOKEN_KEY)?.value;
+    const url = request.nextUrl.clone();
+    url.pathname = withLocalePrefix(
+      currentLocale,
+      hasTenantToken ? "/main/overview" : "/login",
+    );
+    return NextResponse.redirect(url);
   }
 
   if (isLoginPath) {
@@ -309,6 +302,17 @@ export default async function proxy(request) {
       url.pathname = withLocalePrefix(currentLocale, "/login");
       return NextResponse.redirect(url);
     }
+  }
+
+  /** Tenant app root: send authenticated users to the shell home (overview), not the marketing placeholder. */
+  if (
+    tenantFromHost &&
+    hasTenantToken &&
+    (barePath === "/" || barePath === "")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = withLocalePrefix(currentLocale, "/main/overview");
+    return NextResponse.redirect(url);
   }
 
   return intlResponse;
