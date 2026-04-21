@@ -8,6 +8,7 @@ import {
   loadSidebarBookmarks,
   removeSidebarBookmark,
 } from "@/lib/sidebar-bookmarks";
+import { resolveHostMode } from "@/lib/runtime-mode";
 import { clearAllSessionTokens } from "@/lib/session";
 import { App, Layout, theme as antdTheme } from "antd";
 import AppHeader from "./header/AppHeader";
@@ -93,15 +94,22 @@ export default function AppShell({ children }) {
   );
 
   const handleLogout = async () => {
-    try {
-      await Promise.allSettled([
-        centralApi.logout().catch(() => {}),
-        tenantApiService("POST", "auth/logout").catch(() => {}),
-      ]);
-    } catch {
-      /* still clear session */
-    }
     clearAllSessionTokens();
+
+    const host =
+      typeof window !== "undefined" ? window.location.hostname : "";
+    const { isCentral } = resolveHostMode(host);
+
+    try {
+      if (isCentral) {
+        await centralApi.logout().catch(() => {});
+      } else {
+        await tenantApiService("POST", "auth/logout").catch(() => {});
+      }
+    } catch {
+      /* session already cleared */
+    }
+
     if (typeof message?.success === "function") {
       message.success(t("loggedOut"));
     }
