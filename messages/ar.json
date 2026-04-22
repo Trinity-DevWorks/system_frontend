@@ -59,6 +59,54 @@
   "PlaceholderPage": {
     "subtitle": "هذه الصفحة جاهزة. سيتم إضافة المحتوى في المرحلة التالية."
   },
+  "DataTable": {
+    "searchPlaceholder": "بحث…",
+    "searchAria": "بحث في الجدول",
+    "add": "إضافة",
+    "refresh": "تحديث",
+    "importExportMenu": "تصدير / استيراد",
+    "importExportMenuAria": "خيارات التصدير والاستيراد",
+    "exportExcel": "تصدير Excel",
+    "exportPdf": "تصدير PDF",
+    "importExcel": "استيراد Excel",
+    "transferSoon": "متاح في إصدار لاحق",
+    "columns": "الأعمدة",
+    "columnsAria": "إظهار الأعمدة",
+    "columnPickerEmpty": "لا أعمدة قابلة للتبديل",
+    "densityComfortable": "ارتفاع صف مريح",
+    "densityCompact": "ارتفاع صف مضغوط",
+    "densityToggleAria": "تبديل كثافة الجدول",
+    "loadError": "حدث خطأ",
+    "retry": "إعادة المحاولة",
+    "empty": "لا بيانات",
+    "selectedCount": "محدد: {count}",
+    "clearSelection": "إلغاء التحديد",
+    "bulkSoon": "إجراءات جماعية لاحقًا",
+    "bulkActions": "إجراءات جماعية",
+    "paginationEmpty": "لا عناصر",
+    "paginationTotal": "{start}–{end} من {total}",
+    "paginationPerPage": "{size} / صفحة",
+    "paginationPageSizeAria": "عدد الصفوف في الصفحة"
+  },
+  "Categories": {
+    "title": "التصنيفات",
+    "colId": "المعرّف",
+    "colName": "الاسم",
+    "colColor": "اللون",
+    "colCreatedAt": "تاريخ الإنشاء",
+    "colUpdatedAt": "تاريخ التحديث",
+    "colActions": "إجراءات",
+    "actionMenu": "فتح إجراءات الصف",
+    "actionEdit": "تعديل (قريبًا)",
+    "actionDelete": "حذف (قريبًا)",
+    "empty": "لا توجد تصنيفات بعد.",
+    "addSoon": "إضافة التصنيفات من الواجهة ستتوفر لاحقًا.",
+    "loadError": "تعذر تحميل التصنيفات.",
+    "paginationEmpty": "لا عناصر",
+    "paginationTotal": "{start}–{end} من {total}",
+    "paginationPerPage": "{size} / صفحة",
+    "paginationPageSizeAria": "عدد الصفوف في الصفحة"
+  },
   "Overview": {
     "title": "نظرة عامة",
     "subtitle": "مساحة مؤقتة — للتحقق من الهيكل."
@@ -78,6 +126,5 @@
     "subtitle": "عذرًا، حدث خطأ. لم نتمكن من التحقق من مساحة العمل. تحقق من الاتصال وحاول مرة أخرى.",
     "tryAgain": "إعادة المحاولة",
     "backHome": "العودة للرئيسية"
-  },
-  "addCustomerGroup" : "إضافة مجموعة عملاء"
+  }
 }
