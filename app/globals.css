@@ -32,6 +32,28 @@ html {
   height: 0;
 }
 
+/*
+ * AppDataTable: vertical bar only when content overflows (rc-table uses overflow-y: scroll
+ * with data, which always reserves a scrollbar). Horizontal already uses overflow-x: auto.
+ */
+.app-data-table .ant-table-body {
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+}
+
+.app-data-table .ant-table-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.app-data-table .ant-table-body::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.app-data-table .ant-table-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 html.dark {
   color-scheme: dark;
 }
