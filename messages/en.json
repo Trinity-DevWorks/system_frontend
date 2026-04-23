@@ -217,6 +217,31 @@
     "paginationPerPage": "{size} / page",
     "paginationPageSizeAria": "Rows per page"
   },
+  "Warehouses": {
+    "title": "Warehouses",
+    "colId": "ID",
+    "colName": "Name",
+    "colShortcutName": "Shortcut Name",
+    "colStatus": "Status",
+    "colDefault": "Default",
+    "colCreatedAt": "Created",
+    "colUpdatedAt": "Updated",
+    "colActions": "Actions",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "defaultYes": "Default",
+    "defaultNo": "No",
+    "actionMenu": "Open row actions",
+    "actionEdit": "Edit (coming soon)",
+    "actionDelete": "Delete (coming soon)",
+    "empty": "No warehouses yet.",
+    "addSoon": "Adding warehouses from the UI will be available later.",
+    "loadError": "Could not load warehouses.",
+    "paginationEmpty": "No items",
+    "paginationTotal": "{start}-{end} of {total}",
+    "paginationPerPage": "{size} / page",
+    "paginationPageSizeAria": "Rows per page"
+  },
   "Overview": {
     "title": "Overview",
     "subtitle": "Placeholder — use this area to verify the app shell."

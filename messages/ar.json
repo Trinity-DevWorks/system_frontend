@@ -217,6 +217,31 @@
     "paginationPerPage": "{size} / صفحة",
     "paginationPageSizeAria": "عدد الصفوف في الصفحة"
   },
+  "Warehouses": {
+    "title": "المستودعات",
+    "colId": "المعرّف",
+    "colName": "الاسم",
+    "colShortcutName": "الاسم المختصر",
+    "colStatus": "الحالة",
+    "colDefault": "افتراضي",
+    "colCreatedAt": "تاريخ الإنشاء",
+    "colUpdatedAt": "تاريخ التحديث",
+    "colActions": "إجراءات",
+    "statusActive": "نشط",
+    "statusInactive": "غير نشط",
+    "defaultYes": "افتراضي",
+    "defaultNo": "لا",
+    "actionMenu": "فتح إجراءات الصف",
+    "actionEdit": "تعديل (قريبًا)",
+    "actionDelete": "حذف (قريبًا)",
+    "empty": "لا توجد مستودعات بعد.",
+    "addSoon": "إضافة المستودعات من الواجهة ستتوفر لاحقًا.",
+    "loadError": "تعذر تحميل المستودعات.",
+    "paginationEmpty": "لا عناصر",
+    "paginationTotal": "{start}–{end} من {total}",
+    "paginationPerPage": "{size} / صفحة",
+    "paginationPageSizeAria": "عدد الصفوف في الصفحة"
+  },
   "Overview": {
     "title": "نظرة عامة",
     "subtitle": "مساحة مؤقتة — للتحقق من الهيكل."
