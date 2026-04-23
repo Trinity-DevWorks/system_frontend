@@ -131,6 +131,29 @@
     "paginationPerPage": "{size} / page",
     "paginationPageSizeAria": "Rows per page"
   },
+  "VatGroups": {
+    "title": "VAT Groups",
+    "colId": "ID",
+    "colAbbreviation": "Abbreviation",
+    "colName": "Name",
+    "colPercentage": "Percentage",
+    "colDefault": "Default",
+    "colCreatedAt": "Created",
+    "colUpdatedAt": "Updated",
+    "colActions": "Actions",
+    "defaultYes": "Default",
+    "defaultNo": "No",
+    "actionMenu": "Open row actions",
+    "actionEdit": "Edit (coming soon)",
+    "actionDelete": "Delete (coming soon)",
+    "empty": "No VAT groups yet.",
+    "addSoon": "Adding VAT groups from the UI will be available later.",
+    "loadError": "Could not load VAT groups.",
+    "paginationEmpty": "No items",
+    "paginationTotal": "{start}-{end} of {total}",
+    "paginationPerPage": "{size} / page",
+    "paginationPageSizeAria": "Rows per page"
+  },
   "Overview": {
     "title": "Overview",
     "subtitle": "Placeholder — use this area to verify the app shell."

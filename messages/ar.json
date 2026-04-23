@@ -131,6 +131,29 @@
     "paginationPerPage": "{size} / صفحة",
     "paginationPageSizeAria": "عدد الصفوف في الصفحة"
   },
+  "VatGroups": {
+    "title": "مجموعات الضريبة",
+    "colId": "المعرّف",
+    "colAbbreviation": "الاختصار",
+    "colName": "الاسم",
+    "colPercentage": "النسبة",
+    "colDefault": "افتراضي",
+    "colCreatedAt": "تاريخ الإنشاء",
+    "colUpdatedAt": "تاريخ التحديث",
+    "colActions": "إجراءات",
+    "defaultYes": "افتراضي",
+    "defaultNo": "لا",
+    "actionMenu": "فتح إجراءات الصف",
+    "actionEdit": "تعديل (قريبًا)",
+    "actionDelete": "حذف (قريبًا)",
+    "empty": "لا توجد مجموعات ضريبة بعد.",
+    "addSoon": "إضافة مجموعات الضريبة من الواجهة ستتوفر لاحقًا.",
+    "loadError": "تعذر تحميل مجموعات الضريبة.",
+    "paginationEmpty": "لا عناصر",
+    "paginationTotal": "{start}–{end} من {total}",
+    "paginationPerPage": "{size} / صفحة",
+    "paginationPageSizeAria": "عدد الصفوف في الصفحة"
+  },
   "Overview": {
     "title": "نظرة عامة",
     "subtitle": "مساحة مؤقتة — للتحقق من الهيكل."
