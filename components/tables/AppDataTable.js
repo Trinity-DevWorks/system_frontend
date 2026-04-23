@@ -471,7 +471,7 @@ export default function AppDataTable({
         <Alert
           type="error"
           showIcon
-          message={t("loadError")}
+          title={t("loadError")}
           description={fetchError instanceof Error ? fetchError.message : String(fetchError)}
           action={
             onRetry ? (
