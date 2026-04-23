@@ -107,6 +107,27 @@
     "paginationPerPage": "{size} / صفحة",
     "paginationPageSizeAria": "عدد الصفوف في الصفحة"
   },
+  "SubCategories": {
+    "title": "التصنيفات الفرعية",
+    "colId": "المعرّف",
+    "colName": "الاسم",
+    "colCategory": "التصنيف",
+    "colColor": "اللون",
+    "colCreatedAt": "تاريخ الإنشاء",
+    "colUpdatedAt": "تاريخ التحديث",
+    "colActions": "إجراءات",
+    "actionMenu": "فتح إجراءات الصف",
+    "actionEdit": "تعديل (قريبًا)",
+    "actionDelete": "حذف (قريبًا)",
+    "filterCategory": "تصفية حسب التصنيف",
+    "empty": "لا توجد تصنيفات فرعية بعد.",
+    "addSoon": "إضافة التصنيفات الفرعية من الواجهة ستتوفر لاحقًا.",
+    "loadError": "تعذر تحميل التصنيفات الفرعية.",
+    "paginationEmpty": "لا عناصر",
+    "paginationTotal": "{start}–{end} من {total}",
+    "paginationPerPage": "{size} / صفحة",
+    "paginationPageSizeAria": "عدد الصفوف في الصفحة"
+  },
   "Overview": {
     "title": "نظرة عامة",
     "subtitle": "مساحة مؤقتة — للتحقق من الهيكل."

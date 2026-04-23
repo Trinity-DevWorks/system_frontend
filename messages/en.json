@@ -107,6 +107,27 @@
     "paginationPerPage": "{size} / page",
     "paginationPageSizeAria": "Rows per page"
   },
+  "SubCategories": {
+    "title": "Sub Categories",
+    "colId": "ID",
+    "colName": "Name",
+    "colCategory": "Category",
+    "colColor": "Color",
+    "colCreatedAt": "Created",
+    "colUpdatedAt": "Updated",
+    "colActions": "Actions",
+    "actionMenu": "Open row actions",
+    "actionEdit": "Edit (coming soon)",
+    "actionDelete": "Delete (coming soon)",
+    "filterCategory": "Filter category",
+    "empty": "No sub categories yet.",
+    "addSoon": "Adding sub categories from the UI will be available later.",
+    "loadError": "Could not load sub categories.",
+    "paginationEmpty": "No items",
+    "paginationTotal": "{start}-{end} of {total}",
+    "paginationPerPage": "{size} / page",
+    "paginationPageSizeAria": "Rows per page"
+  },
   "Overview": {
     "title": "Overview",
     "subtitle": "Placeholder — use this area to verify the app shell."
