@@ -11,8 +11,16 @@ import {
   ReloadOutlined,
 } from "@ant-design/icons";
 import {
+  applyColumnOrder,
+  getColumnStableId,
+  mergeSavedColumnOrder,
+  reorderFullOrderByVisibleDrag,
+} from "@/lib/column-order-utils";
+import {
+  loadColumnOrder,
   loadHiddenColumnKeys,
   loadTableDensity,
+  saveColumnOrder,
   saveHiddenColumnKeys,
   saveTableDensity,
 } from "@/lib/table-prefs-storage";
@@ -31,7 +39,8 @@ import {
   Typography,
 } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ColumnDragShell, SortableTableBodyCell, SortableTableHeaderCell } from "./AppDataTableColumnDrag";
 
 const DEFAULT_SCROLL_X = 1000;
 const DEFAULT_TABLE_SCROLL_Y = "calc(100dvh - 320px)";
@@ -72,6 +81,7 @@ const PICKER_SKIP = new Set(["actions"]);
  * @param {boolean} [props.stickyHeader]
  * @param {number} [props.scrollX]
  * @param {string} [props.tableBodyScrollY]
+ * @param {boolean} [props.enableColumnDrag] Drag-reorder headers (@dnd-kit, like ant.design Table demo); persists order in localStorage.
  * @param {false | {
  *   mode: "client" | "server" | "placeholder",
  *   pageSize?: number,
@@ -100,6 +110,7 @@ export default function AppDataTable({
   scrollX = DEFAULT_SCROLL_X,
   tableBodyScrollY = DEFAULT_TABLE_SCROLL_Y,
   pagination = false,
+  enableColumnDrag = false,
 }) {
   const t = useTranslations("DataTable");
   const {
@@ -129,6 +140,26 @@ export default function AppDataTable({
   const [density, setDensity] = useState("comfortable");
   const [prefsReady, setPrefsReady] = useState(false);
   const [columnPickerOpen, setColumnPickerOpen] = useState(false);
+  const [columnOrder, setColumnOrder] = useState([]);
+  const [dragIndex, setDragIndex] = useState({
+    active: -1,
+    over: undefined,
+    direction: undefined,
+  });
+  /** Avoid SSR/client hydration mismatch: @dnd-kit aria-describedby ids differ pre/post mount. */
+  const [columnDndReady, setColumnDndReady] = useState(false);
+
+  /** `null` on first mount so we treat as table change and load `columnOrder` from localStorage. */
+  const lastTableIdRef = useRef(null);
+
+  const columnKeysSignature = useMemo(
+    () =>
+      (columns ?? [])
+        .map((c) => getColumnStableId(c))
+        .filter(Boolean)
+        .join("|"),
+    [columns],
+  );
 
   const [clientPage, setClientPage] = useState(1);
   const [clientPageSize, setClientPageSize] = useState(
@@ -142,6 +173,44 @@ export default function AppDataTable({
       setPrefsReady(true);
     });
   }, [tableId]);
+
+  useEffect(() => {
+    if (!prefsReady) return;
+    const tableChanged = lastTableIdRef.current !== tableId;
+    if (tableChanged) {
+      lastTableIdRef.current = tableId;
+    }
+
+    const cols = columns ?? [];
+    if (enableColumnDrag) {
+      setColumnOrder((prev) =>
+        tableChanged
+          ? mergeSavedColumnOrder(loadColumnOrder(tableId), cols, PICKER_SKIP)
+          : mergeSavedColumnOrder(prev, cols, PICKER_SKIP),
+      );
+    } else if (tableChanged) {
+      setColumnOrder([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `columns` is represented by columnKeysSignature
+  }, [tableId, columnKeysSignature, prefsReady, enableColumnDrag]);
+
+  /** Defer @dnd-kit mount (hydration) and avoid sync setState in effect (react-compiler / eslint). */
+  useEffect(() => {
+    let t1 = 0;
+    let t2 = 0;
+    if (!enableColumnDrag) {
+      t1 = window.setTimeout(() => setColumnDndReady(false), 0);
+      return () => window.clearTimeout(t1);
+    }
+    t1 = window.setTimeout(() => {
+      setColumnDndReady(false);
+      t2 = window.setTimeout(() => setColumnDndReady(true), 0);
+    }, 0);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [enableColumnDrag, tableId]);
 
   useEffect(() => {
     const id = setTimeout(() => setSearchQuery(searchDraft.trim()), 300);
@@ -196,15 +265,114 @@ export default function AppDataTable({
       ? rowSelection.selectedRowKeys ?? []
       : [];
 
-  const visibleColumns = useMemo(() => {
+  const orderedSourceColumns = useMemo(() => {
     const list = columns ?? [];
-    return list.filter((c) => {
-      const k = c.key;
+    if (!enableColumnDrag) return list;
+    const order =
+      columnOrder.length > 0
+        ? columnOrder
+        : mergeSavedColumnOrder(null, list, PICKER_SKIP);
+    return applyColumnOrder(list, order, PICKER_SKIP);
+  }, [columns, columnOrder, enableColumnDrag]);
+
+  const visibleOrderedColumns = useMemo(() => {
+    return orderedSourceColumns.filter((c) => {
+      const k = getColumnStableId(c);
       if (k == null) return true;
-      if (PICKER_SKIP.has(String(k))) return true;
-      return !hiddenKeys.includes(String(k));
+      if (PICKER_SKIP.has(k)) return true;
+      return !hiddenKeys.includes(k);
     });
-  }, [columns, hiddenKeys]);
+  }, [orderedSourceColumns, hiddenKeys]);
+
+  const sortableIds = useMemo(() => {
+    return visibleOrderedColumns
+      .map((c) => getColumnStableId(c))
+      .filter((id) => id && !PICKER_SKIP.has(id));
+  }, [visibleOrderedColumns]);
+
+  const columnDndActive = enableColumnDrag && columnDndReady;
+
+  const tableColumns = useMemo(() => {
+    return visibleOrderedColumns.map((col) => {
+      const sid = getColumnStableId(col);
+
+      if (!columnDndActive || !sid || PICKER_SKIP.has(sid)) {
+        return col;
+      }
+
+      return {
+        ...col,
+        onHeaderCell: (column) => {
+          const base =
+            typeof col.onHeaderCell === "function" ? col.onHeaderCell(column) : col.onHeaderCell;
+          return { id: sid, ...(base && typeof base === "object" ? base : {}) };
+        },
+        onCell: (record, rowIndex) => {
+          const base =
+            typeof col.onCell === "function" ? col.onCell(record, rowIndex) : col.onCell;
+          return { id: sid, ...(base && typeof base === "object" ? base : {}) };
+        },
+      };
+    });
+  }, [visibleOrderedColumns, columnDndActive]);
+
+  const onColumnDragEnd = useCallback(
+    (event) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) {
+        setDragIndex({ active: -1, over: undefined, direction: undefined });
+        return;
+      }
+      const hidden = new Set(hiddenKeys);
+      setColumnOrder((prev) => {
+        const base =
+          prev.length > 0 ? prev : mergeSavedColumnOrder(null, columns ?? [], PICKER_SKIP);
+        const next = reorderFullOrderByVisibleDrag(base, hidden, active.id, over.id);
+        saveColumnOrder(tableId, next);
+        return next;
+      });
+      setDragIndex({ active: -1, over: undefined, direction: undefined });
+    },
+    [columns, hiddenKeys, tableId],
+  );
+
+  const onColumnDragOver = useCallback(
+    (event) => {
+      const { active, over } = event;
+      if (!over) return;
+      const activeIndex = visibleOrderedColumns.findIndex(
+        (c) => getColumnStableId(c) === String(active.id),
+      );
+      const overIndex = visibleOrderedColumns.findIndex(
+        (c) => getColumnStableId(c) === String(over.id),
+      );
+      if (activeIndex < 0 || overIndex < 0) return;
+      setDragIndex({
+        active: active.id,
+        over: over.id,
+        direction: overIndex > activeIndex ? "right" : "left",
+      });
+    },
+    [visibleOrderedColumns],
+  );
+
+  const dragOverlayTitle = useMemo(() => {
+    const id = dragIndex.active;
+    if (id == null || id === -1) return null;
+    const col = visibleOrderedColumns.find((c) => getColumnStableId(c) === String(id));
+    const title = col?.title;
+    if (typeof title === "string") return title;
+    if (title != null) return title;
+    return String(id);
+  }, [dragIndex.active, visibleOrderedColumns]);
+
+  const dragTableComponents = useMemo(
+    () => ({
+      header: { cell: SortableTableHeaderCell },
+      body: { cell: SortableTableBodyCell },
+    }),
+    [],
+  );
 
   const showImportExportCluster =
     showExportExcel || showExportPdf || showImportExcel;
@@ -258,12 +426,14 @@ export default function AppDataTable({
   );
 
   const columnMenuItems = useMemo(() => {
-    const items = (columns ?? [])
-      .filter((c) => c.key != null && !PICKER_SKIP.has(String(c.key)))
+    const items = orderedSourceColumns
+      .filter((c) => {
+        const key = getColumnStableId(c);
+        return key && !PICKER_SKIP.has(key);
+      })
       .map((c) => {
-        const key = String(c.key);
-        const label =
-          typeof c.title === "string" ? c.title : key;
+        const key = getColumnStableId(c);
+        const label = typeof c.title === "string" ? c.title : key;
         const checked = !hiddenKeys.includes(key);
         return {
           key: `col-${key}`,
@@ -285,7 +455,7 @@ export default function AppDataTable({
         };
       });
     return items.length ? items : [{ key: "none", label: t("columnPickerEmpty"), disabled: true }];
-  }, [columns, hiddenKeys, tableId, t]);
+  }, [orderedSourceColumns, hiddenKeys, tableId, t]);
 
   const setDensityAndSave = useCallback(
     (next) => {
@@ -393,6 +563,60 @@ export default function AppDataTable({
   );
 
   const showFooter = pagination !== false;
+
+  const renderedTable = useMemo(() => {
+    const tableEl = (
+      <Table
+        key={`${tableId}:${columnDndActive ? "dnd" : "plain"}`}
+        rowKey={rowKey}
+        columns={tableColumns}
+        dataSource={displayedRows}
+        loading={loading}
+        tableLayout="fixed"
+        rowSelection={rowSelection === false ? undefined : rowSelection}
+        pagination={false}
+        locale={{ emptyText: emptyText ?? t("empty") }}
+        size={tableSize}
+        sticky={stickyHeader}
+        scroll={scroll}
+        className="[&_.ant-table]:rounded-none"
+        components={columnDndActive && sortableIds.length > 0 ? dragTableComponents : undefined}
+      />
+    );
+    if (!columnDndActive || sortableIds.length === 0) {
+      return tableEl;
+    }
+    return (
+      <ColumnDragShell
+        sortableIds={sortableIds}
+        dragIndex={dragIndex}
+        onDragEnd={onColumnDragEnd}
+        onDragOver={onColumnDragOver}
+        overlayNode={dragOverlayTitle}
+      >
+        {tableEl}
+      </ColumnDragShell>
+    );
+  }, [
+    rowKey,
+    tableColumns,
+    displayedRows,
+    loading,
+    rowSelection,
+    emptyText,
+    t,
+    tableSize,
+    stickyHeader,
+    scroll,
+    tableId,
+    columnDndActive,
+    sortableIds,
+    dragTableComponents,
+    dragIndex,
+    onColumnDragEnd,
+    onColumnDragOver,
+    dragOverlayTitle,
+  ]);
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
@@ -507,20 +731,7 @@ export default function AppDataTable({
       ) : null}
 
       <div className="app-data-table min-w-0 overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
-        <Table
-          rowKey={rowKey}
-          columns={visibleColumns}
-          dataSource={displayedRows}
-          loading={loading}
-          tableLayout="fixed"
-          rowSelection={rowSelection === false ? undefined : rowSelection}
-          pagination={false}
-          locale={{ emptyText: emptyText ?? t("empty") }}
-          size={tableSize}
-          sticky={stickyHeader}
-          scroll={scroll}
-          className="[&_.ant-table]:rounded-none"
-        />
+        {renderedTable}
         {showFooter ? (
           <div className="grid grid-cols-1 items-center gap-3 border-t border-black/10 bg-black/[0.02] px-3 py-2 sm:grid-cols-[1fr_auto_1fr] dark:border-white/10 dark:bg-white/[0.04]">
             <Typography.Text type="secondary" className="min-w-0 justify-self-start">
