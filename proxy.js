@@ -170,11 +170,12 @@ export default async function proxy(request) {
   const isDevelopment = process.env.NODE_ENV === "development";
   const EXPLICIT_BASE = process.env.NEXT_PUBLIC_CENTRAL_API_BASE;
   const API_PORT = process.env.NEXT_PUBLIC_CENTRAL_API_PORT || "8000";
+ const DEV_CENTRAL_DOMAIN = process.env.NEXT_PUBLIC_CENTRAL_DOMAIN || "app.localhost";
   const centralApiBase =
     EXPLICIT_BASE && EXPLICIT_BASE.trim().length > 0
       ? EXPLICIT_BASE.replace(/\/$/, "")
       : isDevelopment
-        ? `http://localhost:${API_PORT}/api`
+      ? `http://${DEV_CENTRAL_DOMAIN}:${API_PORT}/api`
         : `http://backend:8000/api`;
 
   const hostMode = resolveHostMode(effectiveHost);

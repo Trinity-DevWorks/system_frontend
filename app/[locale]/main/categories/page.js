@@ -69,6 +69,7 @@ function CategoriesTable() {
       showSelectionBar
       stickyHeader
       scrollX={1000}
+      enableColumnDrag
       pagination={{
         mode: "client",
         pageSize: 20,
