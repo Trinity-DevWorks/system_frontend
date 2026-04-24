@@ -6,7 +6,7 @@ import { getSubCategoryTableColumns } from "./getSubCategoryTableColumns";
 import { useQuery } from "@tanstack/react-query";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 async function fetchSubCategories() {
   const data = await tenantApiService("GET", "sub-categories");
@@ -18,17 +18,10 @@ function getCategoryName(row) {
   return typeof name === "string" ? name.trim() : "";
 }
 
-const hasValue = (value) => value !== null && typeof value !== "undefined";
-const normalizeText = (value) =>
-  typeof value === "string"
-    ? value.trim().replace(/\s+/g, " ").toLocaleLowerCase()
-    : "";
-
 function SubCategoriesTable() {
   const t = useTranslations("SubCategories");
   const { message } = App.useApp();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState();
   const {
     data = [],
     isPending,
@@ -58,60 +51,7 @@ function SubCategoriesTable() {
     [data],
   );
 
-  const categoryOptions = useMemo(() => {
-    const optionsById = new Map();
-
-    for (const row of tableData) {
-      const categoryId = row?.category_id;
-      if (!hasValue(categoryId)) continue;
-
-      const value = String(categoryId);
-      if (optionsById.has(value)) continue;
-
-      const categoryName = row.category_name;
-      optionsById.set(value, {
-        value,
-        id: categoryId,
-        name: categoryName,
-        normalizedName: normalizeText(categoryName),
-      });
-    }
-
-    return [...optionsById.values()].sort((a, b) =>
-      (a.name || String(a.id)).localeCompare(b.name || String(b.id)),
-    );
-  }, [tableData]);
-
-  const activeCategoryId = useMemo(() => {
-    if (!selectedCategoryId) return undefined;
-    return categoryOptions.some((option) => option.value === selectedCategoryId)
-      ? selectedCategoryId
-      : undefined;
-  }, [categoryOptions, selectedCategoryId]);
-
-  const filteredTableData = useMemo(() => {
-    if (!activeCategoryId) return tableData;
-    return tableData.filter(
-      (row) => String(row?.category_id) === activeCategoryId,
-    );
-  }, [activeCategoryId, tableData]);
-
-  const handleCategoryFilterChange = useCallback((value) => {
-    setSelectedCategoryId(value);
-    setSelectedRowKeys([]);
-  }, []);
-
-  const columns = useMemo(
-    () =>
-      getSubCategoryTableColumns(t, {
-        categoryFilter: {
-          options: categoryOptions,
-          value: activeCategoryId,
-          onChange: handleCategoryFilterChange,
-        },
-      }),
-    [activeCategoryId, categoryOptions, handleCategoryFilterChange, t],
-  );
+  const columns = useMemo(() => getSubCategoryTableColumns(t), [t]);
 
   const rowSelection = {
     selectedRowKeys,
@@ -123,7 +63,7 @@ function SubCategoriesTable() {
     <AppDataTable
       tableId="sub-categories"
       columns={columns}
-      dataSource={filteredTableData}
+      dataSource={tableData}
       rowKey="id"
       loading={isPending}
       refreshFetching={isFetching}

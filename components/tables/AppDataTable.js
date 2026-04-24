@@ -116,6 +116,7 @@ export default function AppDataTable({
     showImportExcel = true,
     onImportExcel,
     enableClientSearch = true,
+    extra,
   } = toolbar;
 
   const paginationMode = pagination ? pagination.mode : false;
@@ -442,7 +443,7 @@ export default function AppDataTable({
               {t("columns")}
             </Button>
           </Dropdown>
-          
+          {extra}
         </Space>
         <Space wrap size="small" className="shrink-0 justify-end">
           {showImportExportCluster && importExportMenuItems.length > 0 ? (
