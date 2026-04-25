@@ -238,6 +238,42 @@
     "paginationPerPage": "{size} / صفحة",
     "paginationPageSizeAria": "عدد الصفوف في الصفحة"
   },
+  "CustomerGroups": {
+    "title": "مجموعات العملاء",
+    "colId": "المعرّف",
+    "colName": "الاسم",
+    "colCreatedAt": "تاريخ الإنشاء",
+    "colUpdatedAt": "تاريخ التحديث",
+    "colActions": "إجراءات",
+    "actionMenu": "فتح إجراءات الصف",
+    "actionEdit": "تعديل (قريبًا)",
+    "actionDelete": "حذف (قريبًا)",
+    "empty": "لا توجد مجموعات عملاء بعد.",
+    "addSoon": "إضافة مجموعات العملاء من الواجهة ستتوفر لاحقًا.",
+    "loadError": "تعذر تحميل مجموعات العملاء.",
+    "paginationEmpty": "لا عناصر",
+    "paginationTotal": "{start}–{end} من {total}",
+    "paginationPerPage": "{size} / صفحة",
+    "paginationPageSizeAria": "عدد الصفوف في الصفحة"
+  },
+  "SupplierGroups": {
+    "title": "مجموعات الموردين",
+    "colId": "المعرّف",
+    "colName": "الاسم",
+    "colCreatedAt": "تاريخ الإنشاء",
+    "colUpdatedAt": "تاريخ التحديث",
+    "colActions": "إجراءات",
+    "actionMenu": "فتح إجراءات الصف",
+    "actionEdit": "تعديل (قريبًا)",
+    "actionDelete": "حذف (قريبًا)",
+    "empty": "لا توجد مجموعات موردين بعد.",
+    "addSoon": "إضافة مجموعات الموردين من الواجهة ستتوفر لاحقًا.",
+    "loadError": "تعذر تحميل مجموعات الموردين.",
+    "paginationEmpty": "لا عناصر",
+    "paginationTotal": "{start}–{end} من {total}",
+    "paginationPerPage": "{size} / صفحة",
+    "paginationPageSizeAria": "عدد الصفوف في الصفحة"
+  },
   "Overview": {
     "title": "نظرة عامة",
     "subtitle": "مساحة مؤقتة — للتحقق من الهيكل."

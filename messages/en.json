@@ -238,6 +238,42 @@
     "paginationPerPage": "{size} / page",
     "paginationPageSizeAria": "Rows per page"
   },
+  "CustomerGroups": {
+    "title": "Customer Groups",
+    "colId": "ID",
+    "colName": "Name",
+    "colCreatedAt": "Created",
+    "colUpdatedAt": "Updated",
+    "colActions": "Actions",
+    "actionMenu": "Open row actions",
+    "actionEdit": "Edit (coming soon)",
+    "actionDelete": "Delete (coming soon)",
+    "empty": "No customer groups yet.",
+    "addSoon": "Adding customer groups from the UI will be available later.",
+    "loadError": "Could not load customer groups.",
+    "paginationEmpty": "No items",
+    "paginationTotal": "{start}-{end} of {total}",
+    "paginationPerPage": "{size} / page",
+    "paginationPageSizeAria": "Rows per page"
+  },
+  "SupplierGroups": {
+    "title": "Supplier Groups",
+    "colId": "ID",
+    "colName": "Name",
+    "colCreatedAt": "Created",
+    "colUpdatedAt": "Updated",
+    "colActions": "Actions",
+    "actionMenu": "Open row actions",
+    "actionEdit": "Edit (coming soon)",
+    "actionDelete": "Delete (coming soon)",
+    "empty": "No supplier groups yet.",
+    "addSoon": "Adding supplier groups from the UI will be available later.",
+    "loadError": "Could not load supplier groups.",
+    "paginationEmpty": "No items",
+    "paginationTotal": "{start}-{end} of {total}",
+    "paginationPerPage": "{size} / page",
+    "paginationPageSizeAria": "Rows per page"
+  },
   "Overview": {
     "title": "Overview",
     "subtitle": "Placeholder — use this area to verify the app shell."
