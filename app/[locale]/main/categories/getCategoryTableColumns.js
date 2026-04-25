@@ -65,6 +65,7 @@ export function getCategoryTableColumns(t) {
     {
       title: t("colActions"),
       key: "actions",
+      fixed: "end",
       width: 72,
       align: "center",
       render: () => (

@@ -54,6 +54,22 @@ html {
   background: transparent;
 }
 
+/* Keep fixed-end action column flush with table edge (no right gap). */
+.app-data-table .ant-table-thead .ant-table-cell-fix-end.ant-table-cell-fix-sticky,
+.app-data-table .ant-table-tbody .ant-table-cell-fix-end.ant-table-cell-fix-sticky {
+  inset-inline-end: 0 !important;
+}
+
+/* Remove rc-table scrollbar spacer column that can leave a visible end gap. */
+.app-data-table .ant-table-thead .ant-table-cell-scrollbar,
+.app-data-table .ant-table-tbody .ant-table-cell-scrollbar {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
 html.dark {
   color-scheme: dark;
 }
