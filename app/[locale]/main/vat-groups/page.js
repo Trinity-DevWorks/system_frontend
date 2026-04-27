@@ -68,6 +68,7 @@ function VatGroupsTable() {
       showSelectionBar
       stickyHeader
       scrollX={1180}
+      enableColumnDrag
       pagination={{
         mode: "client",
         pageSize: 20,

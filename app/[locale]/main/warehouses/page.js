@@ -88,6 +88,7 @@ function WarehousesTable() {
       showSelectionBar
       stickyHeader
       scrollX={1160}
+      enableColumnDrag
       pagination={{
         mode: "client",
         pageSize: 20,

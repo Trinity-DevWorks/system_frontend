@@ -188,6 +188,7 @@ function UnitOfMeasurementsTable() {
       showSelectionBar
       stickyHeader
       scrollX={1660}
+      enableColumnDrag
       pagination={{
         mode: "client",
         pageSize: 20,
