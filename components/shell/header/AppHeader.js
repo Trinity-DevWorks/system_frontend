@@ -4,11 +4,12 @@ import { useThemeMode } from "@/components/AntdAppProvider";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import {
+  DownOutlined,
   GlobalOutlined,
   MoonOutlined,
   SunOutlined,
 } from "@ant-design/icons";
-import { Button, Dropdown, Layout, Space, Tooltip } from "antd";
+import { Button, Dropdown, Layout, Space } from "antd";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import AppBreadcrumb from "./AppBreadcrumb";
@@ -20,7 +21,7 @@ export default function AppHeader({ colorBgContainer, colorSplit, menuItems }) {
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
-  const { toggleColorMode, colorMode } = useThemeMode();
+  const { setColorMode, colorMode } = useThemeMode();
 
   const languageMenuItems = useMemo(
     () =>
@@ -31,9 +32,38 @@ export default function AppHeader({ colorBgContainer, colorSplit, menuItems }) {
       })),
     [locale, tLogin],
   );
+  const currentLanguageLabel =
+    locale === "en" ? tLogin("languageEn") : tLogin("languageAr");
 
   const onLanguageMenuClick = ({ key }) => {
     router.replace(pathname, { locale: key });
+  };
+
+  const themeMenuItems = useMemo(
+    () => [
+      {
+        key: "light",
+        label: tLogin("switchToLightTheme"),
+        disabled: colorMode === "light",
+        icon: <SunOutlined />,
+      },
+      {
+        key: "dark",
+        label: tLogin("switchToDarkTheme"),
+        disabled: colorMode === "dark",
+        icon: <MoonOutlined />,
+      },
+    ],
+    [colorMode, tLogin],
+  );
+
+  const currentThemeLabel =
+    colorMode === "dark"
+      ? tLogin("switchToDarkTheme")
+      : tLogin("switchToLightTheme");
+
+  const onThemeMenuClick = ({ key }) => {
+    setColorMode(key);
   };
 
   return (
@@ -53,29 +83,30 @@ export default function AppHeader({ colorBgContainer, colorSplit, menuItems }) {
           trigger={["click"]}
         >
           <Button
-            type="text"
-            icon={<GlobalOutlined />}
+            type="default"
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/80 px-3 text-sm font-medium text-white hover:border-white/30 hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             aria-label={tLogin("changeLanguage")}
-          />
+          >
+            <GlobalOutlined />
+            <span className="min-w-0">{currentLanguageLabel}</span>
+            <DownOutlined className="text-xs" />
+          </Button>
         </Dropdown>
-        <Tooltip
-          title={
-            colorMode === "dark"
-              ? tLogin("switchToLightTheme")
-              : tLogin("switchToDarkTheme")
-          }
+        <Dropdown
+          menu={{ items: themeMenuItems, onClick: onThemeMenuClick }}
+          placement="bottomRight"
+          trigger={["click"]}
         >
           <Button
-            type="text"
-            icon={colorMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
-            onClick={toggleColorMode}
-            aria-label={
-              colorMode === "dark"
-                ? tLogin("switchToLightTheme")
-                : tLogin("switchToDarkTheme")
-            }
-          />
-        </Tooltip>
+            type="default"
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/80 px-3 text-sm font-medium text-white hover:border-white/30 hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            aria-label={currentThemeLabel}
+          >
+            {colorMode === "dark" ? <MoonOutlined /> : <SunOutlined />}
+            <span className="min-w-0">{currentThemeLabel}</span>
+            <DownOutlined className="text-xs" />
+          </Button>
+        </Dropdown>
       </Space>
     </Header>
   );

@@ -349,7 +349,7 @@ export function getUnitOfMeasurementTableColumns(t, options = {}) {
       key: "created_at",
       width: 180,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "\u2014"),
+      render: (value) => (value ? dayjs(value).format("MMMM D, YYYY") : "\u2014"),
     },
     {
       title: t("colUpdatedAt"),
@@ -357,7 +357,7 @@ export function getUnitOfMeasurementTableColumns(t, options = {}) {
       key: "updated_at",
       width: 168,
       sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "\u2014"),
+      render: (value) => (value ? dayjs(value).format("MMMM D, YYYY") : "\u2014"),
     },
     {
       title: t("colActions"),
@@ -398,3 +398,4 @@ export function getUnitOfMeasurementTableColumns(t, options = {}) {
     },
   ];
 }
+
