@@ -14,6 +14,9 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 
+const SECTION_DIVIDER_CLASS =
+  "mt-2 pt-2 border-t border-black/10 dark:border-white/10";
+
 /**
  * Single place for main-app routes shown in the sidebar.
  *
@@ -61,6 +64,7 @@ export function buildMainNavItems(t) {
       key: "master-data",
       icon: <AppstoreOutlined />,
       label: t("navMasterData"),
+      className: SECTION_DIVIDER_CLASS,
       children: [
         { key: ROUTES.categories, icon: <TagsOutlined />, label: t("navCategories") },
         {
@@ -83,12 +87,14 @@ export function buildMainNavItems(t) {
       key: "inventory",
       icon: <DropboxOutlined />,
       label: t("navInventory"),
+      className: SECTION_DIVIDER_CLASS,
       children: [{ key: ROUTES.items, icon: <DropboxOutlined />, label: t("navItems") }],
     },
     {
       key: "sales",
       icon: <ShoppingCartOutlined />,
       label: t("navSales"),
+      className: SECTION_DIVIDER_CLASS,
       children: [
         {
           key: ROUTES.customerGroups,
@@ -102,6 +108,7 @@ export function buildMainNavItems(t) {
       key: "purchasing",
       icon: <ShoppingOutlined />,
       label: t("navPurchasing"),
+      className: SECTION_DIVIDER_CLASS,
       children: [
         {
           key: ROUTES.supplierGroups,
@@ -115,14 +122,12 @@ export function buildMainNavItems(t) {
       key: "administration",
       icon: <SafetyCertificateOutlined />,
       label: t("navAdministration"),
+      className: SECTION_DIVIDER_CLASS,
       children: [
         { key: ROUTES.users, icon: <UserOutlined />, label: t("navUsers") },
         { key: ROUTES.roles, icon: <SafetyCertificateOutlined />, label: t("navRoles") },
         { key: ROUTES.permissions, icon: <FileSearchOutlined />, label: t("navPermissions") },
       ],
-    },
-    {
-      
     }
   ];
 }
