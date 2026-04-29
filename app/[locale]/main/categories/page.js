@@ -2,11 +2,12 @@
 
 import tenantApiService from "@/API/TenantApiService";
 import AppDataTable from "@/components/tables/AppDataTable";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { getCategoryTableColumns } from "./getCategoryTableColumns";
 import { useQuery } from "@tanstack/react-query";
 import { App, Typography } from "antd";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 async function fetchCategories() {
   const data = await tenantApiService("GET", "categories");
@@ -15,7 +16,8 @@ async function fetchCategories() {
 
 function CategoriesTable() {
   const t = useTranslations("Categories");
-  const { message } = App.useApp();
+  const tApiErrors = useTranslations("ApiErrors");
+  const { message, notification } = App.useApp();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
     data = [],
@@ -32,11 +34,13 @@ function CategoriesTable() {
     refetchOnWindowFocus: true,
   });
 
-  
-  const fetchError = useMemo(() => {
-    if (!isError || !error) return null;
-    return error instanceof Error ? error : new Error(String(error));
-  }, [isError, error]);
+  useEffect(() => {
+    if (!isError || !error) return;
+    notification.error({
+      message: t("loadError"),
+      description: getLocalizedApiErrorMessage(tApiErrors, error),
+    });
+  }, [isError, error, notification, t, tApiErrors]);
 
   const columns = useMemo(() => getCategoryTableColumns(t), [t]);
 
@@ -54,7 +58,6 @@ function CategoriesTable() {
       rowKey="id"
       loading={isPending}
       refreshFetching={isFetching}
-      fetchError={fetchError}
       onRetry={() => refetch()}
       emptyText={t("empty")}
       toolbar={{
