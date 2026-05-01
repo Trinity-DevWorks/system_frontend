@@ -4,15 +4,17 @@ import { centralApi } from "@/API/CentralApiService";
 import tenantApiService from "@/API/TenantApiService";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
-  addSidebarBookmark,
+  clearAllSidebarBookmarks,
   loadSidebarBookmarks,
   removeSidebarBookmark,
+  saveSidebarBookmarks,
 } from "@/lib/sidebar-bookmarks";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { clearAllSessionTokens } from "@/lib/session";
 import { App, Layout, theme as antdTheme } from "antd";
 import AppHeader from "./header/AppHeader";
 import AppSidebar from "./sidebar/AppSidebar";
+import { decorateMenuItemsWithBookmarkStars } from "./sidebar/decorate-menu-bookmark-stars";
 import { filterMenuItemsByQuery } from "./sidebar/filter-nav-items";
 import {
   buildMainNavItems,
@@ -56,7 +58,54 @@ export default function AppShell({ children }) {
     });
   }, []);
 
-  const onMenuClick = ({ key }) => {
+  const bookmarkedPathsSet = useMemo(
+    () => new Set(bookmarks.map((b) => b.path)),
+    [bookmarks],
+  );
+
+  const handleToggleBookmark = useCallback(
+    (path) => {
+      const label =
+        findNavLabelForPath(menuItems, path) ||
+        path.split("/").filter(Boolean).pop() ||
+        path;
+      setBookmarks((prev) => {
+        if (prev.some((b) => b.path === path)) {
+          const next = prev.filter((b) => b.path !== path);
+          saveSidebarBookmarks(next);
+          return next;
+        }
+        const next = [...prev, { path, label }];
+        saveSidebarBookmarks(next);
+        return next;
+      });
+    },
+    [menuItems],
+  );
+
+  const menuItemsWithBookmarkStars = useMemo(
+    () =>
+      decorateMenuItemsWithBookmarkStars(displayMenuItems, {
+        labelSourceItems: menuItems,
+        bookmarkedPathsSet,
+        onToggleBookmark: handleToggleBookmark,
+        addBookmarkAria: t("bookmarkAriaAdd"),
+        removeBookmarkAria: t("bookmarkAriaRemove"),
+      }),
+    [
+      displayMenuItems,
+      menuItems,
+      bookmarkedPathsSet,
+      handleToggleBookmark,
+      t,
+    ],
+  );
+
+  const onMenuClick = ({ key, domEvent }) => {
+    const el = domEvent?.target;
+    if (el instanceof Element && el.closest(".shell-nav-bookmark-star")) {
+      return;
+    }
     router.push(key);
   };
 
@@ -65,25 +114,12 @@ export default function AppShell({ children }) {
     [menuItems, pathname],
   );
 
-  const bookmarkLabelForCurrent = useMemo(() => {
-    return (
-      findNavLabelForPath(menuItems, pathname) ||
-      pathname.split("/").filter(Boolean).pop() ||
-      pathname
-    );
-  }, [menuItems, pathname]);
-
-  const isCurrentBookmarked = useMemo(
-    () => bookmarks.some((b) => b.path === pathname),
-    [bookmarks, pathname],
-  );
-
-  const handleAddBookmark = useCallback(() => {
-    setBookmarks(addSidebarBookmark(pathname, bookmarkLabelForCurrent));
-  }, [bookmarkLabelForCurrent, pathname]);
-
   const handleRemoveBookmark = useCallback((path) => {
     setBookmarks(removeSidebarBookmark(path));
+  }, []);
+
+  const handleClearAllBookmarks = useCallback(() => {
+    setBookmarks(clearAllSidebarBookmarks());
   }, []);
 
   const handleBookmarkNavigate = useCallback(
@@ -126,7 +162,7 @@ export default function AppShell({ children }) {
           colorSplit={colorSplit}
           menuMounted={menuMounted}
           selectedKeys={selectedKeys}
-          menuItems={displayMenuItems}
+          menuItems={menuItemsWithBookmarkStars}
           mainNavItems={menuItems}
           onMenuClick={onMenuClick}
           brand={t("brand")}
@@ -139,12 +175,11 @@ export default function AppShell({ children }) {
           onSearchChange={setSearchQuery}
           bookmarks={bookmarks}
           bookmarksTitle={t("bookmarks")}
-          addBookmarkLabel={t("addBookmark")}
           removeBookmarkAria={t("removeBookmark")}
-          onAddBookmark={handleAddBookmark}
           onRemoveBookmark={handleRemoveBookmark}
+          onClearAllBookmarks={handleClearAllBookmarks}
+          clearAllBookmarksLabel={t("clearAllBookmarks")}
           onBookmarkNavigate={handleBookmarkNavigate}
-          isCurrentBookmarked={isCurrentBookmarked}
           currentPath={pathname}
         />
         <Layout className="min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -152,12 +187,14 @@ export default function AppShell({ children }) {
             colorBgContainer={colorBgContainer}
             colorSplit={colorSplit}
             menuItems={menuItems}
+            onLogout={handleLogout}
+            logoutLabel={t("logout")}
           />
           <Content
-            className="m-2 flex min-h-0 flex-1 flex-col overflow-hidden p-2"
+            className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden p-3"
             style={{
               background: colorBgContainer,
-              borderRadius: borderRadiusLG,
+              // borderRadius: borderRadiusLG,
             }}
           >
             <div className="app-hide-scrollbar min-h-0 min-w-0 flex-1 overflow-auto">

@@ -25,7 +25,7 @@ import {
   saveTableDensity,
 } from "@/lib/table-prefs-storage";
 import {
-  Alert,
+  App,
   Button,
   Checkbox,
   Divider,
@@ -113,6 +113,7 @@ export default function AppDataTable({
   enableColumnDrag = false,
 }) {
   const t = useTranslations("DataTable");
+  const { message } = App.useApp();
   const {
     showSearch = true,
     searchKeys = ["name"],
@@ -425,6 +426,19 @@ export default function AppDataTable({
     [onExportExcel, onExportPdf, onImportExcel],
   );
 
+  const handleRefresh = useCallback(async () => {
+    if (!onRefresh) return;
+    try {
+      const result = await onRefresh();
+      if (result && typeof result === "object" && "isError" in result && result.isError) {
+        return;
+      }
+      message.success(t("refreshSuccess"));
+    } catch {
+      // Error toast is handled by page-level query error handlers.
+    }
+  }, [onRefresh, message, t]);
+
   const columnMenuItems = useMemo(() => {
     const items = orderedSourceColumns
       .filter((c) => {
@@ -636,7 +650,7 @@ export default function AppDataTable({
             <Tooltip title={t("refresh")}>
               <Button
                 icon={<ReloadOutlined spin={loading || refreshFetching} />}
-                onClick={onRefresh}
+                onClick={handleRefresh}
                 disabled={loading || refreshFetching}
                 aria-label={t("refresh")}
               />
@@ -691,22 +705,6 @@ export default function AppDataTable({
           ) : null}
         </Space>
       </div>
-
-      {fetchError ? (
-        <Alert
-          type="error"
-          showIcon
-          title={t("loadError")}
-          description={fetchError instanceof Error ? fetchError.message : String(fetchError)}
-          action={
-            onRetry ? (
-              <Button size="small" onClick={onRetry}>
-                {t("retry")}
-              </Button>
-            ) : null
-          }
-        />
-      ) : null}
 
       {showSelectionBar && rowSelection && selectedKeys.length > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 dark:border-white/10 dark:bg-white/[0.06]">

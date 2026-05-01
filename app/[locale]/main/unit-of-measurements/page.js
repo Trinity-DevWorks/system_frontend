@@ -2,6 +2,7 @@
 
 import tenantApiService from "@/API/TenantApiService";
 import AppDataTable from "@/components/tables/AppDataTable";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import {
   getUnitOfMeasurementDimensionTypeLabel,
   getUnitOfMeasurementStatusLabel,
@@ -10,7 +11,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 async function fetchUnitOfMeasurements() {
   const data = await tenantApiService("GET", "unit-of-measurements");
@@ -40,7 +41,8 @@ const normalizeText = (value) =>
 
 function UnitOfMeasurementsTable() {
   const t = useTranslations("UnitOfMeasurements");
-  const { message } = App.useApp();
+  const tApiErrors = useTranslations("ApiErrors");
+  const { message, notification } = App.useApp();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [selectedUnitGroupId, setSelectedUnitGroupId] = useState();
   const {
@@ -58,10 +60,13 @@ function UnitOfMeasurementsTable() {
     refetchOnWindowFocus: true,
   });
 
-  const fetchError = useMemo(() => {
-    if (!isError || !error) return null;
-    return error instanceof Error ? error : new Error(String(error));
-  }, [isError, error]);
+  useEffect(() => {
+    if (!isError || !error) return;
+    notification.error({
+      message: t("loadError"),
+      description: getLocalizedApiErrorMessage(tApiErrors, error),
+    });
+  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
@@ -161,7 +166,6 @@ function UnitOfMeasurementsTable() {
       rowKey="id"
       loading={isPending}
       refreshFetching={isFetching}
-      fetchError={fetchError}
       onRetry={() => refetch()}
       emptyText={t("empty")}
       toolbar={{
@@ -188,6 +192,7 @@ function UnitOfMeasurementsTable() {
       showSelectionBar
       stickyHeader
       scrollX={1660}
+      enableColumnDrag
       pagination={{
         mode: "client",
         pageSize: 20,

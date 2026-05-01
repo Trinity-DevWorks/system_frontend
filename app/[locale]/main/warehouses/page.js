@@ -2,6 +2,7 @@
 
 import tenantApiService from "@/API/TenantApiService";
 import AppDataTable from "@/components/tables/AppDataTable";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import {
   getWarehouseDefaultLabel,
   getWarehouseStatusLabel,
@@ -10,7 +11,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 async function fetchWarehouses() {
   const data = await tenantApiService("GET", "warehouses");
@@ -19,7 +20,8 @@ async function fetchWarehouses() {
 
 function WarehousesTable() {
   const t = useTranslations("Warehouses");
-  const { message } = App.useApp();
+  const tApiErrors = useTranslations("ApiErrors");
+  const { message, notification } = App.useApp();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
     data = [],
@@ -36,10 +38,13 @@ function WarehousesTable() {
     refetchOnWindowFocus: true,
   });
 
-  const fetchError = useMemo(() => {
-    if (!isError || !error) return null;
-    return error instanceof Error ? error : new Error(String(error));
-  }, [isError, error]);
+  useEffect(() => {
+    if (!isError || !error) return;
+    notification.error({
+      message: t("loadError"),
+      description: getLocalizedApiErrorMessage(tApiErrors, error),
+    });
+  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
@@ -67,7 +72,6 @@ function WarehousesTable() {
       rowKey="id"
       loading={isPending}
       refreshFetching={isFetching}
-      fetchError={fetchError}
       onRetry={() => refetch()}
       emptyText={t("empty")}
       toolbar={{
@@ -88,6 +92,7 @@ function WarehousesTable() {
       showSelectionBar
       stickyHeader
       scrollX={1160}
+      enableColumnDrag
       pagination={{
         mode: "client",
         pageSize: 20,

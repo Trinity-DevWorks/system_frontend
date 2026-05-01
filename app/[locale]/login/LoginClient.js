@@ -9,6 +9,7 @@ import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
 import { tenantModulesQueryKey } from "@/lib/tenant-modules";
 import {
+  DownOutlined,
   GlobalOutlined,
   MoonOutlined,
   SunOutlined,
@@ -22,7 +23,6 @@ import {
   Form,
   Input,
   Space,
-  Tooltip,
   Typography,
 } from "antd";
 import { useLocale, useTranslations } from "next-intl";
@@ -39,7 +39,7 @@ function LoginFormInner({ initialHost }) {
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
-  const { toggleColorMode, colorMode } = useThemeMode();
+  const { setColorMode, colorMode } = useThemeMode();
   const queryClient = useQueryClient();
   const { message } = App.useApp();
   const [form] = Form.useForm();
@@ -115,9 +115,35 @@ function LoginFormInner({ initialHost }) {
       })),
     [locale, t],
   );
+  const currentLanguageLabel = locale === "en" ? t("languageEn") : t("languageAr");
 
   const onLanguageMenuClick = ({ key }) => {
     router.replace(pathname, { locale: key });
+  };
+
+  const themeMenuItems = useMemo(
+    () => [
+      {
+        key: "light",
+        label: t("switchToLightTheme"),
+        disabled: colorMode === "light",
+        icon: <SunOutlined />,
+      },
+      {
+        key: "dark",
+        label: t("switchToDarkTheme"),
+        disabled: colorMode === "dark",
+        icon: <MoonOutlined />,
+      },
+    ],
+    [colorMode, t],
+  );
+
+  const currentThemeLabel =
+    colorMode === "dark" ? t("switchToDarkTheme") : t("switchToLightTheme");
+
+  const onThemeMenuClick = ({ key }) => {
+    setColorMode(key);
   };
 
   return (
@@ -132,22 +158,31 @@ function LoginFormInner({ initialHost }) {
           placement="bottomRight"
           trigger={["click"]}
         >
-          <Button type="text" icon={<GlobalOutlined />} aria-label={t("changeLanguage")} />
+          <Button
+            type="default"
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/80 px-3 text-sm font-medium text-white hover:border-white/30 hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            aria-label={t("changeLanguage")}
+          >
+            <GlobalOutlined />
+            <span className="min-w-0">{currentLanguageLabel}</span>
+            <DownOutlined className="text-xs" />
+          </Button>
         </Dropdown>
-        <Tooltip
-          title={
-            colorMode === "dark" ? t("switchToLightTheme") : t("switchToDarkTheme")
-          }
+        <Dropdown
+          menu={{ items: themeMenuItems, onClick: onThemeMenuClick }}
+          placement="bottomRight"
+          trigger={["click"]}
         >
           <Button
-            type="text"
-            icon={colorMode === "dark" ? <SunOutlined /> : <MoonOutlined />}
-            onClick={toggleColorMode}
-            aria-label={
-              colorMode === "dark" ? t("switchToLightTheme") : t("switchToDarkTheme")
-            }
-          />
-        </Tooltip>
+            type="default"
+            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/80 px-3 text-sm font-medium text-white hover:border-white/30 hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            aria-label={currentThemeLabel}
+          >
+            {colorMode === "dark" ? <MoonOutlined /> : <SunOutlined />}
+            <span className="min-w-0">{currentThemeLabel}</span>
+            <DownOutlined className="text-xs" />
+          </Button>
+        </Dropdown>
       </Space>
       <Card className="w-full max-w-md" title={t("title")}>
         <Typography.Paragraph type="secondary">
