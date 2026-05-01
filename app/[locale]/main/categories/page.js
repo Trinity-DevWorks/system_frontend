@@ -2,19 +2,13 @@
 
 import tenantApiService from "@/API/TenantApiService";
 import AppDataTable from "@/components/tables/AppDataTable";
-<<<<<<< HEAD
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { getCategoryTableColumns } from "./getCategoryTableColumns";
-import { useQuery } from "@tanstack/react-query";
-import { App, Typography } from "antd";
-=======
 import {
   getCategoryStatusLabel,
   getCategoryTableColumns,
 } from "./getCategoryTableColumns";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
->>>>>>> b8c474b4696fbc21dc39cb10e03cb23e6ac3edec
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
@@ -26,13 +20,9 @@ async function fetchCategories({ refresh = false } = {}) {
 
 function CategoriesTable() {
   const t = useTranslations("Categories");
-<<<<<<< HEAD
   const tApiErrors = useTranslations("ApiErrors");
   const { message, notification } = App.useApp();
-=======
-  const { message } = App.useApp();
   const queryClient = useQueryClient();
->>>>>>> b8c474b4696fbc21dc39cb10e03cb23e6ac3edec
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const {
@@ -50,7 +40,6 @@ function CategoriesTable() {
     refetchOnWindowFocus: true,
   });
 
-<<<<<<< HEAD
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
@@ -58,12 +47,6 @@ function CategoriesTable() {
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
-=======
-  const fetchError = useMemo(() => {
-    if (!isError || !error) return null;
-    return error instanceof Error ? error : new Error(String(error));
-  }, [isError, error]);
->>>>>>> b8c474b4696fbc21dc39cb10e03cb23e6ac3edec
 
   const tableData = useMemo(
     () =>
@@ -89,9 +72,11 @@ function CategoriesTable() {
       const freshData = await fetchCategories({ refresh: true });
       queryClient.setQueryData(["tenant", "categories"], freshData);
     } catch (err) {
-      const fallback =
-        err instanceof Error && err.message ? err.message : t("loadError");
-      message.error(fallback);
+      notification.error({
+        message: t("loadError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+      return { isError: true };
     } finally {
       setManualRefreshing(false);
     }
@@ -104,12 +89,7 @@ function CategoriesTable() {
       dataSource={tableData}
       rowKey="id"
       loading={isPending}
-<<<<<<< HEAD
-      refreshFetching={isFetching}
-=======
       refreshFetching={isFetching || manualRefreshing}
-      fetchError={fetchError}
->>>>>>> b8c474b4696fbc21dc39cb10e03cb23e6ac3edec
       onRetry={() => refetch()}
       emptyText={t("empty")}
       toolbar={{
@@ -136,7 +116,7 @@ function CategoriesTable() {
 
 export default function CategoriesPage() {
   return (
-    <div className="flex min-h-0 min-w-0 flex-col p-2">
+    <div className="flex min-h-0 min-w-0 flex-col p-0">
       <CategoriesTable />
     </div>
   );

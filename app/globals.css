@@ -32,6 +32,177 @@ html {
   height: 0;
 }
 
+/* App shell sidebar: main navigation */
+.shell-main-nav.ant-menu-inline {
+  padding-inline: 0px;
+}
+
+.shell-main-nav.ant-menu-inline .ant-menu-item,
+.shell-main-nav.ant-menu-inline .ant-menu-submenu-title {
+  border-radius: 10px;
+  margin-block: 1px;
+  line-height: 1.35;
+}
+
+/* Tighter horizontal padding; keep nested indent (deeper items use larger inline-start). */
+.shell-main-nav.ant-menu-inline .ant-menu-item,
+.shell-main-nav.ant-menu-inline .ant-menu-submenu-title {
+  padding-inline-end: 8px !important;
+}
+
+.shell-main-nav.ant-menu-inline > .ant-menu-item,
+.shell-main-nav.ant-menu-inline > .ant-menu-submenu > .ant-menu-submenu-title {
+  padding-inline-start: 8px !important;
+}
+
+.shell-main-nav.ant-menu-inline .ant-menu-item::after,
+.shell-main-nav.ant-menu-inline .ant-menu-submenu-title::after {
+  display: none;
+}
+
+.shell-main-nav.ant-menu-inline .ant-menu-item:not(.ant-menu-item-selected):hover,
+.shell-main-nav.ant-menu-inline .ant-menu-submenu-title:hover {
+  background-color: color-mix(in srgb, var(--ant-color-text) 6%, transparent);
+}
+
+.shell-main-nav.ant-menu-inline .ant-menu-item-selected {
+  font-weight: 600;
+  background-color: color-mix(in srgb, var(--ant-color-primary) 14%, transparent) !important;
+  color: var(--ant-color-primary);
+}
+
+.shell-main-nav.ant-menu-inline .ant-menu-item-selected .ant-menu-item-icon,
+.shell-main-nav.ant-menu-inline .ant-menu-item-selected .anticon {
+  color: var(--ant-color-primary);
+}
+
+.shell-main-nav.ant-menu-inline .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  color: var(--ant-color-primary);
+  font-weight: 600;
+}
+
+.shell-main-nav.ant-menu-inline .ant-menu-submenu .ant-menu-sub.ant-menu-inline {
+  background: transparent;
+}
+
+/* Bookmarks submenu: title row + compact “Clear all” (leave room for expand arrow) */
+.shell-main-nav.ant-menu-inline > .shell-bookmarks-submenu > .ant-menu-submenu-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-inline-end: 22px !important;
+}
+
+.shell-main-nav.ant-menu-inline > .shell-bookmarks-submenu > .ant-menu-submenu-title .ant-menu-title-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.shell-main-nav.ant-menu-inline .shell-bookmarks-clear.ant-btn {
+  height: 20px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ant-color-text-description);
+}
+
+.shell-main-nav.ant-menu-inline .shell-bookmarks-clear.ant-btn:hover {
+  color: var(--ant-color-primary);
+  background: transparent;
+}
+
+.shell-main-nav.ant-menu-inline .shell-bookmark-row-star.ant-btn {
+  color: var(--ant-color-warning);
+}
+
+.shell-main-nav.ant-menu-inline .shell-bookmark-row-star.ant-btn:hover {
+  color: var(--ant-color-warning);
+  background: color-mix(in srgb, var(--ant-color-warning) 14%, transparent);
+}
+
+/* Leaf rows under an expanded section — smaller than top-level / group titles */
+.shell-main-nav.ant-menu-inline .ant-menu-sub .ant-menu-item {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.shell-main-nav.ant-menu-inline .ant-menu-sub .ant-menu-item .ant-menu-item-icon,
+.shell-main-nav.ant-menu-inline .ant-menu-sub .ant-menu-item > .anticon {
+  font-size: 14px;
+}
+
+/* Per-route bookmark star (inventory-style: show on hover unless bookmarked) */
+.shell-main-nav.ant-menu-inline .shell-nav-leaf-with-bookmark .shell-nav-bookmark-star {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.shell-main-nav.ant-menu-inline .shell-nav-leaf-with-bookmark:hover .shell-nav-bookmark-star,
+.shell-main-nav.ant-menu-inline
+  .shell-nav-leaf-with-bookmark.ant-menu-item-selected
+  .shell-nav-bookmark-star,
+.shell-main-nav.ant-menu-inline .shell-nav-leaf-with-bookmark:focus-within .shell-nav-bookmark-star,
+.shell-main-nav.ant-menu-inline .shell-nav-leaf-bookmarked .shell-nav-bookmark-star {
+  opacity: 1;
+}
+
+.shell-main-nav.ant-menu-inline .shell-nav-bookmark-star.ant-btn {
+  color: var(--ant-color-text-description);
+}
+
+.shell-main-nav.ant-menu-inline .shell-nav-bookmark-star.ant-btn:hover {
+  color: var(--ant-color-warning);
+}
+
+.shell-main-nav.ant-menu-inline .shell-nav-leaf-bookmarked .shell-nav-bookmark-star.ant-btn {
+  color: var(--ant-color-warning);
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu {
+  border-radius: 12px;
+  padding-block: 4px;
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-item {
+  border-radius: 8px;
+  margin-inline: 4px;
+  padding-inline: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-item .ant-menu-item-icon,
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-item > .anticon {
+  font-size: 12px;
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .shell-nav-leaf-with-bookmark .shell-nav-bookmark-star {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .shell-nav-leaf-with-bookmark:hover .shell-nav-bookmark-star,
+.shell-main-nav-popup.ant-menu-submenu-popup
+  .shell-nav-leaf-with-bookmark.ant-menu-item-selected
+  .shell-nav-bookmark-star,
+.shell-main-nav-popup.ant-menu-submenu-popup .shell-nav-leaf-with-bookmark:focus-within .shell-nav-bookmark-star,
+.shell-main-nav-popup.ant-menu-submenu-popup .shell-nav-leaf-bookmarked .shell-nav-bookmark-star {
+  opacity: 1;
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .shell-nav-bookmark-star.ant-btn {
+  color: var(--ant-color-text-description);
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .shell-nav-bookmark-star.ant-btn:hover {
+  color: var(--ant-color-warning);
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .shell-nav-leaf-bookmarked .shell-nav-bookmark-star.ant-btn {
+  color: var(--ant-color-warning);
+}
+
 /*
  * AppDataTable: vertical bar only when content overflows (rc-table uses overflow-y: scroll
  * with data, which always reserves a scrollbar). Horizontal already uses overflow-x: auto.

@@ -51,10 +51,20 @@
     "collapseSidebar": "Collapse sidebar",
     "searchNavPlaceholder": "Search navigation…",
     "bookmarks": "Bookmarks",
-    "addBookmark": "Bookmark this page",
+    "bookmarkAriaAdd": "Add to bookmarks",
+    "bookmarkAriaRemove": "Remove from bookmarks",
     "removeBookmark": "Remove bookmark",
+    "clearAllBookmarks": "Clear all",
     "breadcrumbRoot": "Workspace",
-    "breadcrumbNav": "Breadcrumb"
+    "breadcrumbNav": "Breadcrumb",
+    "themeSystem": "System theme",
+    "notifications": "Notifications",
+    "notificationsEmpty": "No notifications yet",
+    "profile": "Profile",
+    "profileMenu": "Open profile menu",
+    "profileShow": "Show profile",
+    "globalSearchPlaceholder": "Search (coming soon)",
+    "globalSearchAria": "Global search"
   },
   "PlaceholderPage": {
     "subtitle": "This page is ready. Content will be added in the next phase."

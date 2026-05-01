@@ -27,14 +27,14 @@ export function getCategoryTableColumns(t) {
       title: t("colId"),
       dataIndex: "id",
       key: "id",
-      width: 72,
+      width: 50,
       sorter: (a, b) => a.id - b.id,
     },
     {
       title: t("colCode"),
       dataIndex: "code",
       key: "code",
-      width: 160,
+      width:110,
       sorter: (a, b) => {
         const left = normalizeText(a?.code);
         const right = normalizeText(b?.code);
@@ -55,14 +55,14 @@ export function getCategoryTableColumns(t) {
       title: t("colName"),
       dataIndex: "name",
       key: "name",
-      width: 220,
+      width: 150,
       ellipsis: true,
     },
     {
       title: t("colColor"),
       dataIndex: "color",
       key: "color",
-      width: 220,
+      width: 150,
       render: (value) => {
         const v = normalizeText(value);
         if (!v) return "\u2014";
@@ -85,7 +85,7 @@ export function getCategoryTableColumns(t) {
       title: t("colDescription"),
       dataIndex: "description",
       key: "description",
-      width: 300,
+      width: 250,
       ellipsis: true,
       render: (value) => {
         const v = normalizeText(value);
@@ -102,7 +102,7 @@ export function getCategoryTableColumns(t) {
       title: t("colStatus"),
       dataIndex: "is_active",
       key: "is_active",
-      width: 120,
+      width: 80,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
       render: (value) => {
         const label = getCategoryStatusLabel(value, t);
@@ -120,7 +120,7 @@ export function getCategoryTableColumns(t) {
       title: t("colCreatedAt"),
       dataIndex: "created_at",
       key: "created_at",
-      width: 180,
+      width: 100,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
       render: (value) => (value ? dayjs(value).format("MMMM D, YYYY") : "\u2014"),
     },
@@ -128,7 +128,7 @@ export function getCategoryTableColumns(t) {
       title: t("colUpdatedAt"),
       dataIndex: "updated_at",
       key: "updated_at",
-      width: 168,
+      width: 100,
       sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
       render: (value) => (value ? dayjs(value).format("MMMM D, YYYY") : "\u2014"),
     },
@@ -136,7 +136,7 @@ export function getCategoryTableColumns(t) {
       title: t("colActions"),
       key: "actions",
       fixed: "end",
-      width: 72,
+      width: 60,
       align: "center",
       render: () => (
         <Dropdown

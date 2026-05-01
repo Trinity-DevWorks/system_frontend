@@ -51,10 +51,20 @@
     "collapseSidebar": "طي الشريط",
     "searchNavPlaceholder": "بحث في القائمة…",
     "bookmarks": "الإشارات المرجعية",
-    "addBookmark": "إشارة مرجعية لهذه الصفحة",
+    "bookmarkAriaAdd": "إضافة إلى الإشارات المرجعية",
+    "bookmarkAriaRemove": "إزالة من الإشارات المرجعية",
     "removeBookmark": "إزالة الإشارة",
+    "clearAllBookmarks": "مسح الكل",
     "breadcrumbRoot": "مساحة العمل",
-    "breadcrumbNav": "مسار التصفح"
+    "breadcrumbNav": "مسار التصفح",
+    "themeSystem": "اتباع إعدادات النظام",
+    "notifications": "الإشعارات",
+    "notificationsEmpty": "لا توجد إشعارات حتى الآن",
+    "profile": "الملف الشخصي",
+    "profileMenu": "فتح قائمة الملف الشخصي",
+    "profileShow": "عرض الملف الشخصي",
+    "globalSearchPlaceholder": "بحث (قريبًا)",
+    "globalSearchAria": "بحث عام"
   },
   "PlaceholderPage": {
     "subtitle": "هذه الصفحة جاهزة. سيتم إضافة المحتوى في المرحلة التالية."
