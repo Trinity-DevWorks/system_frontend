@@ -23,6 +23,7 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${inter.variable} ${cairo.variable} min-h-full flex flex-col antialiased`}
+        suppressHydrationWarning
       >
         <AntdRegistry>
           <Providers>{children}</Providers>
