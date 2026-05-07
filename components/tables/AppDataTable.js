@@ -575,7 +575,6 @@ export default function AppDataTable({
 
   useLayoutEffect(() => {
     if (!stickyHeader) {
-      setStickyBodyY(null);
       return;
     }
     const el = tableBodyHostRef.current;
