@@ -3,25 +3,21 @@
 import tenantApiService from "@/API/TenantApiService";
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { deleteCategory, fetchCategories } from "@/services/categoriesApi";
+import CategoryDrawer from "./drawer/CategoryDrawer";
 import {
   getCategoryStatusLabel,
   getCategoryTableColumns,
 } from "./getCategoryTableColumns";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
-
-async function fetchCategories({ refresh = false } = {}) {
-  const endpoint = refresh ? "categories?refresh=1" : "categories";
-  const data = await tenantApiService("GET", endpoint);
-  return Array.isArray(data) ? data : [];
-}
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function CategoriesTable() {
   const t = useTranslations("Categories");
   const tApiErrors = useTranslations("ApiErrors");
-  const { message, notification } = App.useApp();
+  const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [manualRefreshing, setManualRefreshing] = useState(false);
@@ -58,13 +54,121 @@ function CategoriesTable() {
     [data, t],
   );
 
-  const columns = useMemo(() => getCategoryTableColumns(t), [t]);
-
   const rowSelection = {
     selectedRowKeys,
     onChange: setSelectedRowKeys,
     columnWidth: 48,
   };
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
+  const [drawerCategoryId, setDrawerCategoryId] = useState(/** @type {number | null} */ (null));
+  /** Snapshot row for edit/view from table (or create response); avoids refetch when it matches `drawerCategoryId`. */
+  const [drawerEditSeed, setDrawerEditSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
+  const drawerSessionRef = useRef({ open: false, categoryId: /** @type {number | null} */ (null) });
+  useEffect(() => {
+    drawerSessionRef.current = { open: drawerOpen, categoryId: drawerCategoryId };
+  }, [drawerOpen, drawerCategoryId]);
+
+  const openCreateDrawer = useCallback(() => {
+    setDrawerEditSeed(null);
+    setDrawerMode("create");
+    setDrawerCategoryId(null);
+    setDrawerOpen(true);
+  }, []);
+
+  const openEditDrawer = useCallback((record) => {
+    const id = record?.id;
+    if (id == null) return;
+    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
+    setDrawerMode("edit");
+    setDrawerCategoryId(Number(id));
+    setDrawerOpen(true);
+  }, []);
+
+  const openViewDrawer = useCallback((record) => {
+    const id = record?.id;
+    if (id == null) return;
+    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
+    setDrawerMode("view");
+    setDrawerCategoryId(Number(id));
+    setDrawerOpen(true);
+  }, []);
+
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    setDrawerCategoryId(null);
+    setDrawerEditSeed(null);
+  }, []);
+
+  const handleCategoryCreated = useCallback((record) => {
+    const id = record?.id;
+    if (id == null) return;
+    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
+    setDrawerMode("edit");
+    setDrawerCategoryId(Number(id));
+  }, []);
+
+  const deleteMutation = useMutation({
+    mutationFn: (/** @type {number} */ id) => deleteCategory(id),
+    onMutate: async (id) => {
+      const listKey = ["tenant", "categories"];
+      await queryClient.cancelQueries({ queryKey: listKey });
+      const previous = queryClient.getQueryData(listKey);
+      queryClient.setQueryData(listKey, (old) =>
+        Array.isArray(old) ? old.filter((row) => row.id !== id) : old,
+      );
+      return { previous };
+    },
+    onError: (err, _id, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(["tenant", "categories"], context.previous);
+      }
+      notification.error({
+        message: t("deleteError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (_data, deletedId) => {
+      message.success(t("deleteSuccess"));
+      queryClient.removeQueries({ queryKey: ["tenant", "categories", deletedId] });
+      const { open, categoryId } = drawerSessionRef.current;
+      if (open && categoryId === deletedId) {
+        closeDrawer();
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenant", "categories"] });
+    },
+  });
+
+  const requestDeleteCategory = useCallback(
+    (record) => {
+      const id = record?.id;
+      if (id == null) return;
+      const name = typeof record?.name === "string" ? record.name : String(id);
+      modal.confirm({
+        title: t("deleteConfirmTitle"),
+        content: t("deleteConfirmContent", { name }),
+        okText: t("deleteConfirmOk"),
+        okButtonProps: { danger: true },
+        cancelText: t("deleteConfirmCancel"),
+        // Return the promise so Ant Design keeps the OK button in a loading state until the mutation finishes.
+        onOk: () => deleteMutation.mutateAsync(Number(id)),
+      });
+    },
+    [deleteMutation, modal, t],
+  );
+
+  const columns = useMemo(
+    () =>
+      getCategoryTableColumns(t, {
+        onEdit: openEditDrawer,
+        onView: openViewDrawer,
+        onDelete: requestDeleteCategory,
+      }),
+    [t, openEditDrawer, openViewDrawer, requestDeleteCategory],
+  );
 
   const handleRefresh = async () => {
     setManualRefreshing(true);
@@ -83,6 +187,7 @@ function CategoriesTable() {
   };
 
   return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
     <AppDataTable
       tableId="categories"
       columns={columns}
@@ -96,7 +201,7 @@ function CategoriesTable() {
         showSearch: true,
         searchKeys: ["code", "name", "id", "color", "description", "is_active_label"],
         showAdd: true,
-        onAdd: () => message.info(t("addSoon")),
+        onAdd: openCreateDrawer,
         showRefresh: true,
         onRefresh: handleRefresh,
       }}
@@ -111,12 +216,21 @@ function CategoriesTable() {
         pageSizeOptions: [10, 20, 50],
       }}
     />
+    <CategoryDrawer
+      open={drawerOpen}
+      mode={drawerMode}
+      categoryId={drawerCategoryId}
+      editSeedRecord={drawerEditSeed}
+      onClose={closeDrawer}
+      onCreated={handleCategoryCreated}
+    />
+    </div>
   );
 }
 
 export default function CategoriesPage() {
   return (
-    <div className="flex min-h-0 min-w-0 flex-col p-0">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
       <CategoriesTable />
     </div>
   );

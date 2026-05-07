@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, MoreOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
 
@@ -13,9 +13,16 @@ const hasValue = (value) => value !== null && typeof value !== "undefined";
 
 /**
  * @param {(key: string) => string} t `useTranslations("SubCategories")`
+ * @param {{
+ *   onView?: (record: unknown) => void;
+ *   onEdit?: (record: unknown) => void;
+ *   onDelete?: (record: unknown) => void;
+ * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
-export function getSubCategoryTableColumns(t) {
+export function getSubCategoryTableColumns(t, actions = {}) {
+  const { onView, onEdit, onDelete } = actions;
+
   return [
     {
       title: t("colId"),
@@ -99,18 +106,26 @@ export function getSubCategoryTableColumns(t) {
       title: t("colActions"),
       key: "actions",
       fixed: "end",
-      width: 72,
+      width: 84,
       align: "center",
-      render: () => (
+      render: (_, record) => (
         <Dropdown
           trigger={["click"]}
           menu={{
             items: [
               {
+                key: "view",
+                label: t("actionView"),
+                icon: <EyeOutlined />,
+                disabled: !onView,
+                onClick: () => onView?.(record),
+              },
+              {
                 key: "edit",
                 label: t("actionEdit"),
                 icon: <EditOutlined />,
-                disabled: true,
+                disabled: !onEdit,
+                onClick: () => onEdit?.(record),
               },
               { type: "divider" },
               {
@@ -118,7 +133,8 @@ export function getSubCategoryTableColumns(t) {
                 label: t("actionDelete"),
                 icon: <DeleteOutlined />,
                 danger: true,
-                disabled: true,
+                disabled: !onDelete,
+                onClick: () => onDelete?.(record),
               },
             ],
           }}
@@ -134,4 +150,3 @@ export function getSubCategoryTableColumns(t) {
     },
   ];
 }
-

@@ -1,22 +1,18 @@
 "use client";
 
-import tenantApiService from "@/API/TenantApiService";
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { deleteUnitOfMeasurement, fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
+import UnitOfMeasurementDrawer from "./drawer/UnitOfMeasurementDrawer";
 import {
   getUnitOfMeasurementDimensionTypeLabel,
   getUnitOfMeasurementStatusLabel,
   getUnitOfMeasurementTableColumns,
 } from "./getUnitOfMeasurementTableColumns";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-async function fetchUnitOfMeasurements() {
-  const data = await tenantApiService("GET", "unit-of-measurements");
-  return Array.isArray(data) ? data : [];
-}
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function getUnitGroupName(row) {
   const name = row?.unit_group?.name;
@@ -42,7 +38,8 @@ const normalizeText = (value) =>
 function UnitOfMeasurementsTable() {
   const t = useTranslations("UnitOfMeasurements");
   const tApiErrors = useTranslations("ApiErrors");
-  const { message, notification } = App.useApp();
+  const { notification, modal, message } = App.useApp();
+  const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [selectedUnitGroupId, setSelectedUnitGroupId] = useState();
   const {
@@ -140,16 +137,126 @@ function UnitOfMeasurementsTable() {
     setSelectedRowKeys([]);
   }, []);
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
+  const [drawerUnitOfMeasurementId, setDrawerUnitOfMeasurementId] = useState(/** @type {number | null} */ (null));
+  const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
+  const drawerSessionRef = useRef({
+    open: false,
+    unitOfMeasurementId: /** @type {number | null} */ (null),
+  });
+  useEffect(() => {
+    drawerSessionRef.current = { open: drawerOpen, unitOfMeasurementId: drawerUnitOfMeasurementId };
+  }, [drawerOpen, drawerUnitOfMeasurementId]);
+
+  const openCreateDrawer = useCallback(() => {
+    setDrawerTableSeed(null);
+    setDrawerMode("create");
+    setDrawerUnitOfMeasurementId(null);
+    setDrawerOpen(true);
+  }, []);
+
+  const openEditDrawer = useCallback((record) => {
+    const id = record?.id;
+    if (id == null) return;
+    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
+    setDrawerMode("edit");
+    setDrawerUnitOfMeasurementId(Number(id));
+    setDrawerOpen(true);
+  }, []);
+
+  const openViewDrawer = useCallback((record) => {
+    const id = record?.id;
+    if (id == null) return;
+    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
+    setDrawerMode("view");
+    setDrawerUnitOfMeasurementId(Number(id));
+    setDrawerOpen(true);
+  }, []);
+
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    setDrawerUnitOfMeasurementId(null);
+    setDrawerTableSeed(null);
+  }, []);
+
+  const handleUnitOfMeasurementCreated = useCallback((record) => {
+    const id = record?.id;
+    if (id == null) return;
+    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
+    setDrawerMode("edit");
+    setDrawerUnitOfMeasurementId(Number(id));
+  }, []);
+
+  const deleteMutation = useMutation({
+    mutationFn: (/** @type {number} */ id) => deleteUnitOfMeasurement(id),
+    onMutate: async (id) => {
+      const listKey = ["tenant", "unit-of-measurements"];
+      await queryClient.cancelQueries({ queryKey: listKey });
+      const previous = queryClient.getQueryData(listKey);
+      queryClient.setQueryData(listKey, (old) => (Array.isArray(old) ? old.filter((row) => row.id !== id) : old));
+      return { previous };
+    },
+    onError: (err, _id, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(["tenant", "unit-of-measurements"], context.previous);
+      }
+      notification.error({
+        message: t("deleteError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (_data, deletedId) => {
+      message.success(t("deleteSuccess"));
+      queryClient.removeQueries({ queryKey: ["tenant", "unit-of-measurements", deletedId] });
+      const { open, unitOfMeasurementId } = drawerSessionRef.current;
+      if (open && unitOfMeasurementId === deletedId) {
+        closeDrawer();
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenant", "unit-of-measurements"] });
+    },
+  });
+
+  const requestDeleteUnitOfMeasurement = useCallback(
+    (record) => {
+      const id = record?.id;
+      if (id == null) return;
+      const name = typeof record?.name === "string" ? record.name : String(id);
+      modal.confirm({
+        title: t("deleteConfirmTitle"),
+        content: t("deleteConfirmContent", { name }),
+        okText: t("deleteConfirmOk"),
+        okButtonProps: { danger: true },
+        cancelText: t("deleteConfirmCancel"),
+        onOk: () => deleteMutation.mutateAsync(Number(id)),
+      });
+    },
+    [deleteMutation, modal, t],
+  );
+
   const columns = useMemo(
     () =>
       getUnitOfMeasurementTableColumns(t, {
+        onView: openViewDrawer,
+        onEdit: openEditDrawer,
+        onDelete: requestDeleteUnitOfMeasurement,
         unitGroupFilter: {
           options: unitGroupOptions,
           value: activeUnitGroupId,
           onChange: handleUnitGroupFilterChange,
         },
       }),
-    [activeUnitGroupId, handleUnitGroupFilterChange, t, unitGroupOptions],
+    [
+      activeUnitGroupId,
+      handleUnitGroupFilterChange,
+      openEditDrawer,
+      openViewDrawer,
+      requestDeleteUnitOfMeasurement,
+      t,
+      unitGroupOptions,
+    ],
   );
 
   const rowSelection = {
@@ -159,52 +266,62 @@ function UnitOfMeasurementsTable() {
   };
 
   return (
-    <AppDataTable
-      tableId="unit-of-measurements"
-      columns={columns}
-      dataSource={filteredTableData}
-      rowKey="id"
-      loading={isPending}
-      refreshFetching={isFetching}
-      onRetry={() => refetch()}
-      emptyText={t("empty")}
-      toolbar={{
-        showSearch: true,
-        searchKeys: [
-          "id",
-          "code",
-          "name",
-          "symbol",
-          "decimal_places",
-          "unit_group_id",
-          "unit_group_name",
-          "unit_group_code",
-          "unit_group_dimension_type",
-          "unit_group_dimension_type_label",
-          "is_active_label",
-        ],
-        showAdd: true,
-        onAdd: () => message.info(t("addSoon")),
-        showRefresh: true,
-        onRefresh: () => refetch(),
-      }}
-      rowSelection={rowSelection}
-      showSelectionBar
-      stickyHeader
-      scrollX={1660}
-      enableColumnDrag
-      pagination={{
-        mode: "client",
-        pageSize: 20,
-        pageSizeOptions: [10, 20, 50],
-      }}
-    />
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <AppDataTable
+        tableId="unit-of-measurements"
+        columns={columns}
+        dataSource={filteredTableData}
+        rowKey="id"
+        loading={isPending}
+        refreshFetching={isFetching}
+        onRetry={() => refetch()}
+        emptyText={t("empty")}
+        toolbar={{
+          showSearch: true,
+          searchKeys: [
+            "id",
+            "code",
+            "name",
+            "symbol",
+            "decimal_places",
+            "unit_group_id",
+            "unit_group_name",
+            "unit_group_code",
+            "unit_group_dimension_type",
+            "unit_group_dimension_type_label",
+            "is_active_label",
+          ],
+          showAdd: true,
+          onAdd: openCreateDrawer,
+          showRefresh: true,
+          onRefresh: () => refetch(),
+        }}
+        rowSelection={rowSelection}
+        showSelectionBar
+        stickyHeader
+        scrollX={1660}
+        enableColumnDrag
+        pagination={{
+          mode: "client",
+          pageSize: 20,
+          pageSizeOptions: [10, 20, 50],
+        }}
+      />
+      <UnitOfMeasurementDrawer
+        open={drawerOpen}
+        mode={drawerMode}
+        unitOfMeasurementId={drawerUnitOfMeasurementId}
+        tableSeedRecord={drawerTableSeed}
+        onClose={closeDrawer}
+        onCreated={handleUnitOfMeasurementCreated}
+      />
+    </div>
   );
 }
 
 export default function UnitOfMeasurementsPage() {
   return (
-    <div className="flex min-h-0 min-w-0 flex-col p-2">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
       <UnitOfMeasurementsTable />
     </div>
   );

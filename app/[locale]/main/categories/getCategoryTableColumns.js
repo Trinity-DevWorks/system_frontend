@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, MoreOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
 
@@ -19,9 +19,15 @@ function getStatusBadgeClass(value) {
 
 /**
  * @param {(key: string) => string} t `useTranslations("Categories")`
+ * @param {{
+ *   onEdit?: (record: unknown) => void;
+ *   onView?: (record: unknown) => void;
+ *   onDelete?: (record: unknown) => void;
+ * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
-export function getCategoryTableColumns(t) {
+export function getCategoryTableColumns(t, actions = {}) {
+  const { onEdit, onView, onDelete } = actions;
   return [
     {
       title: t("colId"),
@@ -136,18 +142,26 @@ export function getCategoryTableColumns(t) {
       title: t("colActions"),
       key: "actions",
       fixed: "end",
-      width: 60,
+      width: 72,
       align: "center",
-      render: () => (
+      render: (_, record) => (
         <Dropdown
           trigger={["click"]}
           menu={{
             items: [
               {
+                key: "view",
+                label: t("actionView"),
+                icon: <EyeOutlined />,
+                disabled: !onView,
+                onClick: () => onView?.(record),
+              },
+              {
                 key: "edit",
                 label: t("actionEdit"),
                 icon: <EditOutlined />,
-                disabled: true,
+                disabled: !onEdit,
+                onClick: () => onEdit?.(record),
               },
               { type: "divider" },
               {
@@ -155,7 +169,8 @@ export function getCategoryTableColumns(t) {
                 label: t("actionDelete"),
                 icon: <DeleteOutlined />,
                 danger: true,
-                disabled: true,
+                disabled: !onDelete,
+                onClick: () => onDelete?.(record),
               },
             ],
           }}
