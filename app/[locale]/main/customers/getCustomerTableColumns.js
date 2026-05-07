@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, MoreOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
 
@@ -15,9 +15,16 @@ const formatMoney = (value) => {
 
 /**
  * @param {(key: string) => string} t `useTranslations("Customers")`
+ * @param {{
+ *   onView?: (record: Record<string, unknown>) => void;
+ *   onEdit?: (record: Record<string, unknown>) => void;
+ *   onDelete?: (record: Record<string, unknown>) => void;
+ * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
-export function getCustomerTableColumns(t) {
+export function getCustomerTableColumns(t, actions = {}) {
+  const { onView, onEdit, onDelete } = actions;
+
   return [
     {
       title: t("colId"),
@@ -58,9 +65,7 @@ export function getCustomerTableColumns(t) {
       ellipsis: true,
       render: (value) => value?.name || "—",
       sorter: (a, b) =>
-        String(a?.customer_group?.name ?? "").localeCompare(
-          String(b?.customer_group?.name ?? ""),
-        ),
+        String(a?.customer_group?.name ?? "").localeCompare(String(b?.customer_group?.name ?? "")),
     },
     {
       title: t("colPhone"),
@@ -104,9 +109,7 @@ export function getCustomerTableColumns(t) {
         value ? (
           <Typography.Text strong>{getCustomerStatusLabel(value, t)}</Typography.Text>
         ) : (
-          <Typography.Text type="secondary">
-            {getCustomerStatusLabel(value, t)}
-          </Typography.Text>
+          <Typography.Text type="secondary">{getCustomerStatusLabel(value, t)}</Typography.Text>
         ),
     },
     {
@@ -131,16 +134,24 @@ export function getCustomerTableColumns(t) {
       fixed: "end",
       width: 72,
       align: "center",
-      render: () => (
+      render: (_, record) => (
         <Dropdown
           trigger={["click"]}
           menu={{
             items: [
               {
+                key: "view",
+                label: t("actionView"),
+                icon: <EyeOutlined />,
+                disabled: !onView,
+                onClick: () => onView?.(record),
+              },
+              {
                 key: "edit",
                 label: t("actionEdit"),
                 icon: <EditOutlined />,
-                disabled: true,
+                disabled: !onEdit,
+                onClick: () => onEdit?.(record),
               },
               { type: "divider" },
               {
@@ -148,17 +159,13 @@ export function getCustomerTableColumns(t) {
                 label: t("actionDelete"),
                 icon: <DeleteOutlined />,
                 danger: true,
-                disabled: true,
+                disabled: !onDelete,
+                onClick: () => onDelete?.(record),
               },
             ],
           }}
         >
-          <Button
-            type="text"
-            size="small"
-            icon={<MoreOutlined />}
-            aria-label={t("actionMenu")}
-          />
+          <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t("actionMenu")} />
         </Dropdown>
       ),
     },

@@ -1,6 +1,7 @@
 import {
   DeleteOutlined,
   EditOutlined,
+  EyeOutlined,
   FilterFilled,
   FilterOutlined,
   MoreOutlined,
@@ -171,6 +172,9 @@ export function getUnitOfMeasurementStatusLabel(value, t) {
 /**
  * @param {(key: string) => string} t `useTranslations("UnitOfMeasurements")`
  * @param {{
+ *   onView?: (record: unknown) => void;
+ *   onEdit?: (record: unknown) => void;
+ *   onDelete?: (record: unknown) => void;
  *   unitGroupFilter?: {
  *     options: Array<{
  *       id: string | number;
@@ -187,7 +191,7 @@ export function getUnitOfMeasurementStatusLabel(value, t) {
  * @returns {import("antd").TableProps["columns"]}
  */
 export function getUnitOfMeasurementTableColumns(t, options = {}) {
-  const { unitGroupFilter } = options;
+  const { onView, onEdit, onDelete, unitGroupFilter } = options;
 
   return [
     {
@@ -365,16 +369,24 @@ export function getUnitOfMeasurementTableColumns(t, options = {}) {
       fixed: "end",
       width: 72,
       align: "center",
-      render: () => (
+      render: (_, record) => (
         <Dropdown
           trigger={["click"]}
           menu={{
             items: [
               {
+                key: "view",
+                label: t("actionView"),
+                icon: <EyeOutlined />,
+                disabled: !onView,
+                onClick: () => onView?.(record),
+              },
+              {
                 key: "edit",
                 label: t("actionEdit"),
                 icon: <EditOutlined />,
-                disabled: true,
+                disabled: !onEdit,
+                onClick: () => onEdit?.(record),
               },
               { type: "divider" },
               {
@@ -382,7 +394,8 @@ export function getUnitOfMeasurementTableColumns(t, options = {}) {
                 label: t("actionDelete"),
                 icon: <DeleteOutlined />,
                 danger: true,
-                disabled: true,
+                disabled: !onDelete,
+                onClick: () => onDelete?.(record),
               },
             ],
           }}

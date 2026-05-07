@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, MoreOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
 
@@ -6,9 +6,15 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
 /**
  * @param {(key: string) => string} t `useTranslations("SupplierGroups")`
+ * @param {{
+ *   onView?: (record: unknown) => void;
+ *   onEdit?: (record: unknown) => void;
+ *   onDelete?: (record: unknown) => void;
+ * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
-export function getSupplierGroupTableColumns(t) {
+export function getSupplierGroupTableColumns(t, actions = {}) {
+  const { onView, onEdit, onDelete } = actions;
   return [
     {
       title: t("colId"),
@@ -63,16 +69,24 @@ export function getSupplierGroupTableColumns(t) {
       fixed: "end",
       width: 72,
       align: "center",
-      render: () => (
+      render: (_, record) => (
         <Dropdown
           trigger={["click"]}
           menu={{
             items: [
               {
+                key: "view",
+                label: t("actionView"),
+                icon: <EyeOutlined />,
+                disabled: !onView,
+                onClick: () => onView?.(record),
+              },
+              {
                 key: "edit",
                 label: t("actionEdit"),
                 icon: <EditOutlined />,
-                disabled: true,
+                disabled: !onEdit,
+                onClick: () => onEdit?.(record),
               },
               { type: "divider" },
               {
@@ -80,7 +94,8 @@ export function getSupplierGroupTableColumns(t) {
                 label: t("actionDelete"),
                 icon: <DeleteOutlined />,
                 danger: true,
-                disabled: true,
+                disabled: !onDelete,
+                onClick: () => onDelete?.(record),
               },
             ],
           }}

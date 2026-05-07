@@ -39,7 +39,7 @@ import {
   Typography,
 } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ColumnDragShell, SortableTableBodyCell, SortableTableHeaderCell } from "./AppDataTableColumnDrag";
 
 const DEFAULT_SCROLL_X = 1000;
@@ -147,6 +147,9 @@ export default function AppDataTable({
     over: undefined,
     direction: undefined,
   });
+  /** Pixel height for Table `scroll.y` when sticky; measured from flex layout (not viewport guess). */
+  const [stickyBodyY, setStickyBodyY] = useState(null);
+  const tableBodyHostRef = useRef(null);
   /** Avoid SSR/client hydration mismatch: @dnd-kit aria-describedby ids differ pre/post mount. */
   const [columnDndReady, setColumnDndReady] = useState(false);
 
@@ -566,17 +569,55 @@ export default function AppDataTable({
     }
   };
 
-  const tableSize = density === "compact" ? "small" : "middle";
-
-  const scroll = useMemo(
-    () => ({
-      x: scrollX,
-      ...(stickyHeader ? { y: tableBodyScrollY } : {}),
-    }),
-    [scrollX, stickyHeader, tableBodyScrollY],
-  );
-
   const showFooter = pagination !== false;
+  const tableSize = density === "compact" ? "small" : "middle";
+  const shouldFillHeight = loading;
+
+  useLayoutEffect(() => {
+    if (!stickyHeader) {
+      setStickyBodyY(null);
+      return;
+    }
+    const el = tableBodyHostRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+
+    let raf = 0;
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const host = tableBodyHostRef.current;
+        if (!host) return;
+        const h = host.clientHeight;
+        if (h < 8) return;
+        const thead = host.querySelector(".ant-table-thead");
+        const theadH =
+          thead instanceof HTMLElement ? Math.ceil(thead.getBoundingClientRect().height) : 48;
+        const next = Math.max(120, Math.floor(h - theadH - 1));
+        setStickyBodyY((prev) => (prev === next ? prev : next));
+      });
+    };
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [stickyHeader, showFooter, tableSize, displayedRows.length, columnDndActive]);
+
+  const scroll = useMemo(() => {
+    const y =
+      stickyHeader && shouldFillHeight
+        ? typeof stickyBodyY === "number"
+          ? stickyBodyY
+          : tableBodyScrollY
+        : undefined;
+    return {
+      x: scrollX,
+      ...(y != null ? { y } : {}),
+    };
+  }, [scrollX, stickyHeader, shouldFillHeight, stickyBodyY, tableBodyScrollY]);
 
   const renderedTable = useMemo(() => {
     const tableEl = (
@@ -633,7 +674,7 @@ export default function AppDataTable({
   ]);
 
   return (
-    <div className="flex min-w-0 flex-col gap-2">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
       <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <Space wrap size="small" className="min-w-0">
           {showSearch && paginationMode !== "server" ? (
@@ -728,8 +769,15 @@ export default function AppDataTable({
         </div>
       ) : null}
 
-      <div className="app-data-table min-w-0 overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
-        {renderedTable}
+      <div
+        className={`app-data-table flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-black/10 dark:border-white/10 ${shouldFillHeight ? "flex-1" : "h-auto"}`}
+      >
+        <div
+          ref={tableBodyHostRef}
+          className={`min-h-0 overflow-hidden ${shouldFillHeight ? "flex-1" : "h-auto"}`}
+        >
+          {renderedTable}
+        </div>
         {showFooter ? (
           <div className="grid grid-cols-1 items-center gap-3 border-t border-black/10 bg-black/[0.02] px-3 py-2 sm:grid-cols-[1fr_auto_1fr] dark:border-white/10 dark:bg-white/[0.04]">
             <Typography.Text type="secondary" className="min-w-0 justify-self-start">
