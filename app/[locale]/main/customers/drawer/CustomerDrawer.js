@@ -1,12 +1,19 @@
 "use client";
 
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
+import ResourceAttachmentsPanel from "@/components/resource-drawer/ResourceAttachmentsPanel";
 import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFooter";
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
+import { fetchCurrencies } from "@/services/currenciesApi";
 import { fetchCustomerGroups } from "@/services/customerGroupsApi";
 import { fetchCustomer } from "@/services/customersApi";
+import { customersAttachmentsApi } from "@/services/customersAttachmentsApi";
+import { fetchPaymentMethods } from "@/services/paymentMethodsApi";
+import { fetchPaymentTerms } from "@/services/paymentTermsApi";
+import { fetchSalesmen } from "@/services/salesmenApi";
+import { fetchVatGroups } from "@/services/vatGroupsApi";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
@@ -17,6 +24,7 @@ import {
   CUSTOMER_CREATE_SAVE_INTENT_KEY,
   isCreateDirtyVsDefaults,
   isEditDirtyVsLoaded,
+  mapApiCurrencyBalancesToFormSplit,
   requiredFieldsValid,
   toCustomerCacheRow,
 } from "./customerDrawerUtils";
@@ -50,16 +58,26 @@ export default function CustomerDrawer({
 
   const readOnly = mode === "view";
 
+  const customerAttachmentsQueryKey = useMemo(
+    () => /** @type {const} */ (["tenant", "customers", customerId, "attachments"]),
+    [customerId],
+  );
+
   const defaults = useMemo(
     () => ({
       name: "",
       email: "",
       phone: "",
       customer_group_id: undefined,
+      salesman_id: undefined,
+      payment_method_id: undefined,
+      payment_terms_id: undefined,
+      vat_group_id: undefined,
       type: "individual",
-      credit_limit: 0,
-      opening_balance: 0,
-      is_active: true,
+      currency_credit_limits: [],
+      currency_opening_balances: [],
+      status: "active",
+      blacklist_reason: "",
       is_vat_registered: false,
       vat_number: "",
       notes: "",
@@ -68,23 +86,26 @@ export default function CustomerDrawer({
   );
 
   const mapSeedToCacheRow = useCallback((seed) => toCustomerCacheRow(seed), []);
-  const mapRecordToFormValues = useCallback(
-    (r) => ({
+  const mapRecordToFormValues = useCallback((r) => {
+    return {
       customer_code: r.customer_code,
       name: r.name,
       email: r.email ?? "",
       phone: r.phone ?? "",
       customer_group_id: r.customer_group_id ?? undefined,
+      salesman_id: r.salesman_id ?? undefined,
+      payment_method_id: r.payment_method_id ?? undefined,
+      payment_terms_id: r.payment_terms_id ?? undefined,
+      vat_group_id: r.vat_group_id ?? undefined,
       type: r.type,
-      credit_limit: Number(r.credit_limit ?? 0),
-      opening_balance: Number(r.opening_balance ?? 0),
-      is_active: r.is_active !== false,
+      ...mapApiCurrencyBalancesToFormSplit(r.currency_balances),
+      status: ["active", "suspended", "blacklisted"].includes(String(r.status)) ? r.status : "active",
+      blacklist_reason: r.blacklist_reason ?? "",
       is_vat_registered: r.is_vat_registered === true,
       vat_number: r.vat_number ?? "",
       notes: r.notes ?? "",
-    }),
-    [],
-  );
+    };
+  }, []);
 
   const { detailEnabled, tableSeedMatches, fetchRemoteDetail, detailQuery } = useResourceDrawerDetailSync({
     open,
@@ -106,6 +127,41 @@ export default function CustomerDrawer({
     staleTime: 5 * 60_000,
   });
 
+  const currenciesQuery = useQuery({
+    queryKey: ["tenant", "currencies"],
+    queryFn: () => fetchCurrencies(),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  const salesmenQuery = useQuery({
+    queryKey: ["tenant", "salesmen"],
+    queryFn: () => fetchSalesmen(),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  const paymentMethodsQuery = useQuery({
+    queryKey: ["tenant", "payment-methods"],
+    queryFn: () => fetchPaymentMethods(),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  const paymentTermsQuery = useQuery({
+    queryKey: ["tenant", "payment-terms"],
+    queryFn: () => fetchPaymentTerms(),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  const vatGroupsQuery = useQuery({
+    queryKey: ["tenant", "vat-groups"],
+    queryFn: () => fetchVatGroups(),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
   const customerGroupOptions = useMemo(() => {
     const rows = customerGroupsQuery.data;
     if (!Array.isArray(rows)) return [];
@@ -114,6 +170,48 @@ export default function CustomerDrawer({
       label: `${row.name ?? row.id}${row.code ? ` (${row.code})` : ""}`,
     }));
   }, [customerGroupsQuery.data]);
+
+  const salesmenOptions = useMemo(() => {
+    const rows = salesmenQuery.data;
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .filter((row) => row && row.is_active !== false)
+      .map((row) => ({
+        value: row.id,
+        label: `${row.full_name ?? row.id}${row.salesman_code ? ` (${row.salesman_code})` : ""}`,
+      }));
+  }, [salesmenQuery.data]);
+
+  const paymentMethodOptions = useMemo(() => {
+    const rows = paymentMethodsQuery.data;
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .filter((row) => row && row.is_active !== false)
+      .map((row) => ({
+        value: row.id,
+        label: `${row.code ?? row.id} — ${row.name ?? ""}`,
+      }));
+  }, [paymentMethodsQuery.data]);
+
+  const paymentTermOptions = useMemo(() => {
+    const rows = paymentTermsQuery.data;
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .filter((row) => row && row.is_active !== false)
+      .map((row) => ({
+        value: row.id,
+        label: `${row.code ?? row.id} — ${row.name ?? ""}${row.due_days != null ? ` (${row.due_days}d)` : ""}`,
+      }));
+  }, [paymentTermsQuery.data]);
+
+  const vatGroupOptions = useMemo(() => {
+    const rows = vatGroupsQuery.data;
+    if (!Array.isArray(rows)) return [];
+    return rows.map((row) => ({
+      value: row.id,
+      label: `${row.abrv ?? row.id} — ${row.name ?? ""}${row.percentage != null ? ` (${row.percentage}%)` : ""}`,
+    }));
+  }, [vatGroupsQuery.data]);
 
   const nameWatch = Form.useWatch("name", form);
   const typeWatch = Form.useWatch("type", form);
@@ -125,6 +223,7 @@ export default function CustomerDrawer({
   }, [nameWatch, typeWatch]);
 
   const customerGroupsData = Array.isArray(customerGroupsQuery.data) ? customerGroupsQuery.data : undefined;
+  const currenciesData = Array.isArray(currenciesQuery.data) ? currenciesQuery.data : undefined;
 
   const { createMutation, updateMutation, toCreatePayload, toUpdatePayload, submitting } = useCustomerDrawerMutations({
     form,
@@ -135,6 +234,7 @@ export default function CustomerDrawer({
     onCreated,
     defaults,
     customerGroupsData,
+    currenciesData,
   });
 
   const editBaselineForDirty = useMemo(() => {
@@ -223,6 +323,7 @@ export default function CustomerDrawer({
   return (
     <ResourceCrudDrawer
       title={title}
+      size={800}
       open={open}
       requestClose={requestClose}
       submitting={submitting}
@@ -257,10 +358,27 @@ export default function CustomerDrawer({
         mode={mode}
         readOnly={readOnly}
         t={t}
-        tApiErrors={tApiErrors}
         customerGroupOptions={customerGroupOptions}
         customerGroupsPending={customerGroupsQuery.isPending}
-        customerGroupsError={customerGroupsQuery.isError ? customerGroupsQuery.error : null}
+        salesmenOptions={salesmenOptions}
+        salesmenPending={salesmenQuery.isPending}
+        paymentMethodOptions={paymentMethodOptions}
+        paymentMethodsPending={paymentMethodsQuery.isPending}
+        paymentTermOptions={paymentTermOptions}
+        paymentTermsPending={paymentTermsQuery.isPending}
+        vatGroupOptions={vatGroupOptions}
+        vatGroupsPending={vatGroupsQuery.isPending}
+        currencies={currenciesData ?? []}
+        currenciesPending={currenciesQuery.isPending}
+      />
+      <ResourceAttachmentsPanel
+        open={open}
+        recordId={customerId}
+        readOnly={readOnly}
+        t={t}
+        tApiErrors={tApiErrors}
+        queryKey={customerAttachmentsQueryKey}
+        api={customersAttachmentsApi}
       />
     </ResourceCrudDrawer>
   );

@@ -4,22 +4,28 @@ import { Button, Dropdown, Typography } from "antd";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
-export function getSupplierStatusLabel(value, t) {
+export function getSalesmanStatusLabel(value, t) {
   return value ? t("statusActive") : t("statusInactive");
 }
 
+export function getSalesmanCommissionTypeLabel(type, t) {
+  const v = String(type ?? "");
+  const key = `commission_${v}`;
+  const translated = t(key);
+  return translated === key ? v : translated;
+}
+
 /**
- * @param {(key: string) => string} t `useTranslations("Suppliers")`
+ * @param {(key: string) => string} t `useTranslations("Salesmen")`
  * @param {{
- *   onView?: (record: Record<string, unknown>) => void;
- *   onEdit?: (record: Record<string, unknown>) => void;
- *   onDelete?: (record: Record<string, unknown>) => void;
+ *   onView?: (record: unknown) => void;
+ *   onEdit?: (record: unknown) => void;
+ *   onDelete?: (record: unknown) => void;
  * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
-export function getSupplierTableColumns(t, actions = {}) {
+export function getSalesmanTableColumns(t, actions = {}) {
   const { onView, onEdit, onDelete } = actions;
-
   return [
     {
       title: t("colId"),
@@ -30,9 +36,9 @@ export function getSupplierTableColumns(t, actions = {}) {
     },
     {
       title: t("colCode"),
-      dataIndex: "supplier_code",
-      key: "supplier_code",
-      width: 170,
+      dataIndex: "salesman_code",
+      key: "salesman_code",
+      width: 120,
       ellipsis: true,
       render: (value) => {
         const v = typeof value === "string" ? value.trim() : "";
@@ -41,54 +47,82 @@ export function getSupplierTableColumns(t, actions = {}) {
             {v}
           </Typography.Text>
         ) : (
-          "—"
+          "\u2014"
         );
       },
     },
     {
-      title: t("colName"),
-      dataIndex: "name",
-      key: "name",
-      width: 220,
+      title: t("colFullName"),
+      dataIndex: "full_name",
+      key: "full_name",
+      width: 200,
       ellipsis: true,
-    },
-    {
-      title: t("colGroup"),
-      dataIndex: "supplier_group",
-      key: "supplier_group",
-      width: 180,
-      ellipsis: true,
-      render: (value) => value?.name || "—",
-      sorter: (a, b) =>
-        String(a?.supplier_group?.name ?? "").localeCompare(String(b?.supplier_group?.name ?? "")),
     },
     {
       title: t("colPhone"),
       dataIndex: "phone",
       key: "phone",
-      width: 170,
+      width: 130,
       ellipsis: true,
-      render: (value) => value || "—",
+      render: (v) => (typeof v === "string" && v.trim() ? v : "\u2014"),
     },
     {
       title: t("colEmail"),
       dataIndex: "email",
       key: "email",
-      width: 220,
+      width: 200,
       ellipsis: true,
-      render: (value) => value || "—",
+      render: (v) => (typeof v === "string" && v.trim() ? v : "\u2014"),
+    },
+    {
+      title: t("colWarehouse"),
+      dataIndex: "warehouse_name",
+      key: "warehouse_name",
+      width: 160,
+      ellipsis: true,
+      render: (v) => (typeof v === "string" && v.trim() ? v : "\u2014"),
+    },
+    {
+      title: t("colCommission"),
+      dataIndex: "commission_type",
+      key: "commission_type",
+      width: 120,
+      render: (value, record) => {
+        const cv = record?.commission_value;
+        if (value === "none" || value == null) {
+          return getSalesmanCommissionTypeLabel(value, t);
+        }
+        if (value === "percent" && cv != null && cv !== "") {
+          return <span>{String(cv)}%</span>;
+        }
+        if (value === "fixed" && cv != null && cv !== "") {
+          return <span>{String(cv)}</span>;
+        }
+        if (cv != null && cv !== "") {
+          const label = getSalesmanCommissionTypeLabel(value, t);
+          return (
+            <span>
+              {label}
+              <Typography.Text type="secondary" className="ml-1 text-xs">
+                ({String(cv)})
+              </Typography.Text>
+            </span>
+          );
+        }
+        return getSalesmanCommissionTypeLabel(value, t);
+      },
     },
     {
       title: t("colStatus"),
       dataIndex: "is_active",
       key: "is_active",
-      width: 120,
+      width: 100,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
       render: (value) =>
         value ? (
-          <Typography.Text strong>{getSupplierStatusLabel(value, t)}</Typography.Text>
+          <Typography.Text strong>{getSalesmanStatusLabel(value, t)}</Typography.Text>
         ) : (
-          <Typography.Text type="secondary">{getSupplierStatusLabel(value, t)}</Typography.Text>
+          <Typography.Text type="secondary">{getSalesmanStatusLabel(value, t)}</Typography.Text>
         ),
     },
     {
@@ -97,15 +131,7 @@ export function getSupplierTableColumns(t, actions = {}) {
       key: "created_at",
       width: 168,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "—"),
-    },
-    {
-      title: t("colUpdatedAt"),
-      dataIndex: "updated_at",
-      key: "updated_at",
-      width: 168,
-      sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "—"),
+      render: (value) => (value ? dayjs(value).format("MMMM D, YYYY") : "\u2014"),
     },
     {
       title: t("colActions"),

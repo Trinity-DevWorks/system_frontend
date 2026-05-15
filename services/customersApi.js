@@ -13,7 +13,7 @@ export async function fetchCustomers() {
  * @returns {Promise<unknown>}
  */
 export function fetchCustomer(id) {
-  return tenantApiService("GET", `customers/${id}`);
+  return tenantApiService("GET", `customers/${id}`, null, { params: { section: "full" } });
 }
 
 /**

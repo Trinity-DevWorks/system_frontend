@@ -154,7 +154,13 @@ function CategoriesTable() {
         okButtonProps: { danger: true },
         cancelText: t("deleteConfirmCancel"),
         // Return the promise so Ant Design keeps the OK button in a loading state until the mutation finishes.
-        onOk: () => deleteMutation.mutateAsync(Number(id)),
+        onOk: async () => {
+          try {
+            await deleteMutation.mutateAsync(Number(id));
+          } catch {
+            // onError on mutation already shows feedback; resolve so confirm closes.
+          }
+        },
       });
     },
     [deleteMutation, modal, t],
