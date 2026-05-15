@@ -19,6 +19,7 @@ import { useLocale } from "next-intl";
  *   tApiErrors: (key: string) => string;
  *   skeletonParagraphRows?: number;
  *   children: import("react").ReactNode;
+ *   size?: number | "default" | "large";
  * }} props
  */
 export default function ResourceCrudDrawer({
@@ -33,6 +34,7 @@ export default function ResourceCrudDrawer({
   tApiErrors,
   skeletonParagraphRows = 5,
   children,
+  size = 520,
 }) {
   const locale = useLocale();
   const placement = isRtlLocale(locale) ? "left" : "right";
@@ -40,7 +42,7 @@ export default function ResourceCrudDrawer({
   return (
     <Drawer
       title={title}
-      size={520}
+      size={size}
       placement={placement}
       open={open}
       onClose={requestClose}

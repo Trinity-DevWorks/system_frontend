@@ -143,7 +143,13 @@ function WarehousesTable() {
         okText: t("deleteConfirmOk"),
         okButtonProps: { danger: true },
         cancelText: t("deleteConfirmCancel"),
-        onOk: () => deleteMutation.mutateAsync(Number(id)),
+        onOk: async () => {
+          try {
+            await deleteMutation.mutateAsync(Number(id));
+          } catch {
+            // onError on mutation already shows feedback; resolve so confirm closes.
+          }
+        },
       });
     },
     [deleteMutation, modal, t],

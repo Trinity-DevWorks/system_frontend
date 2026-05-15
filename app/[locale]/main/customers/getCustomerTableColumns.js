@@ -4,14 +4,13 @@ import { Button, Dropdown, Typography } from "antd";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
-export function getCustomerStatusLabel(value, t) {
-  return value ? t("statusActive") : t("statusInactive");
+/** @param {unknown} status */
+export function getCustomerStatusLabel(status, t) {
+  const s = typeof status === "string" ? status : "active";
+  if (s === "suspended") return t("statusSuspended");
+  if (s === "blacklisted") return t("statusBlacklisted");
+  return t("statusActive");
 }
-
-const formatMoney = (value) => {
-  const n = Number(value ?? 0);
-  return Number.isFinite(n) ? n.toFixed(4) : "0.0000";
-};
 
 /**
  * @param {(key: string) => string} t `useTranslations("Customers")`
@@ -84,33 +83,22 @@ export function getCustomerTableColumns(t, actions = {}) {
       render: (value) => value || "—",
     },
     {
-      title: t("colCreditLimit"),
-      dataIndex: "credit_limit",
-      key: "credit_limit",
-      width: 140,
-      sorter: (a, b) => Number(a.credit_limit ?? 0) - Number(b.credit_limit ?? 0),
-      render: (value) => formatMoney(value),
-    },
-    {
-      title: t("colBalance"),
-      dataIndex: "balance",
-      key: "balance",
-      width: 140,
-      sorter: (a, b) => Number(a.balance ?? 0) - Number(b.balance ?? 0),
-      render: (value) => formatMoney(value),
-    },
-    {
       title: t("colStatus"),
-      dataIndex: "is_active",
-      key: "is_active",
-      width: 120,
-      sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
-      render: (value) =>
-        value ? (
-          <Typography.Text strong>{getCustomerStatusLabel(value, t)}</Typography.Text>
-        ) : (
-          <Typography.Text type="secondary">{getCustomerStatusLabel(value, t)}</Typography.Text>
-        ),
+      dataIndex: "status",
+      key: "status",
+      width: 130,
+      sorter: (a, b) => String(a?.status ?? "").localeCompare(String(b?.status ?? "")),
+      render: (_, record) => {
+        const s = record?.status;
+        const label = getCustomerStatusLabel(s, t);
+        if (s === "blacklisted") {
+          return <Typography.Text type="danger">{label}</Typography.Text>;
+        }
+        if (s === "suspended") {
+          return <Typography.Text type="warning">{label}</Typography.Text>;
+        }
+        return <Typography.Text type="success">{label}</Typography.Text>;
+      },
     },
     {
       title: t("colCreatedAt"),

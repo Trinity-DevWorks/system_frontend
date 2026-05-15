@@ -10,8 +10,29 @@ import {
   CUSTOMER_CREATE_SAVE_INTENT_EVENT,
   CUSTOMER_CREATE_SAVE_INTENT_KEY,
   customerFormValuesToPayload,
+  primarySnapshotForOptimistic,
   sortCustomersByName,
 } from "./customerDrawerUtils";
+
+/**
+ * @param {Record<string, unknown> | null | undefined} oldRow
+ * @param {unknown[]} patchBalances
+ */
+function mergeCurrencyBalancesForCache(oldRow, patchBalances) {
+  const oldB = Array.isArray(oldRow?.currency_balances) ? oldRow.currency_balances : [];
+  const patch = Array.isArray(patchBalances) ? patchBalances : [];
+  return patch.map((p) => {
+    const row = /** @type {Record<string, unknown>} */ (p && typeof p === "object" ? p : {});
+    const prev = oldB.find(
+      (b) =>
+        Number(/** @type {{ currency_id?: unknown }} */ (b).currency_id) === Number(row.currency_id),
+    );
+    return {
+      ...row,
+      balance: prev?.balance ?? "0.0000",
+    };
+  });
+}
 
 /**
  * @param {{
@@ -23,6 +44,7 @@ import {
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   defaults: Record<string, unknown>;
  *   customerGroupsData: unknown[] | undefined;
+ *   currenciesData: unknown[] | undefined;
  * }} args
  */
 export function useCustomerDrawerMutations({
@@ -34,6 +56,7 @@ export function useCustomerDrawerMutations({
   onCreated,
   defaults,
   customerGroupsData,
+  currenciesData,
 }) {
   const queryClient = useQueryClient();
 
@@ -51,8 +74,11 @@ export function useCustomerDrawerMutations({
       const groupRow = Array.isArray(customerGroupsData)
         ? customerGroupsData.find((g) => g.id === payload.customer_group_id)
         : null;
-      const openingNum = Number(payload.opening_balance ?? 0);
-      const balanceGuess = Number.isFinite(openingNum) ? openingNum.toFixed(4) : "0.0000";
+      const snap = primarySnapshotForOptimistic(
+        0,
+        /** @type {unknown[]} */ (payload.currency_balances ?? []),
+        currenciesData ?? [],
+      );
       const optimisticRow = {
         id: optimisticId,
         customer_code: "",
@@ -62,13 +88,18 @@ export function useCustomerDrawerMutations({
         type: payload.type,
         customer_group_id: payload.customer_group_id,
         customer_group: groupRow ? { id: groupRow.id, name: groupRow.name } : null,
-        credit_limit: String(Number(payload.credit_limit ?? 0).toFixed(4)),
-        opening_balance: String(payload.opening_balance ?? "0"),
-        is_active: Boolean(payload.is_active),
+        salesman_id: payload.salesman_id ?? null,
+        payment_method_id: payload.payment_method_id ?? null,
+        payment_terms_id: payload.payment_terms_id ?? null,
+        vat_group_id: payload.vat_group_id ?? null,
+        credit_limit: snap.credit_limit,
+        opening_balance: snap.opening_balance,
+        currency_balances: Array.isArray(payload.currency_balances) ? payload.currency_balances : [],
+        status: typeof payload.status === "string" ? payload.status : "active",
         is_vat_registered: Boolean(payload.is_vat_registered),
         vat_number: payload.vat_number,
         notes: payload.notes,
-        balance: balanceGuess,
+        balance: snap.balance,
         created_at: now,
         updated_at: now,
       };
@@ -148,6 +179,11 @@ export function useCustomerDrawerMutations({
         ? customerGroupsData.find((g) => g.id === values.customer_group_id)
         : null;
       const groupPatch = groupRow ? { id: groupRow.id, name: groupRow.name } : null;
+      const snap = primarySnapshotForOptimistic(
+        0,
+        /** @type {unknown[]} */ (values.currency_balances ?? []),
+        currenciesData ?? [],
+      );
       queryClient.setQueryData(listKey, (old) => {
         if (!Array.isArray(old)) return old;
         return old.map((row) =>
@@ -156,7 +192,13 @@ export function useCustomerDrawerMutations({
                 ...row,
                 ...values,
                 customer_group: groupPatch ?? row.customer_group,
-                credit_limit: String(Number(values.credit_limit ?? 0).toFixed(4)),
+                credit_limit: snap.credit_limit,
+                opening_balance: snap.opening_balance,
+                balance: snap.balance,
+                currency_balances: mergeCurrencyBalancesForCache(
+                  /** @type {Record<string, unknown>} */ (row),
+                  /** @type {unknown[]} */ (values.currency_balances ?? []),
+                ),
                 updated_at: now,
               }
             : row,
@@ -166,11 +208,15 @@ export function useCustomerDrawerMutations({
         if (!old || typeof old !== "object") {
           return { id, ...values, customer_group: groupPatch, updated_at: now };
         }
+        const prev = /** @type {Record<string, unknown>} */ (old);
         return {
-          ...old,
+          ...prev,
           ...values,
-          customer_group: groupPatch ?? old.customer_group,
-          credit_limit: String(Number(values.credit_limit ?? 0).toFixed(4)),
+          customer_group: groupPatch ?? prev.customer_group,
+          credit_limit: snap.credit_limit,
+          opening_balance: snap.opening_balance,
+          balance: snap.balance,
+          currency_balances: mergeCurrencyBalancesForCache(prev, /** @type {unknown[]} */ (values.currency_balances ?? [])),
           updated_at: now,
         };
       });

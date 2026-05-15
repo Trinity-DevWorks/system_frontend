@@ -2,18 +2,18 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { deleteVatGroup, fetchVatGroups } from "@/services/vatGroupsApi";
-import VatGroupDrawer from "./drawer/VatGroupDrawer";
-import { getVatGroupTableColumns } from "./getVatGroupTableColumns";
+import { deleteSalesman, fetchSalesmen } from "@/services/salesmenApi";
+import SalesmanDrawer from "./drawer/SalesmanDrawer";
+import { getSalesmanStatusLabel, getSalesmanTableColumns } from "./getSalesmanTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-function VatGroupsTable() {
-  const t = useTranslations("VatGroups");
+function SalesmenTable() {
+  const t = useTranslations("Salesmen");
   const tApiErrors = useTranslations("ApiErrors");
-  const { message, notification, modal } = App.useApp();
+  const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
@@ -24,8 +24,8 @@ function VatGroupsTable() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["tenant", "vat-groups"],
-    queryFn: fetchVatGroups,
+    queryKey: ["tenant", "salesmen"],
+    queryFn: fetchSalesmen,
     staleTime: 5 * 60_000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
@@ -39,19 +39,28 @@ function VatGroupsTable() {
     });
   }, [isError, error, notification, t, tApiErrors]);
 
+  const tableData = useMemo(
+    () =>
+      data.map((row) => ({
+        ...row,
+        is_active_label: getSalesmanStatusLabel(row?.is_active, t),
+      })),
+    [data, t],
+  );
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerVatGroupId, setDrawerVatGroupId] = useState(/** @type {number | null} */ (null));
+  const [drawerSalesmanId, setDrawerSalesmanId] = useState(/** @type {number | null} */ (null));
   const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, vatGroupId: /** @type {number | null} */ (null) });
+  const drawerSessionRef = useRef({ open: false, salesmanId: /** @type {number | null} */ (null) });
   useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, vatGroupId: drawerVatGroupId };
-  }, [drawerOpen, drawerVatGroupId]);
+    drawerSessionRef.current = { open: drawerOpen, salesmanId: drawerSalesmanId };
+  }, [drawerOpen, drawerSalesmanId]);
 
   const openCreateDrawer = useCallback(() => {
     setDrawerTableSeed(null);
     setDrawerMode("create");
-    setDrawerVatGroupId(null);
+    setDrawerSalesmanId(null);
     setDrawerOpen(true);
   }, []);
 
@@ -60,7 +69,7 @@ function VatGroupsTable() {
     if (id == null) return;
     setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerVatGroupId(Number(id));
+    setDrawerSalesmanId(Number(id));
     setDrawerOpen(true);
   }, []);
 
@@ -69,28 +78,28 @@ function VatGroupsTable() {
     if (id == null) return;
     setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("view");
-    setDrawerVatGroupId(Number(id));
+    setDrawerSalesmanId(Number(id));
     setDrawerOpen(true);
   }, []);
 
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
-    setDrawerVatGroupId(null);
+    setDrawerSalesmanId(null);
     setDrawerTableSeed(null);
   }, []);
 
-  const handleVatGroupCreated = useCallback((record) => {
+  const handleSalesmanCreated = useCallback((record) => {
     const id = record?.id;
     if (id == null) return;
     setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerVatGroupId(Number(id));
+    setDrawerSalesmanId(Number(id));
   }, []);
 
   const deleteMutation = useMutation({
-    mutationFn: (/** @type {number} */ id) => deleteVatGroup(id),
+    mutationFn: (/** @type {number} */ id) => deleteSalesman(id),
     onMutate: async (id) => {
-      const listKey = ["tenant", "vat-groups"];
+      const listKey = ["tenant", "salesmen"];
       await queryClient.cancelQueries({ queryKey: listKey });
       const previous = queryClient.getQueryData(listKey);
       queryClient.setQueryData(listKey, (old) => (Array.isArray(old) ? old.filter((row) => row.id !== id) : old));
@@ -98,7 +107,7 @@ function VatGroupsTable() {
     },
     onError: (err, _id, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "vat-groups"], context.previous);
+        queryClient.setQueryData(["tenant", "salesmen"], context.previous);
       }
       notification.error({
         message: t("deleteError"),
@@ -107,22 +116,25 @@ function VatGroupsTable() {
     },
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
-      queryClient.removeQueries({ queryKey: ["tenant", "vat-groups", deletedId] });
-      const { open, vatGroupId } = drawerSessionRef.current;
-      if (open && vatGroupId === deletedId) {
+      queryClient.removeQueries({ queryKey: ["tenant", "salesmen", deletedId] });
+      const { open, salesmanId } = drawerSessionRef.current;
+      if (open && salesmanId === deletedId) {
         closeDrawer();
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenant", "vat-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["tenant", "salesmen"] });
     },
   });
 
-  const requestDeleteVatGroup = useCallback(
+  const requestDeleteSalesman = useCallback(
     (record) => {
       const id = record?.id;
       if (id == null) return;
-      const name = typeof record?.name === "string" ? record.name : String(id);
+      const name =
+        typeof record?.full_name === "string" && record.full_name.trim()
+          ? record.full_name
+          : String(record?.id ?? "");
       modal.confirm({
         title: t("deleteConfirmTitle"),
         content: t("deleteConfirmContent", { name }),
@@ -133,7 +145,7 @@ function VatGroupsTable() {
           try {
             await deleteMutation.mutateAsync(Number(id));
           } catch {
-            // onError on mutation already shows feedback; resolve so confirm closes.
+            /* mutation onError */
           }
         },
       });
@@ -143,12 +155,12 @@ function VatGroupsTable() {
 
   const columns = useMemo(
     () =>
-      getVatGroupTableColumns(t, {
+      getSalesmanTableColumns(t, {
         onView: openViewDrawer,
         onEdit: openEditDrawer,
-        onDelete: requestDeleteVatGroup,
+        onDelete: requestDeleteSalesman,
       }),
-    [t, openViewDrawer, openEditDrawer, requestDeleteVatGroup],
+    [t, openViewDrawer, openEditDrawer, requestDeleteSalesman],
   );
 
   const rowSelection = {
@@ -160,9 +172,9 @@ function VatGroupsTable() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppDataTable
-        tableId="vat-groups"
+        tableId="salesmen"
         columns={columns}
-        dataSource={data}
+        dataSource={tableData}
         rowKey="id"
         loading={isPending}
         refreshFetching={isFetching}
@@ -170,7 +182,16 @@ function VatGroupsTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["id", "abrv", "name", "percentage"],
+          searchKeys: [
+            "id",
+            "salesman_code",
+            "full_name",
+            "phone",
+            "email",
+            "warehouse_name",
+            "commission_type",
+            "is_active_label",
+          ],
           showAdd: true,
           onAdd: openCreateDrawer,
           showRefresh: true,
@@ -179,7 +200,7 @@ function VatGroupsTable() {
         rowSelection={rowSelection}
         showSelectionBar
         stickyHeader
-        scrollX={1180}
+        scrollX={1320}
         enableColumnDrag
         pagination={{
           mode: "client",
@@ -187,22 +208,22 @@ function VatGroupsTable() {
           pageSizeOptions: [10, 20, 50],
         }}
       />
-      <VatGroupDrawer
+      <SalesmanDrawer
         open={drawerOpen}
         mode={drawerMode}
-        vatGroupId={drawerVatGroupId}
+        salesmanId={drawerSalesmanId}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
-        onCreated={handleVatGroupCreated}
+        onCreated={handleSalesmanCreated}
       />
     </div>
   );
 }
 
-export default function VatGroupsPage() {
+export default function SalesmenPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <VatGroupsTable />
+      <SalesmenTable />
     </div>
   );
 }

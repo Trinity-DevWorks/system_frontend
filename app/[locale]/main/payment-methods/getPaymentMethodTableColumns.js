@@ -4,22 +4,33 @@ import { Button, Dropdown, Typography } from "antd";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
-export function getSupplierStatusLabel(value, t) {
+export function getPaymentMethodStatusLabel(value, t) {
   return value ? t("statusActive") : t("statusInactive");
 }
 
+export function getPaymentMethodDefaultLabel(value, t) {
+  return value ? t("defaultYes") : t("defaultNo");
+}
+
+export function getPaymentMethodTypeLabel(type, t) {
+  const raw = String(type ?? "").trim();
+  if (!raw) return "\u2014";
+  const key = `type_${raw.replace(/[^a-z0-9]+/gi, "_")}`;
+  const translated = t(key);
+  return translated === key ? raw : translated;
+}
+
 /**
- * @param {(key: string) => string} t `useTranslations("Suppliers")`
+ * @param {(key: string) => string} t `useTranslations("PaymentMethods")`
  * @param {{
- *   onView?: (record: Record<string, unknown>) => void;
- *   onEdit?: (record: Record<string, unknown>) => void;
- *   onDelete?: (record: Record<string, unknown>) => void;
+ *   onView?: (record: unknown) => void;
+ *   onEdit?: (record: unknown) => void;
+ *   onDelete?: (record: unknown) => void;
  * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
-export function getSupplierTableColumns(t, actions = {}) {
+export function getPaymentMethodTableColumns(t, actions = {}) {
   const { onView, onEdit, onDelete } = actions;
-
   return [
     {
       title: t("colId"),
@@ -30,9 +41,9 @@ export function getSupplierTableColumns(t, actions = {}) {
     },
     {
       title: t("colCode"),
-      dataIndex: "supplier_code",
-      key: "supplier_code",
-      width: 170,
+      dataIndex: "code",
+      key: "code",
+      width: 120,
       ellipsis: true,
       render: (value) => {
         const v = typeof value === "string" ? value.trim() : "";
@@ -41,7 +52,7 @@ export function getSupplierTableColumns(t, actions = {}) {
             {v}
           </Typography.Text>
         ) : (
-          "—"
+          "\u2014"
         );
       },
     },
@@ -49,46 +60,70 @@ export function getSupplierTableColumns(t, actions = {}) {
       title: t("colName"),
       dataIndex: "name",
       key: "name",
-      width: 220,
-      ellipsis: true,
-    },
-    {
-      title: t("colGroup"),
-      dataIndex: "supplier_group",
-      key: "supplier_group",
       width: 180,
       ellipsis: true,
-      render: (value) => value?.name || "—",
-      sorter: (a, b) =>
-        String(a?.supplier_group?.name ?? "").localeCompare(String(b?.supplier_group?.name ?? "")),
     },
     {
-      title: t("colPhone"),
-      dataIndex: "phone",
-      key: "phone",
-      width: 170,
-      ellipsis: true,
-      render: (value) => value || "—",
+      title: t("colType"),
+      dataIndex: "type",
+      key: "type",
+      width: 140,
+      render: (value) => getPaymentMethodTypeLabel(value, t),
     },
     {
-      title: t("colEmail"),
-      dataIndex: "email",
-      key: "email",
-      width: 220,
-      ellipsis: true,
-      render: (value) => value || "—",
+      title: t("colCurrency"),
+      dataIndex: "currency_code",
+      key: "currency_code",
+      width: 100,
+      render: (_, record) => {
+        const code = record?.currency_code;
+        return typeof code === "string" && code.trim() ? (
+          <Typography.Text code className="text-xs">
+            {code.trim()}
+          </Typography.Text>
+        ) : (
+          "\u2014"
+        );
+      },
+    },
+    {
+      title: t("colRequiresReference"),
+      dataIndex: "requires_reference",
+      key: "requires_reference",
+      width: 130,
+      render: (v) => (v ? t("yes") : t("no")),
+    },
+    {
+      title: t("colSupportsChange"),
+      dataIndex: "supports_change",
+      key: "supports_change",
+      width: 130,
+      render: (v) => (v ? t("yes") : t("no")),
+    },
+    {
+      title: t("colDefault"),
+      dataIndex: "is_default",
+      key: "is_default",
+      width: 100,
+      sorter: (a, b) => Number(b.is_default) - Number(a.is_default),
+      render: (value) =>
+        value ? (
+          <Typography.Text strong>{getPaymentMethodDefaultLabel(value, t)}</Typography.Text>
+        ) : (
+          <Typography.Text type="secondary">{getPaymentMethodDefaultLabel(value, t)}</Typography.Text>
+        ),
     },
     {
       title: t("colStatus"),
       dataIndex: "is_active",
       key: "is_active",
-      width: 120,
+      width: 100,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
       render: (value) =>
         value ? (
-          <Typography.Text strong>{getSupplierStatusLabel(value, t)}</Typography.Text>
+          <Typography.Text strong>{getPaymentMethodStatusLabel(value, t)}</Typography.Text>
         ) : (
-          <Typography.Text type="secondary">{getSupplierStatusLabel(value, t)}</Typography.Text>
+          <Typography.Text type="secondary">{getPaymentMethodStatusLabel(value, t)}</Typography.Text>
         ),
     },
     {
@@ -97,15 +132,7 @@ export function getSupplierTableColumns(t, actions = {}) {
       key: "created_at",
       width: 168,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "—"),
-    },
-    {
-      title: t("colUpdatedAt"),
-      dataIndex: "updated_at",
-      key: "updated_at",
-      width: 168,
-      sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "—"),
+      render: (value) => (value ? dayjs(value).format("MMMM D, YYYY") : "\u2014"),
     },
     {
       title: t("colActions"),

@@ -43,7 +43,7 @@ function CustomersTable() {
     () =>
       data.map((row) => ({
         ...row,
-        is_active_label: getCustomerStatusLabel(row?.is_active, t),
+        status_label: getCustomerStatusLabel(row?.status, t),
       })),
     [data, t],
   );
@@ -70,7 +70,7 @@ function CustomersTable() {
   const openEditDrawer = useCallback((record) => {
     const id = record?.id;
     if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
+    setDrawerTableSeed(null);
     setDrawerMode("edit");
     setDrawerCustomerId(Number(id));
     setDrawerOpen(true);
@@ -79,7 +79,7 @@ function CustomersTable() {
   const openViewDrawer = useCallback((record) => {
     const id = record?.id;
     if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
+    setDrawerTableSeed(null);
     setDrawerMode("view");
     setDrawerCustomerId(Number(id));
     setDrawerOpen(true);
@@ -141,7 +141,13 @@ function CustomersTable() {
         okText: t("deleteConfirmOk"),
         okButtonProps: { danger: true },
         cancelText: t("deleteConfirmCancel"),
-        onOk: () => deleteMutation.mutateAsync(Number(id)),
+        onOk: async () => {
+          try {
+            await deleteMutation.mutateAsync(Number(id));
+          } catch {
+            // onError on mutation already shows feedback; resolve so confirm closes.
+          }
+        },
       });
     },
     [deleteMutation, modal, t],
@@ -183,9 +189,7 @@ function CustomersTable() {
             "customer_group.name",
             "phone",
             "email",
-            "credit_limit",
-            "balance",
-            "is_active_label",
+            "status_label",
           ],
           showAdd: true,
           onAdd: openCreateDrawer,
@@ -195,7 +199,7 @@ function CustomersTable() {
         rowSelection={rowSelection}
         showSelectionBar
         stickyHeader
-        scrollX={1560}
+        scrollX={1280}
         enableColumnDrag
         pagination={{
           mode: "client",
