@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteCustomerGroup, fetchCustomerGroups } from "@/services/customerGroupsApi";
 import CustomerGroupDrawer from "./drawer/CustomerGroupDrawer";
 import { getCustomerGroupTableColumns } from "./getCustomerGroupTableColumns";
@@ -13,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function CustomerGroupsTable() {
   const t = useTranslations("CustomerGroups");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -34,7 +36,7 @@ function CustomerGroupsTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -103,7 +105,7 @@ function CustomerGroupsTable() {
         queryClient.setQueryData(["tenant", "customer-groups"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -118,6 +120,21 @@ function CustomerGroupsTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "customer-groups"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "customer-groups"],
+    deleteOne: deleteCustomerGroup,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.customerGroupId,
+    closeDrawer,
   });
 
   const requestDeleteCustomerGroup = useCallback(
@@ -180,6 +197,8 @@ function CustomerGroupsTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1080}
         enableColumnDrag

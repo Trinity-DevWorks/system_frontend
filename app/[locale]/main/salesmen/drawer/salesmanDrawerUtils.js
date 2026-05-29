@@ -6,6 +6,9 @@ import dayjs from "dayjs";
 
 export const SALESMAN_COMMISSION_TYPES = ["none", "percent", "fixed"];
 
+/** Select option value; not a real warehouse id — opens nested create warehouse drawer. */
+export const SALESMAN_WAREHOUSE_ADD_NEW_VALUE = "__salesman_drawer_add_warehouse__";
+
 export const SALESMAN_CREATE_SAVE_INTENT_KEY = "salesmanDrawer:createSaveIntent";
 export const SALESMAN_CREATE_SAVE_INTENT_EVENT = "salesmanDrawer:createSaveIntent:change";
 

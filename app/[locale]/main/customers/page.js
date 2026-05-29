@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteCustomer, fetchCustomers } from "@/services/customersApi";
 import CustomerDrawer from "./drawer/CustomerDrawer";
 import { getCustomerStatusLabel, getCustomerTableColumns } from "./getCustomerTableColumns";
@@ -13,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function CustomersTable() {
   const t = useTranslations("Customers");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -34,7 +36,7 @@ function CustomersTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -113,7 +115,7 @@ function CustomersTable() {
         queryClient.setQueryData(["tenant", "customers"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -128,6 +130,21 @@ function CustomersTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "customers"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "customers"],
+    deleteOne: deleteCustomer,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.customerId,
+    closeDrawer,
   });
 
   const requestDeleteCustomer = useCallback(
@@ -198,6 +215,8 @@ function CustomersTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1280}
         enableColumnDrag

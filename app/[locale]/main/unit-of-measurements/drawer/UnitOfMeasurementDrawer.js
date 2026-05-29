@@ -2,15 +2,17 @@
 
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFooter";
+import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
+import UnitGroupDrawer from "@/app/[locale]/main/unit-groups/drawer/UnitGroupDrawer";
 import { fetchUnitGroups } from "@/services/unitGroupsApi";
 import { fetchUnitOfMeasurement } from "@/services/unitOfMeasurementsApi";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import UnitOfMeasurementDrawerForm from "./UnitOfMeasurementDrawerForm";
 import {
   UOM_CREATE_SAVE_INTENT_EVENT,
@@ -32,6 +34,7 @@ const UOM_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "unit-of-measur
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
 export default function UnitOfMeasurementDrawer({
@@ -41,14 +44,37 @@ export default function UnitOfMeasurementDrawer({
   tableSeedRecord = null,
   onClose,
   onCreated,
+  onCreateSuccess,
 }) {
   const t = useTranslations("UnitOfMeasurements");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
+  const queryClient = useQueryClient();
   const [form] = Form.useForm();
+  const [unitGroupCreateDrawerOpen, setUnitGroupCreateDrawerOpen] = useState(false);
   const lastCreateIntent = usePersistedSaveIntent(UOM_CREATE_SAVE_INTENT_KEY, UOM_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
+
+  const closeUnitGroupCreateDrawer = useCallback(() => setUnitGroupCreateDrawerOpen(false), []);
+
+  const handleDrawerClose = useCallback(() => {
+    setUnitGroupCreateDrawerOpen(false);
+    onClose();
+  }, [onClose]);
+
+  const nestedUnitGroupDrawerOpen = open && unitGroupCreateDrawerOpen;
+
+  const handleNestedUnitGroupCreated = useCallback(
+    /** @param {Record<string, unknown>} record */
+    (record) => {
+      const id = record?.id;
+      if (id == null || Number.isNaN(Number(id))) return;
+      form.setFieldValue("unit_group_id", Number(id));
+      queryClient.invalidateQueries({ queryKey: ["tenant", "unit-groups"] });
+    },
+    [form, queryClient],
+  );
 
   const defaults = useMemo(
     () => ({
@@ -123,13 +149,32 @@ export default function UnitOfMeasurementDrawer({
 
   const unitGroupsData = Array.isArray(unitGroupsQuery.data) ? unitGroupsQuery.data : undefined;
 
+  const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
+    open,
+    mode,
+    form,
+    defaults,
+    isCreateDirtyVsBaseline: isCreateDirtyVsDefaults,
+  });
+
+  const onSyncCreateDiscardBaseline = useCallback(
+    /** @param {"fromForm" | "defaults"} kind */
+    (kind) => {
+      if (kind === "fromForm") syncBaselineFromFormFields();
+      else resetBaselineToDefaults();
+    },
+    [syncBaselineFromFormFields, resetBaselineToDefaults],
+  );
+
   const { createMutation, updateMutation, applyPayload, submitting } = useUnitOfMeasurementDrawerMutations({
     form,
     message,
     t,
     tApiErrors,
-    onClose,
+    onClose: handleDrawerClose,
     onCreated,
+    onCreateSuccess,
+    onSyncCreateDiscardBaseline,
     defaults,
     unitGroupsData,
   });
@@ -145,19 +190,19 @@ export default function UnitOfMeasurementDrawer({
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirtyVsDefaults(form, defaults);
+    if (mode === "create") return isCreateDirty();
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, defaults, editBaselineForDirty]);
+  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,
     modal,
     t,
-    onClose,
+    onClose: handleDrawerClose,
     shouldConfirmDiscard,
   });
 
@@ -258,7 +303,17 @@ export default function UnitOfMeasurementDrawer({
         unitGroupOptions={unitGroupOptions}
         unitGroupsPending={unitGroupsQuery.isPending}
         unitGroupsError={unitGroupsQuery.isError ? unitGroupsQuery.error : null}
+        onOpenUnitGroupDrawer={readOnly ? undefined : () => setUnitGroupCreateDrawerOpen(true)}
       />
+      {!readOnly ? (
+        <UnitGroupDrawer
+          open={nestedUnitGroupDrawerOpen}
+          mode="create"
+          unitGroupId={null}
+          onClose={closeUnitGroupCreateDrawer}
+          onCreateSuccess={handleNestedUnitGroupCreated}
+        />
+      ) : null}
     </ResourceCrudDrawer>
   );
 }

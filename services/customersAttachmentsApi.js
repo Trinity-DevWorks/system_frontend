@@ -1,5 +1,7 @@
 import tenantApiService from "@/API/TenantApiService";
-import { tenantApiClient } from "@/lib/axios";
+import { createAttachmentBlobApi } from "@/services/attachmentBlob";
+
+const blobApi = createAttachmentBlobApi("customers");
 
 /**
  * @param {number | string} customerId
@@ -15,10 +17,10 @@ export async function fetchCustomerAttachments(customerId) {
  * @param {File | Blob} file
  * @returns {Promise<unknown>}
  */
-export function uploadCustomerAttachment(customerId, file) {
+export function uploadCustomerAttachment(customerId, file, config = {}) {
   const fd = new FormData();
   fd.append("file", file);
-  return tenantApiService("POST", `customers/${customerId}/attachments`, fd);
+  return tenantApiService("POST", `customers/${customerId}/attachments`, fd, config);
 }
 
 /**
@@ -30,22 +32,11 @@ export function deleteCustomerAttachment(customerId, attachmentId) {
   return tenantApiService("DELETE", `customers/${customerId}/attachments/${attachmentId}`);
 }
 
-/**
- * @param {number | string} customerId
- * @param {number | string} attachmentId
- * @returns {Promise<Blob>}
- */
-export async function fetchCustomerAttachmentBlob(customerId, attachmentId) {
-  const res = await tenantApiClient.get(`customers/${customerId}/attachments/${attachmentId}/download`, {
-    responseType: "blob",
-    timeout: 120_000,
-  });
-  return res.data;
-}
-
 export const customersAttachmentsApi = {
   fetchList: fetchCustomerAttachments,
   upload: uploadCustomerAttachment,
   remove: deleteCustomerAttachment,
-  downloadBlob: fetchCustomerAttachmentBlob,
+  downloadBlob: blobApi.downloadBlob,
+  viewBlob: blobApi.viewBlob,
+  openViewInNewTab: blobApi.openViewInNewTab,
 };

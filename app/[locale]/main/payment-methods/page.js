@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deletePaymentMethod, fetchPaymentMethods } from "@/services/paymentMethodsApi";
 import PaymentMethodDrawer from "./drawer/PaymentMethodDrawer";
 import {
@@ -18,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function PaymentMethodsTable() {
   const t = useTranslations("PaymentMethods");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -39,7 +41,7 @@ function PaymentMethodsTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -117,7 +119,7 @@ function PaymentMethodsTable() {
         queryClient.setQueryData(["tenant", "payment-methods"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -132,6 +134,21 @@ function PaymentMethodsTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "payment-methods"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "payment-methods"],
+    deleteOne: deletePaymentMethod,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.paymentMethodId,
+    closeDrawer,
   });
 
   const requestDeletePaymentMethod = useCallback(
@@ -203,6 +220,8 @@ function PaymentMethodsTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1400}
         enableColumnDrag

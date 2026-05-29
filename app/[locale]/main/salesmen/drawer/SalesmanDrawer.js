@@ -2,23 +2,26 @@
 
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFooter";
+import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
+import WarehouseDrawer from "@/app/[locale]/main/warehouses/drawer/WarehouseDrawer";
 import { fetchSalesman } from "@/services/salesmenApi";
 import { fetchTenantUsers } from "@/services/tenantUsersApi";
 import { fetchWarehouses } from "@/services/warehousesApi";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import SalesmanAttachmentsPanel from "./SalesmanAttachmentsPanel";
 import SalesmanDrawerForm from "./SalesmanDrawerForm";
 import { useSalesmanDrawerMutations } from "./useSalesmanDrawerMutations";
 import {
   SALESMAN_CREATE_SAVE_INTENT_EVENT,
   SALESMAN_CREATE_SAVE_INTENT_KEY,
+  SALESMAN_WAREHOUSE_ADD_NEW_VALUE,
   commissionValueValid,
   isCreateDirtyVsDefaults,
   isEditDirtyVsLoaded,
@@ -36,13 +39,24 @@ const SALESMAN_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "salesmen"
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
-export default function SalesmanDrawer({ open, mode, salesmanId, tableSeedRecord = null, onClose, onCreated }) {
+export default function SalesmanDrawer({
+  open,
+  mode,
+  salesmanId,
+  tableSeedRecord = null,
+  onClose,
+  onCreated,
+  onCreateSuccess,
+}) {
   const t = useTranslations("Salesmen");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
+  const queryClient = useQueryClient();
   const [form] = Form.useForm();
+  const [warehouseCreateDrawerOpen, setWarehouseCreateDrawerOpen] = useState(false);
   const lastCreateIntent = usePersistedSaveIntent(SALESMAN_CREATE_SAVE_INTENT_KEY, SALESMAN_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
@@ -85,6 +99,33 @@ export default function SalesmanDrawer({ open, mode, salesmanId, tableSeedRecord
       label: String(row.name ?? row.id),
     }));
   }, [lookupsQuery.data?.warehouses]);
+
+  const warehouseOptionsForSelect = useMemo(() => {
+    if (readOnly) return warehouseOptions;
+    return [{ value: SALESMAN_WAREHOUSE_ADD_NEW_VALUE, label: t("fieldWarehouseAddNew") }, ...warehouseOptions];
+  }, [readOnly, warehouseOptions, t]);
+
+  const openWarehouseCreateDrawer = useCallback(() => {
+    setWarehouseCreateDrawerOpen(true);
+  }, []);
+
+  const handleDrawerClose = useCallback(() => {
+    setWarehouseCreateDrawerOpen(false);
+    onClose();
+  }, [onClose]);
+
+  const nestedWarehouseDrawerOpen = open && warehouseCreateDrawerOpen;
+
+  const handleNestedWarehouseCreated = useCallback(
+    /** @param {Record<string, unknown>} record */
+    (record) => {
+      const id = record?.id;
+      if (id == null || Number.isNaN(Number(id))) return;
+      form.setFieldValue("warehouse_id", Number(id));
+      queryClient.invalidateQueries({ queryKey: ["tenant", "salesman-drawer-lookups"] });
+    },
+    [form, queryClient],
+  );
 
   const userOptions = useMemo(() => {
     const u = lookupsQuery.data?.users;
@@ -142,13 +183,32 @@ export default function SalesmanDrawer({ open, mode, salesmanId, tableSeedRecord
     return requiredFieldsValid(fn, ln) && commissionValueValid(ct, commissionValueWatch);
   }, [firstWatch, lastWatch, commissionTypeWatch, commissionValueWatch]);
 
+  const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
+    open,
+    mode,
+    form,
+    defaults,
+    isCreateDirtyVsBaseline: isCreateDirtyVsDefaults,
+  });
+
+  const onSyncCreateDiscardBaseline = useCallback(
+    /** @param {"fromForm" | "defaults"} kind */
+    (kind) => {
+      if (kind === "fromForm") syncBaselineFromFormFields();
+      else resetBaselineToDefaults();
+    },
+    [syncBaselineFromFormFields, resetBaselineToDefaults],
+  );
+
   const { createMutation, updateMutation, applyPayload, submitting } = useSalesmanDrawerMutations({
     form,
     message,
     t,
     tApiErrors,
-    onClose,
+    onClose: handleDrawerClose,
     onCreated,
+    onCreateSuccess,
+    onSyncCreateDiscardBaseline,
     defaults,
   });
 
@@ -163,19 +223,19 @@ export default function SalesmanDrawer({ open, mode, salesmanId, tableSeedRecord
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirtyVsDefaults(form, defaults);
+    if (mode === "create") return isCreateDirty();
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, defaults, editBaselineForDirty]);
+  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,
     modal,
     t,
-    onClose,
+    onClose: handleDrawerClose,
     shouldConfirmDiscard,
   });
 
@@ -269,11 +329,22 @@ export default function SalesmanDrawer({ open, mode, salesmanId, tableSeedRecord
         form={form}
         readOnly={readOnly}
         t={t}
-        warehouseOptions={warehouseOptions}
+        warehouseOptions={warehouseOptionsForSelect}
+        addWarehouseSentinel={readOnly ? null : SALESMAN_WAREHOUSE_ADD_NEW_VALUE}
+        onOpenWarehouseDrawer={openWarehouseCreateDrawer}
         userOptions={userOptions}
         lookupsLoading={lookupsQuery.isPending}
       />
       <SalesmanAttachmentsPanel open={open} salesmanId={salesmanId} readOnly={readOnly} />
+      {!readOnly ? (
+        <WarehouseDrawer
+          open={nestedWarehouseDrawerOpen}
+          mode="create"
+          warehouseId={null}
+          onClose={() => setWarehouseCreateDrawerOpen(false)}
+          onCreateSuccess={handleNestedWarehouseCreated}
+        />
+      ) : null}
     </ResourceCrudDrawer>
   );
 }

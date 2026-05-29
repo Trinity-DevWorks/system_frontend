@@ -1,23 +1,46 @@
 "use client";
 
-/*
- * Just the form fields for a category (code, name, color, description, active switch).
- * No save logic here—only labels, inputs, and validation rules.
- */
-
+import LookupSelectWithCreate from "@/components/resource-drawer/LookupSelectWithCreate";
+import { buildParentCategoryOptions } from "@/lib/categories/categoryTree";
 import { ColorPicker, Form, Input, Switch } from "antd";
-import { CODE_PATTERN, COLOR_PATTERN } from "./categoryDrawerUtils";
+import { CATEGORY_LOOKUP_ADD_PARENT, CODE_PATTERN, COLOR_PATTERN } from "./categoryDrawerUtils";
 
 /**
  * @param {{
  *   form: import("antd").FormInstance;
  *   readOnly: boolean;
  *   t: (key: string) => string;
+ *   categories: unknown[];
+ *   categoriesPending?: boolean;
+ *   excludeCategoryId?: number | null;
+ *   onOpenParentCategoryDrawer?: () => void;
  * }} props
  */
-export default function CategoryDrawerForm({ form, readOnly, t }) {
+export default function CategoryDrawerForm({
+  form,
+  readOnly,
+  t,
+  categories,
+  categoriesPending,
+  excludeCategoryId = null,
+  onOpenParentCategoryDrawer,
+}) {
+  const parentOptions = buildParentCategoryOptions(categories, excludeCategoryId);
+
   return (
     <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
+      <LookupSelectWithCreate
+        form={form}
+        name="parent_id"
+        label={t("fieldParent")}
+        readOnly={readOnly}
+        addNewSentinel={CATEGORY_LOOKUP_ADD_PARENT}
+        addNewLabel={t("fieldParentAddNew")}
+        onAddNew={onOpenParentCategoryDrawer}
+        options={parentOptions}
+        loading={categoriesPending}
+        placeholder={t("fieldParentPlaceholder")}
+      />
       <Form.Item
         name="code"
         label={t("fieldCode")}

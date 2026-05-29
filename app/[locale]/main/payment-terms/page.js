@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deletePaymentTerm, fetchPaymentTerms } from "@/services/paymentTermsApi";
 import PaymentTermDrawer from "./drawer/PaymentTermDrawer";
 import {
@@ -17,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function PaymentTermsTable() {
   const t = useTranslations("PaymentTerms");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -38,7 +40,7 @@ function PaymentTermsTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -115,7 +117,7 @@ function PaymentTermsTable() {
         queryClient.setQueryData(["tenant", "payment-terms"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -130,6 +132,21 @@ function PaymentTermsTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "payment-terms"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "payment-terms"],
+    deleteOne: deletePaymentTerm,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.paymentTermId,
+    closeDrawer,
   });
 
   const requestDeletePaymentTerm = useCallback(
@@ -200,6 +217,8 @@ function PaymentTermsTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1280}
         enableColumnDrag

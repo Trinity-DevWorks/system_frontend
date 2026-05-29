@@ -2,6 +2,7 @@
 
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFooter";
+import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
@@ -30,9 +31,18 @@ const WAREHOUSE_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "warehous
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
-export default function WarehouseDrawer({ open, mode, warehouseId, tableSeedRecord = null, onClose, onCreated }) {
+export default function WarehouseDrawer({
+  open,
+  mode,
+  warehouseId,
+  tableSeedRecord = null,
+  onClose,
+  onCreated,
+  onCreateSuccess,
+}) {
   const t = useTranslations("Warehouses");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
@@ -47,6 +57,10 @@ export default function WarehouseDrawer({ open, mode, warehouseId, tableSeedReco
       shortcut_name: "",
       is_active: true,
       is_default: false,
+      is_default_sales: false,
+      is_default_production: false,
+      is_default_purchase: false,
+      is_default_storage: false,
     }),
     [],
   );
@@ -58,6 +72,10 @@ export default function WarehouseDrawer({ open, mode, warehouseId, tableSeedReco
       shortcut_name: r.shortcut_name,
       is_active: Boolean(r.is_active),
       is_default: Boolean(r.is_default),
+      is_default_sales: Boolean(r.is_default_sales),
+      is_default_production: Boolean(r.is_default_production),
+      is_default_purchase: Boolean(r.is_default_purchase),
+      is_default_storage: Boolean(r.is_default_storage),
     }),
     [],
   );
@@ -84,6 +102,23 @@ export default function WarehouseDrawer({ open, mode, warehouseId, tableSeedReco
     return requiredFieldsValid(name, shortcutName);
   }, [nameWatch, shortcutNameWatch]);
 
+  const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
+    open,
+    mode,
+    form,
+    defaults,
+    isCreateDirtyVsBaseline: isCreateDirtyVsDefaults,
+  });
+
+  const onSyncCreateDiscardBaseline = useCallback(
+    /** @param {"fromForm" | "defaults"} kind */
+    (kind) => {
+      if (kind === "fromForm") syncBaselineFromFormFields();
+      else resetBaselineToDefaults();
+    },
+    [syncBaselineFromFormFields, resetBaselineToDefaults],
+  );
+
   const { createMutation, updateMutation, applyPayload, submitting } = useWarehouseDrawerMutations({
     form,
     message,
@@ -91,6 +126,8 @@ export default function WarehouseDrawer({ open, mode, warehouseId, tableSeedReco
     tApiErrors,
     onClose,
     onCreated,
+    onCreateSuccess,
+    onSyncCreateDiscardBaseline,
     defaults,
   });
 
@@ -105,13 +142,13 @@ export default function WarehouseDrawer({ open, mode, warehouseId, tableSeedReco
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirtyVsDefaults(form, defaults);
+    if (mode === "create") return isCreateDirty();
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, defaults, editBaselineForDirty]);
+  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,

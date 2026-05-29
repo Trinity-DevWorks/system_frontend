@@ -2,6 +2,7 @@
 
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFooter";
+import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
@@ -30,6 +31,7 @@ const PAYMENT_TERM_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "payme
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
 export default function PaymentTermDrawer({
@@ -39,6 +41,7 @@ export default function PaymentTermDrawer({
   tableSeedRecord = null,
   onClose,
   onCreated,
+  onCreateSuccess,
 }) {
   const t = useTranslations("PaymentTerms");
   const tApiErrors = useTranslations("ApiErrors");
@@ -98,6 +101,23 @@ export default function PaymentTermDrawer({
     return requiredFieldsValid(code, name);
   }, [codeWatch, nameWatch]);
 
+  const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
+    open,
+    mode,
+    form,
+    defaults,
+    isCreateDirtyVsBaseline: isCreateDirtyVsDefaults,
+  });
+
+  const onSyncCreateDiscardBaseline = useCallback(
+    /** @param {"fromForm" | "defaults"} kind */
+    (kind) => {
+      if (kind === "fromForm") syncBaselineFromFormFields();
+      else resetBaselineToDefaults();
+    },
+    [syncBaselineFromFormFields, resetBaselineToDefaults],
+  );
+
   const { createMutation, updateMutation, applyPayload, submitting } = usePaymentTermDrawerMutations({
     form,
     message,
@@ -105,6 +125,8 @@ export default function PaymentTermDrawer({
     tApiErrors,
     onClose,
     onCreated,
+    onCreateSuccess,
+    onSyncCreateDiscardBaseline,
     defaults,
   });
 
@@ -119,13 +141,13 @@ export default function PaymentTermDrawer({
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirtyVsDefaults(form, defaults);
+    if (mode === "create") return isCreateDirty();
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, defaults, editBaselineForDirty]);
+  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,

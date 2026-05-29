@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteCurrency, fetchCurrencies } from "@/services/currenciesApi";
 import { SwapOutlined } from "@ant-design/icons";
 import CurrencyRateHistoryModal from "./CurrencyRateHistoryModal";
@@ -16,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function CurrenciesTable() {
   const t = useTranslations("Currencies");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -37,7 +39,7 @@ function CurrenciesTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -109,7 +111,7 @@ function CurrenciesTable() {
         queryClient.setQueryData(["tenant", "currencies"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -124,6 +126,21 @@ function CurrenciesTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "currencies"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "currencies"],
+    deleteOne: deleteCurrency,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.currencyId,
+    closeDrawer,
   });
 
   const requestDeleteCurrency = useCallback(
@@ -196,6 +213,8 @@ function CurrenciesTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1280}
         enableColumnDrag

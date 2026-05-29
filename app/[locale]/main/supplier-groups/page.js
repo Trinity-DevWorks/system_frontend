@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteSupplierGroup, fetchSupplierGroups } from "@/services/supplierGroupsApi";
 import SupplierGroupDrawer from "./drawer/SupplierGroupDrawer";
 import { getSupplierGroupTableColumns } from "./getSupplierGroupTableColumns";
@@ -13,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function SupplierGroupsTable() {
   const t = useTranslations("SupplierGroups");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -34,7 +36,7 @@ function SupplierGroupsTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -103,7 +105,7 @@ function SupplierGroupsTable() {
         queryClient.setQueryData(["tenant", "supplier-groups"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -118,6 +120,21 @@ function SupplierGroupsTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "supplier-groups"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "supplier-groups"],
+    deleteOne: deleteSupplierGroup,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.supplierGroupId,
+    closeDrawer,
   });
 
   const requestDeleteSupplierGroup = useCallback(
@@ -180,6 +197,8 @@ function SupplierGroupsTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1080}
         enableColumnDrag

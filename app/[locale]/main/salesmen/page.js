@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteSalesman, fetchSalesmen } from "@/services/salesmenApi";
 import SalesmanDrawer from "./drawer/SalesmanDrawer";
 import { getSalesmanStatusLabel, getSalesmanTableColumns } from "./getSalesmanTableColumns";
@@ -13,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function SalesmenTable() {
   const t = useTranslations("Salesmen");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -34,7 +36,7 @@ function SalesmenTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -110,7 +112,7 @@ function SalesmenTable() {
         queryClient.setQueryData(["tenant", "salesmen"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -125,6 +127,21 @@ function SalesmenTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "salesmen"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "salesmen"],
+    deleteOne: deleteSalesman,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.salesmanId,
+    closeDrawer,
   });
 
   const requestDeleteSalesman = useCallback(
@@ -199,6 +216,8 @@ function SalesmenTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1320}
         enableColumnDrag

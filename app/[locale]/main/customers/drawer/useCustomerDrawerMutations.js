@@ -42,6 +42,7 @@ function mergeCurrencyBalancesForCache(oldRow, patchBalances) {
  *   tApiErrors: (key: string) => string;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
  *   defaults: Record<string, unknown>;
  *   customerGroupsData: unknown[] | undefined;
  *   currenciesData: unknown[] | undefined;
@@ -54,6 +55,7 @@ export function useCustomerDrawerMutations({
   tApiErrors,
   onClose,
   onCreated,
+  onSyncCreateDiscardBaseline,
   defaults,
   customerGroupsData,
   currenciesData,
@@ -146,18 +148,21 @@ export function useCustomerDrawerMutations({
       if (intent === "keep") {
         onCreated?.(record ?? {});
         message.success(t("drawerCreateSuccess"));
+        onSyncCreateDiscardBaseline?.("fromForm");
         return;
       }
       if (intent === "new") {
         form.resetFields();
         form.setFieldsValue(defaults);
         message.success(t("drawerCreateSuccess"));
+        onSyncCreateDiscardBaseline?.("defaults");
         return;
       }
 
       form.resetFields();
       form.setFieldsValue(defaults);
       message.success(t("drawerCreateSuccess"));
+      onSyncCreateDiscardBaseline?.("defaults");
       onClose();
     },
     onSettled: () => {

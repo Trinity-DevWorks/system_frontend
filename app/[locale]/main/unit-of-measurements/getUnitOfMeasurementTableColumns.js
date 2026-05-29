@@ -1,3 +1,4 @@
+import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import {
   DeleteOutlined,
   EditOutlined,
@@ -336,16 +337,7 @@ export function getUnitOfMeasurementTableColumns(t, options = {}) {
       key: "is_active",
       width: 120,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
-      render: (value) =>
-        value ? (
-          <Typography.Text strong>
-            {getUnitOfMeasurementStatusLabel(value, t)}
-          </Typography.Text>
-        ) : (
-          <Typography.Text type="secondary">
-            {getUnitOfMeasurementStatusLabel(value, t)}
-          </Typography.Text>
-        ),
+      render: (value) => renderActiveInactiveStatus(value, t),
     },
     {
       title: t("colCreatedAt"),

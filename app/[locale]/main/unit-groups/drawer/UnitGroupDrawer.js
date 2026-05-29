@@ -2,6 +2,7 @@
 
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFooter";
+import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
@@ -30,9 +31,18 @@ const UNIT_GROUP_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "unit-gr
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
-export default function UnitGroupDrawer({ open, mode, unitGroupId, tableSeedRecord = null, onClose, onCreated }) {
+export default function UnitGroupDrawer({
+  open,
+  mode,
+  unitGroupId,
+  tableSeedRecord = null,
+  onClose,
+  onCreated,
+  onCreateSuccess,
+}) {
   const t = useTranslations("UnitGroups");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
@@ -86,6 +96,23 @@ export default function UnitGroupDrawer({ open, mode, unitGroupId, tableSeedReco
     return requiredFieldsValid(code, name, dimensionType);
   }, [codeWatch, nameWatch, dimensionTypeWatch]);
 
+  const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
+    open,
+    mode,
+    form,
+    defaults,
+    isCreateDirtyVsBaseline: isCreateDirtyVsDefaults,
+  });
+
+  const onSyncCreateDiscardBaseline = useCallback(
+    /** @param {"fromForm" | "defaults"} kind */
+    (kind) => {
+      if (kind === "fromForm") syncBaselineFromFormFields();
+      else resetBaselineToDefaults();
+    },
+    [syncBaselineFromFormFields, resetBaselineToDefaults],
+  );
+
   const { createMutation, updateMutation, applyPayload, submitting } = useUnitGroupDrawerMutations({
     form,
     message,
@@ -93,6 +120,8 @@ export default function UnitGroupDrawer({ open, mode, unitGroupId, tableSeedReco
     tApiErrors,
     onClose,
     onCreated,
+    onCreateSuccess,
+    onSyncCreateDiscardBaseline,
     defaults,
   });
 
@@ -107,13 +136,13 @@ export default function UnitGroupDrawer({ open, mode, unitGroupId, tableSeedReco
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirtyVsDefaults(form, defaults);
+    if (mode === "create") return isCreateDirty();
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, defaults, editBaselineForDirty]);
+  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,

@@ -11,6 +11,18 @@ export async function fetchCategories({ refresh = false } = {}) {
 }
 
 /**
+ * Leaf categories only (assignable on items).
+ *
+ * @param {{ refresh?: boolean }} [options]
+ * @returns {Promise<unknown[]>}
+ */
+export async function fetchLeafCategories({ refresh = false } = {}) {
+  const qs = refresh ? "?leaves_only=1&refresh=1" : "?leaves_only=1";
+  const data = await tenantApiService("GET", `categories${qs}`);
+  return Array.isArray(data) ? data : [];
+}
+
+/**
  * @param {number | string} id
  * @returns {Promise<unknown>}
  */

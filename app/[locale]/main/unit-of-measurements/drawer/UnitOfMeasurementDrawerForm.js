@@ -1,7 +1,9 @@
 "use client";
 
+import LookupSelectWithCreate from "@/components/resource-drawer/LookupSelectWithCreate";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { Alert, Form, Input, InputNumber, Select, Switch } from "antd";
+import { Alert, Form, Input, InputNumber, Switch } from "antd";
+import { UOM_LOOKUP_ADD_UNIT_GROUP } from "./unitOfMeasurementDrawerUtils";
 
 /**
  * @param {{
@@ -12,6 +14,7 @@ import { Alert, Form, Input, InputNumber, Select, Switch } from "antd";
  *   unitGroupOptions: { value: unknown; label: string }[];
  *   unitGroupsPending: boolean;
  *   unitGroupsError: unknown;
+ *   onOpenUnitGroupDrawer?: () => void;
  * }} props
  */
 export default function UnitOfMeasurementDrawerForm({
@@ -22,6 +25,7 @@ export default function UnitOfMeasurementDrawerForm({
   unitGroupOptions,
   unitGroupsPending,
   unitGroupsError,
+  onOpenUnitGroupDrawer,
 }) {
   return (
     <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
@@ -33,20 +37,20 @@ export default function UnitOfMeasurementDrawerForm({
           message={getLocalizedApiErrorMessage(tApiErrors, unitGroupsError)}
         />
       ) : null}
-      <Form.Item
+      <LookupSelectWithCreate
+        form={form}
         name="unit_group_id"
         label={t("fieldUnitGroup")}
+        readOnly={readOnly}
+        addNewSentinel={UOM_LOOKUP_ADD_UNIT_GROUP}
+        addNewLabel={t("fieldUnitGroupAddNew")}
+        onAddNew={onOpenUnitGroupDrawer}
         rules={[{ required: true, message: t("fieldUnitGroupRequired") }]}
-      >
-        <Select
-          showSearch
-          optionFilterProp="label"
-          options={unitGroupOptions}
-          loading={unitGroupsPending}
-          placeholder={t("fieldUnitGroupPlaceholder")}
-          allowClear={false}
-        />
-      </Form.Item>
+        options={unitGroupOptions}
+        loading={unitGroupsPending}
+        placeholder={t("fieldUnitGroupPlaceholder")}
+        allowClear={false}
+      />
       <Form.Item
         name="code"
         label={t("fieldCode")}

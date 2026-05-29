@@ -2,6 +2,7 @@
 
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFooter";
+import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
@@ -30,9 +31,18 @@ const VAT_GROUP_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "vat-grou
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
-export default function VatGroupDrawer({ open, mode, vatGroupId, tableSeedRecord = null, onClose, onCreated }) {
+export default function VatGroupDrawer({
+  open,
+  mode,
+  vatGroupId,
+  tableSeedRecord = null,
+  onClose,
+  onCreated,
+  onCreateSuccess,
+}) {
   const t = useTranslations("VatGroups");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
@@ -85,6 +95,23 @@ export default function VatGroupDrawer({ open, mode, vatGroupId, tableSeedRecord
     return requiredFieldsValid(abrv, name, percentageWatch);
   }, [abrvWatch, nameWatch, percentageWatch]);
 
+  const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
+    open,
+    mode,
+    form,
+    defaults,
+    isCreateDirtyVsBaseline: isCreateDirtyVsDefaults,
+  });
+
+  const onSyncCreateDiscardBaseline = useCallback(
+    /** @param {"fromForm" | "defaults"} kind */
+    (kind) => {
+      if (kind === "fromForm") syncBaselineFromFormFields();
+      else resetBaselineToDefaults();
+    },
+    [syncBaselineFromFormFields, resetBaselineToDefaults],
+  );
+
   const { createMutation, updateMutation, applyPayload, submitting } = useVatGroupDrawerMutations({
     form,
     message,
@@ -92,6 +119,8 @@ export default function VatGroupDrawer({ open, mode, vatGroupId, tableSeedRecord
     tApiErrors,
     onClose,
     onCreated,
+    onCreateSuccess,
+    onSyncCreateDiscardBaseline,
     defaults,
   });
 
@@ -106,13 +135,13 @@ export default function VatGroupDrawer({ open, mode, vatGroupId, tableSeedRecord
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirtyVsDefaults(form, defaults);
+    if (mode === "create") return isCreateDirty();
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, defaults, editBaselineForDirty]);
+  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,

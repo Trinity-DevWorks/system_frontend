@@ -18,7 +18,9 @@ import { Button, Dropdown, Space } from "antd";
  *   runCreate: (intent: DrawerSaveIntent) => void;
  *   createIntentLabel: (intent: DrawerSaveIntent) => string;
  *   createSaveMenuItems: { key: string; label: string }[];
- *   handleEditSubmit: () => void;
+ *   handleEditSubmit?: () => void;
+ *   runEdit?: (intent: DrawerSaveIntent) => void;
+ *   editSaveDisabled?: boolean;
  *   canSubmitRequired: boolean;
  *   fetchRemoteDetail: boolean;
  *   detailEnabled: boolean;
@@ -38,6 +40,8 @@ export default function ResourceDrawerFooter({
   createIntentLabel,
   createSaveMenuItems,
   handleEditSubmit,
+  runEdit,
+  editSaveDisabled = false,
   canSubmitRequired,
   fetchRemoteDetail,
   detailEnabled,
@@ -51,7 +55,15 @@ export default function ResourceDrawerFooter({
     );
   }
 
-  if (mode === "create") {
+  const saveMenuItems = createSaveMenuItems;
+  const saveDisabled =
+    mode === "create"
+      ? createSaveDisabled
+      : editSaveDisabled || !canSubmitRequired || (fetchRemoteDetail && detailEnabled && detailQueryError);
+
+  if (mode === "create" || (mode === "edit" && runEdit)) {
+    const runSave = mode === "create" ? runCreate : /** @type {(intent: DrawerSaveIntent) => void} */ (runEdit);
+
     return (
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button onClick={requestClose} disabled={submitting}>
@@ -61,24 +73,24 @@ export default function ResourceDrawerFooter({
           <Button
             type="primary"
             loading={submitting}
-            disabled={createSaveDisabled}
-            onClick={() => runCreate(lastCreateIntent)}
+            disabled={saveDisabled}
+            onClick={() => runSave(lastCreateIntent)}
           >
             {createIntentLabel(lastCreateIntent)}
           </Button>
           <Dropdown
             trigger={["click"]}
-            disabled={createSaveDisabled}
+            disabled={saveDisabled}
             menu={{
-              items: createSaveMenuItems,
-              onClick: ({ key }) => runCreate(/** @type {DrawerSaveIntent} */ (key)),
+              items: saveMenuItems,
+              onClick: ({ key }) => runSave(/** @type {DrawerSaveIntent} */ (key)),
             }}
           >
             <Button
               type="primary"
               icon={<DownOutlined />}
               loading={submitting}
-              disabled={createSaveDisabled}
+              disabled={saveDisabled}
               aria-label={t("drawerSaveActionsMenu")}
             />
           </Dropdown>
@@ -87,19 +99,23 @@ export default function ResourceDrawerFooter({
     );
   }
 
-  return (
-    <div className="flex justify-end gap-2">
-      <Button onClick={requestClose} disabled={submitting}>
-        {t("drawerCancel")}
-      </Button>
-      <Button
-        type="primary"
-        onClick={handleEditSubmit}
-        loading={submitting}
-        disabled={!canSubmitRequired || (fetchRemoteDetail && detailEnabled && detailQueryError)}
-      >
-        {t("drawerSaveUpdate")}
-      </Button>
-    </div>
-  );
+  if (mode === "edit") {
+    return (
+      <div className="flex justify-end gap-2">
+        <Button onClick={requestClose} disabled={submitting}>
+          {t("drawerCancel")}
+        </Button>
+        <Button
+          type="primary"
+          onClick={handleEditSubmit}
+          loading={submitting}
+          disabled={!canSubmitRequired || (fetchRemoteDetail && detailEnabled && detailQueryError)}
+        >
+          {t("drawerSaveUpdate")}
+        </Button>
+      </div>
+    );
+  }
+
+  return null;
 }

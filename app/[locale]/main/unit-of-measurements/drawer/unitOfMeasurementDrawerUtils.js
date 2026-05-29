@@ -7,6 +7,8 @@
 export const UOM_CREATE_SAVE_INTENT_KEY = "unitOfMeasurementDrawer:createSaveIntent";
 export const UOM_CREATE_SAVE_INTENT_EVENT = "unitOfMeasurementDrawer:createSaveIntent:change";
 
+export const UOM_LOOKUP_ADD_UNIT_GROUP = "__uom_drawer_add_unit_group__";
+
 const CODE_PATTERN = /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
 
 /**

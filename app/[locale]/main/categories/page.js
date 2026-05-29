@@ -3,6 +3,7 @@
 import tenantApiService from "@/API/TenantApiService";
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteCategory, fetchCategories } from "@/services/categoriesApi";
 import CategoryDrawer from "./drawer/CategoryDrawer";
 import {
@@ -17,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function CategoriesTable() {
   const t = useTranslations("Categories");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -39,7 +41,7 @@ function CategoriesTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -125,7 +127,7 @@ function CategoriesTable() {
         queryClient.setQueryData(["tenant", "categories"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -140,6 +142,21 @@ function CategoriesTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "categories"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "categories"],
+    deleteOne: deleteCategory,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.categoryId,
+    closeDrawer,
   });
 
   const requestDeleteCategory = useCallback(
@@ -183,7 +200,7 @@ function CategoriesTable() {
       queryClient.setQueryData(["tenant", "categories"], freshData);
     } catch (err) {
       notification.error({
-        message: t("loadError"),
+        title: t("loadError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
       return { isError: true };
@@ -213,6 +230,8 @@ function CategoriesTable() {
       }}
       rowSelection={rowSelection}
       showSelectionBar
+      onBulkDelete={openBulkDeleteConfirm}
+      bulkDeleteLoading={bulkDeletePending}
       stickyHeader
       scrollX={1420}
       enableColumnDrag
