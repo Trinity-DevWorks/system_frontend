@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteWarehouse, fetchWarehouses } from "@/services/warehousesApi";
 import WarehouseDrawer from "./drawer/WarehouseDrawer";
 import {
@@ -17,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function WarehousesTable() {
   const t = useTranslations("Warehouses");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -38,7 +40,7 @@ function WarehousesTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -115,7 +117,7 @@ function WarehousesTable() {
         queryClient.setQueryData(["tenant", "warehouses"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -130,6 +132,21 @@ function WarehousesTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "warehouses"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "warehouses"],
+    deleteOne: deleteWarehouse,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.warehouseId,
+    closeDrawer,
   });
 
   const requestDeleteWarehouse = useCallback(
@@ -198,6 +215,8 @@ function WarehousesTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1160}
         enableColumnDrag

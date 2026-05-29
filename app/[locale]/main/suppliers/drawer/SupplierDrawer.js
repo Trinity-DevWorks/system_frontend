@@ -1,8 +1,10 @@
 "use client";
 
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
+import { useResourceDrawerHeaderFields } from "@/components/resource-drawer/useResourceDrawerHeaderFields";
 import ResourceAttachmentsPanel from "@/components/resource-drawer/ResourceAttachmentsPanel";
 import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFooter";
+import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
@@ -12,12 +14,16 @@ import { fetchPaymentTerms } from "@/services/paymentTermsApi";
 import { fetchSupplierGroups } from "@/services/supplierGroupsApi";
 import { fetchVatGroups } from "@/services/vatGroupsApi";
 import { fetchSupplier } from "@/services/suppliersApi";
+import PaymentMethodDrawer from "@/app/[locale]/main/payment-methods/drawer/PaymentMethodDrawer";
+import PaymentTermDrawer from "@/app/[locale]/main/payment-terms/drawer/PaymentTermDrawer";
+import SupplierGroupDrawer from "@/app/[locale]/main/supplier-groups/drawer/SupplierGroupDrawer";
+import VatGroupDrawer from "@/app/[locale]/main/vat-groups/drawer/VatGroupDrawer";
 import { suppliersAttachmentsApi } from "@/services/suppliersAttachmentsApi";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import SupplierDrawerForm from "./SupplierDrawerForm";
 import {
   SUPPLIER_CREATE_SAVE_INTENT_EVENT,
@@ -53,10 +59,53 @@ export default function SupplierDrawer({
   const t = useTranslations("Suppliers");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
+  const queryClient = useQueryClient();
   const [form] = Form.useForm();
+  const [nestedCreate, setNestedCreate] = useState(
+    /** @type {import("./supplierDrawerUtils").SupplierNestedCreateKey | null} */ (null),
+  );
   const lastCreateIntent = usePersistedSaveIntent(SUPPLIER_CREATE_SAVE_INTENT_KEY, SUPPLIER_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
+
+  const closeNestedCreate = useCallback(() => setNestedCreate(null), []);
+
+  const handleDrawerClose = useCallback(() => {
+    setNestedCreate(null);
+    onClose();
+  }, [onClose]);
+
+  const makeNestedCreatedHandler = useCallback(
+    /**
+     * @param {string} fieldName
+     * @param {readonly string[]} queryKey
+     */
+    (fieldName, queryKey) =>
+      /** @param {Record<string, unknown>} record */ (record) => {
+        const id = record?.id;
+        if (id == null || Number.isNaN(Number(id))) return;
+        form.setFieldValue(fieldName, Number(id));
+        queryClient.invalidateQueries({ queryKey });
+      },
+    [form, queryClient],
+  );
+
+  const onNestedSupplierGroupCreated = useMemo(
+    () => makeNestedCreatedHandler("supplier_group_id", ["tenant", "supplier-groups"]),
+    [makeNestedCreatedHandler],
+  );
+  const onNestedPaymentMethodCreated = useMemo(
+    () => makeNestedCreatedHandler("payment_method_id", ["tenant", "payment-methods"]),
+    [makeNestedCreatedHandler],
+  );
+  const onNestedPaymentTermsCreated = useMemo(
+    () => makeNestedCreatedHandler("payment_terms_id", ["tenant", "payment-terms"]),
+    [makeNestedCreatedHandler],
+  );
+  const onNestedVatGroupCreated = useMemo(
+    () => makeNestedCreatedHandler("vat_group_id", ["tenant", "vat-groups"]),
+    [makeNestedCreatedHandler],
+  );
 
   const supplierAttachmentsQueryKey = useMemo(
     () => /** @type {const} */ (["tenant", "suppliers", supplierId, "attachments"]),
@@ -209,13 +258,31 @@ export default function SupplierDrawer({
   const supplierGroupsData = Array.isArray(supplierGroupsQuery.data) ? supplierGroupsQuery.data : undefined;
   const currenciesData = Array.isArray(currenciesQuery.data) ? currenciesQuery.data : undefined;
 
+  const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
+    open,
+    mode,
+    form,
+    defaults,
+    isCreateDirtyVsBaseline: isCreateDirtyVsDefaults,
+  });
+
+  const onSyncCreateDiscardBaseline = useCallback(
+    /** @param {"fromForm" | "defaults"} kind */
+    (kind) => {
+      if (kind === "fromForm") syncBaselineFromFormFields();
+      else resetBaselineToDefaults();
+    },
+    [syncBaselineFromFormFields, resetBaselineToDefaults],
+  );
+
   const { createMutation, updateMutation, toCreatePayload, toUpdatePayload, submitting } = useSupplierDrawerMutations({
     form,
     message,
     t,
     tApiErrors,
-    onClose,
+    onClose: handleDrawerClose,
     onCreated,
+    onSyncCreateDiscardBaseline,
     defaults,
     supplierGroupsData,
     currenciesData,
@@ -232,19 +299,19 @@ export default function SupplierDrawer({
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirtyVsDefaults(form, defaults);
+    if (mode === "create") return isCreateDirty();
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, defaults, editBaselineForDirty]);
+  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,
     modal,
     t,
-    onClose,
+    onClose: handleDrawerClose,
     shouldConfirmDiscard,
   });
 
@@ -274,8 +341,20 @@ export default function SupplierDrawer({
       .catch(() => {});
   }, [readOnly, form, toUpdatePayload, mode, supplierId, updateMutation]);
 
-  const title =
+  const drawerTitle =
     mode === "create" ? t("drawerTitleCreate") : mode === "view" ? t("drawerTitleView") : t("drawerTitleEdit");
+
+  const supplierDetailRow =
+    detailQuery.data ?? (tableSeedMatches && tableSeedRecord ? tableSeedRecord : null);
+
+  const { recordName, statusActive } = useResourceDrawerHeaderFields({
+    mode,
+    form,
+    detailRow: supplierDetailRow && typeof supplierDetailRow === "object" ? supplierDetailRow : null,
+    seedRow: tableSeedRecord,
+    nameField: "name",
+    activeField: "is_active",
+  });
 
   const showDetailLoading = fetchRemoteDetail && detailQuery.isPending;
 
@@ -304,7 +383,11 @@ export default function SupplierDrawer({
 
   return (
     <ResourceCrudDrawer
-      title={title}
+      title={drawerTitle}
+      recordName={recordName}
+      statusActive={statusActive}
+      statusActiveLabel={t("statusActive")}
+      statusInactiveLabel={t("statusInactive")}
       size={800}
       open={open}
       requestClose={requestClose}
@@ -340,18 +423,53 @@ export default function SupplierDrawer({
         mode={mode}
         readOnly={readOnly}
         t={t}
-        tApiErrors={tApiErrors}
         supplierGroupOptions={supplierGroupOptions}
         supplierGroupsPending={supplierGroupsQuery.isPending}
+        onOpenSupplierGroupDrawer={readOnly ? undefined : () => setNestedCreate("supplier-group")}
         paymentMethodOptions={paymentMethodOptions}
         paymentMethodsPending={paymentMethodsQuery.isPending}
+        onOpenPaymentMethodDrawer={readOnly ? undefined : () => setNestedCreate("payment-method")}
         paymentTermOptions={paymentTermOptions}
         paymentTermsPending={paymentTermsQuery.isPending}
+        onOpenPaymentTermsDrawer={readOnly ? undefined : () => setNestedCreate("payment-terms")}
         vatGroupOptions={vatGroupOptions}
         vatGroupsPending={vatGroupsQuery.isPending}
+        onOpenVatGroupDrawer={readOnly ? undefined : () => setNestedCreate("vat-group")}
         currencies={currenciesData ?? []}
         currenciesPending={currenciesQuery.isPending}
       />
+      {!readOnly ? (
+        <>
+          <SupplierGroupDrawer
+            open={open && nestedCreate === "supplier-group"}
+            mode="create"
+            supplierGroupId={null}
+            onClose={closeNestedCreate}
+            onCreateSuccess={onNestedSupplierGroupCreated}
+          />
+          <PaymentMethodDrawer
+            open={open && nestedCreate === "payment-method"}
+            mode="create"
+            paymentMethodId={null}
+            onClose={closeNestedCreate}
+            onCreateSuccess={onNestedPaymentMethodCreated}
+          />
+          <PaymentTermDrawer
+            open={open && nestedCreate === "payment-terms"}
+            mode="create"
+            paymentTermId={null}
+            onClose={closeNestedCreate}
+            onCreateSuccess={onNestedPaymentTermsCreated}
+          />
+          <VatGroupDrawer
+            open={open && nestedCreate === "vat-group"}
+            mode="create"
+            vatGroupId={null}
+            onClose={closeNestedCreate}
+            onCreateSuccess={onNestedVatGroupCreated}
+          />
+        </>
+      ) : null}
       <ResourceAttachmentsPanel
         open={open}
         recordId={supplierId}

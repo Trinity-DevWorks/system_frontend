@@ -6,6 +6,18 @@
 
 import { Form, Input, InputNumber, Space, Switch } from "antd";
 
+const percentageRules = (t) => [
+  { required: true, message: t("fieldPercentageRequired") },
+  {
+    validator: (_, value) => {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return Promise.reject(new Error(t("fieldPercentageInvalid")));
+      if (n < 0 || n > 100) return Promise.reject(new Error(t("fieldPercentageRange")));
+      return Promise.resolve();
+    },
+  },
+];
+
 /**
  * @param {{
  *   form: import("antd").FormInstance;
@@ -40,35 +52,20 @@ export default function VatGroupDrawerForm({ form, readOnly, t }) {
       >
         <Input autoComplete="off" />
       </Form.Item>
-      <Form.Item
-        name="percentage"
-        label={t("fieldPercentage")}
-        rules={[
-          { required: true, message: t("fieldPercentageRequired") },
-          {
-            validator: (_, value) => {
-              const n = Number(value);
-              if (!Number.isFinite(n)) return Promise.reject(new Error(t("fieldPercentageInvalid")));
-              if (n < 0 || n > 100) return Promise.reject(new Error(t("fieldPercentageRange")));
-              return Promise.resolve();
-            },
-          },
-        ]}
-      >
+      <Form.Item label={t("fieldPercentage")} required={!readOnly}>
         <Space.Compact block className="w-full">
-          <InputNumber
-            min={0}
-            max={100}
-            step={0.01}
-            controls={false}
-            className="min-w-0 flex-1"
-          />
+          <div className="min-w-0 flex-1">
+            <Form.Item name="percentage" noStyle rules={percentageRules(t)}>
+              <InputNumber min={0} max={100} step={0.01} controls={false} className="w-full" />
+            </Form.Item>
+          </div>
           <Input
             readOnly
             value="%"
             tabIndex={-1}
-            className="w-10 text-center"
             aria-hidden
+            className="!w-11 shrink-0 flex-none text-center"
+            styles={{ input: { textAlign: "center" } }}
           />
         </Space.Compact>
       </Form.Item>

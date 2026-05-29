@@ -21,6 +21,8 @@ import {
  *   tApiErrors: (key: string) => string;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
+ *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
  *   defaults: Record<string, unknown>;
  *   unitGroupsData: unknown[] | undefined;
  * }} args
@@ -32,6 +34,8 @@ export function useUnitOfMeasurementDrawerMutations({
   tApiErrors,
   onClose,
   onCreated,
+  onCreateSuccess,
+  onSyncCreateDiscardBaseline,
   defaults,
   unitGroupsData,
 }) {
@@ -102,21 +106,28 @@ export function useUnitOfMeasurementDrawerMutations({
         queryClient.setQueryData(["tenant", "unit-of-measurements", id], data);
       }
 
+      if (typeof onCreateSuccess === "function" && id != null) {
+        onCreateSuccess(record ?? {});
+      }
+
       if (intent === "keep") {
         onCreated?.(record ?? {});
         message.success(t("drawerCreateSuccess"));
+        onSyncCreateDiscardBaseline?.("fromForm");
         return;
       }
       if (intent === "new") {
         form.resetFields();
         form.setFieldsValue(defaults);
         message.success(t("drawerCreateSuccess"));
+        onSyncCreateDiscardBaseline?.("defaults");
         return;
       }
 
       form.resetFields();
       form.setFieldsValue(defaults);
       message.success(t("drawerCreateSuccess"));
+      onSyncCreateDiscardBaseline?.("defaults");
       onClose();
     },
     onSettled: () => {

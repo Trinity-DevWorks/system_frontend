@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteVatGroup, fetchVatGroups } from "@/services/vatGroupsApi";
 import VatGroupDrawer from "./drawer/VatGroupDrawer";
 import { getVatGroupTableColumns } from "./getVatGroupTableColumns";
@@ -13,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function VatGroupsTable() {
   const t = useTranslations("VatGroups");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -34,7 +36,7 @@ function VatGroupsTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -101,7 +103,7 @@ function VatGroupsTable() {
         queryClient.setQueryData(["tenant", "vat-groups"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -116,6 +118,21 @@ function VatGroupsTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "vat-groups"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "vat-groups"],
+    deleteOne: deleteVatGroup,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.vatGroupId,
+    closeDrawer,
   });
 
   const requestDeleteVatGroup = useCallback(
@@ -178,6 +195,8 @@ function VatGroupsTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1180}
         enableColumnDrag

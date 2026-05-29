@@ -1,5 +1,7 @@
 import tenantApiService from "@/API/TenantApiService";
-import { tenantApiClient } from "@/lib/axios";
+import { createAttachmentBlobApi } from "@/services/attachmentBlob";
+
+const blobApi = createAttachmentBlobApi("suppliers");
 
 /**
  * @param {number | string} supplierId
@@ -15,10 +17,10 @@ export async function fetchSupplierAttachments(supplierId) {
  * @param {File | Blob} file
  * @returns {Promise<unknown>}
  */
-export function uploadSupplierAttachment(supplierId, file) {
+export function uploadSupplierAttachment(supplierId, file, config = {}) {
   const fd = new FormData();
   fd.append("file", file);
-  return tenantApiService("POST", `suppliers/${supplierId}/attachments`, fd);
+  return tenantApiService("POST", `suppliers/${supplierId}/attachments`, fd, config);
 }
 
 /**
@@ -30,22 +32,11 @@ export function deleteSupplierAttachment(supplierId, attachmentId) {
   return tenantApiService("DELETE", `suppliers/${supplierId}/attachments/${attachmentId}`);
 }
 
-/**
- * @param {number | string} supplierId
- * @param {number | string} attachmentId
- * @returns {Promise<Blob>}
- */
-export async function fetchSupplierAttachmentBlob(supplierId, attachmentId) {
-  const res = await tenantApiClient.get(`suppliers/${supplierId}/attachments/${attachmentId}/download`, {
-    responseType: "blob",
-    timeout: 120_000,
-  });
-  return res.data;
-}
-
 export const suppliersAttachmentsApi = {
   fetchList: fetchSupplierAttachments,
   upload: uploadSupplierAttachment,
   remove: deleteSupplierAttachment,
-  downloadBlob: fetchSupplierAttachmentBlob,
+  downloadBlob: blobApi.downloadBlob,
+  viewBlob: blobApi.viewBlob,
+  openViewInNewTab: blobApi.openViewInNewTab,
 };

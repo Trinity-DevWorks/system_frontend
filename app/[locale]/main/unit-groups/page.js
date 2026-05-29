@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteUnitGroup, fetchUnitGroups } from "@/services/unitGroupsApi";
 import UnitGroupDrawer from "./drawer/UnitGroupDrawer";
 import {
@@ -17,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function UnitGroupsTable() {
   const t = useTranslations("UnitGroups");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -38,7 +40,7 @@ function UnitGroupsTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -118,7 +120,7 @@ function UnitGroupsTable() {
         queryClient.setQueryData(["tenant", "unit-groups"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -133,6 +135,21 @@ function UnitGroupsTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "unit-groups"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "unit-groups"],
+    deleteOne: deleteUnitGroup,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.unitGroupId,
+    closeDrawer,
   });
 
   const requestDeleteUnitGroup = useCallback(
@@ -202,6 +219,8 @@ function UnitGroupsTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1160}
         enableColumnDrag

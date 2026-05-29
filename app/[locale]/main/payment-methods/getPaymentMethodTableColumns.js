@@ -1,3 +1,4 @@
+import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
@@ -119,12 +120,7 @@ export function getPaymentMethodTableColumns(t, actions = {}) {
       key: "is_active",
       width: 100,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
-      render: (value) =>
-        value ? (
-          <Typography.Text strong>{getPaymentMethodStatusLabel(value, t)}</Typography.Text>
-        ) : (
-          <Typography.Text type="secondary">{getPaymentMethodStatusLabel(value, t)}</Typography.Text>
-        ),
+      render: (value) => renderActiveInactiveStatus(value, t),
     },
     {
       title: t("colCreatedAt"),

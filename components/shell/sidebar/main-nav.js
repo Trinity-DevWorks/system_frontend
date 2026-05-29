@@ -13,6 +13,7 @@ import {
   ShoppingCartOutlined,
   ShoppingOutlined,
   TagsOutlined,
+  TrademarkOutlined,
   TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
@@ -33,8 +34,8 @@ const SECTION_DIVIDER_CLASS =
  */
 export const ROUTES = {
   overview: "/main/overview",
+  brands: "/main/brands",
   categories: "/main/categories",
-  subCategories: "/main/sub-categories",
   vatGroups: "/main/vat-groups",
   unitGroups: "/main/unit-groups",
   unitOfMeasurements: "/main/unit-of-measurements",
@@ -72,12 +73,8 @@ export function buildMainNavItems(t) {
       label: t("navMasterData"),
       className: SECTION_DIVIDER_CLASS,
       children: [
+        { key: ROUTES.brands, icon: <TrademarkOutlined />, label: t("navBrands") },
         { key: ROUTES.categories, icon: <TagsOutlined />, label: t("navCategories") },
-        {
-          key: ROUTES.subCategories,
-          icon: <TagsOutlined />,
-          label: t("navSubCategories"),
-        },
         { key: ROUTES.vatGroups, icon: <GoldOutlined />, label: t("navVatGroups") },
         { key: ROUTES.unitGroups, icon: <DeploymentUnitOutlined />, label: t("navUnitGroups") },
         {

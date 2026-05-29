@@ -1,3 +1,4 @@
+import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
@@ -9,12 +10,6 @@ const normalizeText = (value) =>
 
 export function getCategoryStatusLabel(value, t) {
   return value ? t("statusActive") : t("statusInactive");
-}
-
-function getStatusBadgeClass(value) {
-  return value
-    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-300"
-    : "border-red-200 bg-red-50 text-red-700 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-300";
 }
 
 /**
@@ -65,6 +60,23 @@ export function getCategoryTableColumns(t, actions = {}) {
       ellipsis: true,
     },
     {
+      title: t("colPath"),
+      dataIndex: "path_label",
+      key: "path_label",
+      width: 220,
+      ellipsis: true,
+      render: (value) => {
+        const v = normalizeText(value);
+        return v ? (
+          <Typography.Text ellipsis className="block text-xs">
+            {v}
+          </Typography.Text>
+        ) : (
+          "\u2014"
+        );
+      },
+    },
+    {
       title: t("colColor"),
       dataIndex: "color",
       key: "color",
@@ -110,17 +122,7 @@ export function getCategoryTableColumns(t, actions = {}) {
       key: "is_active",
       width: 80,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
-      render: (value) => {
-        const label = getCategoryStatusLabel(value, t);
-
-        return (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(value)}`}
-          >
-            {label}
-          </span>
-        );
-      },
+      render: (value) => renderActiveInactiveStatus(value, t),
     },
     {
       title: t("colCreatedAt"),

@@ -1,8 +1,16 @@
 "use client";
 
+import LookupSelectWithCreate from "@/components/resource-drawer/LookupSelectWithCreate";
 import dayjs from "dayjs";
 import { Button, DatePicker, Divider, Form, Input, InputNumber, Radio, Select, Space, Switch, Typography } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  CUSTOMER_LOOKUP_ADD_CUSTOMER_GROUP,
+  CUSTOMER_LOOKUP_ADD_PAYMENT_METHOD,
+  CUSTOMER_LOOKUP_ADD_PAYMENT_TERMS,
+  CUSTOMER_LOOKUP_ADD_SALESMAN,
+  CUSTOMER_LOOKUP_ADD_VAT_GROUP,
+} from "./customerDrawerUtils";
 
 const PHONE_MAX = 32;
 
@@ -37,14 +45,19 @@ function currencyOptionsForRow(currencies, currentRows, currentRowIndex, t) {
  *   t: (key: string) => string;
  *   customerGroupOptions: { value: unknown; label: string }[];
  *   customerGroupsPending: boolean;
+ *   onOpenCustomerGroupDrawer?: () => void;
  *   salesmenOptions: { value: unknown; label: string }[];
  *   salesmenPending: boolean;
+ *   onOpenSalesmanDrawer?: () => void;
  *   paymentMethodOptions: { value: unknown; label: string }[];
  *   paymentMethodsPending: boolean;
+ *   onOpenPaymentMethodDrawer?: () => void;
  *   paymentTermOptions: { value: unknown; label: string }[];
  *   paymentTermsPending: boolean;
+ *   onOpenPaymentTermsDrawer?: () => void;
  *   vatGroupOptions: { value: unknown; label: string }[];
  *   vatGroupsPending: boolean;
+ *   onOpenVatGroupDrawer?: () => void;
  *   currencies: unknown[];
  *   currenciesPending: boolean;
  * }} props
@@ -56,14 +69,19 @@ export default function CustomerDrawerForm({
   t,
   customerGroupOptions,
   customerGroupsPending,
+  onOpenCustomerGroupDrawer,
   salesmenOptions,
   salesmenPending,
+  onOpenSalesmanDrawer,
   paymentMethodOptions,
   paymentMethodsPending,
+  onOpenPaymentMethodDrawer,
   paymentTermOptions,
   paymentTermsPending,
+  onOpenPaymentTermsDrawer,
   vatGroupOptions,
   vatGroupsPending,
+  onOpenVatGroupDrawer,
   currencies,
   currenciesPending,
 }) {
@@ -116,68 +134,74 @@ export default function CustomerDrawerForm({
         />
       </Form.Item>
 
-      <Form.Item
+      <LookupSelectWithCreate
+        form={form}
         name="customer_group_id"
         label={t("fieldCustomerGroup")}
-        rules={[{ required: false }]}
-      >
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          loading={customerGroupsPending}
-          placeholder={t("fieldCustomerGroupPlaceholder")}
-          options={customerGroupOptions}
-        />
-      </Form.Item>
+        readOnly={readOnly}
+        addNewSentinel={CUSTOMER_LOOKUP_ADD_CUSTOMER_GROUP}
+        addNewLabel={t("fieldCustomerGroupAddNew")}
+        onAddNew={onOpenCustomerGroupDrawer}
+        options={customerGroupOptions}
+        loading={customerGroupsPending}
+        placeholder={t("fieldCustomerGroupPlaceholder")}
+      />
 
       <Divider titlePlacement="start" className="!mt-6">
         {t("drawerSectionCommercial")}
       </Divider>
 
-      <Form.Item name="salesman_id" label={t("fieldSalesman")}>
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          loading={salesmenPending}
-          placeholder={t("fieldSalesmanPlaceholder")}
-          options={salesmenOptions}
-        />
-      </Form.Item>
+      <LookupSelectWithCreate
+        form={form}
+        name="salesman_id"
+        label={t("fieldSalesman")}
+        readOnly={readOnly}
+        addNewSentinel={CUSTOMER_LOOKUP_ADD_SALESMAN}
+        addNewLabel={t("fieldSalesmanAddNew")}
+        onAddNew={onOpenSalesmanDrawer}
+        options={salesmenOptions}
+        loading={salesmenPending}
+        placeholder={t("fieldSalesmanPlaceholder")}
+      />
 
-      <Form.Item name="payment_method_id" label={t("fieldPaymentMethod")}>
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          loading={paymentMethodsPending}
-          placeholder={t("fieldPaymentMethodPlaceholder")}
-          options={paymentMethodOptions}
-        />
-      </Form.Item>
+      <LookupSelectWithCreate
+        form={form}
+        name="payment_method_id"
+        label={t("fieldPaymentMethod")}
+        readOnly={readOnly}
+        addNewSentinel={CUSTOMER_LOOKUP_ADD_PAYMENT_METHOD}
+        addNewLabel={t("fieldPaymentMethodAddNew")}
+        onAddNew={onOpenPaymentMethodDrawer}
+        options={paymentMethodOptions}
+        loading={paymentMethodsPending}
+        placeholder={t("fieldPaymentMethodPlaceholder")}
+      />
 
-      <Form.Item name="payment_terms_id" label={t("fieldPaymentTerms")}>
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          loading={paymentTermsPending}
-          placeholder={t("fieldPaymentTermsPlaceholder")}
-          options={paymentTermOptions}
-        />
-      </Form.Item>
+      <LookupSelectWithCreate
+        form={form}
+        name="payment_terms_id"
+        label={t("fieldPaymentTerms")}
+        readOnly={readOnly}
+        addNewSentinel={CUSTOMER_LOOKUP_ADD_PAYMENT_TERMS}
+        addNewLabel={t("fieldPaymentTermsAddNew")}
+        onAddNew={onOpenPaymentTermsDrawer}
+        options={paymentTermOptions}
+        loading={paymentTermsPending}
+        placeholder={t("fieldPaymentTermsPlaceholder")}
+      />
 
-      <Form.Item name="vat_group_id" label={t("fieldVatGroup")}>
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          loading={vatGroupsPending}
-          placeholder={t("fieldVatGroupPlaceholder")}
-          options={vatGroupOptions}
-        />
-      </Form.Item>
+      <LookupSelectWithCreate
+        form={form}
+        name="vat_group_id"
+        label={t("fieldVatGroup")}
+        readOnly={readOnly}
+        addNewSentinel={CUSTOMER_LOOKUP_ADD_VAT_GROUP}
+        addNewLabel={t("fieldVatGroupAddNew")}
+        onAddNew={onOpenVatGroupDrawer}
+        options={vatGroupOptions}
+        loading={vatGroupsPending}
+        placeholder={t("fieldVatGroupPlaceholder")}
+      />
 
       <Divider titlePlacement="start" className="!mt-6">
         {t("drawerSectionContact")}

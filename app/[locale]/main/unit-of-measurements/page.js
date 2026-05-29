@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteUnitOfMeasurement, fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
 import UnitOfMeasurementDrawer from "./drawer/UnitOfMeasurementDrawer";
 import {
@@ -38,6 +39,7 @@ const normalizeText = (value) =>
 function UnitOfMeasurementsTable() {
   const t = useTranslations("UnitOfMeasurements");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -60,7 +62,7 @@ function UnitOfMeasurementsTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -202,7 +204,7 @@ function UnitOfMeasurementsTable() {
         queryClient.setQueryData(["tenant", "unit-of-measurements"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -217,6 +219,21 @@ function UnitOfMeasurementsTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "unit-of-measurements"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "unit-of-measurements"],
+    deleteOne: deleteUnitOfMeasurement,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.unitOfMeasurementId,
+    closeDrawer,
   });
 
   const requestDeleteUnitOfMeasurement = useCallback(
@@ -304,6 +321,8 @@ function UnitOfMeasurementsTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1660}
         enableColumnDrag

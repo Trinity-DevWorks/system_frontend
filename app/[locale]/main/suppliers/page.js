@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteSupplier, fetchSuppliers } from "@/services/suppliersApi";
 import SupplierDrawer from "./drawer/SupplierDrawer";
 import { getSupplierStatusLabel, getSupplierTableColumns } from "./getSupplierTableColumns";
@@ -13,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 function SuppliersTable() {
   const t = useTranslations("Suppliers");
   const tApiErrors = useTranslations("ApiErrors");
+  const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
   const queryClient = useQueryClient();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -34,7 +36,7 @@ function SuppliersTable() {
   useEffect(() => {
     if (!isError || !error) return;
     notification.error({
-      message: t("loadError"),
+      title: t("loadError"),
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
@@ -113,7 +115,7 @@ function SuppliersTable() {
         queryClient.setQueryData(["tenant", "suppliers"], context.previous);
       }
       notification.error({
-        message: t("deleteError"),
+        title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
       });
     },
@@ -128,6 +130,21 @@ function SuppliersTable() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["tenant", "suppliers"] });
     },
+  });
+
+  const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
+    listQueryKey: ["tenant", "suppliers"],
+    deleteOne: deleteSupplier,
+    message,
+    notification,
+    modal,
+    tDataTable,
+    tEntity: t,
+    tApiErrors,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    getOpenRecordId: () => drawerSessionRef.current.supplierId,
+    closeDrawer,
   });
 
   const requestDeleteSupplier = useCallback(
@@ -200,6 +217,8 @@ function SuppliersTable() {
         }}
         rowSelection={rowSelection}
         showSelectionBar
+        onBulkDelete={openBulkDeleteConfirm}
+        bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1560}
         enableColumnDrag
@@ -223,7 +242,7 @@ function SuppliersTable() {
 
 export default function SuppliersPage() {
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col p-2">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
       <SuppliersTable />
     </div>
   );

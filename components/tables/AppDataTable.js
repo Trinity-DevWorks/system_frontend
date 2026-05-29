@@ -77,6 +77,8 @@ const PICKER_SKIP = new Set(["actions"]);
  *   extra?: import("react").ReactNode,
  * }} [props.toolbar]
  * @param {import("antd/es/table/interface").TableRowSelection<any> | false} [props.rowSelection]
+ * @param {(selectedKeys?: import("react").Key[]) => void} [props.onBulkDelete]
+ * @param {boolean} [props.bulkDeleteLoading]
  * @param {boolean} [props.showSelectionBar]
  * @param {boolean} [props.stickyHeader]
  * @param {number} [props.scrollX]
@@ -105,6 +107,8 @@ export default function AppDataTable({
   emptyText,
   toolbar = {},
   rowSelection,
+  onBulkDelete,
+  bulkDeleteLoading = false,
   showSelectionBar = true,
   stickyHeader = true,
   scrollX = DEFAULT_SCROLL_X,
@@ -759,11 +763,24 @@ export default function AppDataTable({
             >
               {t("clearSelection")}
             </Button>
-            <Tooltip title={t("bulkSoon")}>
-              <Button type="link" size="small" disabled>
-                {t("bulkActions")}
+            {typeof onBulkDelete === "function" ? (
+              <Button
+                type="link"
+                danger
+                size="small"
+                loading={bulkDeleteLoading}
+                onClick={() => onBulkDelete(selectedKeys)}
+                aria-label={t("bulkDeleteAria")}
+              >
+                {t("bulkDelete")}
               </Button>
-            </Tooltip>
+            ) : (
+              <Tooltip title={t("bulkSoon")}>
+                <Button type="link" size="small" disabled>
+                  {t("bulkActions")}
+                </Button>
+              </Tooltip>
+            )}
           </Space>
         </div>
       ) : null}

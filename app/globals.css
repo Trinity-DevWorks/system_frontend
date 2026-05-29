@@ -225,6 +225,11 @@ html {
   background: transparent;
 }
 
+.app-data-table th.items-table-image-cell,
+.app-data-table td.items-table-image-cell {
+  padding: 4px 6px !important;
+}
+
 /* Keep fixed-end action column flush with table edge (no right gap). */
 .app-data-table .ant-table-thead .ant-table-cell-fix-end.ant-table-cell-fix-sticky,
 .app-data-table .ant-table-tbody .ant-table-cell-fix-end.ant-table-cell-fix-sticky {
@@ -234,6 +239,40 @@ html {
 /* Remove rc-table scrollbar spacer column that can leave a visible end gap. */
 .app-data-table .ant-table-thead .ant-table-cell-scrollbar,
 .app-data-table .ant-table-tbody .ant-table-cell-scrollbar {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+.role-permissions-matrix .ant-table-wrapper,
+.role-permissions-matrix .ant-spin-nested-loading,
+.role-permissions-matrix .ant-spin-container,
+.role-permissions-matrix .ant-table {
+  height: 100%;
+}
+
+.role-permissions-matrix .ant-table-body {
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+}
+
+.role-permissions-matrix .ant-table-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.role-permissions-matrix .ant-table-body::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.role-permissions-matrix .ant-table-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.role-permissions-matrix .ant-table-thead .ant-table-cell-scrollbar,
+.role-permissions-matrix .ant-table-tbody .ant-table-cell-scrollbar {
   width: 0 !important;
   min-width: 0 !important;
   max-width: 0 !important;
@@ -596,6 +635,515 @@ html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.ant
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Resource CRUD drawers — header, tabs, footer (POS-style) */
+.resource-crud-drawer-header {
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  padding: 16px 24px !important;
+  flex-shrink: 0;
+}
+
+.resource-crud-drawer-header .ant-drawer-header-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.resource-crud-drawer-body {
+  padding: 0 24px 24px !important;
+}
+
+.resource-crud-drawer-footer {
+  border-top: 1px solid var(--ant-color-border-secondary);
+  padding: 12px 24px !important;
+}
+
+.resource-drawer-tabs .ant-tabs-nav {
+  margin: 0 0 0 !important;
+  padding: 0;
+}
+
+.resource-drawer-tabs .ant-tabs-nav::before {
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.resource-drawer-tabs .ant-tabs-tab {
+  padding: 14px 0;
+  margin: 0 24px 0 10 !important;
+  font-size: 14px;
+}
+
+.resource-drawer-tabs .ant-tabs-tab:last-child {
+  margin-inline-end: 0 !important;
+}
+
+.resource-drawer-tabs .ant-tabs-tab-btn {
+  color: var(--ant-color-text-secondary);
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.resource-drawer-tabs .ant-tabs-tab:hover .ant-tabs-tab-btn {
+  color: var(--ant-color-primary);
+}
+
+.resource-drawer-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--ant-color-primary) !important;
+  font-weight: 600;
+}
+
+.resource-drawer-tabs .ant-tabs-ink-bar {
+  height: 2px !important;
+  border-radius: 2px 2px 0 0;
+  background: var(--ant-color-primary);
+}
+
+.resource-drawer-tabs .ant-tabs-content-holder {
+  padding-top: 0;
+}
+
+.resource-drawer-tab-panel {
+  padding-top: 16px;
+}
+
+/* Item drawer — General tab form (2-col grid + toggle strip) */
+.item-general-form .ant-form-item {
+  margin-bottom: 20px;
+}
+
+.item-general-form .ant-form-item-label > label {
+  height: auto;
+}
+
+.item-general-form-label {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ant-color-text);
+  line-height: 1.4;
+}
+
+.item-general-form-label-required {
+  color: var(--ant-color-error);
+  font-weight: 500;
+}
+
+.item-general-form-label-optional {
+  font-weight: 400;
+  color: var(--ant-color-text-tertiary);
+}
+
+.item-general-form-label-help {
+  margin-inline-start: 4px;
+  font-size: 13px;
+  color: var(--ant-color-text-quaternary);
+  cursor: help;
+}
+
+.item-general-form-label-help:hover {
+  color: var(--ant-color-text-secondary);
+}
+
+.item-general-form .ant-input,
+.item-general-form .ant-input-affix-wrapper,
+.item-general-form .ant-select-selector,
+.item-general-form .ant-input-number,
+.item-general-form .ant-picker {
+  border-radius: 6px;
+}
+
+/* Lookup select/tree with integrated "+ Add new" footer (same bordered box) */
+.lookup-field-composite {
+  border: 1px solid var(--ant-color-border);
+  border-radius: 6px;
+  background: var(--ant-color-bg-container);
+  overflow: hidden;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.lookup-field-composite:focus-within {
+  border-color: var(--ant-color-primary);
+  box-shadow: 0 0 0 2px var(--ant-color-primary-bg);
+}
+
+.ant-form-item-has-error .lookup-field-composite {
+  border-color: var(--ant-color-error);
+}
+
+.ant-form-item-has-error .lookup-field-composite:focus-within {
+  box-shadow: 0 0 0 2px var(--ant-color-error-bg);
+}
+
+.lookup-field-composite-control .ant-select,
+.lookup-field-composite-control .ant-select-selector {
+  width: 100%;
+}
+
+.lookup-field-composite .ant-select.ant-select-borderless .ant-select-selector,
+.lookup-field-composite .ant-select-borderless .ant-select-selector,
+.lookup-field-composite .ant-tree-select.ant-select-borderless .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.lookup-field-add-footer {
+  border-top: 1px solid var(--ant-color-border-secondary);
+  padding: 6px 11px 7px;
+}
+
+.lookup-field-add-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.lookup-field-add-link::before {
+  content: "+ ";
+  font-weight: 600;
+}
+
+/* Item drawer — Recipe / Bundle lines panels */
+.item-lines-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item-lines-panel > .resource-drawer-panel-header {
+  margin-bottom: 0 !important;
+}
+
+.item-lines-section-card {
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  padding: 16px 20px 20px;
+  background: var(--ant-color-bg-container);
+}
+
+/* Recipe yield block */
+.item-lines-yield-card .item-general-form .ant-form-item {
+  margin-bottom: 0;
+}
+
+.item-lines-yield-row.ant-row {
+  flex-wrap: nowrap !important;
+  width: auto;
+  max-width: 100%;
+  margin-inline: 0 !important;
+}
+
+.item-lines-yield-row > .item-lines-yield-col.ant-col {
+  flex: 0 0 auto !important;
+  min-width: 0;
+}
+
+.item-lines-yield-col-qty.ant-col {
+  width: 120px !important;
+  max-width: 120px !important;
+}
+
+.item-lines-yield-col-uom.ant-col {
+  width: 200px !important;
+  max-width: 200px !important;
+}
+
+.item-lines-yield-card .item-lines-yield-row .ant-input-number,
+.item-lines-yield-card .item-lines-yield-row .ant-select {
+  width: 100%;
+  max-width: 100%;
+}
+
+.item-lines-grid {
+  display: grid;
+  gap: 12px 16px;
+  align-items: end;
+}
+
+.item-lines-grid--recipe {
+  grid-template-columns: minmax(0, 1fr) 112px 148px 40px;
+}
+
+.item-lines-grid--bundle {
+  grid-template-columns: minmax(0, 1fr) 112px 40px;
+}
+
+.item-lines-grid > .item-lines-col-label {
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ant-color-text);
+  line-height: 1.4;
+}
+
+.item-lines-col-actions {
+  visibility: hidden;
+}
+
+.item-lines-row {
+  display: contents;
+}
+
+.item-lines-row > .item-lines-row-field {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.item-lines-row:last-of-type > .item-lines-row-field {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.item-lines-row-delete.ant-btn {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  margin-bottom: 12px;
+  border-color: var(--ant-color-error);
+  color: var(--ant-color-error);
+  background: var(--ant-color-bg-container);
+}
+
+.item-lines-row-delete.ant-btn:not(:disabled):hover {
+  border-color: var(--ant-color-error) !important;
+  color: var(--ant-color-error) !important;
+  background: var(--ant-color-error-bg) !important;
+}
+
+.item-lines-row:last-of-type > .item-lines-row-delete {
+  margin-bottom: 0;
+}
+
+.item-lines-add-row {
+  margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .item-lines-grid--recipe,
+  .item-lines-grid--bundle {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .item-lines-grid > .item-lines-col-label {
+    display: none;
+  }
+
+  .item-lines-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px 12px;
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--ant-color-border-secondary);
+  }
+
+  .item-lines-row > .item-lines-row-field {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .item-lines-row > .item-lines-row-field:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .item-lines-row > .item-lines-row-delete {
+    margin-bottom: 0;
+    align-self: end;
+  }
+}
+
+.item-general-form-toggles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 4px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ant-color-bg-container);
+}
+
+.item-general-form-toggle-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border-inline-end: 1px solid var(--ant-color-border-secondary);
+  min-width: 0;
+}
+
+.item-general-form-toggle-cell:last-child {
+  border-inline-end: none;
+}
+
+.item-general-form-toggle-cell .item-general-form-label {
+  width: 100%;
+}
+
+.item-general-form-status-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.item-general-form-status-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ant-color-text);
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .item-general-form-toggles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .item-general-form-toggle-cell:nth-child(2) {
+    border-inline-end: none;
+  }
+
+  .item-general-form-toggle-cell:nth-child(1),
+  .item-general-form-toggle-cell:nth-child(3) {
+    border-bottom: 1px solid var(--ant-color-border-secondary);
+  }
+}
+
+@media (max-width: 520px) {
+  .item-general-form-toggles {
+    grid-template-columns: 1fr;
+  }
+
+  .item-general-form-toggle-cell {
+    border-inline-end: none;
+    border-bottom: 1px solid var(--ant-color-border-secondary);
+  }
+
+  .item-general-form-toggle-cell:last-child {
+    border-bottom: none;
+  }
+}
+
+/* Bordered data tables inside resource drawers (e.g. item UOM pricing) */
+.resource-drawer-data-table .ant-table {
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Let Select dropdowns in inline table rows render above the drawer/table clip */
+.resource-drawer-data-table .ant-table-container,
+.resource-drawer-data-table .ant-table-content {
+  overflow: visible;
+}
+
+.resource-drawer-data-table .ant-select-dropdown {
+  z-index: 1100;
+}
+
+.resource-drawer-data-table .ant-table-thead > tr > th {
+  background: var(--ant-color-bg-container) !important;
+  background-color: var(--ant-color-bg-container) !important;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ant-color-text-secondary);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.resource-drawer-data-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  vertical-align: middle;
+}
+
+.resource-drawer-data-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none;
+}
+
+.resource-drawer-data-table .resource-drawer-uom-row-editing > td,
+.resource-drawer-data-table .resource-drawer-barcode-row-editing > td,
+.resource-drawer-data-table .resource-drawer-supplier-row-editing > td {
+  background: var(--ant-color-fill-quaternary) !important;
+}
+
+/* Sticky Actions column: opaque bg-container (fill-quaternary is ~4% alpha in dark theme) */
+.resource-drawer-data-table.ant-table-wrapper .ant-table.ant-table-fix-end-shadow-show .ant-table-container::after {
+  display: none !important;
+}
+
+.resource-drawer-data-table.ant-table-wrapper th.resource-drawer-actions-header.ant-table-cell-fix-end,
+.resource-drawer-data-table.ant-table-wrapper td.resource-drawer-actions-cell.ant-table-cell-fix-end {
+  position: sticky !important;
+  z-index: calc(var(--columns-count, 12) * 2 + 12) !important;
+  isolation: isolate;
+  overflow: hidden !important;
+  background: var(--ant-color-bg-container) !important;
+  background-color: var(--ant-color-bg-container) !important;
+}
+
+.resource-drawer-data-table.ant-table-wrapper th.resource-drawer-actions-header.ant-table-cell-fix-end::after,
+.resource-drawer-data-table.ant-table-wrapper td.resource-drawer-actions-cell.ant-table-cell-fix-end::after {
+  box-shadow: none !important;
+  opacity: 1 !important;
+  width: 14px !important;
+  background: var(--ant-color-bg-container) !important;
+  background-color: var(--ant-color-bg-container) !important;
+}
+
+.resource-drawer-data-table.ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td.resource-drawer-actions-cell.ant-table-cell-fix-end {
+  background: var(--ant-table-row-hover-bg) !important;
+  background-color: var(--ant-table-row-hover-bg) !important;
+}
+
+.resource-drawer-data-table.ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td.resource-drawer-actions-cell.ant-table-cell-fix-end::after {
+  background: var(--ant-table-row-hover-bg) !important;
+  background-color: var(--ant-table-row-hover-bg) !important;
+}
+
+.resource-drawer-pricing-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+  .resource-drawer-pricing-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.resource-drawer-pricing-card {
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.resource-drawer-pricing-card-label {
+  display: block;
+  font-size: 12px;
+  color: var(--ant-color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.resource-drawer-pricing-card-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ant-color-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

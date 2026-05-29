@@ -11,7 +11,9 @@ const { TextArea } = Input;
  *   form: import("antd").FormInstance;
  *   readOnly: boolean;
  *   t: (key: string) => string;
- *   warehouseOptions: { value: number; label: string }[];
+ *   warehouseOptions: { value: number | string; label: string }[];
+ *   addWarehouseSentinel?: string | null;
+ *   onOpenWarehouseDrawer?: () => void;
  *   userOptions: { value: number; label: string }[];
  *   lookupsLoading?: boolean;
  * }} props
@@ -21,6 +23,8 @@ export default function SalesmanDrawerForm({
   readOnly,
   t,
   warehouseOptions,
+  addWarehouseSentinel = null,
+  onOpenWarehouseDrawer,
   userOptions,
   lookupsLoading,
 }) {
@@ -31,6 +35,19 @@ export default function SalesmanDrawerForm({
       form.setFieldValue("commission_value", undefined);
     }
   }, [commissionType, form]);
+
+  const sentinel = addWarehouseSentinel != null ? String(addWarehouseSentinel) : null;
+  const warehouseGetValueFromEvent = sentinel
+    ? (/** @type {number | string | undefined | null} */ v) => (v === sentinel ? form.getFieldValue("warehouse_id") : v)
+    : undefined;
+  const warehouseOnSelect =
+    sentinel && onOpenWarehouseDrawer
+      ? (/** @type {number | string} */ value) => {
+          if (value === sentinel) {
+            onOpenWarehouseDrawer();
+          }
+        }
+      : undefined;
 
   return (
     <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
@@ -113,7 +130,7 @@ export default function SalesmanDrawerForm({
       <Form.Item name="hire_date" label={t("fieldHireDate")}>
         <DatePicker className="w-full" format="YYYY-MM-DD" allowClear />
       </Form.Item>
-      <Form.Item name="warehouse_id" label={t("fieldWarehouse")}>
+      <Form.Item name="warehouse_id" label={t("fieldWarehouse")} getValueFromEvent={warehouseGetValueFromEvent}>
         <Select
           allowClear
           showSearch
@@ -121,6 +138,7 @@ export default function SalesmanDrawerForm({
           loading={lookupsLoading}
           options={warehouseOptions}
           placeholder={t("fieldWarehousePlaceholder")}
+          onSelect={warehouseOnSelect}
         />
       </Form.Item>
       <Form.Item name="user_id" label={t("fieldUser")}>

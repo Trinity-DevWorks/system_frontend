@@ -1,3 +1,4 @@
+import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
@@ -84,12 +85,7 @@ export function getSupplierTableColumns(t, actions = {}) {
       key: "is_active",
       width: 120,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
-      render: (value) =>
-        value ? (
-          <Typography.Text strong>{getSupplierStatusLabel(value, t)}</Typography.Text>
-        ) : (
-          <Typography.Text type="secondary">{getSupplierStatusLabel(value, t)}</Typography.Text>
-        ),
+      render: (value) => renderActiveInactiveStatus(value, t),
     },
     {
       title: t("colCreatedAt"),

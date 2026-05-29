@@ -26,10 +26,22 @@ import {
  *   tApiErrors: (key: string) => string;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
+ *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
  *   defaults: Record<string, unknown>;
  * }} args
  */
-export function useCategoryDrawerMutations({ form, message, t, tApiErrors, onClose, onCreated, defaults }) {
+export function useCategoryDrawerMutations({
+  form,
+  message,
+  t,
+  tApiErrors,
+  onClose,
+  onCreated,
+  onCreateSuccess,
+  onSyncCreateDiscardBaseline,
+  defaults,
+}) {
   const queryClient = useQueryClient();
 
   const applyPayload = useCallback((values) => categoryFormValuesToPayload(values), []);
@@ -88,9 +100,14 @@ export function useCategoryDrawerMutations({ form, message, t, tApiErrors, onClo
         queryClient.setQueryData(["tenant", "categories", id], data);
       }
 
+      if (typeof onCreateSuccess === "function" && id != null) {
+        onCreateSuccess(record ?? {});
+      }
+
       if (intent === "keep") {
         onCreated?.(record ?? {});
         message.success(t("drawerCreateSuccess"));
+        onSyncCreateDiscardBaseline?.("fromForm");
         return;
       }
 
@@ -98,12 +115,14 @@ export function useCategoryDrawerMutations({ form, message, t, tApiErrors, onClo
         form.resetFields();
         form.setFieldsValue(defaults);
         message.success(t("drawerCreateSuccess"));
+        onSyncCreateDiscardBaseline?.("defaults");
         return;
       }
 
       form.resetFields();
       form.setFieldsValue(defaults);
       message.success(t("drawerCreateSuccess"));
+      onSyncCreateDiscardBaseline?.("defaults");
       onClose();
     },
     onSettled: () => {

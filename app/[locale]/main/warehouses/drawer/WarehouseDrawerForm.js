@@ -46,6 +46,18 @@ export default function WarehouseDrawerForm({ form, readOnly, t }) {
       <Form.Item name="is_default" label={t("fieldDefault")} valuePropName="checked">
         <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />
       </Form.Item>
+      <Form.Item name="is_default_sales" label={t("fieldDefaultSales")} valuePropName="checked">
+        <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />
+      </Form.Item>
+      <Form.Item name="is_default_production" label={t("fieldDefaultProduction")} valuePropName="checked">
+        <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />
+      </Form.Item>
+      <Form.Item name="is_default_purchase" label={t("fieldDefaultPurchase")} valuePropName="checked">
+        <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />
+      </Form.Item>
+      <Form.Item name="is_default_storage" label={t("fieldDefaultStorage")} valuePropName="checked">
+        <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />
+      </Form.Item>
     </Form>
   );
 }

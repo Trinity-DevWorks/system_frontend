@@ -9,6 +9,15 @@ import dayjs from "dayjs";
 export const CUSTOMER_CREATE_SAVE_INTENT_KEY = "customerDrawer:createSaveIntent";
 export const CUSTOMER_CREATE_SAVE_INTENT_EVENT = "customerDrawer:createSaveIntent:change";
 
+/** Select sentinels for nested create drawers (not real relation ids). */
+export const CUSTOMER_LOOKUP_ADD_CUSTOMER_GROUP = "__customer_drawer_add_customer_group__";
+export const CUSTOMER_LOOKUP_ADD_SALESMAN = "__customer_drawer_add_salesman__";
+export const CUSTOMER_LOOKUP_ADD_PAYMENT_METHOD = "__customer_drawer_add_payment_method__";
+export const CUSTOMER_LOOKUP_ADD_PAYMENT_TERMS = "__customer_drawer_add_payment_terms__";
+export const CUSTOMER_LOOKUP_ADD_VAT_GROUP = "__customer_drawer_add_vat_group__";
+
+/** @typedef {"customer-group" | "salesman" | "payment-method" | "payment-terms" | "vat-group"} CustomerNestedCreateKey */
+
 /** @param {unknown} value */
 export function optionalRelationId(value) {
   if (value == null || value === "") return null;

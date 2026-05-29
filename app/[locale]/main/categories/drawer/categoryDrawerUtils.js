@@ -10,12 +10,14 @@ import { normalizeHexColor } from "@/lib/drawer/normalizeHexColor";
 export const CATEGORY_CREATE_SAVE_INTENT_KEY = "categoryDrawer:createSaveIntent";
 export const CATEGORY_CREATE_SAVE_INTENT_EVENT = "categoryDrawer:createSaveIntent:change";
 
+export const CATEGORY_LOOKUP_ADD_PARENT = "__category_drawer_add_parent__";
+
 export const CODE_PATTERN = /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
 export const COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
 
 /**
  * @param {import("antd").FormInstance} form
- * @param {{ code: string; name: string; color: string; description: string; is_active: boolean }} defaults
+ * @param {{ code: string; name: string; color: string; description: string; is_active: boolean; parent_id?: number | undefined }} defaults
  */
 export function isCreateDirtyVsDefaults(form, defaults) {
   const v = form.getFieldsValue(true);
@@ -24,12 +26,15 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   const description = String(v.description ?? "").trim();
   const color = normalizeHexColor(typeof v.color === "string" ? v.color : String(v.color ?? ""));
   const isActive = v.is_active !== false;
+  const parentId = v.parent_id ?? undefined;
+  const defaultParent = defaults.parent_id ?? undefined;
 
   if (code !== String(defaults.code ?? "").trim()) return true;
   if (name !== String(defaults.name ?? "").trim()) return true;
   if (description !== String(defaults.description ?? "").trim()) return true;
   if (color !== normalizeHexColor(String(defaults.color ?? ""))) return true;
   if (isActive !== Boolean(defaults.is_active)) return true;
+  if (parentId !== defaultParent) return true;
   return false;
 }
 
@@ -44,6 +49,8 @@ export function isEditDirtyVsLoaded(form, row) {
   const description = String(v.description ?? "").trim();
   const color = normalizeHexColor(typeof v.color === "string" ? v.color : String(v.color ?? ""));
   const isActive = v.is_active !== false;
+  const parentId = v.parent_id ?? null;
+  const rowParent = row.parent_id ?? null;
 
   if (code !== String(row.code ?? "").trim()) return true;
   if (name !== String(row.name ?? "").trim()) return true;
@@ -51,6 +58,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (description !== rowDesc) return true;
   if (color !== normalizeHexColor(String(row.color ?? ""))) return true;
   if (isActive !== Boolean(row.is_active)) return true;
+  if (parentId !== rowParent) return true;
   return false;
 }
 
@@ -75,11 +83,16 @@ export function requiredFieldsValid(code, name, color) {
 export function toCategoryCacheRow(row) {
   return {
     id: row.id,
+    parent_id: row.parent_id ?? null,
+    parent: row.parent ?? null,
     code: row.code,
     name: row.name,
     color: row.color,
     description: row.description ?? null,
     is_active: row.is_active,
+    has_children: row.has_children,
+    is_leaf: row.is_leaf,
+    path_label: row.path_label,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -98,7 +111,14 @@ export function sortCategoriesByName(list) {
 
 /** @param {Record<string, unknown>} values */
 export function categoryFormValuesToPayload(values) {
+  const parentRaw = values.parent_id;
+  const parentId =
+    parentRaw === undefined || parentRaw === null || parentRaw === ""
+      ? null
+      : Number(parentRaw);
+
   return {
+    parent_id: parentId,
     code: String(values.code ?? "").trim().toUpperCase(),
     name: String(values.name ?? "").trim(),
     color: typeof values.color === "string" ? values.color : String(values.color ?? ""),

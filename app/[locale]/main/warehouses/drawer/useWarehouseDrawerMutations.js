@@ -21,10 +21,22 @@ import {
  *   tApiErrors: (key: string) => string;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
+ *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
  *   defaults: Record<string, unknown>;
  * }} args
  */
-export function useWarehouseDrawerMutations({ form, message, t, tApiErrors, onClose, onCreated, defaults }) {
+export function useWarehouseDrawerMutations({
+  form,
+  message,
+  t,
+  tApiErrors,
+  onClose,
+  onCreated,
+  onCreateSuccess,
+  onSyncCreateDiscardBaseline,
+  defaults,
+}) {
   const queryClient = useQueryClient();
 
   const applyPayload = useCallback((values) => warehouseFormValuesToPayload(values), []);
@@ -83,21 +95,28 @@ export function useWarehouseDrawerMutations({ form, message, t, tApiErrors, onCl
         queryClient.setQueryData(["tenant", "warehouses", id], data);
       }
 
+      if (typeof onCreateSuccess === "function" && id != null) {
+        onCreateSuccess(record ?? {});
+      }
+
       if (intent === "keep") {
         onCreated?.(record ?? {});
         message.success(t("drawerCreateSuccess"));
+        onSyncCreateDiscardBaseline?.("fromForm");
         return;
       }
       if (intent === "new") {
         form.resetFields();
         form.setFieldsValue(defaults);
         message.success(t("drawerCreateSuccess"));
+        onSyncCreateDiscardBaseline?.("defaults");
         return;
       }
 
       form.resetFields();
       form.setFieldsValue(defaults);
       message.success(t("drawerCreateSuccess"));
+      onSyncCreateDiscardBaseline?.("defaults");
       onClose();
     },
     onSettled: () => {

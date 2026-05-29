@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:turbo": "next dev --turbo",
-    "build": "next build",
+    "dev": "node --max-old-space-size=8192 ./node_modules/next/dist/bin/next dev --turbo",
+    "dev:webpack": "node --max-old-space-size=8192 ./node_modules/next/dist/bin/next dev",
+    "build": "node --max-old-space-size=8192 ./node_modules/next/dist/bin/next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -25,6 +25,7 @@
     "next-intl": "^4.9.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "yet-another-react-lightbox": "^3.32.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

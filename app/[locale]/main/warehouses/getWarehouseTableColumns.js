@@ -1,3 +1,4 @@
+import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
@@ -61,14 +62,7 @@ export function getWarehouseTableColumns(t, actions = {}) {
       key: "is_active",
       width: 120,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
-      render: (value) =>
-        value ? (
-          <Typography.Text strong>{getWarehouseStatusLabel(value, t)}</Typography.Text>
-        ) : (
-          <Typography.Text type="secondary">
-            {getWarehouseStatusLabel(value, t)}
-          </Typography.Text>
-        ),
+      render: (value) => renderActiveInactiveStatus(value, t),
     },
     {
       title: t("colDefault"),
@@ -84,6 +78,38 @@ export function getWarehouseTableColumns(t, actions = {}) {
             {getWarehouseDefaultLabel(value, t)}
           </Typography.Text>
         ),
+    },
+    {
+      title: t("colDefaultSales"),
+      dataIndex: "is_default_sales",
+      key: "is_default_sales",
+      width: 100,
+      sorter: (a, b) => Number(b.is_default_sales) - Number(a.is_default_sales),
+      render: (value) => getWarehouseDefaultLabel(value, t),
+    },
+    {
+      title: t("colDefaultProduction"),
+      dataIndex: "is_default_production",
+      key: "is_default_production",
+      width: 110,
+      sorter: (a, b) => Number(b.is_default_production) - Number(a.is_default_production),
+      render: (value) => getWarehouseDefaultLabel(value, t),
+    },
+    {
+      title: t("colDefaultPurchase"),
+      dataIndex: "is_default_purchase",
+      key: "is_default_purchase",
+      width: 100,
+      sorter: (a, b) => Number(b.is_default_purchase) - Number(a.is_default_purchase),
+      render: (value) => getWarehouseDefaultLabel(value, t),
+    },
+    {
+      title: t("colDefaultStorage"),
+      dataIndex: "is_default_storage",
+      key: "is_default_storage",
+      width: 100,
+      sorter: (a, b) => Number(b.is_default_storage) - Number(a.is_default_storage),
+      render: (value) => getWarehouseDefaultLabel(value, t),
     },
     {
       title: t("colCreatedAt"),

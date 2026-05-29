@@ -1,8 +1,15 @@
 "use client";
 
+import LookupSelectWithCreate from "@/components/resource-drawer/LookupSelectWithCreate";
 import dayjs from "dayjs";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, DatePicker, Divider, Form, Input, InputNumber, Select, Space, Switch, Typography } from "antd";
+import {
+  SUPPLIER_LOOKUP_ADD_PAYMENT_METHOD,
+  SUPPLIER_LOOKUP_ADD_PAYMENT_TERMS,
+  SUPPLIER_LOOKUP_ADD_SUPPLIER_GROUP,
+  SUPPLIER_LOOKUP_ADD_VAT_GROUP,
+} from "./supplierDrawerUtils";
 
 const PHONE_MAX = 32;
 
@@ -35,15 +42,18 @@ function currencyOptionsForRow(currencies, currentRows, currentRowIndex, t) {
  *   mode: "create" | "edit" | "view";
  *   readOnly: boolean;
  *   t: (key: string) => string;
- *   tApiErrors: (key: string) => string;
  *   supplierGroupOptions: { value: unknown; label: string }[];
  *   supplierGroupsPending: boolean;
+ *   onOpenSupplierGroupDrawer?: () => void;
  *   paymentMethodOptions: { value: unknown; label: string }[];
  *   paymentMethodsPending: boolean;
+ *   onOpenPaymentMethodDrawer?: () => void;
  *   paymentTermOptions: { value: unknown; label: string }[];
  *   paymentTermsPending: boolean;
+ *   onOpenPaymentTermsDrawer?: () => void;
  *   vatGroupOptions: { value: unknown; label: string }[];
  *   vatGroupsPending: boolean;
+ *   onOpenVatGroupDrawer?: () => void;
  *   currencies: unknown[];
  *   currenciesPending: boolean;
  * }} props
@@ -55,12 +65,16 @@ export default function SupplierDrawerForm({
   t,
   supplierGroupOptions,
   supplierGroupsPending,
+  onOpenSupplierGroupDrawer,
   paymentMethodOptions,
   paymentMethodsPending,
+  onOpenPaymentMethodDrawer,
   paymentTermOptions,
   paymentTermsPending,
+  onOpenPaymentTermsDrawer,
   vatGroupOptions,
   vatGroupsPending,
+  onOpenVatGroupDrawer,
   currencies,
   currenciesPending,
 }) {
@@ -129,16 +143,18 @@ export default function SupplierDrawerForm({
         <Input placeholder={t("fieldPhonePlaceholder")} allowClear />
       </Form.Item>
 
-      <Form.Item name="supplier_group_id" label={t("fieldSupplierGroup")}>
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          loading={supplierGroupsPending}
-          placeholder={t("fieldSupplierGroupPlaceholder")}
-          options={supplierGroupOptions}
-        />
-      </Form.Item>
+      <LookupSelectWithCreate
+        form={form}
+        name="supplier_group_id"
+        label={t("fieldSupplierGroup")}
+        readOnly={readOnly}
+        addNewSentinel={SUPPLIER_LOOKUP_ADD_SUPPLIER_GROUP}
+        addNewLabel={t("fieldSupplierGroupAddNew")}
+        onAddNew={onOpenSupplierGroupDrawer}
+        options={supplierGroupOptions}
+        loading={supplierGroupsPending}
+        placeholder={t("fieldSupplierGroupPlaceholder")}
+      />
 
       <Divider titlePlacement="start" className="!mt-6">
         {t("drawerSectionCommercial")}
@@ -148,38 +164,44 @@ export default function SupplierDrawerForm({
         <Input placeholder={t("fieldCompanyNamePlaceholder")} allowClear />
       </Form.Item>
 
-      <Form.Item name="payment_method_id" label={t("fieldPaymentMethod")}>
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          loading={paymentMethodsPending}
-          placeholder={t("fieldPaymentMethodPlaceholder")}
-          options={paymentMethodOptions}
-        />
-      </Form.Item>
+      <LookupSelectWithCreate
+        form={form}
+        name="payment_method_id"
+        label={t("fieldPaymentMethod")}
+        readOnly={readOnly}
+        addNewSentinel={SUPPLIER_LOOKUP_ADD_PAYMENT_METHOD}
+        addNewLabel={t("fieldPaymentMethodAddNew")}
+        onAddNew={onOpenPaymentMethodDrawer}
+        options={paymentMethodOptions}
+        loading={paymentMethodsPending}
+        placeholder={t("fieldPaymentMethodPlaceholder")}
+      />
 
-      <Form.Item name="payment_terms_id" label={t("fieldPaymentTerms")}>
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          loading={paymentTermsPending}
-          placeholder={t("fieldPaymentTermsPlaceholder")}
-          options={paymentTermOptions}
-        />
-      </Form.Item>
+      <LookupSelectWithCreate
+        form={form}
+        name="payment_terms_id"
+        label={t("fieldPaymentTerms")}
+        readOnly={readOnly}
+        addNewSentinel={SUPPLIER_LOOKUP_ADD_PAYMENT_TERMS}
+        addNewLabel={t("fieldPaymentTermsAddNew")}
+        onAddNew={onOpenPaymentTermsDrawer}
+        options={paymentTermOptions}
+        loading={paymentTermsPending}
+        placeholder={t("fieldPaymentTermsPlaceholder")}
+      />
 
-      <Form.Item name="vat_group_id" label={t("fieldVatGroup")}>
-        <Select
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          loading={vatGroupsPending}
-          placeholder={t("fieldVatGroupPlaceholder")}
-          options={vatGroupOptions}
-        />
-      </Form.Item>
+      <LookupSelectWithCreate
+        form={form}
+        name="vat_group_id"
+        label={t("fieldVatGroup")}
+        readOnly={readOnly}
+        addNewSentinel={SUPPLIER_LOOKUP_ADD_VAT_GROUP}
+        addNewLabel={t("fieldVatGroupAddNew")}
+        onAddNew={onOpenVatGroupDrawer}
+        options={vatGroupOptions}
+        loading={vatGroupsPending}
+        placeholder={t("fieldVatGroupPlaceholder")}
+      />
 
       <Divider titlePlacement="start" className="!mt-6">
         {t("drawerSectionAccount")}

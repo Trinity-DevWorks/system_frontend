@@ -9,6 +9,14 @@ import dayjs from "dayjs";
 export const SUPPLIER_CREATE_SAVE_INTENT_KEY = "supplierDrawer:createSaveIntent";
 export const SUPPLIER_CREATE_SAVE_INTENT_EVENT = "supplierDrawer:createSaveIntent:change";
 
+/** Select sentinels for nested create drawers (not real relation ids). */
+export const SUPPLIER_LOOKUP_ADD_SUPPLIER_GROUP = "__supplier_drawer_add_supplier_group__";
+export const SUPPLIER_LOOKUP_ADD_PAYMENT_METHOD = "__supplier_drawer_add_payment_method__";
+export const SUPPLIER_LOOKUP_ADD_PAYMENT_TERMS = "__supplier_drawer_add_payment_terms__";
+export const SUPPLIER_LOOKUP_ADD_VAT_GROUP = "__supplier_drawer_add_vat_group__";
+
+/** @typedef {"supplier-group" | "payment-method" | "payment-terms" | "vat-group"} SupplierNestedCreateKey */
+
 function optionalRelationId(value) {
   if (value == null || value === "") return null;
   const n = Number(value);
