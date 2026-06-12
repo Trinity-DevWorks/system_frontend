@@ -1,16 +1,19 @@
 "use client";
 
 /**
- * UOMs tab — queries, mutations, inline edit state, and table column config.
+ * Units & pricing tab — UOM cards, UOM CRUD, and embedded barcodes per UOM.
  *
  * Used by:
  * - drawer/panels/uoms/ItemUomsPanel.js
  */
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { isPersistedEntityId } from "@/lib/entityId";
+import { fetchItemBarcodes } from "@/services/itemBarcodesApi";
 import { fetchCurrencies } from "@/services/currenciesApi";
 import { createItemUom, deleteItemUom, fetchItemUoms, updateItemUom } from "@/services/itemUomsApi";
 import { fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
+import { itemBarcodesQueryKey } from "@/components/items/itemBarcodesQueryCache";
 import {
   isItemUomRow,
   itemUomsQueryKey,
@@ -25,15 +28,14 @@ import {
   rowToUomInlineValues,
   uomInlineValuesToBody,
 } from "../itemDrawerPanelsState";
-import { buildUomsPanelColumns } from "./buildUomsPanelColumns";
 import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
 
-/** @typedef {import("./uomsPanelConstants").UomInlineValues} UomInlineValues */
+/** @typedef {import("../itemDrawerPanelsState").UomInlineValues} UomInlineValues */
 
 /**
  * @param {{
- *   itemId: number;
- *   baseUomId?: number;
+ *   itemId: string;
+ *   unitGroupId?: number;
  *   readOnly: boolean;
  *   t: (k: string, values?: Record<string, unknown>) => string;
  *   tApiErrors: (k: string) => string;
@@ -41,7 +43,7 @@ import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
  *   queryEnabled?: boolean;
  * }} args
  */
-export function useItemUomsPanel({ itemId, baseUomId, readOnly, t, tApiErrors, active, queryEnabled = false }) {
+export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors, active, queryEnabled = false }) {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const [inlineEdit, setInlineEdit] = useState(
@@ -49,24 +51,32 @@ export function useItemUomsPanel({ itemId, baseUomId, readOnly, t, tApiErrors, a
   );
 
   const itemUomsQueryKeyValue = useMemo(() => itemUomsQueryKey(itemId), [itemId]);
+  const barcodesQueryKeyValue = useMemo(() => itemBarcodesQueryKey(itemId), [itemId]);
+  const queriesEnabled = isPersistedEntityId(itemId) && (active || queryEnabled);
 
   const { data = [], isPending } = useQuery({
     queryKey: itemUomsQueryKeyValue,
     queryFn: () => fetchItemUoms(itemId),
-    enabled: itemId > 0 && (active || queryEnabled),
+    enabled: queriesEnabled,
+  });
+
+  const barcodesQuery = useQuery({
+    queryKey: barcodesQueryKeyValue,
+    queryFn: () => fetchItemBarcodes(itemId),
+    enabled: queriesEnabled,
   });
 
   const currenciesQuery = useQuery({
     queryKey: ["tenant", "currencies"],
     queryFn: fetchCurrencies,
-    enabled: active && itemId > 0,
+    enabled: active && isPersistedEntityId(itemId),
     staleTime: 5 * 60_000,
   });
 
   const uomsQuery = useQuery({
     queryKey: ["tenant", "unit-of-measurements"],
     queryFn: fetchUnitOfMeasurements,
-    enabled: active && itemId > 0,
+    enabled: active && isPersistedEntityId(itemId),
     staleTime: 5 * 60_000,
   });
 
@@ -79,6 +89,8 @@ export function useItemUomsPanel({ itemId, baseUomId, readOnly, t, tApiErrors, a
       } else {
         void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
       }
+      void queryClient.invalidateQueries({ queryKey: ["tenant", "items", itemId] });
+      void queryClient.invalidateQueries({ queryKey: ["tenant", "items"] });
       message.success(t("panelSaveSuccess"));
       setInlineEdit(null);
     },
@@ -89,6 +101,7 @@ export function useItemUomsPanel({ itemId, baseUomId, readOnly, t, tApiErrors, a
     mutationFn: (/** @type {number} */ id) => deleteItemUom(itemId, id),
     onSuccess: (_data, deletedId) => {
       removeItemUomFromCache(queryClient, itemId, deletedId);
+      void queryClient.invalidateQueries({ queryKey: barcodesQueryKeyValue });
       message.success(t("panelDeleteSuccess"));
     },
     onError: (err) => message.error(getLocalizedApiErrorMessage(tApiErrors, err)),
@@ -119,18 +132,17 @@ export function useItemUomsPanel({ itemId, baseUomId, readOnly, t, tApiErrors, a
     return list;
   }, [data]);
 
+  const allBarcodes = useMemo(() => [...(barcodesQuery.data ?? [])], [barcodesQuery.data]);
+
+  const orphanBarcodes = useMemo(
+    () => allBarcodes.filter((row) => row && !row.item_uom_id),
+    [allBarcodes],
+  );
+
   const baseRow = useMemo(() => rows.find((r) => r.is_base), [rows]);
   const baseUnitLabel = baseRow?.uom?.name ?? baseRow?.uom?.code ?? "—";
 
-  const patchFlag = (/** @type {number} */ id, /** @type {Record<string, unknown>} */ body) => {
-    if (readOnly || inlineEdit) return;
-    patchMutation.mutate({ id, body });
-  };
-
-  const baseUomRecord = useMemo(
-    () => (uomsQuery.data ?? []).find((u) => Number(u.id) === Number(baseUomId)),
-    [uomsQuery.data, baseUomId],
-  );
+  const resolvedUnitGroupId = unitGroupId != null && unitGroupId !== "" ? Number(unitGroupId) : null;
 
   const primaryCurrencyId = useMemo(
     () => (currenciesQuery.data ?? []).find((c) => c.is_primary)?.id,
@@ -148,9 +160,8 @@ export function useItemUomsPanel({ itemId, baseUomId, readOnly, t, tApiErrors, a
   }, [rows]);
 
   const uomOptions = useMemo(() => {
-    const groupId = baseUomRecord?.unit_group_id;
     let options = (uomsQuery.data ?? [])
-      .filter((u) => groupId == null || Number(u.unit_group_id) === Number(groupId))
+      .filter((u) => resolvedUnitGroupId == null || Number(u.unit_group_id) === resolvedUnitGroupId)
       .map((u) => ({
         value: u.id,
         label: `${u.name ?? u.code} (${u.code})`,
@@ -167,30 +178,44 @@ export function useItemUomsPanel({ itemId, baseUomId, readOnly, t, tApiErrors, a
     }
 
     return options;
-  }, [uomsQuery.data, baseUomRecord, inlineEdit, primaryCurrencyId, usedUomCurrencyKeys]);
+  }, [uomsQuery.data, resolvedUnitGroupId, inlineEdit, primaryCurrencyId, usedUomCurrencyKeys]);
+
+  const needsBaseUnit = !baseRow;
+  const addDisabledReason = useMemo(() => {
+    if (!resolvedUnitGroupId) return t("uomAddDisabledNoUnitGroup");
+    if (inlineEdit) return t("uomAddDisabledEditing");
+    return null;
+  }, [resolvedUnitGroupId, inlineEdit, t]);
 
   const currencyOptions = useMemo(
     () => (currenciesQuery.data ?? []).map((c) => ({ value: c.id, label: c.code ?? c.name })),
     [currenciesQuery.data],
   );
 
-  const tableData = useMemo(() => {
+  const variantCards = useMemo(() => {
     if (!inlineEdit || inlineEdit.key !== "new") return rows;
-    return [...rows, { id: UOM_DRAFT_ROW_ID, is_base: inlineEdit.values.is_base }];
+    return [{ id: UOM_DRAFT_ROW_ID, is_base: inlineEdit.values.is_base }, ...rows];
   }, [rows, inlineEdit]);
-
-  const getInlineValues = (row) => {
-    if (!inlineEdit) return null;
-    if (inlineEdit.key === "new" && row.id === UOM_DRAFT_ROW_ID) return inlineEdit.values;
-    if (inlineEdit.key === row.id) return inlineEdit.values;
-    return null;
-  };
 
   const patchDraft = (patch) => {
     setInlineEdit((prev) => (prev ? { ...prev, values: { ...prev.values, ...patch } } : prev));
   };
 
-  const startCreateRow = () => setInlineEdit({ key: "new", values: defaultUomInlineValues() });
+  const startCreateRow = () => {
+    if (!resolvedUnitGroupId || inlineEdit) return;
+    setInlineEdit({
+      key: "new",
+      values: {
+        ...defaultUomInlineValues(),
+        currency_id: primaryCurrencyId,
+        is_base: needsBaseUnit,
+        conversion_factor: 1,
+        is_default_sale: needsBaseUnit,
+        is_default_purchase: needsBaseUnit,
+      },
+    });
+  };
+
   const startEditRow = (row) => setInlineEdit({ key: Number(row.id), values: rowToUomInlineValues(row) });
   const cancelInline = () => setInlineEdit(null);
 
@@ -200,40 +225,68 @@ export function useItemUomsPanel({ itemId, baseUomId, readOnly, t, tApiErrors, a
       message.error(t("uomFieldRequired"));
       return;
     }
+    const body = uomInlineValuesToBody({
+      ...inlineEdit.values,
+      ...(needsBaseUnit && inlineEdit.key === "new"
+        ? { is_base: true, conversion_factor: 1, is_default_sale: true, is_default_purchase: true }
+        : {}),
+    });
     saveMutation.mutate({
       id: inlineEdit.key === "new" ? undefined : inlineEdit.key,
-      body: uomInlineValuesToBody(inlineEdit.values),
+      body,
     });
   };
 
-  const columns = buildUomsPanelColumns({
-    t,
-    readOnly,
+  const patchFlag = (id, body) => {
+    if (readOnly || inlineEdit) return;
+    patchMutation.mutate({ id, body });
+  };
+
+  const requestDelete = (row) => {
+    modal.confirm({
+      title: t("variantCardDeleteConfirm"),
+      okType: "danger",
+      onOk: () => deleteMutation.mutateAsync(Number(row.id)),
+    });
+  };
+
+  const getCardState = (row) => {
+    if (!inlineEdit) {
+      return { isEditing: false, isNew: false, values: rowToUomInlineValues(row) };
+    }
+    if (inlineEdit.key === "new" && row.id === UOM_DRAFT_ROW_ID) {
+      return { isEditing: true, isNew: true, values: inlineEdit.values };
+    }
+    if (inlineEdit.key === row.id) {
+      return { isEditing: true, isNew: false, values: inlineEdit.values };
+    }
+    return { isEditing: false, isNew: false, values: rowToUomInlineValues(row) };
+  };
+
+  return {
+    isPending: isPending || barcodesQuery.isPending,
+    variantCards,
+    allBarcodes,
+    orphanBarcodes,
     inlineEdit,
+    baseRow,
+    baseUnitLabel,
+    needsBaseUnit,
+    resolvedUnitGroupId,
+    addDisabledReason,
     uomOptions,
     currencyOptions,
     uomsQueryPending: uomsQuery.isPending,
     currenciesQueryPending: currenciesQuery.isPending,
-    getInlineValues,
-    patchDraft,
-    patchFlag,
-    patchMutationPending: patchMutation.isPending,
     saveMutationPending: saveMutation.isPending,
+    patchMutationPending: patchMutation.isPending,
+    startCreateRow,
+    patchDraft,
     saveInline,
     cancelInline,
     startEditRow,
-    deleteMutation,
-    modal,
-  });
-
-  return {
-    isPending,
-    tableData,
-    columns,
-    inlineEdit,
-    baseRow,
-    baseUnitLabel,
-    getInlineValues,
-    startCreateRow,
+    patchFlag,
+    requestDelete,
+    getCardState,
   };
 }

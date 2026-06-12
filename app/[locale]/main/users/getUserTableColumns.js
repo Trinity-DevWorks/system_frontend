@@ -24,13 +24,6 @@ export function getUserTableColumns(t, actions = {}) {
   const { onEdit, onView, onDelete } = actions;
   return [
     {
-      title: t("colId"),
-      dataIndex: "id",
-      key: "id",
-      width: 56,
-      sorter: (a, b) => a.id - b.id,
-    },
-    {
       title: t("colName"),
       dataIndex: "name",
       key: "name",

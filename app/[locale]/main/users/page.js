@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteTenantUser, fetchTenantUsers } from "@/services/tenantUsersApi";
 import UserDrawer from "./drawer/UserDrawer";
@@ -60,9 +61,9 @@ function UsersTable() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerUserId, setDrawerUserId] = useState(/** @type {number | null} */ (null));
+  const [drawerUserId, setDrawerUserId] = useState(/** @type {string | null} */ (null));
   const [drawerEditSeed, setDrawerEditSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, userId: /** @type {number | null} */ (null) });
+  const drawerSessionRef = useRef({ open: false, userId: /** @type {string | null} */ (null) });
   useEffect(() => {
     drawerSessionRef.current = { open: drawerOpen, userId: drawerUserId };
   }, [drawerOpen, drawerUserId]);
@@ -75,20 +76,20 @@ function UsersTable() {
   }, []);
 
   const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
+    const id = normalizeEntityId(record?.id);
     if (id == null) return;
     setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerUserId(Number(id));
+    setDrawerUserId(id);
     setDrawerOpen(true);
   }, []);
 
   const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
+    const id = normalizeEntityId(record?.id);
     if (id == null) return;
     setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("view");
-    setDrawerUserId(Number(id));
+    setDrawerUserId(id);
     setDrawerOpen(true);
   }, []);
 
@@ -99,15 +100,15 @@ function UsersTable() {
   }, []);
 
   const handleUserCreated = useCallback((record) => {
-    const id = record?.id;
+    const id = normalizeEntityId(record?.id);
     if (id == null) return;
     setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerUserId(Number(id));
+    setDrawerUserId(id);
   }, []);
 
   const deleteMutation = useMutation({
-    mutationFn: (/** @type {number} */ id) => deleteTenantUser(id),
+    mutationFn: (/** @type {string} */ id) => deleteTenantUser(id),
     onMutate: async (id) => {
       const listKey = ["tenant", "users"];
       await queryClient.cancelQueries({ queryKey: listKey });
@@ -156,9 +157,9 @@ function UsersTable() {
 
   const requestDeleteUser = useCallback(
     (record) => {
-      const id = record?.id;
+      const id = normalizeEntityId(record?.id);
       if (id == null) return;
-      const name = typeof record?.name === "string" ? record.name : String(id);
+      const name = typeof record?.name === "string" ? record.name : id;
       modal.confirm({
         title: t("deleteConfirmTitle"),
         content: t("deleteConfirmContent", { name }),
@@ -167,7 +168,7 @@ function UsersTable() {
         cancelText: t("deleteConfirmCancel"),
         onOk: async () => {
           try {
-            await deleteMutation.mutateAsync(Number(id));
+            await deleteMutation.mutateAsync(id);
           } catch {
             /* onError handles feedback */
           }
@@ -216,7 +217,7 @@ function UsersTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["name", "email", "id", "role_name", "active_label"],
+          searchKeys: ["name", "email", "role_name", "active_label"],
           showAdd: true,
           onAdd: openCreateDrawer,
           showRefresh: true,

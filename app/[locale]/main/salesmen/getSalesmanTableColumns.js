@@ -29,13 +29,6 @@ export function getSalesmanTableColumns(t, actions = {}) {
   const { onView, onEdit, onDelete } = actions;
   return [
     {
-      title: t("colId"),
-      dataIndex: "id",
-      key: "id",
-      width: 72,
-      sorter: (a, b) => a.id - b.id,
-    },
-    {
       title: t("colCode"),
       dataIndex: "salesman_code",
       key: "salesman_code",

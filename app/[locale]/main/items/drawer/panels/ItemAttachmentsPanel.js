@@ -14,7 +14,7 @@ import { useMemo } from "react";
 /**
  * @param {{
  *   open: boolean;
- *   itemId: number | null;
+ *   itemId: string | null;
  *   readOnly: boolean;
  *   active: boolean;
  *   t: (key: string) => string;

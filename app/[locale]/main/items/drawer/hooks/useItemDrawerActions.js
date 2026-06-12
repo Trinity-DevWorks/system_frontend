@@ -6,6 +6,7 @@
  */
 
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
+import { Form } from "antd";
 import { useCallback, useMemo } from "react";
 import { getCreateSaveMenuItems } from "../utils/itemDrawerViewState";
 import { isEditDirtyVsLoaded } from "../utils/itemDrawerUtils";
@@ -56,6 +57,14 @@ export function useItemDrawerActions({
   detailQueryError,
   lastCreateIntent,
 }) {
+  const formWatch = Form.useWatch([], form);
+
+  const isEditDirty = useMemo(() => {
+    if (mode !== "edit") return false;
+    if (editBaselineForDirty) return isEditDirtyVsLoaded(form, editBaselineForDirty);
+    return form.isFieldsTouched(true);
+  }, [mode, editBaselineForDirty, form, formWatch]);
+
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
     if (mode === "create") return isCreateDirty();
@@ -105,8 +114,16 @@ export function useItemDrawerActions({
     [readOnly, form, applyPayload, persistedItemId, updateMutation],
   );
 
+  const handleEditSubmit = useCallback(() => {
+    runEdit("keep");
+  }, [runEdit]);
+
   const editSaveDisabled =
-    !canSubmitRequired || submitting || (fetchRemoteDetail && detailEnabled && detailQueryError);
+    !canSubmitRequired ||
+    submitting ||
+    (fetchRemoteDetail && detailEnabled && detailQueryError) ||
+    !editBaselineForDirty ||
+    !isEditDirty;
 
   const createIntentLabel = useCallback(
     (intent) => {
@@ -126,7 +143,7 @@ export function useItemDrawerActions({
     forceClose,
     requestClose,
     runCreate,
-    runEdit,
+    handleEditSubmit,
     editSaveDisabled,
     createIntentLabel,
     createSaveMenuItems,

@@ -12,7 +12,7 @@ import { fetchCategories } from "@/services/categoriesApi";
 import { fetchItem } from "@/services/itemsApi";
 import { fetchItemTypes } from "@/services/itemTypesApi";
 import { fetchItemUoms } from "@/services/itemUomsApi";
-import { fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
+import { fetchUnitGroups } from "@/services/unitGroupsApi";
 import { fetchVatGroups } from "@/services/vatGroupsApi";
 import { useQuery } from "@tanstack/react-query";
 import { Form } from "antd";
@@ -22,7 +22,7 @@ import { findItemTypeById, flagsForItemType, requiredGeneralFieldsValid } from "
 import {
   mapBrandOptions,
   mapItemTypeOptions,
-  mapUomOptions,
+  mapUnitGroupOptions,
   mapVatGroupOptions,
   resolveItemTypeCode,
 } from "../utils/itemDrawerOptionMappers";
@@ -87,9 +87,9 @@ export function useItemDrawerData({
     staleTime: 5 * 60_000,
   });
 
-  const uomsQuery = useQuery({
-    queryKey: ["tenant", "unit-of-measurements"],
-    queryFn: fetchUnitOfMeasurements,
+  const unitGroupsQuery = useQuery({
+    queryKey: ["tenant", "unit-groups"],
+    queryFn: fetchUnitGroups,
     enabled: open,
     staleTime: 5 * 60_000,
   });
@@ -111,8 +111,9 @@ export function useItemDrawerData({
   const itemTypeIdWatch = Form.useWatch("item_type_id", form);
   const skuWatch = Form.useWatch("sku", form);
   const nameWatch = Form.useWatch("name", form);
-  const baseUomIdWatch = Form.useWatch("base_uom_id", form);
+  const unitGroupIdWatch = Form.useWatch("unit_group_id", form);
   const allowPurchaseWatch = Form.useWatch("allow_purchase", form);
+  const trackInventoryWatch = Form.useWatch("track_inventory", form);
 
   const detailRecord = detailQuery.data ?? (tableSeedMatches ? editSeedRecord : null);
   const typeCode = useMemo(
@@ -133,7 +134,10 @@ export function useItemDrawerData({
     [categoriesQuery.data],
   );
   const brandOptions = useMemo(() => mapBrandOptions(brandsQuery.data ?? []), [brandsQuery.data]);
-  const uomOptions = useMemo(() => mapUomOptions(uomsQuery.data ?? []), [uomsQuery.data]);
+  const unitGroupOptions = useMemo(
+    () => mapUnitGroupOptions(unitGroupsQuery.data ?? []),
+    [unitGroupsQuery.data],
+  );
   const vatGroupOptions = useMemo(() => mapVatGroupOptions(vatGroupsQuery.data), [vatGroupsQuery.data]);
 
   const handleItemTypeChange = useCallback(
@@ -147,8 +151,8 @@ export function useItemDrawerData({
   );
 
   const canSubmitRequired = useMemo(
-    () => requiredGeneralFieldsValid(String(skuWatch ?? ""), String(nameWatch ?? "")),
-    [skuWatch, nameWatch],
+    () => requiredGeneralFieldsValid(String(skuWatch ?? ""), String(nameWatch ?? ""), unitGroupIdWatch),
+    [skuWatch, nameWatch, unitGroupIdWatch],
   );
 
   return {
@@ -163,16 +167,17 @@ export function useItemDrawerData({
     itemTypeOptions,
     categoryTreeData,
     brandOptions,
-    uomOptions,
+    unitGroupOptions,
     vatGroupOptions,
     handleItemTypeChange,
     canSubmitRequired,
-    baseUomIdWatch,
+    unitGroupIdWatch,
     allowPurchaseWatch,
+    trackInventoryWatch,
     itemTypesPending: itemTypesQuery.isPending,
     categoriesPending: categoriesQuery.isPending,
     brandsPending: brandsQuery.isPending,
-    uomsPending: uomsQuery.isPending,
+    unitGroupsPending: unitGroupsQuery.isPending,
     vatGroupsPending: vatGroupsQuery.isPending,
   };
 }

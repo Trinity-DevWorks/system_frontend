@@ -114,7 +114,7 @@ export function removeItemUomFromCache(queryClient, itemId, itemUomId) {
  * @param {Record<string, unknown> | null | undefined} record
  */
 export async function refreshItemUomsAfterGeneralSave(queryClient, itemId, record) {
-  if (!itemId || itemId <= 0) return;
+  if (itemId == null || itemId === "") return;
 
   const trackInventory = Boolean(record?.track_inventory);
 

@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteSalesman, fetchSalesmen } from "@/services/salesmenApi";
 import SalesmanDrawer from "./drawer/SalesmanDrawer";
@@ -52,9 +53,9 @@ function SalesmenTable() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerSalesmanId, setDrawerSalesmanId] = useState(/** @type {number | null} */ (null));
+  const [drawerSalesmanId, setDrawerSalesmanId] = useState(/** @type {string | null} */ (null));
   const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, salesmanId: /** @type {number | null} */ (null) });
+  const drawerSessionRef = useRef({ open: false, salesmanId: /** @type {string | null} */ (null) });
   useEffect(() => {
     drawerSessionRef.current = { open: drawerOpen, salesmanId: drawerSalesmanId };
   }, [drawerOpen, drawerSalesmanId]);
@@ -67,20 +68,20 @@ function SalesmenTable() {
   }, []);
 
   const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
+    const id = normalizeEntityId(record?.id);
     if (id == null) return;
     setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerSalesmanId(Number(id));
+    setDrawerSalesmanId(id);
     setDrawerOpen(true);
   }, []);
 
   const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
+    const id = normalizeEntityId(record?.id);
     if (id == null) return;
     setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("view");
-    setDrawerSalesmanId(Number(id));
+    setDrawerSalesmanId(id);
     setDrawerOpen(true);
   }, []);
 
@@ -91,15 +92,15 @@ function SalesmenTable() {
   }, []);
 
   const handleSalesmanCreated = useCallback((record) => {
-    const id = record?.id;
+    const id = normalizeEntityId(record?.id);
     if (id == null) return;
     setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerSalesmanId(Number(id));
+    setDrawerSalesmanId(id);
   }, []);
 
   const deleteMutation = useMutation({
-    mutationFn: (/** @type {number} */ id) => deleteSalesman(id),
+    mutationFn: (/** @type {string} */ id) => deleteSalesman(id),
     onMutate: async (id) => {
       const listKey = ["tenant", "salesmen"];
       await queryClient.cancelQueries({ queryKey: listKey });
@@ -146,12 +147,12 @@ function SalesmenTable() {
 
   const requestDeleteSalesman = useCallback(
     (record) => {
-      const id = record?.id;
+      const id = normalizeEntityId(record?.id);
       if (id == null) return;
       const name =
         typeof record?.full_name === "string" && record.full_name.trim()
           ? record.full_name
-          : String(record?.id ?? "");
+          : id;
       modal.confirm({
         title: t("deleteConfirmTitle"),
         content: t("deleteConfirmContent", { name }),
@@ -160,7 +161,7 @@ function SalesmenTable() {
         cancelText: t("deleteConfirmCancel"),
         onOk: async () => {
           try {
-            await deleteMutation.mutateAsync(Number(id));
+            await deleteMutation.mutateAsync(id);
           } catch {
             /* mutation onError */
           }
@@ -200,7 +201,6 @@ function SalesmenTable() {
         toolbar={{
           showSearch: true,
           searchKeys: [
-            "id",
             "salesman_code",
             "full_name",
             "phone",

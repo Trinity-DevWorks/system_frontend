@@ -37,15 +37,17 @@ import ItemDrawerNestedDrawers from "./components/ItemDrawerNestedDrawers";
 import { useItemDrawerActions } from "./hooks/useItemDrawerActions";
 import { useItemDrawerEditBaseline } from "./hooks/useItemDrawerEditBaseline";
 import { useItemDrawerData } from "./hooks/useItemDrawerData";
+import { normalizeEntityId } from "@/lib/entityId";
 
 /**
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
- *   itemId: number | null;
+ *   itemId: string | null;
  *   editSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  *   onSaveAndNew?: () => void;
  * }} props
  */
@@ -55,6 +57,7 @@ export default function ItemDrawer({
   itemId,
   onClose,
   onCreated,
+  onCreateSuccess,
   onSaveAndNew,
   editSeedRecord = null,
 }) {
@@ -65,14 +68,14 @@ export default function ItemDrawer({
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState("general");
   const [savedEditBaseline, setSavedEditBaseline] = useState(
-    /** @type {{ itemId: number; row: ReturnType<typeof toItemCacheRow> } | null} */ (null),
+    /** @type {{ itemId: string; row: ReturnType<typeof toItemCacheRow> } | null} */ (null),
   );
 
   const nestedCreate = useItemDrawerNestedCreate({ form, queryClient, open });
   const lastCreateIntent = usePersistedSaveIntent(ITEM_CREATE_SAVE_INTENT_KEY, ITEM_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
-  const persistedItemId = itemId != null && itemId > 0 ? itemId : null;
+  const persistedItemId = normalizeEntityId(itemId);
   const tabsEnabled = persistedItemId != null;
   const defaults = useMemo(() => getItemDrawerDefaults(), []);
 
@@ -97,18 +100,28 @@ export default function ItemDrawer({
     fetchRemoteDetail,
     detailQuery,
     detailRecord,
-    itemUomsQuery,
     showBundleTab,
     showRecipeTab,
     canSubmitRequired,
-    baseUomIdWatch,
+    unitGroupIdWatch,
     allowPurchaseWatch,
+    trackInventoryWatch,
     ...generalFormData
   } = data;
 
+  const showReplenishmentTab = useMemo(() => {
+    const trackInventory =
+      trackInventoryWatch ??
+      (detailRecord?.track_inventory !== undefined ? Boolean(detailRecord.track_inventory) : true);
+    const allowPurchase =
+      allowPurchaseWatch ??
+      (detailRecord?.allow_purchase !== undefined ? Boolean(detailRecord.allow_purchase) : true);
+    return trackInventory && allowPurchase;
+  }, [trackInventoryWatch, allowPurchaseWatch, detailRecord]);
+
   const allowedTabKeys = useMemo(
-    () => getAllowedTabKeys(tabsEnabled, showRecipeTab, showBundleTab),
-    [tabsEnabled, showBundleTab, showRecipeTab],
+    () => getAllowedTabKeys(tabsEnabled, showRecipeTab, showBundleTab, showReplenishmentTab),
+    [tabsEnabled, showBundleTab, showRecipeTab, showReplenishmentTab],
   );
   const resolvedActiveTab = resolveActiveTab(activeTab, allowedTabKeys);
 
@@ -143,6 +156,7 @@ export default function ItemDrawer({
     tApiErrors,
     onClose,
     onCreated,
+    onCreateSuccess,
     onSyncCreateDiscardBaseline,
     onSyncEditDiscardBaseline,
     onSaveAndNew,
@@ -205,26 +219,27 @@ export default function ItemDrawer({
       itemTypeOptions: generalFormData.itemTypeOptions,
       categoryTreeData: generalFormData.categoryTreeData,
       brandOptions: generalFormData.brandOptions,
-      uomOptions: generalFormData.uomOptions,
+      unitGroupOptions: generalFormData.unitGroupOptions,
       vatGroupOptions: generalFormData.vatGroupOptions,
       itemTypesPending: generalFormData.itemTypesPending,
       categoriesPending: generalFormData.categoriesPending,
       brandsPending: generalFormData.brandsPending,
-      uomsPending: generalFormData.uomsPending,
+      unitGroupsPending: generalFormData.unitGroupsPending,
       vatGroupsPending: generalFormData.vatGroupsPending,
       handleItemTypeChange: generalFormData.handleItemTypeChange,
       openNestedCategoryDrawer: nestedCreate.openNestedCategoryDrawer,
       openNestedBrandDrawer: nestedCreate.openNestedBrandDrawer,
-      openNestedUomDrawer: nestedCreate.openNestedUomDrawer,
+      openNestedUnitGroupDrawer: nestedCreate.openNestedUnitGroupDrawer,
       openNestedVatGroupDrawer: nestedCreate.openNestedVatGroupDrawer,
     },
     panels: {
-      itemUomsData: itemUomsQuery.data ?? [],
       showBundleTab,
       showRecipeTab,
-      baseUomIdWatch,
-      detailBaseUomId: detailQuery.data?.base_uom_id,
+      unitGroupIdWatch,
+      detailUnitGroupId: detailQuery.data?.unit_group_id,
       allowPurchaseWatch,
+      trackInventoryWatch,
+      showReplenishmentTab,
       detailRecord,
     },
     footer: {
@@ -239,18 +254,18 @@ export default function ItemDrawer({
       runCreate: actions.runCreate,
       createIntentLabel: actions.createIntentLabel,
       createSaveMenuItems: actions.createSaveMenuItems,
-      runEdit: actions.runEdit,
+      handleEditSubmit: actions.handleEditSubmit,
       editSaveDisabled: actions.editSaveDisabled,
     },
     nestedDrawers: {
       nestedCategoryDrawerOpen: nestedCreate.nestedCategoryDrawerOpen,
       nestedBrandDrawerOpen: nestedCreate.nestedBrandDrawerOpen,
-      nestedUomDrawerOpen: nestedCreate.nestedUomDrawerOpen,
+      nestedUnitGroupDrawerOpen: nestedCreate.nestedUnitGroupDrawerOpen,
       nestedVatGroupDrawerOpen: nestedCreate.nestedVatGroupDrawerOpen,
       closeNestedCreate: nestedCreate.closeNestedCreate,
       onNestedCategoryCreated: nestedCreate.onNestedCategoryCreated,
       onNestedBrandCreated: nestedCreate.onNestedBrandCreated,
-      onNestedBaseUomCreated: nestedCreate.onNestedBaseUomCreated,
+      onNestedUnitGroupCreated: nestedCreate.onNestedUnitGroupCreated,
       onNestedVatGroupCreated: nestedCreate.onNestedVatGroupCreated,
     },
   });

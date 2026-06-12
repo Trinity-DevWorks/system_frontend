@@ -29,7 +29,7 @@ import { useMemo, useState } from "react";
  * @param {{
  *   itemId: number;
  *   initialHeader: { yield_quantity: number; uom_id?: number };
- *   initialLines: { item_id?: number; quantity?: number; uom_id?: number }[];
+ *   initialLines: { item_id?: string; quantity?: number; uom_id?: number }[];
  *   t: (k: string) => string;
  *   tApiErrors: (k: string) => string;
  * }} args
@@ -103,9 +103,9 @@ export function useRecipeLineEditor({ itemId, initialHeader, initialLines, t, tA
 
   const recipeColumns = useMemo(
     () => [
-      { key: "item", label: t("recipeColItem") },
-      { key: "qty", label: t("recipeColQty") },
-      { key: "uom", label: t("recipeColUom") },
+      { key: "item", label: t("recipeColItem"), width: "minmax(0, 1fr)" },
+      { key: "qty", label: t("recipeColQty"), width: "112px" },
+      { key: "uom", label: t("recipeColUom"), width: "148px" },
     ],
     [t],
   );

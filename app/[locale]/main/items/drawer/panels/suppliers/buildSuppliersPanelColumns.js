@@ -1,4 +1,5 @@
 import { drawerSelectGetPopup } from "@/components/resource-drawer/drawerFormUtils";
+import { normalizeEntityId } from "@/lib/entityId";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Input, InputNumber, Radio, Select, Space } from "antd";
 import { PANEL_ACTIONS_CELL_STYLE } from "../shared/panelTableStyles";
@@ -224,7 +225,7 @@ export function buildSuppliersPanelColumns(ctx) {
                   title: t("panelDeleteConfirm"),
                   onOk: () =>
                     deleteMutation.mutateAsync({
-                      supplierId: Number(r.supplier_id ?? r.supplier?.id),
+                      supplierId: normalizeEntityId(r.supplier_id ?? r.supplier?.id),
                       id: Number(r.id),
                     }),
                 })

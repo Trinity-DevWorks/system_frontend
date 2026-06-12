@@ -62,6 +62,22 @@ export function buildUomsPanelColumns(ctx) {
     );
   };
 
+  const renderPriceCell = (field) => (_v, r) => {
+    const draft = getInlineValues(r);
+    if (draft) {
+      return (
+        <InputNumber
+          size="small"
+          className="w-full"
+          min={0}
+          value={draft[field]}
+          onChange={(v) => patchDraft({ [field]: v ?? undefined })}
+        />
+      );
+    }
+    return formatDrawerPrice(r[field]);
+  };
+
   return [
     {
       title: t("uomColIndex"),
@@ -116,44 +132,37 @@ export function buildUomsPanelColumns(ctx) {
     {
       title: t("uomColSell"),
       key: "sell",
-      width: 110,
+      width: 100,
       align: "center",
-      render: (_v, r) => {
-        const draft = getInlineValues(r);
-        if (draft) {
-          return (
-            <InputNumber
-              size="small"
-              className="w-full"
-              min={0}
-              value={draft.selling_price}
-              onChange={(v) => patchDraft({ selling_price: v ?? undefined })}
-            />
-          );
-        }
-        return formatDrawerPrice(r.selling_price);
-      },
+      render: renderPriceCell("selling_price"),
     },
     {
       title: t("uomColCost"),
       key: "cost",
-      width: 110,
+      width: 100,
       align: "center",
-      render: (_v, r) => {
-        const draft = getInlineValues(r);
-        if (draft) {
-          return (
-            <InputNumber
-              size="small"
-              className="w-full"
-              min={0}
-              value={draft.cost_price}
-              onChange={(v) => patchDraft({ cost_price: v ?? undefined })}
-            />
-          );
-        }
-        return formatDrawerPrice(r.cost_price);
-      },
+      render: renderPriceCell("cost_price"),
+    },
+    {
+      title: t("uomColTakeaway"),
+      key: "takeaway",
+      width: 100,
+      align: "center",
+      render: renderPriceCell("takeaway_price"),
+    },
+    {
+      title: t("uomColDineIn"),
+      key: "dineIn",
+      width: 100,
+      align: "center",
+      render: renderPriceCell("dine_in_price"),
+    },
+    {
+      title: t("uomColDelivery"),
+      key: "delivery",
+      width: 100,
+      align: "center",
+      render: renderPriceCell("delivery_price"),
     },
     {
       title: t("uomColCurrency"),

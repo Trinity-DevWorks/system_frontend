@@ -7,6 +7,7 @@
 
 import { ITEMS_LIST_QUERY_KEY, mergeItemListRow } from "@/components/items/itemsQueryCache";
 import { refreshItemUomsAfterGeneralSave } from "@/components/items/itemUomsQueryCache";
+import { normalizeEntityId } from "@/lib/entityId";
 import { sortItemsByName } from "./itemFormMappers";
 
 /**
@@ -21,15 +22,16 @@ export function applyCreatedItemToCache(queryClient, data, record) {
     if (id == null) return base;
     return sortItemsByName([...base.filter((r) => r.id !== id), data]);
   });
-  if (id != null) {
-    queryClient.setQueryData(["tenant", "items", id], data);
-    void refreshItemUomsAfterGeneralSave(queryClient, Number(id), record);
+  const normalizedId = normalizeEntityId(id);
+  if (normalizedId != null) {
+    queryClient.setQueryData(["tenant", "items", normalizedId], data);
+    void refreshItemUomsAfterGeneralSave(queryClient, normalizedId, record);
   }
 }
 
 /**
  * @param {import("@tanstack/react-query").QueryClient} queryClient
- * @param {number} id
+ * @param {string} id
  * @param {unknown} data
  * @param {Record<string, unknown> | null} record
  */

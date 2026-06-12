@@ -8,7 +8,7 @@ import { useMemo } from "react";
 /**
  * @param {{
  *   open: boolean;
- *   salesmanId: number | null;
+ *   salesmanId: string | null;
  *   readOnly: boolean;
  * }} props
  */

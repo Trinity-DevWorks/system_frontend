@@ -8,6 +8,7 @@
  */
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { isPersistedEntityId, normalizeEntityId } from "@/lib/entityId";
 import { fetchCurrencies } from "@/services/currenciesApi";
 import {
   createSupplierItem,
@@ -37,7 +38,7 @@ import { SUPPLIER_DRAFT_ROW_ID } from "./supplierPanelConstants";
 
 /**
  * @param {{
- *   itemId: number;
+ *   itemId: string;
  *   readOnly: boolean;
  *   allowPurchase?: boolean;
  *   t: (k: string) => string;
@@ -57,13 +58,18 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
   const { data = [], isPending } = useQuery({
     queryKey: supplierItemsQueryKeyValue,
     queryFn: () => fetchItemSuppliers(itemId),
-    enabled: active && itemId > 0,
+    enabled: active && isPersistedEntityId(itemId),
   });
 
   const rows = useMemo(() => [...(data ?? [])], [data]);
 
   const usedSupplierIds = useMemo(
-    () => new Set(rows.map((r) => Number(r.supplier_id ?? r.supplier?.id)).filter((id) => id > 0)),
+    () =>
+      new Set(
+        rows
+          .map((r) => normalizeEntityId(r.supplier_id ?? r.supplier?.id))
+          .filter((id) => id != null),
+      ),
     [rows],
   );
 
@@ -84,8 +90,11 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
   const supplierOptions = useMemo(
     () =>
       (suppliersQuery.data ?? [])
-        .filter((s) => !usedSupplierIds.has(Number(s.id)))
-        .map((s) => ({ value: s.id, label: s.name ?? s.code ?? String(s.id) })),
+        .filter((s) => {
+          const id = normalizeEntityId(s.id);
+          return id != null && !usedSupplierIds.has(id);
+        })
+        .map((s) => ({ value: s.id, label: s.name ?? s.supplier_code ?? String(s.id) })),
     [suppliersQuery.data, usedSupplierIds],
   );
 
@@ -110,7 +119,7 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
   );
 
   const saveMutation = useMutation({
-    mutationFn: (/** @type {{ supplierId: number; id?: number; body: Record<string, unknown> }} */ {
+    mutationFn: (/** @type {{ supplierId: string; id?: number; body: Record<string, unknown> }} */ {
       supplierId,
       id,
       body,
@@ -131,7 +140,7 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
   });
 
   const patchMutation = useMutation({
-    mutationFn: (/** @type {{ supplierId: number; id: number; body: Record<string, unknown> }} */ {
+    mutationFn: (/** @type {{ supplierId: string; id: number; body: Record<string, unknown> }} */ {
       supplierId,
       id,
       body,
@@ -147,7 +156,7 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (/** @type {{ supplierId: number; id: number }} */ { supplierId, id }) =>
+    mutationFn: (/** @type {{ supplierId: string; id: number }} */ { supplierId, id }) =>
       deleteSupplierItem(supplierId, id),
     onSuccess: (_data, { id }) => {
       removeSupplierItemFromCache(queryClient, itemId, id);
@@ -182,12 +191,13 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
       inlineEdit.key === "new"
         ? inlineEdit.values.supplier_id
         : inlineEdit.values.supplier_id ?? rows.find((r) => r.id === inlineEdit.key)?.supplier_id;
-    if (supplierId == null || Number(supplierId) <= 0) {
+    const normalizedSupplierId = normalizeEntityId(supplierId);
+    if (normalizedSupplierId == null) {
       message.error(t("supplierFieldRequired"));
       return;
     }
     saveMutation.mutate({
-      supplierId: Number(supplierId),
+      supplierId: normalizedSupplierId,
       id: inlineEdit.key === "new" ? undefined : inlineEdit.key,
       body: supplierInlineValuesToBody(inlineEdit.values),
     });
@@ -195,7 +205,8 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
 
   const patchPreferred = (row) => {
     if (readOnly || inlineEdit) return;
-    const supplierId = Number(row.supplier_id ?? row.supplier?.id);
+    const supplierId = normalizeEntityId(row.supplier_id ?? row.supplier?.id);
+    if (supplierId == null) return;
     patchMutation.mutate({ supplierId, id: Number(row.id), body: { is_preferred: true } });
   };
 

@@ -37,7 +37,6 @@ import { useItemDrawerTabItems } from "./useItemDrawerTabItems";
  *     openNestedVatGroupDrawer: () => void;
  *   };
  *   panels: {
- *     itemUomsData: unknown[];
  *     showBundleTab: boolean;
  *     showRecipeTab: boolean;
  *     baseUomIdWatch?: number;
@@ -57,7 +56,7 @@ import { useItemDrawerTabItems } from "./useItemDrawerTabItems";
  *     runCreate: (intent: "keep" | "new" | "close") => void;
  *     createIntentLabel: (intent: "keep" | "new" | "close") => string;
  *     createSaveMenuItems: { key: "keep" | "new" | "close"; label: string }[];
- *     runEdit: ((intent: "keep" | "new" | "close") => void) | undefined;
+ *     handleEditSubmit: (() => void) | undefined;
  *     editSaveDisabled: boolean;
  *   };
  *   nestedDrawers: {

@@ -27,7 +27,7 @@ const USER_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "users"]);
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
- *   userId: number | null;
+ *   userId: string | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   editSeedRecord?: Record<string, unknown> | null;

@@ -1,5 +1,5 @@
 /**
- * State and handlers for nested category/brand/UOM/VAT create drawers on the general tab.
+ * State and handlers for nested category/brand/unit-group/VAT create drawers on the general tab.
  *
  * Used by:
  * - drawer/ItemDrawer.js
@@ -40,8 +40,8 @@ export function useItemDrawerNestedCreate({ form, queryClient, open }) {
     () => makeNestedCreatedHandler("brand_id", ["tenant", "brands"]),
     [makeNestedCreatedHandler],
   );
-  const onNestedBaseUomCreated = useMemo(
-    () => makeNestedCreatedHandler("base_uom_id", ["tenant", "unit-of-measurements"]),
+  const onNestedUnitGroupCreated = useMemo(
+    () => makeNestedCreatedHandler("unit_group_id", ["tenant", "unit-groups"]),
     [makeNestedCreatedHandler],
   );
   const onNestedVatGroupCreated = useMemo(
@@ -52,17 +52,17 @@ export function useItemDrawerNestedCreate({ form, queryClient, open }) {
   return {
     nestedCategoryDrawerOpen: open && nestedCreate === "category",
     nestedBrandDrawerOpen: open && nestedCreate === "brand",
-    nestedUomDrawerOpen: open && nestedCreate === "uom",
+    nestedUnitGroupDrawerOpen: open && nestedCreate === "unit-group",
     nestedVatGroupDrawerOpen: open && nestedCreate === "vat-group",
     openNestedCategoryDrawer: () => setNestedCreate("category"),
     openNestedBrandDrawer: () => setNestedCreate("brand"),
-    openNestedUomDrawer: () => setNestedCreate("uom"),
+    openNestedUnitGroupDrawer: () => setNestedCreate("unit-group"),
     openNestedVatGroupDrawer: () => setNestedCreate("vat-group"),
     clearNestedCreate: () => setNestedCreate(null),
     closeNestedCreate,
     onNestedCategoryCreated,
     onNestedBrandCreated,
-    onNestedBaseUomCreated,
+    onNestedUnitGroupCreated,
     onNestedVatGroupCreated,
   };
 }

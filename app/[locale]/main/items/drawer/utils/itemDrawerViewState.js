@@ -10,14 +10,16 @@
  * @param {boolean} tabsEnabled
  * @param {boolean} showRecipeTab
  * @param {boolean} showBundleTab
+ * @param {boolean} [showReplenishmentTab]
  */
-export function getAllowedTabKeys(tabsEnabled, showRecipeTab, showBundleTab) {
+export function getAllowedTabKeys(tabsEnabled, showRecipeTab, showBundleTab, showReplenishmentTab = false) {
   const keys = ["general"];
   if (!tabsEnabled) return keys;
   keys.push("uoms");
   if (showRecipeTab) keys.push("recipe");
   if (showBundleTab) keys.push("bundle");
-  keys.push("barcodes", "suppliers", "attachments");
+  if (showReplenishmentTab) keys.push("replenishment");
+  keys.push("suppliers", "attachments");
   return keys;
 }
 
@@ -50,16 +52,24 @@ export function getItemDrawerDefaults() {
   return {
     name: "",
     sku: "",
+    item_code: undefined,
     plu_code: undefined,
     item_type_id: undefined,
     category_id: undefined,
     brand_id: undefined,
-    base_uom_id: undefined,
+    unit_group_id: undefined,
     vat_group_id: undefined,
     description: undefined,
     track_inventory: true,
     allow_sale: true,
     allow_purchase: true,
     is_active: true,
+    ticket_name: undefined,
+    kitchen_name: undefined,
+    send_to_kitchen: false,
+    qr_enabled: false,
+    qr_description: undefined,
+    pos_name: undefined,
+    color: undefined,
   };
 }

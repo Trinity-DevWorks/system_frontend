@@ -8,29 +8,29 @@
  */
 
 /**
- * @param {Array<{ child_item_id?: number; quantity?: number }>} lines
+ * @param {Array<{ child_item_id?: string; quantity?: number }>} lines
  */
 export function getValidBundleLines(lines) {
   return lines
-    .filter((l) => l.child_item_id != null && l.quantity != null && Number(l.quantity) > 0)
+    .filter((l) => l.child_item_id != null && l.child_item_id !== "" && l.quantity != null && Number(l.quantity) > 0)
     .map((l) => ({
-      child_item_id: Number(l.child_item_id),
+      child_item_id: String(l.child_item_id),
       quantity: Number(l.quantity),
     }));
 }
 
 /**
- * @param {Array<{ child_item_id?: number; quantity?: number }>} lines
+ * @param {Array<{ child_item_id?: string; quantity?: number }>} lines
  */
 function serializeBundleLines(lines) {
   return JSON.stringify(
-    getValidBundleLines(lines).sort((a, b) => a.child_item_id - b.child_item_id),
+    getValidBundleLines(lines).sort((a, b) => a.child_item_id.localeCompare(b.child_item_id)),
   );
 }
 
 /**
- * @param {Array<{ child_item_id?: number; quantity?: number }>} current
- * @param {Array<{ child_item_id?: number; quantity?: number }>} initial
+ * @param {Array<{ child_item_id?: string; quantity?: number }>} current
+ * @param {Array<{ child_item_id?: string; quantity?: number }>} initial
  */
 export function canSaveBundleLines(current, initial) {
   if (serializeBundleLines(current) === serializeBundleLines(initial)) return false;
@@ -38,38 +38,39 @@ export function canSaveBundleLines(current, initial) {
 }
 
 /**
- * @param {{ child_item_id?: number; quantity?: number }} line
+ * @param {{ child_item_id?: string; quantity?: number }} line
  */
 export function isBundleLineComplete(line) {
-  return line.child_item_id != null && line.quantity != null && Number(line.quantity) > 0;
+  return line.child_item_id != null && line.child_item_id !== "" && line.quantity != null && Number(line.quantity) > 0;
 }
 
 /**
- * @param {Array<{ child_item_id?: number; quantity?: number }>} lines
+ * @param {Array<{ child_item_id?: string; quantity?: number }>} lines
  */
 export function canAddBundleLine(lines) {
   return lines.length > 0 && lines.every(isBundleLineComplete);
 }
 
 /**
- * @param {Array<{ item_id?: number; quantity?: number; uom_id?: number }>} lines
+ * @param {Array<{ item_id?: string; quantity?: number; uom_id?: number }>} lines
  */
 export function getValidRecipeLines(lines) {
   return lines
-    .filter((l) => l.item_id != null && l.quantity != null && Number(l.quantity) > 0 && l.uom_id != null)
+    .filter((l) => l.item_id != null && l.item_id !== "" && l.quantity != null && Number(l.quantity) > 0 && l.uom_id != null)
     .map((l) => ({
-      item_id: Number(l.item_id),
+      item_id: String(l.item_id),
       quantity: Number(l.quantity),
       uom_id: Number(l.uom_id),
     }));
 }
 
 /**
- * @param {{ item_id?: number; quantity?: number; uom_id?: number }} line
+ * @param {{ item_id?: string; quantity?: number; uom_id?: number }} line
  */
 export function isRecipeLineComplete(line) {
   return (
     line.item_id != null &&
+    line.item_id !== "" &&
     line.quantity != null &&
     Number(line.quantity) > 0 &&
     line.uom_id != null
@@ -78,18 +79,20 @@ export function isRecipeLineComplete(line) {
 
 /**
  * Allow "+ Add" only when every ingredient row is fully filled.
- * @param {Array<{ item_id?: number; quantity?: number; uom_id?: number }>} lines
+ * @param {Array<{ item_id?: string; quantity?: number; uom_id?: number }>} lines
  */
 export function canAddRecipeLine(lines) {
   return lines.length > 0 && lines.every(isRecipeLineComplete);
 }
 
 /**
- * @param {Array<{ item_id?: number; quantity?: number; uom_id?: number }>} lines
+ * @param {Array<{ item_id?: string; quantity?: number; uom_id?: number }>} lines
  */
 function serializeRecipeLines(lines) {
   return JSON.stringify(
-    getValidRecipeLines(lines).sort((a, b) => a.item_id - b.item_id || a.uom_id - b.uom_id),
+    getValidRecipeLines(lines).sort(
+      (a, b) => a.item_id.localeCompare(b.item_id) || a.uom_id - b.uom_id,
+    ),
   );
 }
 
@@ -105,8 +108,8 @@ export function isRecipeHeaderDirty(header, initialHeader) {
 }
 
 /**
- * @param {Array<{ item_id?: number; quantity?: number; uom_id?: number }>} current
- * @param {Array<{ item_id?: number; quantity?: number; uom_id?: number }>} initial
+ * @param {Array<{ item_id?: string; quantity?: number; uom_id?: number }>} current
+ * @param {Array<{ item_id?: string; quantity?: number; uom_id?: number }>} initial
  * @param {{ yield_quantity?: number; uom_id?: number }} header
  * @param {{ yield_quantity?: number; uom_id?: number }} initialHeader
  */

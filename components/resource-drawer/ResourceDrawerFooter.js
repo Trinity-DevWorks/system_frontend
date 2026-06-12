@@ -109,7 +109,7 @@ export default function ResourceDrawerFooter({
           type="primary"
           onClick={handleEditSubmit}
           loading={submitting}
-          disabled={!canSubmitRequired || (fetchRemoteDetail && detailEnabled && detailQueryError)}
+          disabled={editSaveDisabled || submitting}
         >
           {t("drawerSaveUpdate")}
         </Button>

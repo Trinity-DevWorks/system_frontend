@@ -23,13 +23,6 @@ export function getSupplierTableColumns(t, actions = {}) {
 
   return [
     {
-      title: t("colId"),
-      dataIndex: "id",
-      key: "id",
-      width: 72,
-      sorter: (a, b) => a.id - b.id,
-    },
-    {
       title: t("colCode"),
       dataIndex: "supplier_code",
       key: "supplier_code",

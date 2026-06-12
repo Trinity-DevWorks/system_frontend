@@ -1,5 +1,5 @@
 /**
- * Nested category, brand, UOM, and VAT group drawers opened from general-tab lookups.
+ * Nested category, brand, unit group, and VAT group drawers opened from general-tab lookups.
  *
  * Used by:
  * - drawer/ItemDrawer.js
@@ -7,7 +7,7 @@
 
 import CategoryDrawer from "@/app/[locale]/main/categories/drawer/CategoryDrawer";
 import BrandDrawer from "@/app/[locale]/main/brands/drawer/BrandDrawer";
-import UnitOfMeasurementDrawer from "@/app/[locale]/main/unit-of-measurements/drawer/UnitOfMeasurementDrawer";
+import UnitGroupDrawer from "@/app/[locale]/main/unit-groups/drawer/UnitGroupDrawer";
 import VatGroupDrawer from "@/app/[locale]/main/vat-groups/drawer/VatGroupDrawer";
 
 /**
@@ -15,12 +15,12 @@ import VatGroupDrawer from "@/app/[locale]/main/vat-groups/drawer/VatGroupDrawer
  *   readOnly: boolean;
  *   nestedCategoryDrawerOpen: boolean;
  *   nestedBrandDrawerOpen: boolean;
- *   nestedUomDrawerOpen: boolean;
+ *   nestedUnitGroupDrawerOpen: boolean;
  *   nestedVatGroupDrawerOpen: boolean;
  *   closeNestedCreate: () => void;
  *   onNestedCategoryCreated: (record: Record<string, unknown>) => void;
  *   onNestedBrandCreated: (record: Record<string, unknown>) => void;
- *   onNestedBaseUomCreated: (record: Record<string, unknown>) => void;
+ *   onNestedUnitGroupCreated: (record: Record<string, unknown>) => void;
  *   onNestedVatGroupCreated: (record: Record<string, unknown>) => void;
  * }} props
  */
@@ -28,12 +28,12 @@ export default function ItemDrawerNestedDrawers({
   readOnly,
   nestedCategoryDrawerOpen,
   nestedBrandDrawerOpen,
-  nestedUomDrawerOpen,
+  nestedUnitGroupDrawerOpen,
   nestedVatGroupDrawerOpen,
   closeNestedCreate,
   onNestedCategoryCreated,
   onNestedBrandCreated,
-  onNestedBaseUomCreated,
+  onNestedUnitGroupCreated,
   onNestedVatGroupCreated,
 }) {
   if (readOnly) return null;
@@ -54,12 +54,12 @@ export default function ItemDrawerNestedDrawers({
         onClose={closeNestedCreate}
         onCreateSuccess={onNestedBrandCreated}
       />
-      <UnitOfMeasurementDrawer
-        open={nestedUomDrawerOpen}
+      <UnitGroupDrawer
+        open={nestedUnitGroupDrawerOpen}
         mode="create"
-        unitOfMeasurementId={null}
+        unitGroupId={null}
         onClose={closeNestedCreate}
-        onCreateSuccess={onNestedBaseUomCreated}
+        onCreateSuccess={onNestedUnitGroupCreated}
       />
       <VatGroupDrawer
         open={nestedVatGroupDrawerOpen}

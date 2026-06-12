@@ -8,6 +8,7 @@
  */
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { isPersistedEntityId } from "@/lib/entityId";
 import {
   createItemBarcode,
   deleteItemBarcode,
@@ -34,7 +35,7 @@ import { BARCODE_DRAFT_ROW_ID } from "./barcodePanelConstants";
 /** @typedef {import("./barcodePanelConstants").BarcodeInlineValues} BarcodeInlineValues */
 
 /**
- * @param {{ itemId: number; readOnly: boolean; t: (k: string) => string; tApiErrors: (k: string) => string; active: boolean; itemUoms: unknown[] }} args
+ * @param {{ itemId: string; readOnly: boolean; t: (k: string) => string; tApiErrors: (k: string) => string; active: boolean; itemUoms: unknown[] }} args
  */
 export function useItemBarcodesPanel({ itemId, readOnly, t, tApiErrors, active, itemUoms }) {
   const { message, modal } = App.useApp();
@@ -48,7 +49,7 @@ export function useItemBarcodesPanel({ itemId, readOnly, t, tApiErrors, active, 
   const { data = [], isPending } = useQuery({
     queryKey: barcodesQueryKeyValue,
     queryFn: () => fetchItemBarcodes(itemId),
-    enabled: active && itemId > 0,
+    enabled: active && isPersistedEntityId(itemId),
   });
 
   const rows = useMemo(() => [...(data ?? [])], [data]);

@@ -14,6 +14,9 @@
  *   barcode: string;
  *   selling_price?: number;
  *   cost_price?: number;
+ *   takeaway_price?: number;
+ *   dine_in_price?: number;
+ *   delivery_price?: number;
  *   is_base: boolean;
  *   is_default_sale: boolean;
  *   is_default_purchase: boolean;
@@ -28,6 +31,9 @@ export function defaultUomInlineValues() {
     barcode: "",
     selling_price: undefined,
     cost_price: undefined,
+    takeaway_price: undefined,
+    dine_in_price: undefined,
+    delivery_price: undefined,
     is_base: false,
     is_default_sale: false,
     is_default_purchase: false,
@@ -44,6 +50,9 @@ export function rowToUomInlineValues(row) {
     barcode: row.barcode != null ? String(row.barcode) : "",
     selling_price: row.selling_price != null ? Number(row.selling_price) : undefined,
     cost_price: row.cost_price != null ? Number(row.cost_price) : undefined,
+    takeaway_price: row.takeaway_price != null ? Number(row.takeaway_price) : undefined,
+    dine_in_price: row.dine_in_price != null ? Number(row.dine_in_price) : undefined,
+    delivery_price: row.delivery_price != null ? Number(row.delivery_price) : undefined,
     is_base: Boolean(row.is_base),
     is_default_sale: Boolean(row.is_default_sale),
     is_default_purchase: Boolean(row.is_default_purchase),
@@ -56,9 +65,12 @@ export function uomInlineValuesToBody(values) {
     uom_id: values.uom_id,
     currency_id: values.currency_id ?? null,
     conversion_factor: values.conversion_factor,
-    barcode: values.barcode?.trim() || null,
+    barcode: null,
     selling_price: values.selling_price ?? null,
     cost_price: values.cost_price ?? null,
+    takeaway_price: values.takeaway_price ?? null,
+    dine_in_price: values.dine_in_price ?? null,
+    delivery_price: values.delivery_price ?? null,
     is_base: values.is_base,
     is_default_sale: values.is_default_sale,
     is_default_purchase: values.is_default_purchase,
@@ -104,7 +116,7 @@ export function barcodeInlineValuesToBody(values) {
 }
 
 /** @typedef {{
- *   supplier_id?: number;
+ *   supplier_id?: string;
  *   supplier_sku: string;
  *   last_purchase_price?: number;
  *   currency_id?: number;
@@ -126,13 +138,14 @@ export function defaultSupplierInlineValues() {
 
 /** @param {Record<string, unknown>} row */
 export function rowToSupplierInlineValues(row) {
+  const supplierId =
+    row.supplier?.id != null
+      ? String(row.supplier.id)
+      : row.supplier_id != null
+        ? String(row.supplier_id)
+        : undefined;
   return {
-    supplier_id:
-      row.supplier?.id != null
-        ? Number(row.supplier.id)
-        : row.supplier_id != null
-          ? Number(row.supplier_id)
-          : undefined,
+    supplier_id: supplierId,
     supplier_sku: row.supplier_sku != null ? String(row.supplier_sku) : "",
     last_purchase_price: row.last_purchase_price != null ? Number(row.last_purchase_price) : undefined,
     currency_id:

@@ -62,7 +62,7 @@ function ItemsTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["sku", "name", "item_type_label", "category.name", "brand.name", "is_active_label"],
+          searchKeys: ["sku", "item_code", "name", "item_type_label", "category.name", "brand.name", "is_active_label"],
           showAdd: true,
           onAdd: drawer.openCreateDrawer,
           showRefresh: true,
@@ -73,7 +73,7 @@ function ItemsTable() {
         onBulkDelete={openBulkDeleteConfirm}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
-        scrollX={1400}
+        scrollX={1000}
         enableColumnDrag
         pagination={{ mode: "client", pageSize: 20, pageSizeOptions: [10, 20, 50] }}
       />

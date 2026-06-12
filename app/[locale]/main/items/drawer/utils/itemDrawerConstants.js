@@ -9,15 +9,15 @@
  * - drawer/hooks/useItemDrawerNestedCreate.js (JSDoc type import)
  */
 
-/** @type {Record<string, { track_inventory: boolean; allow_sale: boolean; allow_purchase: boolean }>} */
+/** @type {Record<string, { track_inventory: boolean; allow_sale: boolean; allow_purchase: boolean; send_to_kitchen: boolean; qr_enabled: boolean }>} */
 export const ITEM_TYPE_FLAG_DEFAULTS = {
-  INVENTORY: { track_inventory: true, allow_sale: true, allow_purchase: true },
-  SERVICE: { track_inventory: false, allow_sale: true, allow_purchase: false },
-  INGREDIENT: { track_inventory: true, allow_sale: false, allow_purchase: true },
-  PRODUCE: { track_inventory: true, allow_sale: true, allow_purchase: false },
-  BUNDLE: { track_inventory: false, allow_sale: true, allow_purchase: false },
-  NON_INVENTORY: { track_inventory: false, allow_sale: true, allow_purchase: true },
-  PLU: { track_inventory: false, allow_sale: true, allow_purchase: false },
+  INVENTORY: { track_inventory: true, allow_sale: true, allow_purchase: true, send_to_kitchen: false, qr_enabled: false },
+  SERVICE: { track_inventory: false, allow_sale: true, allow_purchase: false, send_to_kitchen: true, qr_enabled: false },
+  INGREDIENT: { track_inventory: true, allow_sale: false, allow_purchase: true, send_to_kitchen: false, qr_enabled: false },
+  PRODUCE: { track_inventory: true, allow_sale: true, allow_purchase: false, send_to_kitchen: true, qr_enabled: false },
+  BUNDLE: { track_inventory: false, allow_sale: true, allow_purchase: false, send_to_kitchen: true, qr_enabled: false },
+  NON_INVENTORY: { track_inventory: false, allow_sale: true, allow_purchase: true, send_to_kitchen: false, qr_enabled: false },
+  PLU: { track_inventory: false, allow_sale: true, allow_purchase: false, send_to_kitchen: true, qr_enabled: false },
 };
 
 export const ITEM_CREATE_SAVE_INTENT_KEY = "itemDrawer:createSaveIntent";
@@ -25,7 +25,10 @@ export const ITEM_CREATE_SAVE_INTENT_EVENT = "itemDrawer:createSaveIntent:change
 
 export const ITEM_LOOKUP_ADD_CATEGORY = "__item_drawer_add_category__";
 export const ITEM_LOOKUP_ADD_BRAND = "__item_drawer_add_brand__";
-export const ITEM_LOOKUP_ADD_BASE_UOM = "__item_drawer_add_base_uom__";
+export const ITEM_LOOKUP_ADD_UNIT_GROUP = "__item_drawer_add_unit_group__";
 export const ITEM_LOOKUP_ADD_VAT_GROUP = "__item_drawer_add_vat_group__";
 
-/** @typedef {"category" | "brand" | "uom" | "vat-group"} ItemNestedCreateKey */
+/** @type {RegExp} */
+export const ITEM_COLOR_PATTERN = /^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/i;
+
+/** @typedef {"category" | "brand" | "unit-group" | "vat-group"} ItemNestedCreateKey */
