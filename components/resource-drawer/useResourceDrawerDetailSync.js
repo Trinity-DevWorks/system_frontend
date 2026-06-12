@@ -1,5 +1,6 @@
 "use client";
 
+import { entityIdsEqual } from "@/lib/entityId";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useMemo } from "react";
 
@@ -8,12 +9,12 @@ import { useEffect, useLayoutEffect, useMemo } from "react";
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
- *   recordId: number | null;
+ *   recordId: string | null;
  *   tableSeedRecord: Record<string, unknown> | null;
  *   form: import("antd").FormInstance;
  *   defaults: Record<string, unknown>;
  *   queryKeyPrefix: readonly unknown[];
- *   fetchDetail: (id: number) => Promise<unknown>;
+ *   fetchDetail: (id: string) => Promise<unknown>;
  *   mapSeedToCacheRow: (seed: Record<string, unknown>) => unknown;
  *   mapRecordToFormValues: (record: Record<string, unknown>) => Record<string, unknown>;
  * }} args
@@ -39,7 +40,7 @@ export function useResourceDrawerDetailSync({
       (mode === "edit" || mode === "view") &&
       Boolean(tableSeedRecord) &&
       recordId != null &&
-      Number(tableSeedRecord?.id) === Number(recordId),
+      entityIdsEqual(tableSeedRecord?.id, recordId),
     [mode, tableSeedRecord, recordId],
   );
 
@@ -47,7 +48,7 @@ export function useResourceDrawerDetailSync({
 
   const detailQuery = useQuery({
     queryKey: [...queryKeyPrefix, recordId],
-    queryFn: () => fetchDetail(/** @type {number} */ (recordId)),
+    queryFn: () => fetchDetail(/** @type {string} */ (recordId)),
     enabled: fetchRemoteDetail,
     staleTime: 60_000,
   });

@@ -35,7 +35,7 @@ const SALESMAN_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "salesmen"
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
- *   salesmanId: number | null;
+ *   salesmanId: string | null;
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
@@ -131,7 +131,7 @@ export default function SalesmanDrawer({
     const u = lookupsQuery.data?.users;
     const list = Array.isArray(u) ? u : [];
     return list.map((row) => ({
-      value: Number(row.id),
+      value: row.id,
       label: `${row.name ?? ""}${row.email ? ` (${row.email})` : ""}`.trim() || String(row.id),
     }));
   }, [lookupsQuery.data?.users]);
@@ -152,7 +152,7 @@ export default function SalesmanDrawer({
       target_amount: r.target_amount != null && r.target_amount !== "" ? Number(r.target_amount) : undefined,
       hire_date: hire ? dayjs(String(hire).slice(0, 10)) : null,
       warehouse_id: r.warehouse_id == null ? undefined : Number(r.warehouse_id),
-      user_id: r.user_id == null ? undefined : Number(r.user_id),
+      user_id: r.user_id == null ? undefined : String(r.user_id),
       is_active: Boolean(r.is_active),
       notes: r.notes ?? "",
     };

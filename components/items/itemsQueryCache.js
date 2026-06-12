@@ -3,14 +3,14 @@ export const ITEMS_LIST_QUERY_KEY = /** @type {const} */ (["tenant", "items"]);
 
 /**
  * @param {Record<string, unknown>} attachment
- * @returns {{ id: number; file_name: string; mime_type: string } | null}
+ * @returns {{ id: string; file_name: string; mime_type: string } | null}
  */
 export function attachmentToPrimaryImageBrief(attachment) {
   if (attachment.viewer_category !== "image") return null;
   const id = attachment.id;
-  if (typeof id !== "number") return null;
+  if (id == null || id === "") return null;
   return {
-    id,
+    id: String(id),
     file_name: String(attachment.file_name ?? ""),
     mime_type: String(attachment.mime_type ?? ""),
   };
@@ -18,7 +18,7 @@ export function attachmentToPrimaryImageBrief(attachment) {
 
 /**
  * @param {unknown[]} attachments
- * @returns {{ id: number; file_name: string; mime_type: string } | null}
+ * @returns {{ id: string; file_name: string; mime_type: string } | null}
  */
 export function derivePrimaryImageFromAttachments(attachments) {
   const images = attachments.filter(
@@ -33,8 +33,8 @@ export function derivePrimaryImageFromAttachments(attachments) {
 
 /**
  * @param {import("@tanstack/react-query").QueryClient} queryClient
- * @param {number} itemId
- * @param {{ id: number; file_name: string; mime_type: string } | null} primaryImage
+ * @param {string} itemId
+ * @param {{ id: string; file_name: string; mime_type: string } | null} primaryImage
  */
 export function patchItemPrimaryImageInCache(queryClient, itemId, primaryImage) {
   queryClient.setQueryData(ITEMS_LIST_QUERY_KEY, (old) => {
@@ -50,8 +50,8 @@ export function patchItemPrimaryImageInCache(queryClient, itemId, primaryImage) 
 
 /**
  * @param {import("@tanstack/react-query").QueryClient} queryClient
- * @param {number} itemId
- * @param {number | null | undefined} attachmentId
+ * @param {string} itemId
+ * @param {string | number | null | undefined} attachmentId
  */
 export function invalidateItemAttachmentThumb(queryClient, itemId, attachmentId) {
   if (attachmentId == null) return;
@@ -62,14 +62,14 @@ export function invalidateItemAttachmentThumb(queryClient, itemId, attachmentId)
 
 /**
  * @param {import("@tanstack/react-query").QueryClient} queryClient
- * @param {number[]} itemIds
+ * @param {readonly string[]} itemIds
  */
 export function removeItemsFromListCache(queryClient, itemIds) {
   if (!itemIds.length) return;
-  const idSet = new Set(itemIds);
+  const idSet = new Set(itemIds.map((id) => String(id)));
   queryClient.setQueryData(ITEMS_LIST_QUERY_KEY, (old) => {
     if (!Array.isArray(old)) return old;
-    return old.filter((row) => !idSet.has(/** @type {{ id?: number }} */ (row)?.id));
+    return old.filter((row) => !idSet.has(String(/** @type {{ id?: unknown }} */ (row)?.id ?? "")));
   });
 }
 

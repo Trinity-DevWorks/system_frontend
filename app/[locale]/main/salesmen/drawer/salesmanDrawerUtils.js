@@ -224,7 +224,7 @@ export function salesmanFormValuesToPayload(values) {
     target_amount: target,
     hire_date: hireDate,
     warehouse_id: w == null || w === "" ? null : Number(w),
-    user_id: u == null || u === "" ? null : Number(u),
+    user_id: u == null || u === "" ? null : String(u),
     is_active: Boolean(values.is_active),
     notes: emptyToNull(values.notes),
   };

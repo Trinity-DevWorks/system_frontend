@@ -35,8 +35,11 @@ export function mapBrandOptions(rows) {
 }
 
 /** @param {unknown[]} rows */
-export function mapUomOptions(rows) {
-  return rows.map((u) => ({ value: u.id, label: `${u.name ?? u.code} (${u.code})` }));
+export function mapUnitGroupOptions(rows) {
+  return rows.map((g) => ({
+    value: g.id,
+    label: typeof g.code === "string" && g.code.trim() ? `${g.code} — ${g.name ?? g.id}` : String(g.name ?? g.id),
+  }));
 }
 
 /** @param {unknown[] | undefined} rows */

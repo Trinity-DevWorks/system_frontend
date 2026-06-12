@@ -39,11 +39,10 @@ import {
   Typography,
 } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ColumnDragShell, SortableTableBodyCell, SortableTableHeaderCell } from "./AppDataTableColumnDrag";
 
 const DEFAULT_SCROLL_X = 1000;
-const DEFAULT_TABLE_SCROLL_Y = "calc(100dvh - 320px)";
 const PICKER_SKIP = new Set(["actions"]);
 
 /**
@@ -65,6 +64,7 @@ const PICKER_SKIP = new Set(["actions"]);
  *   searchKeys?: string[],
  *   showAdd?: boolean,
  *   onAdd?: () => void,
+ *   addLabel?: string,
  *   showRefresh?: boolean,
  *   onRefresh?: () => void,
  *   showExportExcel?: boolean,
@@ -75,6 +75,7 @@ const PICKER_SKIP = new Set(["actions"]);
  *   onImportExcel?: () => void,
  *   enableClientSearch?: boolean,
  *   extra?: import("react").ReactNode,
+ *   filterBar?: import("react").ReactNode,
  * }} [props.toolbar]
  * @param {import("antd/es/table/interface").TableRowSelection<any> | false} [props.rowSelection]
  * @param {(selectedKeys?: import("react").Key[]) => void} [props.onBulkDelete]
@@ -82,7 +83,6 @@ const PICKER_SKIP = new Set(["actions"]);
  * @param {boolean} [props.showSelectionBar]
  * @param {boolean} [props.stickyHeader]
  * @param {number} [props.scrollX]
- * @param {string} [props.tableBodyScrollY]
  * @param {boolean} [props.enableColumnDrag] Drag-reorder headers (@dnd-kit, like ant.design Table demo); persists order in localStorage.
  * @param {false | {
  *   mode: "client" | "server" | "placeholder",
@@ -112,7 +112,6 @@ export default function AppDataTable({
   showSelectionBar = true,
   stickyHeader = true,
   scrollX = DEFAULT_SCROLL_X,
-  tableBodyScrollY = DEFAULT_TABLE_SCROLL_Y,
   pagination = false,
   enableColumnDrag = false,
 }) {
@@ -123,6 +122,7 @@ export default function AppDataTable({
     searchKeys = ["name"],
     showAdd = false,
     onAdd,
+    addLabel,
     showRefresh = true,
     onRefresh,
     showExportExcel = true,
@@ -133,6 +133,7 @@ export default function AppDataTable({
     onImportExcel,
     enableClientSearch = true,
     extra,
+    filterBar,
   } = toolbar;
 
   const paginationMode = pagination ? pagination.mode : false;
@@ -151,9 +152,6 @@ export default function AppDataTable({
     over: undefined,
     direction: undefined,
   });
-  /** Pixel height for Table `scroll.y` when sticky; measured from flex layout (not viewport guess). */
-  const [stickyBodyY, setStickyBodyY] = useState(null);
-  const tableBodyHostRef = useRef(null);
   /** Avoid SSR/client hydration mismatch: @dnd-kit aria-describedby ids differ pre/post mount. */
   const [columnDndReady, setColumnDndReady] = useState(false);
 
@@ -575,52 +573,8 @@ export default function AppDataTable({
 
   const showFooter = pagination !== false;
   const tableSize = density === "compact" ? "small" : "middle";
-  const shouldFillHeight = loading;
 
-  useLayoutEffect(() => {
-    if (!stickyHeader) {
-      return;
-    }
-    const el = tableBodyHostRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-
-    let raf = 0;
-    const measure = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const host = tableBodyHostRef.current;
-        if (!host) return;
-        const h = host.clientHeight;
-        if (h < 8) return;
-        const thead = host.querySelector(".ant-table-thead");
-        const theadH =
-          thead instanceof HTMLElement ? Math.ceil(thead.getBoundingClientRect().height) : 48;
-        const next = Math.max(120, Math.floor(h - theadH - 1));
-        setStickyBodyY((prev) => (prev === next ? prev : next));
-      });
-    };
-
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    measure();
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, [stickyHeader, showFooter, tableSize, displayedRows.length, columnDndActive]);
-
-  const scroll = useMemo(() => {
-    const y =
-      stickyHeader && shouldFillHeight
-        ? typeof stickyBodyY === "number"
-          ? stickyBodyY
-          : tableBodyScrollY
-        : undefined;
-    return {
-      x: scrollX,
-      ...(y != null ? { y } : {}),
-    };
-  }, [scrollX, stickyHeader, shouldFillHeight, stickyBodyY, tableBodyScrollY]);
+  const scroll = useMemo(() => ({ x: scrollX }), [scrollX]);
 
   const renderedTable = useMemo(() => {
     const tableEl = (
@@ -677,7 +631,7 @@ export default function AppDataTable({
   ]);
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <Space wrap size="small" className="min-w-0">
           {showSearch && paginationMode !== "server" ? (
@@ -744,18 +698,20 @@ export default function AppDataTable({
           ) : null}
           {showAdd && onAdd ? (
             <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
-              {t("add")}
+              {addLabel ?? t("add")}
             </Button>
           ) : null}
         </Space>
       </div>
+
+      {filterBar ? <div className="min-w-0">{filterBar}</div> : null}
 
       {showSelectionBar && rowSelection && selectedKeys.length > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 dark:border-white/10 dark:bg-white/[0.06]">
           <Typography.Text type="secondary">
             {t("selectedCount", { count: selectedKeys.length })}
           </Typography.Text>
-          <Space size="small" separator={<Divider orientation="vertical" />}>
+          <Space size="small" separator={<Divider vertical />}>
             <Button
               type="link"
               size="small"
@@ -785,15 +741,8 @@ export default function AppDataTable({
         </div>
       ) : null}
 
-      <div
-        className={`app-data-table flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-black/10 dark:border-white/10 ${shouldFillHeight ? "flex-1" : "h-auto"}`}
-      >
-        <div
-          ref={tableBodyHostRef}
-          className={`min-h-0 overflow-hidden ${shouldFillHeight ? "flex-1" : "h-auto"}`}
-        >
-          {renderedTable}
-        </div>
+      <div className="app-data-table flex min-w-0 flex-col overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
+        <div className="overflow-hidden">{renderedTable}</div>
         {showFooter ? (
           <div className="grid grid-cols-1 items-center gap-3 border-t border-black/10 bg-black/[0.02] px-3 py-2 sm:grid-cols-[1fr_auto_1fr] dark:border-white/10 dark:bg-white/[0.04]">
             <Typography.Text type="secondary" className="min-w-0 justify-self-start">

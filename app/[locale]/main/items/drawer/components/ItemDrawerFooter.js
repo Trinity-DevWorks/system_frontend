@@ -24,7 +24,7 @@ import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFoo
  *   runCreate: (intent: "keep" | "new" | "close") => void;
  *   createIntentLabel: (intent: "keep" | "new" | "close") => string;
  *   createSaveMenuItems: { key: "keep" | "new" | "close"; label: string }[];
- *   runEdit?: ((intent: "keep" | "new" | "close") => void) | undefined;
+ *   handleEditSubmit?: () => void;
  *   editSaveDisabled: boolean;
  * }} props
  */
@@ -44,7 +44,7 @@ export default function ItemDrawerFooter({
   runCreate,
   createIntentLabel,
   createSaveMenuItems,
-  runEdit,
+  handleEditSubmit,
   editSaveDisabled,
 }) {
   if (isGeneralTab) {
@@ -61,7 +61,7 @@ export default function ItemDrawerFooter({
         runCreate={runCreate}
         createIntentLabel={createIntentLabel}
         createSaveMenuItems={createSaveMenuItems}
-        runEdit={mode === "edit" ? runEdit : undefined}
+        handleEditSubmit={mode === "edit" ? handleEditSubmit : undefined}
         editSaveDisabled={editSaveDisabled}
         canSubmitRequired={canSubmitRequired}
         fetchRemoteDetail={fetchRemoteDetail}

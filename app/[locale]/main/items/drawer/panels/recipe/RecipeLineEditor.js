@@ -18,7 +18,7 @@ import { useRecipeLineEditor } from "./useRecipeLineEditor";
  * @param {{
  *   itemId: number;
  *   initialHeader: { yield_quantity: number; uom_id?: number };
- *   initialLines: { item_id?: number; quantity?: number; uom_id?: number }[];
+ *   initialLines: { item_id?: string; quantity?: number; uom_id?: number }[];
  *   itemOptions: { value: number; label: string }[];
  *   uomOptions: { value: number; label: string }[];
  *   t: (k: string) => string;
@@ -101,7 +101,6 @@ export function RecipeLineEditor({
       </div>
 
       <ItemDrawerLinesGrid
-        variant="recipe"
         columns={recipeColumns}
         lines={lines}
         canAddLine={canAddLine}
@@ -110,7 +109,7 @@ export function RecipeLineEditor({
         deleteAriaLabel={t("panelDeleteConfirm")}
         onRemoveLine={removeLine}
         renderField={(line, index, columnKey) => {
-          const row = /** @type {{ item_id?: number; quantity?: number; uom_id?: number }} */ (line);
+          const row = /** @type {{ item_id?: string; quantity?: number; uom_id?: number }} */ (line);
           if (columnKey === "item") {
             return (
               <Select

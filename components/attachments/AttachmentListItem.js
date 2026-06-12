@@ -12,7 +12,7 @@ import { Button, Tag, Tooltip } from "antd";
 
 /**
  * @param {{
- *   row: { id: number; file_name: string; viewer_category?: string; file_size?: number; is_primary?: boolean };
+ *   row: { id: string; file_name: string; viewer_category?: string; file_size?: number; is_primary?: boolean };
  *   readOnly: boolean;
  *   previewLoading: boolean;
  *   enablePrimaryImage?: boolean;

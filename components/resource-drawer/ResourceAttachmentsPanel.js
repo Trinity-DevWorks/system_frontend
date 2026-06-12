@@ -20,6 +20,7 @@ import {
 } from "@/components/items/itemsQueryCache";
 import ResourceDrawerPanelHeader from "@/components/resource-drawer/ResourceDrawerPanelHeader";
 import { getAttachmentUploadErrorMessage, getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { isPersistedEntityId, normalizeEntityId } from "@/lib/entityId";
 import { InboxOutlined, UploadOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Badge, Button, Empty, Spin, Upload } from "antd";
@@ -31,19 +32,19 @@ const MAX_ATTACHMENT_LABEL = "15 MB";
 
 /**
  * @typedef {{
- *   fetchList: (recordId: number) => Promise<unknown[]>;
- *   upload: (recordId: number, file: File, config?: import('axios').AxiosRequestConfig) => Promise<unknown>;
- *   remove: (recordId: number, attachmentId: number) => Promise<unknown>;
- *   downloadBlob: (recordId: number, attachmentId: number) => Promise<Blob>;
- *   viewBlob: (recordId: number, attachmentId: number) => Promise<Blob>;
- *   openViewInNewTab: (recordId: number, attachmentId: number, mimeType?: string) => Promise<void>;
- *   setPrimary?: (recordId: number, attachmentId: number) => Promise<unknown>;
+ *   fetchList: (recordId: string) => Promise<unknown[]>;
+ *   upload: (recordId: string, file: File, config?: import('axios').AxiosRequestConfig) => Promise<unknown>;
+ *   remove: (recordId: string, attachmentId: string) => Promise<unknown>;
+ *   downloadBlob: (recordId: string, attachmentId: string) => Promise<Blob>;
+ *   viewBlob: (recordId: string, attachmentId: string) => Promise<Blob>;
+ *   openViewInNewTab: (recordId: string, attachmentId: string, mimeType?: string) => Promise<void>;
+ *   setPrimary?: (recordId: string, attachmentId: string) => Promise<unknown>;
  * }} ResourceAttachmentsApi
  */
 
 /**
  * @typedef {{
- *   id: number;
+ *   id: string;
  *   file_name: string;
  *   viewer_category?: string;
  *   mime_type?: string;
@@ -81,13 +82,14 @@ export default function ResourceAttachmentsPanel({
 }) {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
-  const [previewingId, setPreviewingId] = useState(/** @type {number | null} */ (null));
+  const [previewingId, setPreviewingId] = useState(/** @type {string | null} */ (null));
   const [mediaPreviewRow, setMediaPreviewRow] = useState(/** @type {AttachmentRow | null} */ (null));
-  const [settingPrimaryId, setSettingPrimaryId] = useState(/** @type {number | null} */ (null));
+  const [settingPrimaryId, setSettingPrimaryId] = useState(/** @type {string | null} */ (null));
   const [uploadAllLoading, setUploadAllLoading] = useState(false);
   const pending = usePendingAttachments();
 
-  const enabled = Boolean(open && recordId != null && Number(recordId) > 0);
+  const persistedRecordId = normalizeEntityId(recordId);
+  const enabled = Boolean(open && isPersistedEntityId(recordId));
 
   const { items: pendingItems, pendingCount, isUploading, addFiles, remove: removePending, patch: patchPending, clearAll: clearPending } =
     pending;
@@ -102,7 +104,7 @@ export default function ResourceAttachmentsPanel({
 
   const attachmentsQuery = useQuery({
     queryKey,
-    queryFn: () => api.fetchList(/** @type {number} */ (recordId)),
+    queryFn: () => api.fetchList(/** @type {string} */ (persistedRecordId)),
     enabled,
     staleTime: 30_000,
   });
@@ -118,34 +120,34 @@ export default function ResourceAttachmentsPanel({
   );
 
   const syncItemPrimaryImageFromAttachments = useCallback(() => {
-    if (!enablePrimaryImage || recordId == null) return;
+    if (!enablePrimaryImage || persistedRecordId == null) return;
     const list = queryClient.getQueryData(queryKey);
     const attachments = Array.isArray(list) ? list : [];
     patchItemPrimaryImageInCache(
       queryClient,
-      /** @type {number} */ (recordId),
+      /** @type {string} */ (persistedRecordId),
       derivePrimaryImageFromAttachments(attachments),
     );
-  }, [enablePrimaryImage, queryClient, queryKey, recordId]);
+  }, [enablePrimaryImage, queryClient, queryKey, persistedRecordId]);
 
   /** Preview cache + item thumbnail updates (attachment list already patched in cache). */
   const syncRelatedQueries = useCallback(
-    (/** @type {{ thumbAttachmentIds?: number[] }} */ options = {}) => {
-      if (recordId != null) {
-        invalidateMediaPreviewCacheForRecord(recordId);
+    (/** @type {{ thumbAttachmentIds?: string[] }} */ options = {}) => {
+      if (persistedRecordId != null) {
+        invalidateMediaPreviewCacheForRecord(persistedRecordId);
       }
-      if (enablePrimaryImage && recordId != null) {
+      if (enablePrimaryImage && persistedRecordId != null) {
         syncItemPrimaryImageFromAttachments();
         for (const attachmentId of options.thumbAttachmentIds ?? []) {
-          invalidateItemAttachmentThumb(queryClient, /** @type {number} */ (recordId), attachmentId);
+          invalidateItemAttachmentThumb(queryClient, /** @type {string} */ (persistedRecordId), attachmentId);
         }
       }
     },
-    [enablePrimaryImage, queryClient, recordId, syncItemPrimaryImageFromAttachments],
+    [enablePrimaryImage, queryClient, persistedRecordId, syncItemPrimaryImageFromAttachments],
   );
 
   const deleteMutation = useMutation({
-    mutationFn: ({ id }) => api.remove(/** @type {number} */ (recordId), id),
+    mutationFn: ({ id }) => api.remove(/** @type {string} */ (persistedRecordId), id),
     onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey });
       const previousAttachments = queryClient.getQueryData(queryKey);
@@ -153,12 +155,8 @@ export default function ResourceAttachmentsPanel({
       const base = Array.isArray(previousAttachments) ? previousAttachments : [];
       const nextList = removeAttachmentFromList(base, id);
       patchAttachmentsCache(() => nextList);
-      if (enablePrimaryImage && recordId != null) {
-        patchItemPrimaryImageInCache(
-          queryClient,
-          /** @type {number} */ (recordId),
-          derivePrimaryImageFromAttachments(nextList),
-        );
+      if (enablePrimaryImage && persistedRecordId != null) {
+        patchItemPrimaryImageInCache(queryClient, persistedRecordId, derivePrimaryImageFromAttachments(nextList));
       }
       return { previousAttachments, previousItems };
     },
@@ -201,7 +199,7 @@ export default function ResourceAttachmentsPanel({
   const handleDownload = useCallback(
     async (/** @type {AttachmentRow} */ row) => {
       try {
-        const blob = await api.downloadBlob(/** @type {number} */ (recordId), row.id);
+        const blob = await api.downloadBlob(/** @type {string} */ (persistedRecordId), row.id);
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -215,7 +213,7 @@ export default function ResourceAttachmentsPanel({
         message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t("attachmentsDownloadError"));
       }
     },
-    [api, message, recordId, t, tApiErrors],
+    [api, message, persistedRecordId, t, tApiErrors],
   );
 
   const handlePreview = useCallback(
@@ -227,14 +225,14 @@ export default function ResourceAttachmentsPanel({
 
       setPreviewingId(row.id);
       try {
-        await api.openViewInNewTab(/** @type {number} */ (recordId), row.id, row.mime_type);
+        await api.openViewInNewTab(/** @type {string} */ (persistedRecordId), row.id, row.mime_type);
       } catch (err) {
         message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t("attachmentsPreviewError"));
       } finally {
         setPreviewingId(null);
       }
     },
-    [api, message, recordId, t, tApiErrors],
+    [api, message, persistedRecordId, t, tApiErrors],
   );
 
   const handleSetPrimary = useCallback(
@@ -242,7 +240,7 @@ export default function ResourceAttachmentsPanel({
       if (!api.setPrimary) return;
       setSettingPrimaryId(row.id);
       try {
-        await api.setPrimary(/** @type {number} */ (recordId), row.id);
+        await api.setPrimary(/** @type {string} */ (persistedRecordId), row.id);
         patchAttachmentsCache((list) =>
           list.map((item) => {
             if (!item || typeof item !== "object") return item;
@@ -250,10 +248,10 @@ export default function ResourceAttachmentsPanel({
             return { ...rowItem, is_primary: rowItem.id === row.id };
           }),
         );
-        if (enablePrimaryImage && recordId != null) {
+        if (enablePrimaryImage && persistedRecordId != null) {
           patchItemPrimaryImageInCache(
             queryClient,
-            /** @type {number} */ (recordId),
+            persistedRecordId,
             attachmentToPrimaryImageBrief({ ...row, is_primary: true }),
           );
         }
@@ -265,7 +263,7 @@ export default function ResourceAttachmentsPanel({
         setSettingPrimaryId(null);
       }
     },
-    [api, enablePrimaryImage, message, patchAttachmentsCache, queryClient, recordId, syncRelatedQueries, t, tApiErrors],
+    [api, enablePrimaryImage, message, patchAttachmentsCache, queryClient, persistedRecordId, syncRelatedQueries, t, tApiErrors],
   );
 
   const handleDelete = useCallback(
@@ -296,7 +294,7 @@ export default function ResourceAttachmentsPanel({
       patchPending(pendingId, { status: "uploading", progress: 0, errorMessage: undefined });
 
       try {
-        const created = await api.upload(/** @type {number} */ (recordId), entry.file, {
+        const created = await api.upload(/** @type {string} */ (persistedRecordId), entry.file, {
           onUploadProgress: (event) => {
             const total = event.total ?? 0;
             const progress = total > 0 ? Math.round((event.loaded / total) * 100) : 0;
@@ -327,7 +325,7 @@ export default function ResourceAttachmentsPanel({
       patchAttachmentsCache,
       patchPending,
       pendingItems,
-      recordId,
+      persistedRecordId,
       removePending,
       syncRelatedQueries,
       t,

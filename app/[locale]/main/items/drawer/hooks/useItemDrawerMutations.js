@@ -24,6 +24,7 @@ import { applyCreatedItemToCache, applyUpdatedItemToCache } from "../utils/itemD
  *   tApiErrors: (key: string) => string;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
  *   onSyncEditDiscardBaseline?: (record: Record<string, unknown>) => void;
  *   onSaveAndNew?: () => void;
@@ -37,6 +38,7 @@ export function useItemDrawerMutations({
   tApiErrors,
   onClose,
   onCreated,
+  onCreateSuccess,
   onSyncCreateDiscardBaseline,
   onSyncEditDiscardBaseline,
   onSaveAndNew,
@@ -57,7 +59,12 @@ export function useItemDrawerMutations({
       persistItemDrawerSaveIntent(intent);
 
       const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
+      const id = record?.id;
       applyCreatedItemToCache(queryClient, data, record);
+
+      if (typeof onCreateSuccess === "function" && id != null) {
+        onCreateSuccess(record ?? {});
+      }
 
       if (intent === "keep") {
         onCreated?.(record ?? {});

@@ -650,7 +650,7 @@ html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.ant
 }
 
 .resource-crud-drawer-body {
-  padding: 0 24px 24px !important;
+  padding: 12px 24px 24px !important;
 }
 
 .resource-crud-drawer-footer {
@@ -704,6 +704,33 @@ html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.ant
 
 .resource-drawer-tab-panel {
   padding-top: 16px;
+}
+
+/* Stock module — tabs tight under app header / breadcrumb */
+.stock-module-shell {
+  margin-top: -10px;
+}
+
+.stock-module-tabs.ant-tabs {
+  margin: 0;
+}
+
+.stock-module-tabs .ant-tabs-nav {
+  margin: 0 0 8px !important;
+  padding: 0;
+}
+
+.stock-module-tabs .ant-tabs-nav::before {
+  border-bottom-color: var(--ant-color-border-secondary);
+}
+
+.stock-module-tabs .ant-tabs-tab {
+  padding: 6px 0;
+  margin: 0 20px 0 0 !important;
+}
+
+.stock-module-tabs .ant-tabs-tab:last-child {
+  margin-inline-end: 0 !important;
 }
 
 /* Item drawer — General tab form (2-col grid + toggle strip) */
@@ -870,14 +897,6 @@ html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.ant
   align-items: end;
 }
 
-.item-lines-grid--recipe {
-  grid-template-columns: minmax(0, 1fr) 112px 148px 40px;
-}
-
-.item-lines-grid--bundle {
-  grid-template-columns: minmax(0, 1fr) 112px 40px;
-}
-
 .item-lines-grid > .item-lines-col-label {
   padding-bottom: 10px;
   margin-bottom: 4px;
@@ -932,9 +951,8 @@ html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.ant
 }
 
 @media (max-width: 720px) {
-  .item-lines-grid--recipe,
-  .item-lines-grid--bundle {
-    grid-template-columns: 1fr;
+  .item-lines-grid {
+    grid-template-columns: 1fr !important;
     gap: 8px;
   }
 

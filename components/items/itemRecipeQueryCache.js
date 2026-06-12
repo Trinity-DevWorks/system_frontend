@@ -1,9 +1,11 @@
-/** @param {number} itemId */
+import { normalizeEntityId } from "@/lib/entityId";
+
+/** @param {string} itemId */
 export function itemRecipeQueryKey(itemId) {
   return /** @type {const} */ (["tenant", "items", itemId, "recipe"]);
 }
 
-/** @param {number} itemId */
+/** @param {string} itemId */
 export function itemRecipeItemsQueryKey(itemId) {
   return /** @type {const} */ (["tenant", "items", itemId, "recipe-items"]);
 }
@@ -18,12 +20,12 @@ export function isRecipeHeader(value) {
 
 /**
  * @param {unknown[]} rows
- * @returns {Array<{ item_id?: number; quantity?: number; uom_id?: number }>}
+ * @returns {Array<{ item_id?: string; quantity?: number; uom_id?: number }>}
  */
 export function recipeRowsToEditorLines(rows) {
   if (!rows?.length) return [{ item_id: undefined, quantity: undefined, uom_id: undefined }];
   return rows.map((r) => ({
-    item_id: Number(r.item_id),
+    item_id: normalizeEntityId(r.item_id) ?? undefined,
     quantity: Number(r.quantity),
     uom_id: Number(r.uom_id),
   }));
@@ -31,7 +33,7 @@ export function recipeRowsToEditorLines(rows) {
 
 /**
  * @param {import("@tanstack/react-query").QueryClient} queryClient
- * @param {number} itemId
+ * @param {string} itemId
  * @param {Record<string, unknown>} recipe
  */
 export function setRecipeHeaderInCache(queryClient, itemId, recipe) {
@@ -41,7 +43,7 @@ export function setRecipeHeaderInCache(queryClient, itemId, recipe) {
 
 /**
  * @param {import("@tanstack/react-query").QueryClient} queryClient
- * @param {number} itemId
+ * @param {string} itemId
  * @param {unknown[]} rows
  */
 export function setRecipeItemsInCache(queryClient, itemId, rows) {

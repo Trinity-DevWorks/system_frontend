@@ -22,7 +22,7 @@ import { useMemo, useState } from "react";
 /**
  * @param {{
  *   itemId: number;
- *   initialLines: { child_item_id?: number; quantity?: number }[];
+ *   initialLines: { child_item_id?: string; quantity?: number }[];
  *   t: (k: string) => string;
  *   tApiErrors: (k: string) => string;
  * }} args
@@ -67,8 +67,8 @@ export function useBundleLineEditor({ itemId, initialLines, t, tApiErrors }) {
 
   const bundleColumns = useMemo(
     () => [
-      { key: "item", label: t("bundleColItem") },
-      { key: "qty", label: t("bundleColQty") },
+      { key: "item", label: t("bundleColItem"), width: "minmax(0, 1fr)" },
+      { key: "qty", label: t("bundleColQty"), width: "112px" },
     ],
     [t],
   );

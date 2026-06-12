@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 /**
- * Builds ResourceDrawerTabs config (general, UOMs, barcodes, suppliers, bundle/recipe, attachments).
+ * Builds ResourceDrawerTabs config (general, UOM variants, suppliers, bundle/recipe, attachments).
  *
  * Used by:
  * - drawer/hooks/useItemDrawerController.js
@@ -9,9 +9,9 @@ import { useMemo } from "react";
 import ItemAttachmentsPanel from "../panels/ItemAttachmentsPanel";
 import ItemDrawerGeneralForm from "../components/ItemDrawerGeneralForm";
 import {
-  ItemBarcodesPanel,
   ItemBundlePanel,
   ItemRecipePanel,
+  ItemReplenishmentPanel,
   ItemSuppliersPanel,
   ItemUomsPanel,
 } from "../panels/ItemDrawerPanels";
@@ -24,29 +24,30 @@ import {
  *   itemTypeOptions: { value: number; label: string; code: string }[];
  *   categoryTreeData: import("antd").TreeSelectProps["treeData"];
  *   brandOptions: { value: number; label: string }[];
- *   uomOptions: { value: number; label: string }[];
+ *   unitGroupOptions: { value: number; label: string }[];
  *   vatGroupOptions: { value: number; label: string }[];
  *   itemTypesPending: boolean;
  *   categoriesPending: boolean;
  *   brandsPending: boolean;
- *   uomsPending: boolean;
+ *   unitGroupsPending: boolean;
  *   vatGroupsPending: boolean;
  *   handleItemTypeChange: (typeId: number | undefined) => void;
  *   openNestedCategoryDrawer: () => void;
  *   openNestedBrandDrawer: () => void;
- *   openNestedUomDrawer: () => void;
+ *   openNestedUnitGroupDrawer: () => void;
  *   openNestedVatGroupDrawer: () => void;
  *   tabsEnabled: boolean;
  *   persistedItemId: number;
  *   tApiErrors: (key: string) => string;
  *   open: boolean;
  *   resolvedActiveTab: string;
- *   itemUomsData: unknown[];
  *   showBundleTab: boolean;
  *   showRecipeTab: boolean;
- *   baseUomIdWatch?: number;
- *   detailBaseUomId?: number;
+ *   unitGroupIdWatch?: number;
+ *   detailUnitGroupId?: number;
  *   allowPurchaseWatch?: boolean;
+ *   trackInventoryWatch?: boolean;
+ *   showReplenishmentTab?: boolean;
  *   detailRecord: Record<string, unknown> | null;
  * }} args
  */
@@ -57,29 +58,30 @@ export function useItemDrawerTabItems({
   itemTypeOptions,
   categoryTreeData,
   brandOptions,
-  uomOptions,
+  unitGroupOptions,
   vatGroupOptions,
   itemTypesPending,
   categoriesPending,
   brandsPending,
-  uomsPending,
+  unitGroupsPending,
   vatGroupsPending,
   handleItemTypeChange,
   openNestedCategoryDrawer,
   openNestedBrandDrawer,
-  openNestedUomDrawer,
+  openNestedUnitGroupDrawer,
   openNestedVatGroupDrawer,
   tabsEnabled,
   persistedItemId,
   tApiErrors,
   open,
   resolvedActiveTab,
-  itemUomsData,
   showBundleTab,
   showRecipeTab,
-  baseUomIdWatch,
-  detailBaseUomId,
+  unitGroupIdWatch,
+  detailUnitGroupId,
   allowPurchaseWatch,
+  trackInventoryWatch,
+  showReplenishmentTab = false,
   detailRecord,
 }) {
   return useMemo(() => {
@@ -96,17 +98,17 @@ export function useItemDrawerTabItems({
             itemTypeOptions={itemTypeOptions}
             categoryTreeData={categoryTreeData}
             brandOptions={brandOptions}
-            uomOptions={uomOptions}
+            unitGroupOptions={unitGroupOptions}
             vatGroupOptions={vatGroupOptions}
             itemTypesPending={itemTypesPending}
             categoriesPending={categoriesPending}
             brandsPending={brandsPending}
-            uomsPending={uomsPending}
+            unitGroupsPending={unitGroupsPending}
             vatGroupsPending={vatGroupsPending}
             onItemTypeChange={handleItemTypeChange}
             onOpenCategoryDrawer={readOnly ? undefined : openNestedCategoryDrawer}
             onOpenBrandDrawer={readOnly ? undefined : openNestedBrandDrawer}
-            onOpenBaseUomDrawer={readOnly ? undefined : openNestedUomDrawer}
+            onOpenUnitGroupDrawer={readOnly ? undefined : openNestedUnitGroupDrawer}
             onOpenVatGroupDrawer={readOnly ? undefined : openNestedVatGroupDrawer}
           />
         ),
@@ -122,7 +124,7 @@ export function useItemDrawerTabItems({
       children: (
         <ItemUomsPanel
           itemId={persistedItemId}
-          baseUomId={baseUomIdWatch ?? detailBaseUomId}
+          unitGroupId={unitGroupIdWatch ?? detailUnitGroupId}
           readOnly={readOnly}
           t={t}
           tApiErrors={tApiErrors}
@@ -144,7 +146,7 @@ export function useItemDrawerTabItems({
             t={t}
             tApiErrors={tApiErrors}
             active={open && resolvedActiveTab === "recipe"}
-            baseUomId={baseUomIdWatch != null ? Number(baseUomIdWatch) : undefined}
+            baseUomId={detailRecord?.base_uom_id != null ? Number(detailRecord.base_uom_id) : undefined}
           />
         ),
       });
@@ -167,22 +169,32 @@ export function useItemDrawerTabItems({
       });
     }
 
-    items.push(
-      {
-        key: "barcodes",
-        label: t("tabBarcodes"),
+    if (showReplenishmentTab) {
+      items.push({
+        key: "replenishment",
+        label: t("tabReplenishment"),
         hidePanelHeading: true,
         children: (
-          <ItemBarcodesPanel
+          <ItemReplenishmentPanel
             itemId={persistedItemId}
             readOnly={readOnly}
+            trackInventory={
+              trackInventoryWatch ??
+              (detailRecord?.track_inventory !== undefined ? Boolean(detailRecord.track_inventory) : true)
+            }
+            allowPurchase={
+              allowPurchaseWatch ??
+              (detailRecord?.allow_purchase !== undefined ? Boolean(detailRecord.allow_purchase) : true)
+            }
             t={t}
             tApiErrors={tApiErrors}
-            active={open && resolvedActiveTab === "barcodes"}
-            itemUoms={itemUomsData}
+            active={open && resolvedActiveTab === "replenishment"}
           />
         ),
-      },
+      });
+    }
+
+    items.push(
       {
         key: "suppliers",
         label: t("tabSuppliers"),
@@ -226,29 +238,30 @@ export function useItemDrawerTabItems({
     itemTypeOptions,
     categoryTreeData,
     brandOptions,
-    uomOptions,
+    unitGroupOptions,
     vatGroupOptions,
     itemTypesPending,
     categoriesPending,
     brandsPending,
-    uomsPending,
+    unitGroupsPending,
     vatGroupsPending,
     handleItemTypeChange,
     openNestedCategoryDrawer,
     openNestedBrandDrawer,
-    openNestedUomDrawer,
+    openNestedUnitGroupDrawer,
     openNestedVatGroupDrawer,
     tabsEnabled,
     persistedItemId,
     tApiErrors,
     open,
     resolvedActiveTab,
-    itemUomsData,
     showBundleTab,
     showRecipeTab,
-    baseUomIdWatch,
-    detailBaseUomId,
+    unitGroupIdWatch,
+    detailUnitGroupId,
     allowPurchaseWatch,
+    trackInventoryWatch,
+    showReplenishmentTab,
     detailRecord,
   ]);
 }

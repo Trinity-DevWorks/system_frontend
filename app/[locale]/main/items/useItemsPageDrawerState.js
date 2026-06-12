@@ -5,14 +5,15 @@
  * - app/[locale]/main/items/page.js
  */
 
+import { normalizeEntityId } from "@/lib/entityId";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useItemsPageDrawerState() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerItemId, setDrawerItemId] = useState(/** @type {number | null} */ (null));
+  const [drawerItemId, setDrawerItemId] = useState(/** @type {string | null} */ (null));
   const [drawerEditSeed, setDrawerEditSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, itemId: /** @type {number | null} */ (null) });
+  const drawerSessionRef = useRef({ open: false, itemId: /** @type {string | null} */ (null) });
 
   useEffect(() => {
     drawerSessionRef.current = { open: drawerOpen, itemId: drawerItemId };
@@ -26,20 +27,20 @@ export function useItemsPageDrawerState() {
   }, []);
 
   const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
+    const id = normalizeEntityId(record?.id);
     if (id == null) return;
     setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerItemId(Number(id));
+    setDrawerItemId(id);
     setDrawerOpen(true);
   }, []);
 
   const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
+    const id = normalizeEntityId(record?.id);
     if (id == null) return;
     setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("view");
-    setDrawerItemId(Number(id));
+    setDrawerItemId(id);
     setDrawerOpen(true);
   }, []);
 
@@ -50,11 +51,11 @@ export function useItemsPageDrawerState() {
   }, []);
 
   const handleItemCreated = useCallback((record) => {
-    const id = record?.id;
+    const id = normalizeEntityId(record?.id);
     if (id == null) return;
     setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerItemId(Number(id));
+    setDrawerItemId(id);
   }, []);
 
   const getOpenDrawerItemId = useCallback(() => drawerSessionRef.current.itemId, []);

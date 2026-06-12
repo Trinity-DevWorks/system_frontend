@@ -1,11 +1,7 @@
 import ItemPrimaryImageCell from "@/components/items/ItemPrimaryImageCell";
-import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 import { getItemTypeLabel } from "@/services/itemTypesApi";
-
-const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
 export function getItemStatusLabel(value, t) {
   return value ? t("statusActive") : t("statusInactive");
@@ -18,21 +14,12 @@ export function getItemStatusLabel(value, t) {
 export function getItemTableColumns(t, actions = {}) {
   const { onEdit, onView, onDelete } = actions;
   return [
-    { title: t("colId"), dataIndex: "id", key: "id", width: 56, sorter: (a, b) => a.id - b.id },
     {
-      title: t("colImage"),
-      key: "primary_image",
-      width: 56,
-      align: "center",
-      onHeaderCell: () => ({ className: "items-table-image-cell" }),
-      onCell: () => ({ className: "items-table-image-cell" }),
-      render: (_v, r) => <ItemPrimaryImageCell itemId={r.id} primaryImage={r.primary_image} />,
-    },
-    {
-      title: t("colSku"),
-      dataIndex: "sku",
-      key: "sku",
+      title: t("colItemCode"),
+      dataIndex: "item_code",
+      key: "item_code",
       width: 110,
+      ellipsis: true,
       render: (v) =>
         v ? (
           <Typography.Text code className="text-xs">
@@ -43,6 +30,15 @@ export function getItemTableColumns(t, actions = {}) {
         ),
     },
     { title: t("colName"), dataIndex: "name", key: "name", width: 180, ellipsis: true },
+    {
+      title: t("colImage"),
+      key: "primary_image",
+      width: 56,
+      align: "center",
+      onHeaderCell: () => ({ className: "items-table-image-cell" }),
+      onCell: () => ({ className: "items-table-image-cell" }),
+      render: (_v, r) => <ItemPrimaryImageCell itemId={r.id} primaryImage={r.primary_image} />,
+    },
     {
       title: t("colType"),
       key: "item_type",
@@ -74,19 +70,20 @@ export function getItemTableColumns(t, actions = {}) {
       render: (_v, r) => r.base_uom?.code ?? r.base_uom?.name ?? "—",
     },
     {
-      title: t("colTrack"),
-      dataIndex: "track_inventory",
-      key: "track_inventory",
-      width: 72,
-      render: (v) => (v ? t("yes") : t("no")),
-    },
-    {
-      title: t("colStatus"),
-      dataIndex: "is_active",
-      key: "is_active",
-      width: 88,
-      sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
-      render: (v) => renderActiveInactiveStatus(v, t),
+      title: t("colColor"),
+      key: "color",
+      width: 56,
+      align: "center",
+      render: (_v, r) =>
+        r.color ? (
+          <span
+            className="inline-block h-5 w-5 rounded border border-[var(--ant-color-border)]"
+            style={{ backgroundColor: String(r.color) }}
+            title={String(r.color)}
+          />
+        ) : (
+          "—"
+        ),
     },
     {
       title: t("colActions"),

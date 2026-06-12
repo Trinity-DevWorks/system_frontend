@@ -42,7 +42,7 @@ const CUSTOMER_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "customers
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
- *   customerId: number | null;
+ *   customerId: string | null;
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;

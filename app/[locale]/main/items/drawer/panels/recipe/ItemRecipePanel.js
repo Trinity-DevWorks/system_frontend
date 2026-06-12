@@ -16,12 +16,13 @@ import { itemRecipeItemsQueryKey, itemRecipeQueryKey } from "@/components/items/
 import { useQuery } from "@tanstack/react-query";
 import { Table, Typography } from "antd";
 import { useMemo } from "react";
+import { isPersistedEntityId, normalizeEntityId } from "@/lib/entityId";
 import { buildRecipeLineEditorKey } from "../shared/lineEditorKeys";
 import { RecipeLineEditor } from "./RecipeLineEditor";
 
 /**
  * @param {{
- *   itemId: number;
+ *   itemId: string;
  *   readOnly: boolean;
  *   t: (k: string) => string;
  *   tApiErrors: (k: string) => string;
@@ -47,14 +48,14 @@ export function ItemRecipePanel({ itemId, readOnly, t, tApiErrors, active, baseU
   const recipeQuery = useQuery({
     queryKey: itemRecipeQueryKey(itemId),
     queryFn: () => fetchRecipe(itemId),
-    enabled: active && itemId > 0,
+    enabled: active && isPersistedEntityId(itemId),
     retry: false,
   });
 
   const recipeItemsQuery = useQuery({
     queryKey: itemRecipeItemsQueryKey(itemId),
     queryFn: () => fetchRecipeItems(itemId),
-    enabled: active && itemId > 0,
+    enabled: active && isPersistedEntityId(itemId),
     retry: false,
   });
 
@@ -83,7 +84,7 @@ export function ItemRecipePanel({ itemId, readOnly, t, tApiErrors, active, baseU
     const rows = recipeItemsQuery.data;
     if (!rows?.length) return [{ item_id: undefined, quantity: undefined, uom_id: undefined }];
     return rows.map((r) => ({
-      item_id: Number(r.item_id),
+      item_id: normalizeEntityId(r.item_id) ?? undefined,
       quantity: Number(r.quantity),
       uom_id: Number(r.uom_id),
     }));

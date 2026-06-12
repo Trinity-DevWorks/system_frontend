@@ -16,11 +16,12 @@ import { getItemTypeCode } from "../../utils/itemFormMappers";
 import { useQuery } from "@tanstack/react-query";
 import { Table } from "antd";
 import { useMemo } from "react";
+import { isPersistedEntityId, normalizeEntityId } from "@/lib/entityId";
 import { buildBundleLineEditorKey } from "../shared/lineEditorKeys";
 import { BundleLineEditor } from "./BundleLineEditor";
 
 /**
- * @param {{ itemId: number; readOnly: boolean; t: (k: string) => string; tApiErrors: (k: string) => string; active: boolean }} props
+ * @param {{ itemId: string; readOnly: boolean; t: (k: string) => string; tApiErrors: (k: string) => string; active: boolean }} props
  */
 export function ItemBundlePanel({ itemId, readOnly, t, tApiErrors, active }) {
   const itemsQuery = useQuery({
@@ -33,13 +34,13 @@ export function ItemBundlePanel({ itemId, readOnly, t, tApiErrors, active }) {
   const bundleQuery = useQuery({
     queryKey: itemBundleItemsQueryKey(itemId),
     queryFn: () => fetchBundleItems(itemId),
-    enabled: active && itemId > 0,
+    enabled: active && isPersistedEntityId(itemId),
   });
 
   const bundleSeed = useMemo(() => {
     if (!bundleQuery.data?.length) return [{ child_item_id: undefined, quantity: undefined }];
     return bundleQuery.data.map((r) => ({
-      child_item_id: Number(r.child_item_id),
+      child_item_id: normalizeEntityId(r.child_item_id) ?? undefined,
       quantity: Number(r.quantity),
     }));
   }, [bundleQuery.data]);

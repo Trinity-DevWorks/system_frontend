@@ -42,7 +42,7 @@ const SUPPLIER_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "suppliers
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
- *   supplierId: number | null;
+ *   supplierId: string | null;
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;

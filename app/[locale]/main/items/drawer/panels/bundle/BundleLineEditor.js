@@ -16,7 +16,7 @@ import { useBundleLineEditor } from "./useBundleLineEditor";
 /**
  * @param {{
  *   itemId: number;
- *   initialLines: { child_item_id?: number; quantity?: number }[];
+ *   initialLines: { child_item_id?: string; quantity?: number }[];
  *   itemOptions: { value: number; label: string }[];
  *   t: (k: string) => string;
  *   tApiErrors: (k: string) => string;
@@ -52,7 +52,6 @@ export function BundleLineEditor({ itemId, initialLines, itemOptions, t, tApiErr
       />
 
       <ItemDrawerLinesGrid
-        variant="bundle"
         columns={bundleColumns}
         lines={lines}
         canAddLine={canAddLine}
@@ -61,7 +60,7 @@ export function BundleLineEditor({ itemId, initialLines, itemOptions, t, tApiErr
         deleteAriaLabel={t("panelDeleteConfirm")}
         onRemoveLine={removeLine}
         renderField={(line, index, columnKey) => {
-          const row = /** @type {{ child_item_id?: number; quantity?: number }} */ (line);
+          const row = /** @type {{ child_item_id?: string; quantity?: number }} */ (line);
           if (columnKey === "item") {
             return (
               <Select

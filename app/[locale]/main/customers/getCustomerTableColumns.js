@@ -26,13 +26,6 @@ export function getCustomerTableColumns(t, actions = {}) {
 
   return [
     {
-      title: t("colId"),
-      dataIndex: "id",
-      key: "id",
-      width: 72,
-      sorter: (a, b) => a.id - b.id,
-    },
-    {
       title: t("colCode"),
       dataIndex: "customer_code",
       key: "customer_code",

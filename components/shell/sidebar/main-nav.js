@@ -45,6 +45,11 @@ export const ROUTES = {
   paymentTerms: "/main/payment-terms",
   salesmen: "/main/salesmen",
   items: "/main/items",
+  stock: "/main/stock",
+  stockBalances: "/main/stock/balances",
+  stockPurchasingAlerts: "/main/stock/purchasing-alerts",
+  stockMovements: "/main/stock/movements",
+  stockTransfers: "/main/stock/transfers",
   customerGroups: "/main/customer-groups",
   customers: "/main/customers",
   supplierGroups: "/main/supplier-groups",
@@ -94,7 +99,10 @@ export function buildMainNavItems(t) {
       icon: <DropboxOutlined />,
       label: t("navInventory"),
       className: SECTION_DIVIDER_CLASS,
-      children: [{ key: ROUTES.items, icon: <DropboxOutlined />, label: t("navItems") }],
+      children: [
+        { key: ROUTES.items, icon: <DropboxOutlined />, label: t("navItems") },
+        { key: ROUTES.stock, icon: <ShopOutlined />, label: t("navStock") },
+      ],
     },
     {
       key: "sales",
