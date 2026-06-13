@@ -60,6 +60,7 @@ export function useItemDrawerActions({
   const formWatch = Form.useWatch([], form);
 
   const isEditDirty = useMemo(() => {
+    void formWatch;
     if (mode !== "edit") return false;
     if (editBaselineForDirty) return isEditDirtyVsLoaded(form, editBaselineForDirty);
     return form.isFieldsTouched(true);

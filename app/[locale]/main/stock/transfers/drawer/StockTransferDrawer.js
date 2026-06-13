@@ -88,19 +88,23 @@ export default function StockTransferDrawer({
     },
     [form],
   );
+  const resetCreateDraftState = useCallback(() => {
+    form.resetFields();
+    form.setFieldsValue(defaults);
+    const initialLines = [getEmptyTransferLine()];
+    setLines(initialLines);
+    setLinesBaseline(initialLines);
+    setHeaderBaseline(defaults);
+    setLoadedStatus("draft");
+    setLoadedNumber(null);
+    loadedDetailVersionRef.current = 0;
+  }, [form, defaults]);
 
   useLayoutEffect(() => {
     if (!open) return;
     if (mode === "create") {
-      form.resetFields();
-      form.setFieldsValue(defaults);
-      const initialLines = [getEmptyTransferLine()];
-      setLines(initialLines);
-      setLinesBaseline(initialLines);
-      setHeaderBaseline(defaults);
-      setLoadedStatus("draft");
-      setLoadedNumber(null);
-      loadedDetailVersionRef.current = 0;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      resetCreateDraftState();
       return;
     }
 
@@ -112,7 +116,7 @@ export default function StockTransferDrawer({
           : null,
       );
     }
-  }, [open, mode, transferId, defaults, form, tableSeedRecord]);
+  }, [open, mode, tableSeedRecord, resetCreateDraftState]);
 
   useEffect(() => {
     if (!open || mode === "create" || !detailQuery.isSuccess || !detailQuery.data) return;

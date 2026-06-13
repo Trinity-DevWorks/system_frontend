@@ -24,7 +24,7 @@ import {
 import { fetchWarehouses } from "@/services/warehousesApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { buildReplenishmentPanelColumns } from "./buildReplenishmentPanelColumns";
 import {
@@ -141,30 +141,30 @@ export function useItemReplenishmentPanel({
     return [{ id: REPLENISHMENT_DRAFT_ROW_ID, is_active: true }, ...rows];
   }, [rows, inlineEdit]);
 
-  const getInlineValues = (row) => {
+  const getInlineValues = useCallback((row) => {
     if (!inlineEdit) return null;
     if (inlineEdit.key === "new" && row.id === REPLENISHMENT_DRAFT_ROW_ID) return inlineEdit.values;
     if (inlineEdit.key === row.id) return inlineEdit.values;
     return null;
-  };
+  }, [inlineEdit]);
 
-  const startCreateRow = () => {
+  const startCreateRow = useCallback(() => {
     if (readOnly || inlineEdit || addDisabledReason) return;
     setInlineEdit({ key: "new", values: defaultReplenishmentInlineValues() });
-  };
+  }, [readOnly, inlineEdit, addDisabledReason]);
 
-  const startEditRow = (row) => {
+  const startEditRow = useCallback((row) => {
     if (readOnly || inlineEdit) return;
     setInlineEdit({ key: Number(row.id), values: rowToReplenishmentInlineValues(row) });
-  };
+  }, [readOnly, inlineEdit]);
 
-  const patchDraft = (patch) => {
+  const patchDraft = useCallback((patch) => {
     setInlineEdit((prev) => (prev ? { ...prev, values: { ...prev.values, ...patch } } : prev));
-  };
+  }, []);
 
-  const cancelInline = () => setInlineEdit(null);
+  const cancelInline = useCallback(() => setInlineEdit(null), []);
 
-  const saveInline = () => {
+  const saveInline = useCallback(() => {
     if (!inlineEdit) return;
     if (inlineEdit.values.warehouse_id == null) {
       message.error(t("replenishmentFieldWarehouseRequired"));
@@ -178,7 +178,7 @@ export function useItemReplenishmentPanel({
       id: inlineEdit.key === "new" ? undefined : inlineEdit.key,
       body: replenishmentInlineValuesToBody(inlineEdit.values),
     });
-  };
+  }, [inlineEdit, message, t, saveMutation]);
 
   const columns = useMemo(
     () =>
@@ -201,7 +201,12 @@ export function useItemReplenishmentPanel({
       readOnly,
       inlineEdit,
       warehouseOptions,
+      getInlineValues,
+      patchDraft,
       saveMutation.isPending,
+      saveInline,
+      cancelInline,
+      startEditRow,
       deleteMutation,
       modal,
     ],

@@ -62,7 +62,7 @@ export function buildUomsPanelColumns(ctx) {
     );
   };
 
-  const renderPriceCell = (field) => (_v, r) => {
+  const renderPriceCell = (field, _v, r) => {
     const draft = getInlineValues(r);
     if (draft) {
       return (
@@ -134,35 +134,35 @@ export function buildUomsPanelColumns(ctx) {
       key: "sell",
       width: 100,
       align: "center",
-      render: renderPriceCell("selling_price"),
+      render: (_v, r) => renderPriceCell("selling_price", _v, r),
     },
     {
       title: t("uomColCost"),
       key: "cost",
       width: 100,
       align: "center",
-      render: renderPriceCell("cost_price"),
+      render: (_v, r) => renderPriceCell("cost_price", _v, r),
     },
     {
       title: t("uomColTakeaway"),
       key: "takeaway",
       width: 100,
       align: "center",
-      render: renderPriceCell("takeaway_price"),
+      render: (_v, r) => renderPriceCell("takeaway_price", _v, r),
     },
     {
       title: t("uomColDineIn"),
       key: "dineIn",
       width: 100,
       align: "center",
-      render: renderPriceCell("dine_in_price"),
+      render: (_v, r) => renderPriceCell("dine_in_price", _v, r),
     },
     {
       title: t("uomColDelivery"),
       key: "delivery",
       width: 100,
       align: "center",
-      render: renderPriceCell("delivery_price"),
+      render: (_v, r) => renderPriceCell("delivery_price", _v, r),
     },
     {
       title: t("uomColCurrency"),
