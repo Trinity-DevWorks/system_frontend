@@ -1,5 +1,6 @@
 import { formatStockQuantity, formatUomLabel } from "../shared/formatStockQuantity";
-import { Tag } from "antd";
+import { FileAddOutlined, MoreOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Tag } from "antd";
 
 /** @type {Record<string, string>} */
 const STATUS_TAG_COLOR = {
@@ -11,9 +12,11 @@ const STATUS_TAG_COLOR = {
 
 /**
  * @param {(key: string) => string} t
+ * @param {{ onCreatePo?: (record: Record<string, unknown>) => void }} [handlers]
  * @returns {import("antd").TableProps["columns"]}
  */
-export function getPurchasingAlertTableColumns(t) {
+export function getPurchasingAlertTableColumns(t, handlers = {}) {
+  const { onCreatePo } = handlers;
   return [
     {
       title: t("colItemSku"),
@@ -67,7 +70,7 @@ export function getPurchasingAlertTableColumns(t) {
     {
       title: t("colSafetyStock"),
       key: "safety_stock",
-      width: 100,
+      width: 120,
       align: "right",
       render: (_v, record) => formatStockQuantity(record?.safety_stock_qty),
     },
@@ -81,7 +84,7 @@ export function getPurchasingAlertTableColumns(t) {
     {
       title: t("colSuggestedOrder"),
       key: "suggested_order",
-      width: 120,
+      width: 140,
       align: "right",
       render: (_v, record) => formatStockQuantity(record?.suggested_order_qty),
     },
@@ -117,6 +120,32 @@ export function getPurchasingAlertTableColumns(t) {
       align: "right",
       render: (_v, record) =>
         record?.lead_time_days != null ? t("leadTimeDays", { days: record.lead_time_days }) : "—",
+    },
+    {
+      title: t("colActions"),
+      key: "actions",
+      width: 72,
+      fixed: "right",
+      render: (_v, record) => {
+        const suggestedQty = Number(record?.suggested_order_qty);
+        const canCreate = Number.isFinite(suggestedQty) && suggestedQty > 0;
+
+        const items = [
+          {
+            key: "create-po",
+            icon: <FileAddOutlined />,
+            label: t("actionCreatePoFromAlert"),
+            disabled: !canCreate,
+            onClick: () => onCreatePo?.(record),
+          },
+        ];
+
+        return (
+          <Dropdown menu={{ items }} trigger={["click"]}>
+            <Button type="text" icon={<MoreOutlined />} aria-label={t("actionMenu")} />
+          </Dropdown>
+        );
+      },
     },
   ];
 }

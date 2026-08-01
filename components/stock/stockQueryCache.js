@@ -4,6 +4,8 @@
 
 /** @typedef {{ status?: string; from_warehouse_id?: number; to_warehouse_id?: number; search?: string; from?: string; to?: string; limit?: number }} StockTransferFilters */
 
+/** @typedef {{ status?: string; supplier_id?: string; warehouse_id?: number; search?: string; from?: string; to?: string; limit?: number }} PurchaseOrderFilters */
+
 export const STOCK_BALANCES_QUERY_KEY = ["tenant", "stock", "balances"];
 
 /**
@@ -30,6 +32,21 @@ export const STOCK_TRANSFERS_QUERY_KEY = ["tenant", "stock", "transfers"];
 export function stockTransfersQueryKey(filters = {}) {
   return [...STOCK_TRANSFERS_QUERY_KEY, filters];
 }
+
+export const PURCHASE_ORDERS_QUERY_KEY = ["tenant", "stock", "purchase-orders"];
+
+/**
+ * @param {PurchaseOrderFilters} [filters]
+ */
+export function purchaseOrdersQueryKey(filters = {}) {
+  return [...PURCHASE_ORDERS_QUERY_KEY, filters];
+}
+
+export const PURCHASE_ORDER_DETAIL_QUERY_PREFIX = /** @type {const} */ ([
+  "tenant",
+  "stock",
+  "purchase-order",
+]);
 
 export const STOCK_TRANSFER_DETAIL_QUERY_PREFIX = /** @type {const} */ ([
   "tenant",
