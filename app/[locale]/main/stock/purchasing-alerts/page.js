@@ -4,7 +4,7 @@ import AppDataTable from "@/components/tables/AppDataTable";
 import { PURCHASE_ORDERS_QUERY_KEY } from "@/components/stock/stockQueryCache";
 import { App, Button, Checkbox, Form, Select } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { stockFilterFieldRowClassName, useStockTableFilters } from "../shared/StockTableFilters";
 import PurchaseOrderDrawer from "../purchase-orders/drawer/PurchaseOrderDrawer";
 import { getPurchasingAlertTableColumns } from "./getPurchasingAlertTableColumns";
@@ -18,6 +18,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const ALERT_STATUS_OPTIONS = ["out_of_stock", "below_safety", "below_reorder", "ok"];
 
+/**
+ * @typedef {{ header: Record<string, unknown>; lines: Array<Record<string, unknown>> }} PurchaseOrderSeed
+ *
+ * @typedef {{
+ *   open: boolean;
+ *   key: number;
+ *   seed: PurchaseOrderSeed | null;
+ *   queue: PurchaseOrderSeed[];
+ *   bulkFlow: boolean;
+ * }} PurchaseOrderDrawerState
+ */
+
+/** @type {PurchaseOrderDrawerState} */
+const CLOSED_PO_DRAWER_STATE = { open: false, key: 0, seed: null, queue: [], bulkFlow: false };
+
 function PurchasingAlertsTable() {
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
@@ -29,19 +44,7 @@ function PurchasingAlertsTable() {
   const [onlyAlerts, setOnlyAlerts] = useState(true);
   const [selectedRowKeys, setSelectedRowKeys] = useState(/** @type {import("react").Key[]} */ ([]));
 
-  const [poDrawerOpen, setPoDrawerOpen] = useState(false);
-  const [poDrawerKey, setPoDrawerKey] = useState(0);
-  const [poCreateSeed, setPoCreateSeed] = useState(
-    /** @type {{ header: Record<string, unknown>; lines: Array<Record<string, unknown>> } | null} */ (null),
-  );
-  const [pendingNextSeed, setPendingNextSeed] = useState(
-    /** @type {{ header: Record<string, unknown>; lines: Array<Record<string, unknown>> } | null} */ (null),
-  );
-
-  const poSeedQueueRef = useRef(
-    /** @type {Array<{ header: Record<string, unknown>; lines: Array<Record<string, unknown>> }>} */ ([]),
-  );
-  const bulkDrawerFlowRef = useRef(false);
+  const [poDrawer, setPoDrawer] = useState(CLOSED_PO_DRAWER_STATE);
 
   const { tableData: rawTableData, isPending, isFetching, refetch } = usePurchasingAlertsTableQuery({
     t,
@@ -130,48 +133,29 @@ function PurchasingAlertsTable() {
     return lines;
   }, [onlyAlerts, statusLabel, t, warehouseLabel]);
 
-  const openDrawerWithSeed = useCallback((seed, options = {}) => {
-    const { queue = [], bulkFlow = false } = options;
-    poSeedQueueRef.current = queue;
-    bulkDrawerFlowRef.current = bulkFlow;
-    setPendingNextSeed(null);
-    setPoCreateSeed(seed);
-    setPoDrawerOpen(true);
+  /**
+   * Bumping the drawer key remounts it, so each queued seed starts from a clean draft form.
+   * @type {(seeds: PurchaseOrderSeed[], options?: { bulkFlow?: boolean }) => void}
+   */
+  const openDrawerWithSeeds = useCallback((seeds, options = {}) => {
+    const { bulkFlow = false } = options;
+    const [first, ...rest] = seeds;
+    if (!first) return;
+
+    setPoDrawer((prev) => ({ open: true, key: prev.key + 1, seed: first, queue: rest, bulkFlow }));
   }, []);
-
-  const openNextQueuedSeed = useCallback(() => {
-    const next = poSeedQueueRef.current.shift();
-    if (!next) return false;
-
-    setPoDrawerOpen(false);
-    setPoCreateSeed(null);
-    setPendingNextSeed(next);
-    return true;
-  }, []);
-
-  useEffect(() => {
-    if (pendingNextSeed == null || poDrawerOpen) return;
-
-    setPoCreateSeed(pendingNextSeed);
-    setPoDrawerKey((key) => key + 1);
-    setPoDrawerOpen(true);
-    setPendingNextSeed(null);
-  }, [pendingNextSeed, poDrawerOpen]);
 
   const handleCreatePoFromAlert = useCallback(
     (record) => {
-      poSeedQueueRef.current = [];
-      bulkDrawerFlowRef.current = false;
-
       const seed = buildPurchaseOrderCreateSeedFromAlert(/** @type {Record<string, unknown>} */ (record));
       if (!seed) {
         message.warning(t("poFromAlertsCannotCreateRow"));
         return;
       }
 
-      openDrawerWithSeed(seed);
+      openDrawerWithSeeds([seed]);
     },
-    [message, openDrawerWithSeed, t],
+    [message, openDrawerWithSeeds, t],
   );
 
   const columns = useMemo(
@@ -204,32 +188,27 @@ function PurchasingAlertsTable() {
       message.info(t("poFromAlertsDrawerQueue", { count: seeds.length }));
     }
 
-    const [first, ...rest] = seeds;
-    openDrawerWithSeed(first, { queue: rest, bulkFlow: seeds.length > 1 });
-  }, [message, openDrawerWithSeed, selectedRowKeys, t, tableDataByKey]);
+    openDrawerWithSeeds(seeds, { bulkFlow: seeds.length > 1 });
+  }, [message, openDrawerWithSeeds, selectedRowKeys, t, tableDataByKey]);
 
   const handlePoDrawerClose = useCallback(() => {
-    poSeedQueueRef.current = [];
-    bulkDrawerFlowRef.current = false;
-    setPendingNextSeed(null);
-    setPoDrawerOpen(false);
-    setPoCreateSeed(null);
+    setPoDrawer((prev) => ({ ...CLOSED_PO_DRAWER_STATE, key: prev.key }));
   }, []);
 
   const handlePoCreated = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
 
-    if (openNextQueuedSeed()) {
+    const [nextSeed, ...restQueue] = poDrawer.queue;
+    if (nextSeed) {
+      setPoDrawer((prev) => ({ ...prev, open: true, key: prev.key + 1, seed: nextSeed, queue: restQueue }));
       return;
     }
 
-    if (bulkDrawerFlowRef.current) {
-      bulkDrawerFlowRef.current = false;
+    if (poDrawer.bulkFlow) {
       setSelectedRowKeys([]);
-      setPoDrawerOpen(false);
-      setPoCreateSeed(null);
+      handlePoDrawerClose();
     }
-  }, [openNextQueuedSeed, queryClient]);
+  }, [handlePoDrawerClose, poDrawer.bulkFlow, poDrawer.queue, queryClient]);
 
   const rowSelection = useMemo(
     () => ({
@@ -307,11 +286,11 @@ function PurchasingAlertsTable() {
       />
 
       <PurchaseOrderDrawer
-        key={poDrawerKey}
-        open={poDrawerOpen}
+        key={poDrawer.key}
+        open={poDrawer.open}
         mode="create"
         orderId={null}
-        createSeed={poCreateSeed}
+        createSeed={poDrawer.seed}
         onClose={handlePoDrawerClose}
         onCreated={handlePoCreated}
       />

@@ -116,6 +116,7 @@ export default function PurchaseOrderDrawer({
   useLayoutEffect(() => {
     if (!open) return;
     if (mode === "create") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       resetCreateDraftState();
       if (createSeed && typeof createSeed === "object") {
         const header = createSeed.header ?? {};
