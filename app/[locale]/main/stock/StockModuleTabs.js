@@ -25,11 +25,13 @@ export default function StockModuleTabs({ children }) {
 
   const activeKey = pathname.startsWith(ROUTES.stockTransfers)
     ? "transfers"
-    : pathname.startsWith(ROUTES.stockPurchasingAlerts)
-      ? "purchasing-alerts"
-      : pathname.startsWith(ROUTES.stockMovements)
-        ? "movements"
-        : "balances";
+    : pathname.startsWith(ROUTES.stockPurchaseOrders)
+      ? "purchase-orders"
+      : pathname.startsWith(ROUTES.stockPurchasingAlerts)
+        ? "purchasing-alerts"
+        : pathname.startsWith(ROUTES.stockMovements)
+          ? "movements"
+          : "balances";
 
   const items = useMemo(
     () => [
@@ -51,6 +53,7 @@ export default function StockModuleTabs({ children }) {
         ),
       },
       { key: "movements", label: t("tabMovements") },
+      { key: "purchase-orders", label: t("tabPurchaseOrders") },
       { key: "transfers", label: t("tabTransfers") },
     ],
     [alertCount, t],
@@ -65,6 +68,7 @@ export default function StockModuleTabs({ children }) {
         onChange={(key) => {
           if (key === "movements") router.push(ROUTES.stockMovements);
           else if (key === "transfers") router.push(ROUTES.stockTransfers);
+          else if (key === "purchase-orders") router.push(ROUTES.stockPurchaseOrders);
           else if (key === "purchasing-alerts") router.push(ROUTES.stockPurchasingAlerts);
           else router.push(ROUTES.stockBalances);
         }}

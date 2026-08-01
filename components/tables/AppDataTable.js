@@ -80,6 +80,7 @@ const PICKER_SKIP = new Set(["actions"]);
  * @param {import("antd/es/table/interface").TableRowSelection<any> | false} [props.rowSelection]
  * @param {(selectedKeys?: import("react").Key[]) => void} [props.onBulkDelete]
  * @param {boolean} [props.bulkDeleteLoading]
+ * @param {import("react").ReactNode} [props.selectionBarExtra]
  * @param {boolean} [props.showSelectionBar]
  * @param {boolean} [props.stickyHeader]
  * @param {number} [props.scrollX]
@@ -109,6 +110,7 @@ export default function AppDataTable({
   rowSelection,
   onBulkDelete,
   bulkDeleteLoading = false,
+  selectionBarExtra = null,
   showSelectionBar = true,
   stickyHeader = true,
   scrollX = DEFAULT_SCROLL_X,
@@ -730,13 +732,15 @@ export default function AppDataTable({
               >
                 {t("bulkDelete")}
               </Button>
-            ) : (
+            ) : null}
+            {selectionBarExtra}
+            {typeof onBulkDelete !== "function" && !selectionBarExtra ? (
               <Tooltip title={t("bulkSoon")}>
                 <Button type="link" size="small" disabled>
                   {t("bulkActions")}
                 </Button>
               </Tooltip>
-            )}
+            ) : null}
           </Space>
         </div>
       ) : null}

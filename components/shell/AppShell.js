@@ -11,8 +11,10 @@ import {
 } from "@/lib/sidebar-bookmarks";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { clearAllSessionTokens } from "@/lib/session";
+import { useTenantModules } from "@/lib/tenant-modules";
 import { App, Layout, theme as antdTheme } from "antd";
 import AppHeader from "./header/AppHeader";
+import ModuleRouteGuard from "./ModuleRouteGuard";
 import AppSidebar from "./sidebar/AppSidebar";
 import { decorateMenuItemsWithBookmarkStars } from "./sidebar/decorate-menu-bookmark-stars";
 import { filterMenuItemsByQuery } from "./sidebar/filter-nav-items";
@@ -42,7 +44,18 @@ export default function AppShell({ children }) {
     queueMicrotask(() => setMenuMounted(true));
   }, []);
 
-  const menuItems = useMemo(() => buildMainNavItems(t), [t]);
+  const { moduleSet, isError } = useTenantModules();
+  const effectiveModuleSet = useMemo(() => {
+    if (isError) {
+      return new Set(["core"]);
+    }
+    return moduleSet;
+  }, [isError, moduleSet]);
+
+  const menuItems = useMemo(
+    () => buildMainNavItems(t, { moduleSet: effectiveModuleSet }),
+    [t, effectiveModuleSet],
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const displayMenuItems = useMemo(
@@ -198,7 +211,9 @@ export default function AppShell({ children }) {
             }}
           >
             <div className="app-hide-scrollbar min-h-0 min-w-0 flex-1 overflow-auto">
-              <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+              <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+                <ModuleRouteGuard>{children}</ModuleRouteGuard>
+              </div>
             </div>
           </Content>
         </Layout>

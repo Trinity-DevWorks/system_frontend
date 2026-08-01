@@ -30,6 +30,7 @@ const SECTION_DIVIDER_CLASS =
  *   { key: "group-key", icon: <Icon />, label: t("navX"), children: [{ key: "/main/foo", label: t("navFoo") }] }
  * - `key` for navigation must be the path you pass to `router.push` (e.g. "/main/overview").
  *   Selection uses longest prefix match on those path keys (see `selectedKeysForPath`).
+ * - Set `module` on leaves (and optionally groups) to gate by tenant entitlements.
  * - For permission-gated items, wrap the push in `if (canSee) { items.push(...) }` or filter in `buildMainNavItems`.
  */
 export const ROUTES = {
@@ -50,6 +51,7 @@ export const ROUTES = {
   stockPurchasingAlerts: "/main/stock/purchasing-alerts",
   stockMovements: "/main/stock/movements",
   stockTransfers: "/main/stock/transfers",
+  stockPurchaseOrders: "/main/stock/purchase-orders",
   customerGroups: "/main/customer-groups",
   customers: "/main/customers",
   supplierGroups: "/main/supplier-groups",
@@ -57,20 +59,51 @@ export const ROUTES = {
   users: "/main/users",
   roles: "/main/roles",
   permissions: "/main/permissions",
-  
 };
 
 /**
- * @param {(key: string) => string} t Shell translations
+ * @param {import("antd").MenuProps["items"]} items
+ * @param {Set<string> | null | undefined} moduleSet null/undefined = show all (still loading)
  * @returns {import("antd").MenuProps["items"]}
  */
-export function buildMainNavItems(t) {
+function filterNavByModules(items, moduleSet) {
+  if (!moduleSet) {
+    return items;
+  }
+
+  const out = [];
+  for (const item of items ?? []) {
+    if (!item) continue;
+
+    if (item.children?.length) {
+      const children = filterNavByModules(item.children, moduleSet);
+      if (!children?.length) continue;
+      out.push({ ...item, children });
+      continue;
+    }
+
+    const code = item.module;
+    if (code && code !== "core" && !moduleSet.has(code)) {
+      continue;
+    }
+    out.push(item);
+  }
+  return out;
+}
+
+/**
+ * @param {(key: string) => string} t Shell translations
+ * @param {{ moduleSet?: Set<string> | null }} [options]
+ * @returns {import("antd").MenuProps["items"]}
+ */
+export function buildMainNavItems(t, options = {}) {
   /** @type {import("antd").MenuProps["items"]} */
-  return [
+  const items = [
     {
       key: ROUTES.overview,
       icon: <DashboardOutlined />,
       label: t("navOverview"),
+      module: "core",
     },
     {
       key: "master-data",
@@ -78,20 +111,66 @@ export function buildMainNavItems(t) {
       label: t("navMasterData"),
       className: SECTION_DIVIDER_CLASS,
       children: [
-        { key: ROUTES.brands, icon: <TrademarkOutlined />, label: t("navBrands") },
-        { key: ROUTES.categories, icon: <TagsOutlined />, label: t("navCategories") },
-        { key: ROUTES.vatGroups, icon: <GoldOutlined />, label: t("navVatGroups") },
-        { key: ROUTES.unitGroups, icon: <DeploymentUnitOutlined />, label: t("navUnitGroups") },
+        {
+          key: ROUTES.brands,
+          icon: <TrademarkOutlined />,
+          label: t("navBrands"),
+          module: "master_data",
+        },
+        {
+          key: ROUTES.categories,
+          icon: <TagsOutlined />,
+          label: t("navCategories"),
+          module: "master_data",
+        },
+        {
+          key: ROUTES.vatGroups,
+          icon: <GoldOutlined />,
+          label: t("navVatGroups"),
+          module: "master_data",
+        },
+        {
+          key: ROUTES.unitGroups,
+          icon: <DeploymentUnitOutlined />,
+          label: t("navUnitGroups"),
+          module: "inventory",
+        },
         {
           key: ROUTES.unitOfMeasurements,
           icon: <DeploymentUnitOutlined />,
           label: t("navUnitOfMeasurements"),
+          module: "inventory",
         },
-        { key: ROUTES.warehouses, icon: <ShopOutlined />, label: t("navWarehouses") },
-        { key: ROUTES.currencies, icon: <GoldOutlined />, label: t("navCurrencies") },
-        { key: ROUTES.paymentMethods, icon: <CreditCardOutlined />, label: t("navPaymentMethods") },
-        { key: ROUTES.paymentTerms, icon: <FieldTimeOutlined />, label: t("navPaymentTerms") },
-        { key: ROUTES.salesmen, icon: <IdcardOutlined />, label: t("navSalesmen") },
+        {
+          key: ROUTES.warehouses,
+          icon: <ShopOutlined />,
+          label: t("navWarehouses"),
+          module: "inventory",
+        },
+        {
+          key: ROUTES.currencies,
+          icon: <GoldOutlined />,
+          label: t("navCurrencies"),
+          module: "master_data",
+        },
+        {
+          key: ROUTES.paymentMethods,
+          icon: <CreditCardOutlined />,
+          label: t("navPaymentMethods"),
+          module: "master_data",
+        },
+        {
+          key: ROUTES.paymentTerms,
+          icon: <FieldTimeOutlined />,
+          label: t("navPaymentTerms"),
+          module: "master_data",
+        },
+        {
+          key: ROUTES.salesmen,
+          icon: <IdcardOutlined />,
+          label: t("navSalesmen"),
+          module: "sales",
+        },
       ],
     },
     {
@@ -100,8 +179,18 @@ export function buildMainNavItems(t) {
       label: t("navInventory"),
       className: SECTION_DIVIDER_CLASS,
       children: [
-        { key: ROUTES.items, icon: <DropboxOutlined />, label: t("navItems") },
-        { key: ROUTES.stock, icon: <ShopOutlined />, label: t("navStock") },
+        {
+          key: ROUTES.items,
+          icon: <DropboxOutlined />,
+          label: t("navItems"),
+          module: "inventory",
+        },
+        {
+          key: ROUTES.stock,
+          icon: <ShopOutlined />,
+          label: t("navStock"),
+          module: "inventory",
+        },
       ],
     },
     {
@@ -114,8 +203,14 @@ export function buildMainNavItems(t) {
           key: ROUTES.customerGroups,
           icon: <TeamOutlined />,
           label: t("navCustomerGroups"),
+          module: "sales",
         },
-        { key: ROUTES.customers, icon: <UserOutlined />, label: t("navCustomers") },
+        {
+          key: ROUTES.customers,
+          icon: <UserOutlined />,
+          label: t("navCustomers"),
+          module: "sales",
+        },
       ],
     },
     {
@@ -128,8 +223,14 @@ export function buildMainNavItems(t) {
           key: ROUTES.supplierGroups,
           icon: <TeamOutlined />,
           label: t("navSupplierGroups"),
+          module: "purchasing",
         },
-        { key: ROUTES.suppliers, icon: <UserOutlined />, label: t("navSuppliers") },
+        {
+          key: ROUTES.suppliers,
+          icon: <UserOutlined />,
+          label: t("navSuppliers"),
+          module: "purchasing",
+        },
       ],
     },
     {
@@ -138,12 +239,29 @@ export function buildMainNavItems(t) {
       label: t("navAdministration"),
       className: SECTION_DIVIDER_CLASS,
       children: [
-        { key: ROUTES.users, icon: <UserOutlined />, label: t("navUsers") },
-        { key: ROUTES.roles, icon: <SafetyCertificateOutlined />, label: t("navRoles") },
-        { key: ROUTES.permissions, icon: <FileSearchOutlined />, label: t("navPermissions") },
+        {
+          key: ROUTES.users,
+          icon: <UserOutlined />,
+          label: t("navUsers"),
+          module: "core",
+        },
+        {
+          key: ROUTES.roles,
+          icon: <SafetyCertificateOutlined />,
+          label: t("navRoles"),
+          module: "core",
+        },
+        {
+          key: ROUTES.permissions,
+          icon: <FileSearchOutlined />,
+          label: t("navPermissions"),
+          module: "core",
+        },
       ],
-    }
+    },
   ];
+
+  return filterNavByModules(items, options.moduleSet);
 }
 
 /**
