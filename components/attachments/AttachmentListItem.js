@@ -5,6 +5,10 @@ import {
   attachmentCategoryAccent,
   attachmentCategoryLabel,
   attachmentCategoryTagColor,
+  attachmentProcessingLabel,
+  attachmentProcessingStatus,
+  attachmentProcessingTagColor,
+  isAttachmentDownloadable,
 } from "@/components/attachments/attachmentListUi";
 import { formatFileSize } from "@/components/attachments/attachmentPreviewUtils";
 import { DeleteOutlined, DownloadOutlined, EyeOutlined, StarFilled, StarOutlined } from "@ant-design/icons";
@@ -12,7 +16,14 @@ import { Button, Tag, Tooltip } from "antd";
 
 /**
  * @param {{
- *   row: { id: string; file_name: string; viewer_category?: string; file_size?: number; is_primary?: boolean };
+ *   row: {
+ *     id: string;
+ *     file_name: string;
+ *     viewer_category?: string;
+ *     file_size?: number;
+ *     is_primary?: boolean;
+ *     processing_status?: string;
+ *   };
  *   readOnly: boolean;
  *   previewLoading: boolean;
  *   enablePrimaryImage?: boolean;
@@ -40,13 +51,21 @@ export default function AttachmentListItem({
   const isImage = row.viewer_category === "image";
   const showPrimaryControls = enablePrimaryImage && isImage;
   const isPrimary = Boolean(row.is_primary);
+  const processingStatus = attachmentProcessingStatus(row);
+  const canOpen = isAttachmentDownloadable(row);
+  const blockedHint =
+    processingStatus === "rejected" ? t("attachmentsRejectedHint") : t("attachmentsNotReady");
 
   return (
     <article
       className={`group flex gap-3 rounded-lg border bg-white p-3 shadow-sm transition hover:shadow dark:bg-neutral-900 ${
         isPrimary
           ? "border-amber-400/80 ring-1 ring-amber-400/40 dark:border-amber-500/60"
-          : "border-neutral-200/80 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"
+          : processingStatus === "rejected"
+            ? "border-red-300/80 dark:border-red-700/60"
+            : processingStatus === "pending"
+              ? "border-sky-300/70 dark:border-sky-700/50"
+              : "border-neutral-200/80 hover:border-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-600"
       }`}
     >
       <div
@@ -64,6 +83,9 @@ export default function AttachmentListItem({
               {t("attachmentsPrimary")}
             </Tag>
           ) : null}
+          <Tag color={attachmentProcessingTagColor(processingStatus)} className="!m-0 !text-xs">
+            {attachmentProcessingLabel(processingStatus, t)}
+          </Tag>
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           {row.viewer_category ? (
@@ -79,33 +101,35 @@ export default function AttachmentListItem({
 
       <div className="flex shrink-0 items-center gap-0.5 self-center opacity-90 sm:opacity-70 sm:group-hover:opacity-100">
         {showPrimaryControls && !readOnly ? (
-          <Tooltip title={isPrimary ? t("attachmentsPrimary") : t("attachmentsSetPrimary")}>
+          <Tooltip title={canOpen ? (isPrimary ? t("attachmentsPrimary") : t("attachmentsSetPrimary")) : blockedHint}>
             <Button
               type="text"
               size="small"
               icon={isPrimary ? <StarFilled className="!text-amber-500" /> : <StarOutlined />}
               loading={setPrimaryLoading}
-              disabled={isPrimary}
+              disabled={isPrimary || !canOpen}
               aria-label={t("attachmentsSetPrimary")}
               onClick={onSetPrimary}
             />
           </Tooltip>
         ) : null}
-        <Tooltip title={t("attachmentsPreview")}>
+        <Tooltip title={canOpen ? t("attachmentsPreview") : blockedHint}>
           <Button
             type="text"
             size="small"
             icon={<EyeOutlined />}
             loading={previewLoading}
+            disabled={!canOpen}
             aria-label={t("attachmentsPreview")}
             onClick={onPreview}
           />
         </Tooltip>
-        <Tooltip title={t("attachmentsDownload")}>
+        <Tooltip title={canOpen ? t("attachmentsDownload") : blockedHint}>
           <Button
             type="text"
             size="small"
             icon={<DownloadOutlined />}
+            disabled={!canOpen}
             aria-label={t("attachmentsDownload")}
             onClick={onDownload}
           />

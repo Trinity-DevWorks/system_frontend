@@ -9,6 +9,7 @@ import {
   removeAttachmentFromList,
 } from "@/components/attachments/attachmentQueryCache";
 import { formatFileSize, usesCustomMediaPreview } from "@/components/attachments/attachmentPreviewUtils";
+import { attachmentProcessingStatus, isAttachmentDownloadable } from "@/components/attachments/attachmentListUi";
 import { invalidateMediaPreviewCacheForRecord } from "@/components/attachments/mediaPreviewCache";
 import { usePendingAttachments } from "@/components/attachments/usePendingAttachments";
 import {
@@ -50,6 +51,7 @@ const MAX_ATTACHMENT_LABEL = "15 MB";
  *   mime_type?: string;
  *   file_size?: number;
  *   can_preview?: boolean;
+ *   processing_status?: string;
  * }} AttachmentRow
  */
 
@@ -107,6 +109,14 @@ export default function ResourceAttachmentsPanel({
     queryFn: () => api.fetchList(/** @type {string} */ (persistedRecordId)),
     enabled,
     staleTime: 30_000,
+    refetchInterval: (query) => {
+      const list = query.state.data;
+      if (!Array.isArray(list)) return false;
+      const hasPending = list.some(
+        (item) => item && typeof item === "object" && attachmentProcessingStatus(item) === "pending",
+      );
+      return hasPending ? 2_500 : false;
+    },
   });
 
   const patchAttachmentsCache = useCallback(
@@ -198,6 +208,14 @@ export default function ResourceAttachmentsPanel({
 
   const handleDownload = useCallback(
     async (/** @type {AttachmentRow} */ row) => {
+      if (!isAttachmentDownloadable(row)) {
+        message.warning(
+          attachmentProcessingStatus(row) === "rejected"
+            ? t("attachmentsRejectedHint")
+            : t("attachmentsNotReady"),
+        );
+        return;
+      }
       try {
         const blob = await api.downloadBlob(/** @type {string} */ (persistedRecordId), row.id);
         const url = URL.createObjectURL(blob);
@@ -218,6 +236,14 @@ export default function ResourceAttachmentsPanel({
 
   const handlePreview = useCallback(
     async (/** @type {AttachmentRow} */ row) => {
+      if (!isAttachmentDownloadable(row)) {
+        message.warning(
+          attachmentProcessingStatus(row) === "rejected"
+            ? t("attachmentsRejectedHint")
+            : t("attachmentsNotReady"),
+        );
+        return;
+      }
       if (usesCustomMediaPreview(row)) {
         setMediaPreviewRow(row);
         return;
@@ -238,6 +264,14 @@ export default function ResourceAttachmentsPanel({
   const handleSetPrimary = useCallback(
     async (/** @type {AttachmentRow} */ row) => {
       if (!api.setPrimary) return;
+      if (!isAttachmentDownloadable(row)) {
+        message.warning(
+          attachmentProcessingStatus(row) === "rejected"
+            ? t("attachmentsRejectedHint")
+            : t("attachmentsNotReady"),
+        );
+        return;
+      }
       setSettingPrimaryId(row.id);
       try {
         await api.setPrimary(/** @type {string} */ (persistedRecordId), row.id);
