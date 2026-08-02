@@ -9,6 +9,7 @@ import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
 import { tenantModulesQueryKey } from "@/lib/tenant-modules";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { consumePendingAuthErrorCode } from "@/lib/pending-auth-error";
 import {
   ArrowRightOutlined,
   GlobalOutlined,
@@ -37,7 +38,7 @@ import {
   theme,
 } from "antd";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -68,6 +69,18 @@ function LoginFormInner({ initialHost }) {
   const tenantLabel = mode.tenantSlug
     ? mode.tenantSlug.charAt(0).toUpperCase() + mode.tenantSlug.slice(1)
     : "Your";
+
+  useEffect(() => {
+    const code = consumePendingAuthErrorCode();
+    if (!code) return;
+    const key = `codes.${code}`;
+    try {
+      if (typeof tApiErrors.has === "function" && !tApiErrors.has(key)) return;
+      message.error(tApiErrors(key));
+    } catch {
+      // Unknown code — skip toast.
+    }
+  }, [message, tApiErrors]);
 
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }) => {
