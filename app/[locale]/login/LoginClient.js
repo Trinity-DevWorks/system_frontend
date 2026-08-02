@@ -3,7 +3,7 @@
 import centralApiService from "@/API/CentralApiService";
 import tenantApiService from "@/API/TenantApiService";
 import { useThemeMode } from "@/components/AntdAppProvider";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
@@ -398,14 +398,14 @@ function LoginFormInner({ initialHost }) {
                       }
                     />
                   </Form.Item>
-                  <Form.Item
+                    <Form.Item
                     label={
                       <span className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
                         {t("password")}
                       </span>
                     }
                     name="password"
-                    className="!mb-6"
+                    className="!mb-2"
                     rules={[{ required: true }]}
                   >
                     <Input.Password
@@ -421,6 +421,14 @@ function LoginFormInner({ initialHost }) {
                       }
                     />
                   </Form.Item>
+                  <div className="mb-6 flex justify-end">
+                    <Link
+                      href="/forgot-password"
+                      className="text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+                    >
+                      {t("forgotPassword")}
+                    </Link>
+                  </div>
                   <Form.Item className="!mb-0">
                     <Button
                       type="primary"

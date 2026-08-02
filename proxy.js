@@ -189,6 +189,13 @@ export default async function proxy(request) {
   const isNotFoundPath =
     barePath === "/notfound" || barePath.startsWith("/notfound/");
   const isLoginPath = barePath === "/login" || barePath.startsWith("/login/");
+  const isForgotPasswordPath =
+    barePath === "/forgot-password" ||
+    barePath.startsWith("/forgot-password/");
+  const isResetPasswordPath =
+    barePath === "/reset-password" || barePath.startsWith("/reset-password/");
+  const isAuthGuestPath =
+    isLoginPath || isForgotPasswordPath || isResetPasswordPath;
   const isMainCentralPath =
     barePath === "/central" || barePath.startsWith("/central/");
 
@@ -247,30 +254,33 @@ export default async function proxy(request) {
     return NextResponse.redirect(url);
   }
 
-  if (isLoginPath) {
+  if (isAuthGuestPath) {
     const hasTenantToken = request.cookies.get(TENANT_TOKEN_KEY)?.value;
     const hasCentralToken = request.cookies.get(CENTRAL_TOKEN_KEY)?.value;
 
-    if (isCentralHost) {
-      if (hasCentralToken) {
+    /** Reset links from email must remain reachable even if a session cookie exists. */
+    if (!isResetPasswordPath) {
+      if (isCentralHost) {
+        if (hasCentralToken) {
+          const url = request.nextUrl.clone();
+          url.pathname = withLocalePrefix(currentLocale, "/central");
+          return NextResponse.redirect(url);
+        }
+      } else if (tenantFromHost) {
+        if (hasTenantToken) {
+          const url = request.nextUrl.clone();
+          url.pathname = withLocalePrefix(currentLocale, "/main/overview");
+          return NextResponse.redirect(url);
+        }
+      } else if (hasCentralToken) {
         const url = request.nextUrl.clone();
         url.pathname = withLocalePrefix(currentLocale, "/central");
         return NextResponse.redirect(url);
-      }
-    } else if (tenantFromHost) {
-      if (hasTenantToken) {
+      } else if (hasTenantToken) {
         const url = request.nextUrl.clone();
         url.pathname = withLocalePrefix(currentLocale, "/main/overview");
         return NextResponse.redirect(url);
       }
-    } else if (hasCentralToken) {
-      const url = request.nextUrl.clone();
-      url.pathname = withLocalePrefix(currentLocale, "/central");
-      return NextResponse.redirect(url);
-    } else if (hasTenantToken) {
-      const url = request.nextUrl.clone();
-      url.pathname = withLocalePrefix(currentLocale, "/main/overview");
-      return NextResponse.redirect(url);
     }
 
     return intlResponse;
@@ -283,7 +293,7 @@ export default async function proxy(request) {
     isCentralHost &&
     Boolean(tenantFromHost) === false &&
     (barePath === "/" || barePath === "");
-  const isPublicPath = isLoginPath || isNotFoundPath || isCentralHome;
+  const isPublicPath = isAuthGuestPath || isNotFoundPath || isCentralHome;
 
   if (isMainCentralPath) {
     if (!hasCentralToken && !isPublicPath) {

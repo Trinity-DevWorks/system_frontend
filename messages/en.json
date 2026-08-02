@@ -39,7 +39,30 @@
     "leftFeatureInventoryBody": "Manage stock levels and get low-stock alerts.",
     "leftFeatureCustomerTitle": "Customer management",
     "leftFeatureCustomerBody": "Build stronger relationships with your customers.",
-    "leftFooterCopyright": "© {year} MENA POS. All rights reserved."
+    "leftFooterCopyright": "© {year} MENA POS. All rights reserved.",
+    "forgotPassword": "Forgot password?"
+  },
+  "ForgotPassword": {
+    "title": "Reset your password",
+    "subtitle": "Enter your work email and we’ll send a reset link if an account exists.",
+    "lead": "Forgot your password? Request a secure reset link for your account.",
+    "submit": "Send reset link",
+    "success": "If an account exists for that email, a password reset link has been sent.",
+    "error": "Unable to send reset link",
+    "backToLogin": "Back to sign in"
+  },
+  "ResetPassword": {
+    "title": "Choose a new password",
+    "subtitle": "Enter a new password for your account.",
+    "lead": "Set a new password to regain access to your workspace.",
+    "password": "New password",
+    "passwordConfirmation": "Confirm password",
+    "passwordMismatch": "Passwords do not match",
+    "submit": "Update password",
+    "success": "Password updated. You can sign in now.",
+    "error": "Unable to reset password",
+    "missingToken": "This reset link is missing or invalid. Request a new one from the forgot password page.",
+    "backToLogin": "Back to sign in"
   },
   "Shell": {
     "brand": "System",
@@ -65,6 +88,7 @@
     "navSupplierGroups": "Supplier Groups",
     "navSuppliers": "Suppliers",
     "navAdministration": "Administration",
+    "navCompanyProfile": "Company Profile",
     "navUsers": "Users",
     "navRoles": "Roles",
     "navPermissions": "Permissions",
