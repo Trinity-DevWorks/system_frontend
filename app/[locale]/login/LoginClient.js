@@ -8,6 +8,7 @@ import { routing } from "@/i18n/routing";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
 import { tenantModulesQueryKey } from "@/lib/tenant-modules";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import {
   ArrowRightOutlined,
   GlobalOutlined,
@@ -50,6 +51,7 @@ const shellIconBtnClass =
 function LoginFormInner({ initialHost }) {
   const t = useTranslations("Login");
   const tShell = useTranslations("Shell");
+  const tApiErrors = useTranslations("ApiErrors");
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
@@ -103,7 +105,7 @@ function LoginFormInner({ initialHost }) {
       router.replace(isCentralLogin ? "/central" : "/main/overview");
     },
     onError: (err) => {
-      message.error(err?.message || t("error"));
+      message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t("error"));
     },
   });
 

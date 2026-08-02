@@ -4,6 +4,7 @@ import centralApiService from "@/API/CentralApiService";
 import tenantApiService from "@/API/TenantApiService";
 import AuthSplitShell from "@/components/auth/AuthSplitShell";
 import { Link } from "@/i18n/navigation";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { ArrowLeftOutlined, ArrowRightOutlined, MailOutlined } from "@ant-design/icons";
 import { useMutation } from "@tanstack/react-query";
@@ -19,6 +20,7 @@ const schema = z.object({
 function ForgotPasswordForm({ initialHost }) {
   const t = useTranslations("ForgotPassword");
   const tLogin = useTranslations("Login");
+  const tApiErrors = useTranslations("ApiErrors");
   const { message } = App.useApp();
   const [form] = Form.useForm();
 
@@ -40,7 +42,7 @@ function ForgotPasswordForm({ initialHost }) {
       form.resetFields();
     },
     onError: (err) => {
-      message.error(err?.message || t("error"));
+      message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t("error"));
     },
   });
 

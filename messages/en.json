@@ -2029,6 +2029,8 @@
       "REQUEST_FAILED": "The request could not be completed. Please try again.",
       "INVALID_CREDENTIALS": "Invalid email or password.",
       "ACCOUNT_INACTIVE": "Your account is inactive. Contact your administrator.",
+      "PASSWORD_RESET_FAILED": "Unable to reset password. The link may be invalid or expired.",
+      "PASSWORD_UNCHANGED": "The new password must be different from your current password.",
       "TENANT_NOT_FOUND": "Tenant not found.",
       "TENANT_OWNER_CREATE_FAILED": "Could not create tenant owner user.",
       "ROLE_SYSTEM_RENAME_FORBIDDEN": "System role name cannot be changed.",

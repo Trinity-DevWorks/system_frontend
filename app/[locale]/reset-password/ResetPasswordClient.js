@@ -4,6 +4,10 @@ import centralApiService from "@/API/CentralApiService";
 import tenantApiService from "@/API/TenantApiService";
 import AuthSplitShell from "@/components/auth/AuthSplitShell";
 import { Link, useRouter } from "@/i18n/navigation";
+import {
+  getApiErrorCode,
+  getLocalizedApiErrorMessage,
+} from "@/lib/api-error-notify";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import {
   ArrowLeftOutlined,
@@ -32,6 +36,7 @@ const schema = z
 function ResetPasswordForm({ initialHost }) {
   const t = useTranslations("ResetPassword");
   const tLogin = useTranslations("Login");
+  const tApiErrors = useTranslations("ApiErrors");
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const router = useRouter();
@@ -65,7 +70,11 @@ function ResetPasswordForm({ initialHost }) {
       router.replace("/login");
     },
     onError: (err) => {
-      message.error(err?.message || t("error"));
+      const msg = getLocalizedApiErrorMessage(tApiErrors, err) || t("error");
+      if (getApiErrorCode(err) === "PASSWORD_UNCHANGED") {
+        form.setFields([{ name: "password", errors: [msg] }]);
+      }
+      message.error(msg);
     },
   });
 
