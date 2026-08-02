@@ -1,5 +1,6 @@
 import {
   AppstoreOutlined,
+  BankOutlined,
   CreditCardOutlined,
   DashboardOutlined,
   DeploymentUnitOutlined,
@@ -56,6 +57,7 @@ export const ROUTES = {
   customers: "/main/customers",
   supplierGroups: "/main/supplier-groups",
   suppliers: "/main/suppliers",
+  companyProfile: "/main/company-profile",
   users: "/main/users",
   roles: "/main/roles",
   permissions: "/main/permissions",
@@ -239,6 +241,12 @@ export function buildMainNavItems(t, options = {}) {
       label: t("navAdministration"),
       className: SECTION_DIVIDER_CLASS,
       children: [
+        {
+          key: ROUTES.companyProfile,
+          icon: <BankOutlined />,
+          label: t("navCompanyProfile"),
+          module: "core",
+        },
         {
           key: ROUTES.users,
           icon: <UserOutlined />,

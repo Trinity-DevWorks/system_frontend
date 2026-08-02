@@ -3,11 +3,13 @@
 import centralApiService from "@/API/CentralApiService";
 import tenantApiService from "@/API/TenantApiService";
 import { useThemeMode } from "@/components/AntdAppProvider";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
 import { tenantModulesQueryKey } from "@/lib/tenant-modules";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { consumePendingAuthErrorCode } from "@/lib/pending-auth-error";
 import {
   ArrowRightOutlined,
   GlobalOutlined,
@@ -36,7 +38,7 @@ import {
   theme,
 } from "antd";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -50,6 +52,7 @@ const shellIconBtnClass =
 function LoginFormInner({ initialHost }) {
   const t = useTranslations("Login");
   const tShell = useTranslations("Shell");
+  const tApiErrors = useTranslations("ApiErrors");
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
@@ -66,6 +69,18 @@ function LoginFormInner({ initialHost }) {
   const tenantLabel = mode.tenantSlug
     ? mode.tenantSlug.charAt(0).toUpperCase() + mode.tenantSlug.slice(1)
     : "Your";
+
+  useEffect(() => {
+    const code = consumePendingAuthErrorCode();
+    if (!code) return;
+    const key = `codes.${code}`;
+    try {
+      if (typeof tApiErrors.has === "function" && !tApiErrors.has(key)) return;
+      message.error(tApiErrors(key));
+    } catch {
+      // Unknown code — skip toast.
+    }
+  }, [message, tApiErrors]);
 
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }) => {
@@ -103,7 +118,7 @@ function LoginFormInner({ initialHost }) {
       router.replace(isCentralLogin ? "/central" : "/main/overview");
     },
     onError: (err) => {
-      message.error(err?.message || t("error"));
+      message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t("error"));
     },
   });
 
@@ -398,14 +413,14 @@ function LoginFormInner({ initialHost }) {
                       }
                     />
                   </Form.Item>
-                  <Form.Item
+                    <Form.Item
                     label={
                       <span className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
                         {t("password")}
                       </span>
                     }
                     name="password"
-                    className="!mb-6"
+                    className="!mb-2"
                     rules={[{ required: true }]}
                   >
                     <Input.Password
@@ -421,6 +436,14 @@ function LoginFormInner({ initialHost }) {
                       }
                     />
                   </Form.Item>
+                  <div className="mb-6 flex justify-end">
+                    <Link
+                      href="/forgot-password"
+                      className="text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+                    >
+                      {t("forgotPassword")}
+                    </Link>
+                  </div>
                   <Form.Item className="!mb-0">
                     <Button
                       type="primary"

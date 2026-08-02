@@ -143,8 +143,6 @@ export default function AppShell({ children }) {
   );
 
   const handleLogout = async () => {
-    clearAllSessionTokens();
-
     const host =
       typeof window !== "undefined" ? window.location.hostname : "";
     const { isCentral } = resolveHostMode(host);
@@ -156,8 +154,10 @@ export default function AppShell({ children }) {
         await tenantApiService("POST", "auth/logout").catch(() => {});
       }
     } catch {
-      /* session already cleared */
+      /* still clear local session */
     }
+
+    clearAllSessionTokens();
 
     if (typeof message?.success === "function") {
       message.success(t("loggedOut"));

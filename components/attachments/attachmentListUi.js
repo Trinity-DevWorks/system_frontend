@@ -84,3 +84,54 @@ export function attachmentCategoryLabel(category) {
   if (!category) return "File";
   return category.charAt(0).toUpperCase() + category.slice(1);
 }
+
+/**
+ * @param {{ processing_status?: string } | null | undefined} attachment
+ */
+export function attachmentProcessingStatus(attachment) {
+  const status = attachment?.processing_status;
+  if (status === "pending" || status === "ready" || status === "rejected") {
+    return status;
+  }
+  return "ready";
+}
+
+/**
+ * @param {{ processing_status?: string } | null | undefined} attachment
+ */
+export function isAttachmentDownloadable(attachment) {
+  return attachmentProcessingStatus(attachment) === "ready";
+}
+
+/**
+ * Ant Design Tag color for processing status.
+ * @param {string | undefined} status
+ */
+export function attachmentProcessingTagColor(status) {
+  switch (status) {
+    case "pending":
+      return "processing";
+    case "rejected":
+      return "error";
+    case "ready":
+      return "success";
+    default:
+      return "default";
+  }
+}
+
+/**
+ * @param {string | undefined} status
+ * @param {(key: string) => string} t
+ */
+export function attachmentProcessingLabel(status, t) {
+  switch (status) {
+    case "pending":
+      return t("attachmentsProcessingPending");
+    case "rejected":
+      return t("attachmentsProcessingRejected");
+    case "ready":
+    default:
+      return t("attachmentsProcessingReady");
+  }
+}
