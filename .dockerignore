@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+.next
+out
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-error.log*
+README.md
+.dockerignore
+Dockerfile
+**/*.md

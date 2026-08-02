@@ -1,0 +1,48 @@
+# Manual deploy scaffolding — no live host wired yet (Option B).
+# Ref: Trinity-DevWorks/Issues#29
+name: Deploy staging (stub)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging-frontend-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-image:
+    name: Build frontend image
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_CENTRAL_API_URL: http://app.localhost:8000/api
+      NEXT_PUBLIC_CENTRAL_DOMAIN: app.localhost
+      NEXT_PUBLIC_TENANT_ROOT_DOMAIN: localhost
+      NEXT_PUBLIC_CENTRAL_API_PORT: "8000"
+      NEXT_PUBLIC_TENANT_API_PORT: "8000"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
+            --build-arg NEXT_PUBLIC_CENTRAL_API_URL="$NEXT_PUBLIC_CENTRAL_API_URL" \
+            --build-arg NEXT_PUBLIC_CENTRAL_DOMAIN="$NEXT_PUBLIC_CENTRAL_DOMAIN" \
+            --build-arg NEXT_PUBLIC_TENANT_ROOT_DOMAIN="$NEXT_PUBLIC_TENANT_ROOT_DOMAIN" \
+            --build-arg NEXT_PUBLIC_CENTRAL_API_PORT="$NEXT_PUBLIC_CENTRAL_API_PORT" \
+            --build-arg NEXT_PUBLIC_TENANT_API_PORT="$NEXT_PUBLIC_TENANT_API_PORT" \
+            -t system-frontend:staging \
+            .
+
+      - name: Stub note
+        run: |
+          echo "Frontend image built locally on the runner."
+          echo "No remote deploy target configured yet (Option B)."
