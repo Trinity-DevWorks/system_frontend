@@ -18,6 +18,14 @@ jobs:
   frontend:
     name: Next.js
     runs-on: ubuntu-latest
+    env:
+      # Safe placeholders so `next build` does not depend on local secrets.
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_CENTRAL_API_URL: http://app.localhost:8000/api
+      NEXT_PUBLIC_CENTRAL_DOMAIN: app.localhost
+      NEXT_PUBLIC_TENANT_ROOT_DOMAIN: localhost
+      NEXT_PUBLIC_CENTRAL_API_PORT: "8000"
+      NEXT_PUBLIC_TENANT_API_PORT: "8000"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

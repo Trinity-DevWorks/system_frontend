@@ -4,6 +4,8 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.js");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enables smaller Docker images (`Dockerfile` copies `.next/standalone`).
+  output: "standalone",
   experimental: {
     // Lowers peak Webpack memory during dev/build (Next.js 15+).
     webpackMemoryOptimizations: true,
