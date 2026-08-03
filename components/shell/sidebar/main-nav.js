@@ -10,6 +10,7 @@ import {
   GoldOutlined,
   IdcardOutlined,
   SafetyCertificateOutlined,
+  SettingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
@@ -58,6 +59,7 @@ export const ROUTES = {
   supplierGroups: "/main/supplier-groups",
   suppliers: "/main/suppliers",
   companyProfile: "/main/company-profile",
+  tenantSettings: "/main/tenant-settings",
   users: "/main/users",
   roles: "/main/roles",
   permissions: "/main/permissions",
@@ -245,6 +247,12 @@ export function buildMainNavItems(t, options = {}) {
           key: ROUTES.companyProfile,
           icon: <BankOutlined />,
           label: t("navCompanyProfile"),
+          module: "core",
+        },
+        {
+          key: ROUTES.tenantSettings,
+          icon: <SettingOutlined />,
+          label: t("navTenantSettings"),
           module: "core",
         },
         {

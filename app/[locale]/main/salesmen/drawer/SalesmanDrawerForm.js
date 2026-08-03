@@ -1,6 +1,7 @@
 "use client";
 
 import { SALESMAN_COMMISSION_TYPES } from "./salesmanDrawerUtils";
+import { dayjsDatePattern } from "@/lib/tenant-format";
 import { Form, Input, InputNumber, Select, Switch, DatePicker, Typography } from "antd";
 import { useEffect } from "react";
 
@@ -128,7 +129,7 @@ export default function SalesmanDrawerForm({
         <InputNumber className="w-full" min={0} precision={4} />
       </Form.Item>
       <Form.Item name="hire_date" label={t("fieldHireDate")}>
-        <DatePicker className="w-full" format="YYYY-MM-DD" allowClear />
+        <DatePicker className="w-full" format={dayjsDatePattern()} allowClear />
       </Form.Item>
       <Form.Item name="warehouse_id" label={t("fieldWarehouse")} getValueFromEvent={warehouseGetValueFromEvent}>
         <Select

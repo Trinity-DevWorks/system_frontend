@@ -2,7 +2,7 @@
 
 import ResourceDrawerFieldLabel from "@/components/resource-drawer/ResourceDrawerFieldLabel";
 import { drawerSelectGetPopup } from "@/components/resource-drawer/drawerFormUtils";
-import { formatDrawerPrice } from "../itemDrawerPanelsState";
+import { formatTenantMoney } from "@/lib/tenant-format";
 import ItemVariantBarcodesSection from "./ItemVariantBarcodesSection";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Checkbox, InputNumber, Radio, Select, Tooltip, Typography } from "antd";
@@ -14,13 +14,14 @@ import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
  * @param {string} currencyLabel
  */
 function VariantPricingGrid({ values, t, currencyLabel }) {
+  const price = (v) => formatTenantMoney(v) || "—";
   const cells = [
     { label: t("uomColCurrency"), value: currencyLabel },
-    { label: t("uomFieldSell"), value: formatDrawerPrice(values.selling_price) },
-    { label: t("uomFieldCost"), value: formatDrawerPrice(values.cost_price) },
-    { label: t("uomColTakeaway"), value: formatDrawerPrice(values.takeaway_price) },
-    { label: t("uomColDineIn"), value: formatDrawerPrice(values.dine_in_price) },
-    { label: t("uomColDelivery"), value: formatDrawerPrice(values.delivery_price) },
+    { label: t("uomFieldSell"), value: price(values.selling_price) },
+    { label: t("uomFieldCost"), value: price(values.cost_price) },
+    { label: t("uomColTakeaway"), value: price(values.takeaway_price) },
+    { label: t("uomColDineIn"), value: price(values.dine_in_price) },
+    { label: t("uomColDelivery"), value: price(values.delivery_price) },
   ];
 
   return (

@@ -89,6 +89,7 @@
     "navSuppliers": "Suppliers",
     "navAdministration": "Administration",
     "navCompanyProfile": "Company Profile",
+    "navTenantSettings": "Tenant Settings",
     "navUsers": "Users",
     "navRoles": "Roles",
     "navPermissions": "Permissions",

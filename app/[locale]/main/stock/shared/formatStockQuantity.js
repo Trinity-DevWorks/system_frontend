@@ -1,13 +1,16 @@
+import { formatTenantNumber } from "@/lib/tenant-format";
+
 /**
  * @param {unknown} value
  * @param {number} [maxDecimals]
  * @returns {string}
  */
 export function formatStockQuantity(value, maxDecimals = 6) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
-  const fixed = n.toFixed(maxDecimals);
-  return fixed.replace(/\.?0+$/, "") || "0";
+  const formatted = formatTenantNumber(
+    typeof value === "number" || typeof value === "string" ? value : Number(value),
+    { decimals: maxDecimals, trimTrailingZeros: true },
+  );
+  return formatted || "—";
 }
 
 /**

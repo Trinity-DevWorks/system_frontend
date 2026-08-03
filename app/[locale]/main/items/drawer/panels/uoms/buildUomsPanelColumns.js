@@ -1,7 +1,7 @@
 import { drawerSelectGetPopup } from "@/components/resource-drawer/drawerFormUtils";
+import { formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Checkbox, Input, InputNumber, Radio, Select, Space, Tag } from "antd";
-import { formatDrawerPrice } from "../itemDrawerPanelsState";
 import { PANEL_ACTIONS_CELL_STYLE } from "../shared/panelTableStyles";
 import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
 
@@ -75,7 +75,7 @@ export function buildUomsPanelColumns(ctx) {
         />
       );
     }
-    return formatDrawerPrice(r[field]);
+    return formatTenantMoney(r[field]) || "—";
   };
 
   return [
@@ -106,7 +106,12 @@ export function buildUomsPanelColumns(ctx) {
             />
           );
         }
-        return formatDrawerPrice(r.conversion_factor);
+        return (
+          formatTenantNumber(r.conversion_factor, {
+            decimals: 6,
+            trimTrailingZeros: true,
+          }) || "—"
+        );
       },
     },
     {

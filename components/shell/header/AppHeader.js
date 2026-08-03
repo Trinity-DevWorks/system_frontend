@@ -16,6 +16,7 @@ import {
 import { Badge, Button, Dropdown, Input, Layout, Space, theme } from "antd";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
+import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import AppBreadcrumb from "./AppBreadcrumb";
 
 const { Header } = Layout;
@@ -51,6 +52,7 @@ export default function AppHeader({
   );
 
   const onLanguageMenuClick = ({ key }) => {
+    markUiLocaleOverride();
     router.replace(pathname, { locale: key });
   };
 

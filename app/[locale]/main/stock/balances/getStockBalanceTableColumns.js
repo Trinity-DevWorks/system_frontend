@@ -1,4 +1,4 @@
-import { formatStockDateTime } from "../shared/formatStockDateTime";
+import { formatTenantDateTime } from "@/lib/tenant-format";
 import { formatStockQuantity, formatUomLabel } from "../shared/formatStockQuantity";
 import { EditOutlined } from "@ant-design/icons";
 import { Button, Typography } from "antd";
@@ -75,7 +75,7 @@ export function getStockBalanceTableColumns(t, actions = {}) {
       key: "updated_at",
       width: 200,
       sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
-      render: (value) => formatStockDateTime(value) || "\u2014",
+      render: (value) => formatTenantDateTime(value) || "\u2014",
     },
     ...(onAdjust
       ? [
