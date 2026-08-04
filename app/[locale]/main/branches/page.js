@@ -215,9 +215,9 @@ function BranchesTable() {
             "id",
             "name",
             "shortcut_name",
+            "email",
             "phone",
             "manager_name",
-            "timezone",
             "is_active_label",
             "is_default_label",
           ],
@@ -231,7 +231,7 @@ function BranchesTable() {
         onBulkDelete={openBulkDeleteConfirm}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
-        scrollX={1280}
+        scrollX={1480}
         enableColumnDrag
         pagination={{
           mode: "client",

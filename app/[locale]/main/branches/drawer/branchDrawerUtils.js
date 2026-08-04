@@ -3,6 +3,8 @@
  * Payload mapping, dirty checks, sort order, and create-save intent storage keys.
  */
 
+import dayjs from "dayjs";
+
 /** @typedef {"keep" | "new" | "close"} BranchCreateSaveIntent */
 
 export const BRANCH_CREATE_SAVE_INTENT_KEY = "branchDrawer:createSaveIntent";
@@ -10,38 +12,37 @@ export const BRANCH_CREATE_SAVE_INTENT_EVENT = "branchDrawer:createSaveIntent:ch
 
 const SHORTCUT_PATTERN = /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
 
+/** @param {unknown} value */
+function asTrimmed(value) {
+  return String(value ?? "").trim();
+}
+
+/** @param {unknown} value */
+function asTimeString(value) {
+  if (value == null || value === "") return "";
+  if (dayjs.isDayjs(value)) return value.format("HH:mm");
+  const s = String(value).trim();
+  if (/^\d{2}:\d{2}/.test(s)) return s.slice(0, 5);
+  return s;
+}
+
 /**
  * @param {import("antd").FormInstance} form
- * @param {{
- *   name: string;
- *   shortcut_name: string;
- *   address: string;
- *   phone: string;
- *   timezone: string;
- *   manager_name: string;
- *   is_active: boolean;
- *   is_default: boolean;
- * }} defaults
+ * @param {Record<string, unknown>} defaults
  */
 export function isCreateDirtyVsDefaults(form, defaults) {
   const v = form.getFieldsValue(true);
-  const name = String(v.name ?? "").trim();
-  const shortcutName = String(v.shortcut_name ?? "").trim().toUpperCase();
-  const address = String(v.address ?? "").trim();
-  const phone = String(v.phone ?? "").trim();
-  const timezone = String(v.timezone ?? "").trim();
-  const managerName = String(v.manager_name ?? "").trim();
-  const isActive = v.is_active !== false;
-  const isDefault = Boolean(v.is_default);
-
-  if (name !== String(defaults.name ?? "").trim()) return true;
-  if (shortcutName !== String(defaults.shortcut_name ?? "").trim().toUpperCase()) return true;
-  if (address !== String(defaults.address ?? "").trim()) return true;
-  if (phone !== String(defaults.phone ?? "").trim()) return true;
-  if (timezone !== String(defaults.timezone ?? "").trim()) return true;
-  if (managerName !== String(defaults.manager_name ?? "").trim()) return true;
-  if (isActive !== Boolean(defaults.is_active)) return true;
-  if (isDefault !== Boolean(defaults.is_default)) return true;
+  if (asTrimmed(v.name) !== asTrimmed(defaults.name)) return true;
+  if (asTrimmed(v.shortcut_name).toUpperCase() !== asTrimmed(defaults.shortcut_name).toUpperCase()) return true;
+  if (asTrimmed(v.address) !== asTrimmed(defaults.address)) return true;
+  if (asTrimmed(v.phone) !== asTrimmed(defaults.phone)) return true;
+  if (asTrimmed(v.email) !== asTrimmed(defaults.email)) return true;
+  if (asTrimmed(v.timezone) !== asTrimmed(defaults.timezone)) return true;
+  if (asTimeString(v.opening_time) !== asTimeString(defaults.opening_time)) return true;
+  if (asTimeString(v.closing_time) !== asTimeString(defaults.closing_time)) return true;
+  if (String(v.manager_id ?? "") !== String(defaults.manager_id ?? "")) return true;
+  if ((v.is_active !== false) !== Boolean(defaults.is_active)) return true;
+  if (Boolean(v.is_default) !== Boolean(defaults.is_default)) return true;
   return false;
 }
 
@@ -51,23 +52,17 @@ export function isCreateDirtyVsDefaults(form, defaults) {
  */
 export function isEditDirtyVsLoaded(form, row) {
   const v = form.getFieldsValue(true);
-  const name = String(v.name ?? "").trim();
-  const shortcutName = String(v.shortcut_name ?? "").trim().toUpperCase();
-  const address = String(v.address ?? "").trim();
-  const phone = String(v.phone ?? "").trim();
-  const timezone = String(v.timezone ?? "").trim();
-  const managerName = String(v.manager_name ?? "").trim();
-  const isActive = v.is_active !== false;
-  const isDefault = Boolean(v.is_default);
-
-  if (name !== String(row.name ?? "").trim()) return true;
-  if (shortcutName !== String(row.shortcut_name ?? "").trim().toUpperCase()) return true;
-  if (address !== String(row.address ?? "").trim()) return true;
-  if (phone !== String(row.phone ?? "").trim()) return true;
-  if (timezone !== String(row.timezone ?? "").trim()) return true;
-  if (managerName !== String(row.manager_name ?? "").trim()) return true;
-  if (isActive !== Boolean(row.is_active)) return true;
-  if (isDefault !== Boolean(row.is_default)) return true;
+  if (asTrimmed(v.name) !== asTrimmed(row.name)) return true;
+  if (asTrimmed(v.shortcut_name).toUpperCase() !== asTrimmed(row.shortcut_name).toUpperCase()) return true;
+  if (asTrimmed(v.address) !== asTrimmed(row.address)) return true;
+  if (asTrimmed(v.phone) !== asTrimmed(row.phone)) return true;
+  if (asTrimmed(v.email) !== asTrimmed(row.email)) return true;
+  if (asTrimmed(v.timezone) !== asTrimmed(row.timezone)) return true;
+  if (asTimeString(v.opening_time) !== asTimeString(row.opening_time)) return true;
+  if (asTimeString(v.closing_time) !== asTimeString(row.closing_time)) return true;
+  if (String(v.manager_id ?? "") !== String(row.manager_id ?? "")) return true;
+  if ((v.is_active !== false) !== Boolean(row.is_active)) return true;
+  if (Boolean(v.is_default) !== Boolean(row.is_default)) return true;
   return false;
 }
 
@@ -91,7 +86,11 @@ export function toBranchCacheRow(row) {
     shortcut_name: row.shortcut_name,
     address: row.address ?? null,
     phone: row.phone ?? null,
+    email: row.email ?? null,
     timezone: row.timezone ?? null,
+    opening_time: row.opening_time ?? null,
+    closing_time: row.closing_time ?? null,
+    manager_id: row.manager_id ?? null,
     manager_name: row.manager_name ?? null,
     is_active: Boolean(row.is_active),
     is_default: Boolean(row.is_default),
@@ -111,6 +110,12 @@ export function sortBranchesByName(list) {
   );
 }
 
+/** @param {unknown} value */
+function timeToPayload(value) {
+  const s = asTimeString(value);
+  return s === "" ? null : s;
+}
+
 /** @param {Record<string, unknown>} values */
 export function branchFormValuesToPayload(values) {
   const trimOrNull = (value) => {
@@ -118,14 +123,26 @@ export function branchFormValuesToPayload(values) {
     return s === "" ? null : s;
   };
 
+  const managerId = values.manager_id;
   return {
     name: String(values.name ?? "").trim(),
     shortcut_name: String(values.shortcut_name ?? "").trim().toUpperCase(),
     address: trimOrNull(values.address),
     phone: trimOrNull(values.phone),
+    email: trimOrNull(values.email),
     timezone: trimOrNull(values.timezone),
-    manager_name: trimOrNull(values.manager_name),
+    opening_time: timeToPayload(values.opening_time),
+    closing_time: timeToPayload(values.closing_time),
+    manager_id: managerId == null || managerId === "" ? null : String(managerId),
     is_active: Boolean(values.is_active),
     is_default: Boolean(values.is_default),
   };
+}
+
+/** @param {unknown} value */
+export function parseTimeToDayjs(value) {
+  const s = asTimeString(value);
+  if (!s) return undefined;
+  const parsed = dayjs(s, "HH:mm", true);
+  return parsed.isValid() ? parsed : undefined;
 }

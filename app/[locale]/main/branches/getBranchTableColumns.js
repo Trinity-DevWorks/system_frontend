@@ -37,14 +37,14 @@ export function getBranchTableColumns(t, actions = {}) {
       title: t("colName"),
       dataIndex: "name",
       key: "name",
-      width: 200,
+      width: 180,
       ellipsis: true,
     },
     {
       title: t("colShortcutName"),
       dataIndex: "shortcut_name",
       key: "shortcut_name",
-      width: 130,
+      width: 110,
       ellipsis: true,
       render: (value) => {
         const v = typeof value === "string" ? value.trim() : "";
@@ -58,26 +58,37 @@ export function getBranchTableColumns(t, actions = {}) {
       },
     },
     {
+      title: t("colEmail"),
+      dataIndex: "email",
+      key: "email",
+      width: 180,
+      ellipsis: true,
+      render: (value) => (typeof value === "string" && value.trim() ? value : "\u2014"),
+    },
+    {
       title: t("colPhone"),
       dataIndex: "phone",
       key: "phone",
-      width: 140,
+      width: 120,
       ellipsis: true,
       render: (value) => (typeof value === "string" && value.trim() ? value : "\u2014"),
+    },
+    {
+      title: t("colHours"),
+      key: "hours",
+      width: 120,
+      render: (_, record) => {
+        const open = typeof record?.opening_time === "string" ? record.opening_time : "";
+        const close = typeof record?.closing_time === "string" ? record.closing_time : "";
+        if (!open && !close) return "\u2014";
+        return `${open || "—"} – ${close || "—"}`;
+      },
     },
     {
       title: t("colManagerName"),
       dataIndex: "manager_name",
       key: "manager_name",
-      width: 160,
-      ellipsis: true,
-      render: (value) => (typeof value === "string" && value.trim() ? value : "\u2014"),
-    },
-    {
-      title: t("colTimezone"),
-      dataIndex: "timezone",
-      key: "timezone",
-      width: 140,
+      width: 150,
       ellipsis: true,
       render: (value) => (typeof value === "string" && value.trim() ? value : "\u2014"),
     },
@@ -85,7 +96,7 @@ export function getBranchTableColumns(t, actions = {}) {
       title: t("colStatus"),
       dataIndex: "is_active",
       key: "is_active",
-      width: 120,
+      width: 110,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
       render: (value) => renderActiveInactiveStatus(value, t),
     },
@@ -93,7 +104,7 @@ export function getBranchTableColumns(t, actions = {}) {
       title: t("colDefault"),
       dataIndex: "is_default",
       key: "is_default",
-      width: 120,
+      width: 110,
       sorter: (a, b) => Number(b.is_default) - Number(a.is_default),
       render: (value) =>
         value ? (
@@ -106,7 +117,7 @@ export function getBranchTableColumns(t, actions = {}) {
       title: t("colCreatedAt"),
       dataIndex: "created_at",
       key: "created_at",
-      width: 180,
+      width: 168,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
       render: (value) => formatTenantDate(value) || "\u2014",
     },

@@ -7,6 +7,8 @@ import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useReso
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { fetchBranch } from "@/services/branchesApi";
+import { fetchTenantUsers } from "@/services/tenantUsersApi";
+import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
@@ -17,6 +19,7 @@ import {
   BRANCH_CREATE_SAVE_INTENT_KEY,
   isCreateDirtyVsDefaults,
   isEditDirtyVsLoaded,
+  parseTimeToDayjs,
   requiredFieldsValid,
   toBranchCacheRow,
 } from "./branchDrawerUtils";
@@ -51,14 +54,34 @@ export default function BranchDrawer({
 
   const readOnly = mode === "view";
 
+  const usersQuery = useQuery({
+    queryKey: ["tenant", "users"],
+    queryFn: fetchTenantUsers,
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  const userOptions = useMemo(() => {
+    const users = Array.isArray(usersQuery.data) ? usersQuery.data : [];
+    return users
+      .filter((u) => u?.id != null)
+      .map((u) => ({
+        value: String(u.id),
+        label: typeof u.name === "string" && u.name.trim() ? u.name : String(u.email ?? u.id),
+      }));
+  }, [usersQuery.data]);
+
   const defaults = useMemo(
     () => ({
       name: "",
       shortcut_name: "",
       address: "",
       phone: "",
+      email: "",
       timezone: "",
-      manager_name: "",
+      opening_time: undefined,
+      closing_time: undefined,
+      manager_id: undefined,
       is_active: true,
       is_default: false,
     }),
@@ -72,8 +95,11 @@ export default function BranchDrawer({
       shortcut_name: r.shortcut_name,
       address: r.address ?? "",
       phone: r.phone ?? "",
+      email: r.email ?? "",
       timezone: r.timezone ?? "",
-      manager_name: r.manager_name ?? "",
+      opening_time: parseTimeToDayjs(r.opening_time),
+      closing_time: parseTimeToDayjs(r.closing_time),
+      manager_id: r.manager_id == null ? undefined : String(r.manager_id),
       is_active: Boolean(r.is_active),
       is_default: Boolean(r.is_default),
     }),
@@ -222,7 +248,7 @@ export default function BranchDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={8}
+      skeletonParagraphRows={10}
       footer={
         <ResourceDrawerFooter
           mode={mode}
@@ -244,7 +270,13 @@ export default function BranchDrawer({
         />
       }
     >
-      <BranchDrawerForm form={form} readOnly={readOnly} t={t} />
+      <BranchDrawerForm
+        form={form}
+        readOnly={readOnly}
+        t={t}
+        userOptions={userOptions}
+        lookupsLoading={usersQuery.isPending}
+      />
     </ResourceCrudDrawer>
   );
 }
