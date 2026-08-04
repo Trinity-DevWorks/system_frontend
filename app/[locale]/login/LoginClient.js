@@ -8,6 +8,11 @@ import { routing } from "@/i18n/routing";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
 import { tenantModulesQueryKey } from "@/lib/tenant-modules";
+import {
+  tenantSettingsQueryKey,
+} from "@/lib/tenant-settings";
+import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
+import { fetchTenantSettings } from "@/services/tenantSettingsApi";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { consumePendingAuthErrorCode } from "@/lib/pending-auth-error";
 import {
@@ -108,6 +113,16 @@ function LoginFormInner({ initialHost }) {
           } catch {
             /* optional prefetch */
           }
+
+          try {
+            const settingsPayload = await fetchTenantSettings();
+            queryClient.setQueryData(
+              tenantSettingsQueryKey(window.location.hostname),
+              settingsPayload,
+            );
+          } catch {
+            /* optional prefetch */
+          }
         }
 
         return response;
@@ -146,6 +161,7 @@ function LoginFormInner({ initialHost }) {
     [locale, t],
   );
   const onLanguageMenuClick = ({ key }) => {
+    markUiLocaleOverride();
     router.replace(pathname, { locale: key });
   };
 

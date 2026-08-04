@@ -1,6 +1,7 @@
 "use client";
 
 import LookupSelectWithCreate from "@/components/resource-drawer/LookupSelectWithCreate";
+import { dayjsDatePattern } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { Button, DatePicker, Divider, Form, Input, InputNumber, Radio, Select, Space, Switch, Typography } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
@@ -417,7 +418,7 @@ export default function CustomerDrawerForm({
                         }),
                       ]}
                     >
-                      <DatePicker className="w-full" format="YYYY-MM-DD" />
+                      <DatePicker className="w-full" format={dayjsDatePattern()} />
                     </Form.Item>
                     {mode !== "create" ? (
                       <Form.Item {...restField} name={[name, "ledger_balance"]} label={t("fieldLedgerBalance")} className="mb-0 min-w-[120px]">

@@ -1,6 +1,7 @@
 "use client";
 
 import LookupSelectWithCreate from "@/components/resource-drawer/LookupSelectWithCreate";
+import { dayjsDatePattern } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, DatePicker, Divider, Form, Input, InputNumber, Select, Space, Switch, Typography } from "antd";
@@ -369,7 +370,7 @@ export default function SupplierDrawerForm({
                         }),
                       ]}
                     >
-                      <DatePicker className="w-full" format="YYYY-MM-DD" />
+                      <DatePicker className="w-full" format={dayjsDatePattern()} />
                     </Form.Item>
                     {mode !== "create" ? (
                       <Form.Item
@@ -454,10 +455,10 @@ export default function SupplierDrawerForm({
               </Form.Item>
               <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                 <Form.Item name="exempted_from" label={t("fieldExemptedFrom")}>
-                  <DatePicker className="w-full" format="YYYY-MM-DD" />
+                  <DatePicker className="w-full" format={dayjsDatePattern()} />
                 </Form.Item>
                 <Form.Item name="exempted_to" label={t("fieldExemptedTo")}>
-                  <DatePicker className="w-full" format="YYYY-MM-DD" />
+                  <DatePicker className="w-full" format={dayjsDatePattern()} />
                 </Form.Item>
               </div>
             </>

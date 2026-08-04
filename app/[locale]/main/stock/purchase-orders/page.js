@@ -4,6 +4,7 @@ import AppDataTable from "@/components/tables/AppDataTable";
 import { purchaseOrdersQueryKey } from "@/components/stock/stockQueryCache";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { normalizeEntityId } from "@/lib/entityId";
+import { dayjsDatePattern } from "@/lib/tenant-format";
 import { cancelPurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, markPurchaseOrderAsSent } from "@/services/purchaseOrdersApi";
 import { fetchSuppliers } from "@/services/suppliersApi";
 import { fetchWarehouses } from "@/services/warehousesApi";
@@ -357,7 +358,7 @@ function PurchaseOrdersTable() {
               value={dateRange}
               onChange={(range) => setDateRange(range ?? null)}
               allowEmpty={[true, true]}
-              format="YYYY-MM-DD"
+              format={dayjsDatePattern()}
             />
           </Form.Item>
         </div>

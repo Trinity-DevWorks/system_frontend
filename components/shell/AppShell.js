@@ -12,6 +12,10 @@ import {
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { clearAllSessionTokens } from "@/lib/session";
 import { useTenantModules } from "@/lib/tenant-modules";
+import { useTenantSettings } from "@/lib/tenant-settings";
+import {
+  hasUiLocaleOverride,
+} from "@/lib/ui-locale-preference";
 import { App, Layout, theme as antdTheme } from "antd";
 import AppHeader from "./header/AppHeader";
 import ModuleRouteGuard from "./ModuleRouteGuard";
@@ -23,7 +27,7 @@ import {
   findNavLabelForPath,
   selectedKeysForPath,
 } from "./sidebar/main-nav";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const { Content } = Layout;
@@ -32,6 +36,7 @@ export default function AppShell({ children }) {
   const t = useTranslations("Shell");
   const router = useRouter();
   const pathname = usePathname();
+  const locale = useLocale();
   const { message } = App.useApp();
   const [collapsed, setCollapsed] = useState(false);
   const {
@@ -45,6 +50,17 @@ export default function AppShell({ children }) {
   }, []);
 
   const { moduleSet, isError } = useTenantModules();
+  const { settings, isReady: settingsReady } = useTenantSettings();
+
+  /** Apply tenant preferred_language once when user has not overridden UI locale. */
+  useEffect(() => {
+    if (!settingsReady) return;
+    if (hasUiLocaleOverride()) return;
+    const preferred = settings.preferredLanguage;
+    if (!preferred || preferred === locale) return;
+    router.replace(pathname, { locale: preferred });
+  }, [settingsReady, settings.preferredLanguage, locale, pathname, router]);
+
   const effectiveModuleSet = useMemo(() => {
     if (isError) {
       return new Set(["core"]);

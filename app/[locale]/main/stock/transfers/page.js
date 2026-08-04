@@ -4,6 +4,7 @@ import AppDataTable from "@/components/tables/AppDataTable";
 import { stockTransfersQueryKey } from "@/components/stock/stockQueryCache";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { normalizeEntityId } from "@/lib/entityId";
+import { dayjsDatePattern } from "@/lib/tenant-format";
 import { deleteStockTransfer } from "@/services/stockTransfersApi";
 import { fetchWarehouses } from "@/services/warehousesApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -264,7 +265,7 @@ function StockTransfersTable() {
               value={dateRange}
               onChange={(range) => setDateRange(range ?? null)}
               allowEmpty={[true, true]}
-              format="YYYY-MM-DD"
+              format={dayjsDatePattern()}
             />
           </Form.Item>
         </div>

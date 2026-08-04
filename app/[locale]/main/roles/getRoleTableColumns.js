@@ -1,3 +1,4 @@
+import { formatTenantDate } from "@/lib/tenant-format";
 import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -71,7 +72,7 @@ export function getRoleTableColumns(t, actions = {}) {
       key: "created_at",
       width: 120,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
-      render: (value) => (value ? dayjs(value).format("MMMM D, YYYY") : "\u2014"),
+      render: (value) => (formatTenantDate(value) || "\u2014"),
     },
     {
       title: t("colUpdatedAt"),
@@ -79,7 +80,7 @@ export function getRoleTableColumns(t, actions = {}) {
       key: "updated_at",
       width: 120,
       sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
-      render: (value) => (value ? dayjs(value).format("MMMM D, YYYY") : "\u2014"),
+      render: (value) => (formatTenantDate(value) || "\u2014"),
     },
     {
       title: t("colActions"),

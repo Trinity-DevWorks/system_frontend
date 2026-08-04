@@ -3,7 +3,7 @@
 import ResourceDrawerFieldLabel from "@/components/resource-drawer/ResourceDrawerFieldLabel";
 import { drawerSelectGetPopup } from "@/components/resource-drawer/drawerFormUtils";
 import { getPurchaseOrderStatusLabel } from "../../shared/purchaseOrderStatuses";
-import { formatStockDateTime } from "../../shared/formatStockDateTime";
+import { dayjsDatePattern, formatTenantDateTime } from "@/lib/tenant-format";
 import { Col, DatePicker, Form, Input, Row, Select, Tag } from "antd";
 
 /**
@@ -75,7 +75,7 @@ export default function PurchaseOrderDrawerForm({
         <Row gutter={[16, 0]}>
           <Col xs={24} sm={12}>
             <Form.Item label={<ResourceDrawerFieldLabel text={t("poFieldSentAt")} />}>
-              <Input value={formatStockDateTime(sentAt) || t("poNotSentYet")} readOnly disabled />
+              <Input value={formatTenantDateTime(sentAt) || t("poNotSentYet")} readOnly disabled />
             </Form.Item>
           </Col>
         </Row>
@@ -125,12 +125,12 @@ export default function PurchaseOrderDrawerForm({
             label={<ResourceDrawerFieldLabel text={t("poFieldOrderDate")} required />}
             rules={[{ required: true, message: t("poOrderDateRequired") }]}
           >
-            <DatePicker className="w-full" format="YYYY-MM-DD" />
+            <DatePicker className="w-full" format={dayjsDatePattern()} />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12}>
           <Form.Item name="expected_date" label={<ResourceDrawerFieldLabel text={t("poFieldExpectedDate")} />}>
-            <DatePicker className="w-full" format="YYYY-MM-DD" allowClear />
+            <DatePicker className="w-full" format={dayjsDatePattern()} allowClear />
           </Form.Item>
         </Col>
       </Row>
