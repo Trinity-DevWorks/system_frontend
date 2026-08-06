@@ -1,5 +1,5 @@
 /**
- * Inline-edit value mappers and price formatting for UOM, barcode, and supplier panels.
+ * Inline-edit value mappers for UOM, barcode, and supplier panels.
  *
  * Used by:
  * - drawer/panels/uoms/useItemUomsPanel.js
@@ -75,14 +75,6 @@ export function uomInlineValuesToBody(values) {
     is_default_sale: values.is_default_sale,
     is_default_purchase: values.is_default_purchase,
   };
-}
-
-/** @param {unknown} value */
-export function formatDrawerPrice(value) {
-  if (value == null || value === "") return "—";
-  const n = Number(value);
-  if (Number.isNaN(n)) return "—";
-  return n.toFixed(2);
 }
 
 /** @typedef {{ barcode: string; item_uom_id?: number; is_primary: boolean }} BarcodeInlineValues */

@@ -1,6 +1,6 @@
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import { getStockTransferStatusLabel } from "../shared/stockTransferStatuses";
-import { formatStockDateTime } from "../shared/formatStockDateTime";
+import { formatTenantDateTime } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -75,7 +75,7 @@ export function getStockTransferTableColumns(t, actions = {}) {
       key: "posted_at",
       width: 200,
       sorter: (a, b) => toTime(a.posted_at) - toTime(b.posted_at),
-      render: (value) => (formatStockDateTime(value) || "\u2014"),
+      render: (value) => (formatTenantDateTime(value) || "\u2014"),
     },
     {
       title: t("colCreatedAt"),
@@ -84,7 +84,7 @@ export function getStockTransferTableColumns(t, actions = {}) {
       width: 200,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
       defaultSortOrder: "descend",
-      render: (value) => (formatStockDateTime(value) || "\u2014"),
+      render: (value) => (formatTenantDateTime(value) || "\u2014"),
     },
     {
       title: t("colActions"),

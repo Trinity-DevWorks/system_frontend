@@ -12,6 +12,7 @@ import {
   SunOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
+import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import { Button, Dropdown, Space, Typography, theme } from "antd";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
@@ -48,6 +49,7 @@ export default function AuthSplitShell({
   );
 
   const onLanguageMenuClick = ({ key }) => {
+    markUiLocaleOverride();
     router.replace(pathname, { locale: key });
   };
 

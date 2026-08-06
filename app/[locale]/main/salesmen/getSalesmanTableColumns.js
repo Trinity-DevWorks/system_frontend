@@ -1,3 +1,4 @@
+import { formatTenantDate } from "@/lib/tenant-format";
 import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -120,7 +121,7 @@ export function getSalesmanTableColumns(t, actions = {}) {
       key: "created_at",
       width: 168,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
-      render: (value) => (value ? dayjs(value).format("MMMM D, YYYY") : "\u2014"),
+      render: (value) => (formatTenantDate(value) || "\u2014"),
     },
     {
       title: t("colActions"),

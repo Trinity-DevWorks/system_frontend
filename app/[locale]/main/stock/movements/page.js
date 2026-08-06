@@ -1,6 +1,7 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
+import { dayjsDatePattern } from "@/lib/tenant-format";
 import { fetchWarehouses } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select } from "antd";
@@ -140,7 +141,7 @@ function StockMovementsTable() {
             value={dateRange}
             onChange={(range) => setDateRange(range ?? null)}
             allowEmpty={[true, true]}
-            format="YYYY-MM-DD"
+            format={dayjsDatePattern()}
           />
         </Form.Item>
       </div>

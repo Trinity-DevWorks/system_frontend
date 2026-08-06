@@ -1,4 +1,4 @@
-import { formatStockDateTime } from "../shared/formatStockDateTime";
+import { formatTenantDateTime } from "@/lib/tenant-format";
 import { formatStockQuantity, formatUomLabel } from "../shared/formatStockQuantity";
 import { getStockMovementTypeLabel } from "../shared/stockMovementTypes";
 import { Typography } from "antd";
@@ -20,7 +20,7 @@ export function getStockMovementTableColumns(t) {
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
       defaultSortOrder: "descend",
       render: (value) => {
-        const label = formatStockDateTime(value);
+        const label = formatTenantDateTime(value);
         return label ? label : <Typography.Text type="secondary">{"\u2014"}</Typography.Text>;
       },
     },

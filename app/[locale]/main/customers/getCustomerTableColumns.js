@@ -1,3 +1,4 @@
+import { formatTenantDate } from "@/lib/tenant-format";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
@@ -99,7 +100,7 @@ export function getCustomerTableColumns(t, actions = {}) {
       key: "created_at",
       width: 168,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "—"),
+      render: (value) => formatTenantDate(value) || "—",
     },
     {
       title: t("colUpdatedAt"),
@@ -107,7 +108,7 @@ export function getCustomerTableColumns(t, actions = {}) {
       key: "updated_at",
       width: 168,
       sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "—"),
+      render: (value) => formatTenantDate(value) || "—",
     },
     {
       title: t("colActions"),

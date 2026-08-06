@@ -1,6 +1,6 @@
 import { DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MailOutlined, MoreOutlined, StopOutlined } from "@ant-design/icons";
 import { getPurchaseOrderStatusLabel, isPurchaseOrderCancellable, isPurchaseOrderConfirmed } from "../shared/purchaseOrderStatuses";
-import { formatStockDateTime } from "../shared/formatStockDateTime";
+import { formatTenantDateTime } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -86,7 +86,7 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
       key: "confirmed_at",
       width: 180,
       sorter: (a, b) => toTime(a.confirmed_at) - toTime(b.confirmed_at),
-      render: (value) => formatStockDateTime(value) || "\u2014",
+      render: (value) => formatTenantDateTime(value) || "\u2014",
     },
     {
       title: t("colSentAt"),
@@ -94,7 +94,7 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
       key: "sent_at",
       width: 180,
       sorter: (a, b) => toTime(a.sent_at) - toTime(b.sent_at),
-      render: (value) => formatStockDateTime(value) || "\u2014",
+      render: (value) => formatTenantDateTime(value) || "\u2014",
     },
     {
       title: t("colCreatedAt"),
@@ -103,7 +103,7 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
       width: 180,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
       defaultSortOrder: "descend",
-      render: (value) => formatStockDateTime(value) || "\u2014",
+      render: (value) => formatTenantDateTime(value) || "\u2014",
     },
     {
       title: t("colActions"),

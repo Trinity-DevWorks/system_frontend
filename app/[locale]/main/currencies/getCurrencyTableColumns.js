@@ -1,3 +1,4 @@
+import { formatTenantDate } from "@/lib/tenant-format";
 import { DeleteOutlined, EditOutlined, EyeOutlined, HistoryOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
@@ -87,7 +88,7 @@ export function getCurrencyTableColumns(t, actions = {}) {
       key: "created_at",
       width: 120,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "\u2014"),
+      render: (value) => (formatTenantDate(value) || "\u2014"),
     },
     {
       title: t("colUpdatedAt"),
@@ -95,7 +96,7 @@ export function getCurrencyTableColumns(t, actions = {}) {
       key: "updated_at",
       width: 120,
       sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
-      render: (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "\u2014"),
+      render: (value) => (formatTenantDate(value) || "\u2014"),
     },
     {
       title: t("colActions"),
