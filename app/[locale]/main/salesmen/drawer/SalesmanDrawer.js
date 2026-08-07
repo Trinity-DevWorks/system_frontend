@@ -7,14 +7,16 @@ import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useReso
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import WarehouseDrawer from "@/app/[locale]/main/warehouses/drawer/WarehouseDrawer";
+import { fetchBranches } from "@/services/branchesApi";
 import { fetchSalesman } from "@/services/salesmenApi";
 import { fetchTenantUsers } from "@/services/tenantUsersApi";
 import { fetchWarehouses } from "@/services/warehousesApi";
+import { getActiveBranchId } from "@/lib/active-branch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import SalesmanAttachmentsPanel from "./SalesmanAttachmentsPanel";
 import SalesmanDrawerForm from "./SalesmanDrawerForm";
 import { useSalesmanDrawerMutations } from "./useSalesmanDrawerMutations";
@@ -73,6 +75,7 @@ export default function SalesmanDrawer({
       commission_value: undefined,
       target_amount: undefined,
       hire_date: null,
+      branch_id: undefined,
       warehouse_id: undefined,
       user_id: undefined,
       is_active: true,
@@ -81,24 +84,79 @@ export default function SalesmanDrawer({
     [],
   );
 
-  const lookupsQuery = useQuery({
-    queryKey: ["tenant", "salesman-drawer-lookups"],
-    queryFn: async () => {
-      const [warehouses, users] = await Promise.all([fetchWarehouses(), fetchTenantUsers()]);
-      return { warehouses, users };
-    },
+  const branchesQuery = useQuery({
+    queryKey: ["tenant", "branches"],
+    queryFn: fetchBranches,
     enabled: open,
     staleTime: 60_000,
   });
 
+  const warehousesQuery = useQuery({
+    queryKey: ["tenant", "warehouses"],
+    queryFn: fetchWarehouses,
+    enabled: open,
+    staleTime: 60_000,
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ["tenant", "users"],
+    queryFn: fetchTenantUsers,
+    enabled: open,
+    staleTime: 60_000,
+  });
+
+  const branchOptions = useMemo(() => {
+    const list = Array.isArray(branchesQuery.data) ? branchesQuery.data : [];
+    return list
+      .filter((row) => row && typeof row === "object" && row.is_active !== false)
+      .map((row) => ({
+        value: Number(row.id),
+        label: String(row.name ?? row.id),
+      }));
+  }, [branchesQuery.data]);
+
+  useEffect(() => {
+    if (!open || mode !== "create" || readOnly) return;
+    if (!Array.isArray(branchesQuery.data) || branchesQuery.data.length === 0) return;
+    const current = form.getFieldValue("branch_id");
+    if (current != null && current !== "") return;
+
+    const activeId = getActiveBranchId();
+    const active = activeId != null
+      ? branchesQuery.data.find((b) => Number(b?.id) === activeId)
+      : null;
+    if (active?.id != null) {
+      form.setFieldValue("branch_id", Number(active.id));
+      return;
+    }
+
+    const activeBranches = branchesQuery.data.filter(
+      (b) => b && typeof b === "object" && b.is_active !== false,
+    );
+    const defaultBranch = activeBranches.find((b) => b.is_default === true) ?? activeBranches[0] ?? null;
+    if (defaultBranch?.id != null) {
+      form.setFieldValue("branch_id", Number(defaultBranch.id));
+    }
+  }, [open, mode, readOnly, branchesQuery.data, form]);
+
+  const branchIdWatch = Form.useWatch("branch_id", form);
+
   const warehouseOptions = useMemo(() => {
-    const w = lookupsQuery.data?.warehouses;
-    const list = Array.isArray(w) ? w : [];
-    return list.map((row) => ({
-      value: Number(row.id),
-      label: String(row.name ?? row.id),
-    }));
-  }, [lookupsQuery.data?.warehouses]);
+    const list = Array.isArray(warehousesQuery.data) ? warehousesQuery.data : [];
+    const branchId = branchIdWatch == null || branchIdWatch === "" ? null : Number(branchIdWatch);
+    return list
+      .filter((row) => {
+        if (!row || typeof row !== "object") return false;
+        if (row.is_active === false) return false;
+        if (branchId == null) return false;
+        const whBranchId = row.branch_id == null || row.branch_id === "" ? null : Number(row.branch_id);
+        return whBranchId == null || whBranchId === branchId;
+      })
+      .map((row) => ({
+        value: Number(row.id),
+        label: String(row.name ?? row.id),
+      }));
+  }, [warehousesQuery.data, branchIdWatch]);
 
   const warehouseOptionsForSelect = useMemo(() => {
     if (readOnly) return warehouseOptions;
@@ -122,19 +180,18 @@ export default function SalesmanDrawer({
       const id = record?.id;
       if (id == null || Number.isNaN(Number(id))) return;
       form.setFieldValue("warehouse_id", Number(id));
-      queryClient.invalidateQueries({ queryKey: ["tenant", "salesman-drawer-lookups"] });
+      queryClient.invalidateQueries({ queryKey: ["tenant", "warehouses"] });
     },
     [form, queryClient],
   );
 
   const userOptions = useMemo(() => {
-    const u = lookupsQuery.data?.users;
-    const list = Array.isArray(u) ? u : [];
+    const list = Array.isArray(usersQuery.data) ? usersQuery.data : [];
     return list.map((row) => ({
       value: row.id,
       label: `${row.name ?? ""}${row.email ? ` (${row.email})` : ""}`.trim() || String(row.id),
     }));
-  }, [lookupsQuery.data?.users]);
+  }, [usersQuery.data]);
 
   const mapSeedToCacheRow = useCallback((seed) => toSalesmanCacheRow(seed), []);
   const mapRecordToFormValues = useCallback((r) => {
@@ -151,6 +208,7 @@ export default function SalesmanDrawer({
         r.commission_value != null && r.commission_value !== "" ? Number(r.commission_value) : undefined,
       target_amount: r.target_amount != null && r.target_amount !== "" ? Number(r.target_amount) : undefined,
       hire_date: hire ? dayjs(String(hire).slice(0, 10)) : null,
+      branch_id: r.branch_id == null ? undefined : Number(r.branch_id),
       warehouse_id: r.warehouse_id == null ? undefined : Number(r.warehouse_id),
       user_id: r.user_id == null ? undefined : String(r.user_id),
       is_active: Boolean(r.is_active),
@@ -180,8 +238,8 @@ export default function SalesmanDrawer({
     const fn = typeof firstWatch === "string" ? firstWatch : "";
     const ln = typeof lastWatch === "string" ? lastWatch : "";
     const ct = typeof commissionTypeWatch === "string" ? commissionTypeWatch : "none";
-    return requiredFieldsValid(fn, ln) && commissionValueValid(ct, commissionValueWatch);
-  }, [firstWatch, lastWatch, commissionTypeWatch, commissionValueWatch]);
+    return requiredFieldsValid(fn, ln, branchIdWatch) && commissionValueValid(ct, commissionValueWatch);
+  }, [firstWatch, lastWatch, branchIdWatch, commissionTypeWatch, commissionValueWatch]);
 
   const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
     open,
@@ -329,11 +387,12 @@ export default function SalesmanDrawer({
         form={form}
         readOnly={readOnly}
         t={t}
+        branchOptions={branchOptions}
         warehouseOptions={warehouseOptionsForSelect}
         addWarehouseSentinel={readOnly ? null : SALESMAN_WAREHOUSE_ADD_NEW_VALUE}
         onOpenWarehouseDrawer={openWarehouseCreateDrawer}
         userOptions={userOptions}
-        lookupsLoading={lookupsQuery.isPending}
+        lookupsLoading={branchesQuery.isPending || warehousesQuery.isPending || usersQuery.isPending}
       />
       <SalesmanAttachmentsPanel open={open} salesmanId={salesmanId} readOnly={readOnly} />
       {!readOnly ? (

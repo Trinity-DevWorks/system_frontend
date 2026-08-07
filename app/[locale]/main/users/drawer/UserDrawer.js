@@ -1,5 +1,7 @@
 "use client";
 
+import BranchDrawer from "@/app/[locale]/main/branches/drawer/BranchDrawer";
+import RoleDrawer from "@/app/[locale]/main/roles/drawer/RoleDrawer";
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreateDiscardBaseline";
@@ -7,9 +9,10 @@ import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useReso
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { fetchTenantUser } from "@/services/tenantUsersApi";
+import { useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   USER_CREATE_SAVE_INTENT_EVENT,
   USER_CREATE_SAVE_INTENT_KEY,
@@ -37,8 +40,11 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
   const t = useTranslations("Users");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
+  const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const lastCreateIntent = usePersistedSaveIntent(USER_CREATE_SAVE_INTENT_KEY, USER_CREATE_SAVE_INTENT_EVENT);
+  /** @type {[null | { type: "branch" | "role"; rowIndex: number }, Function]} */
+  const [nestedCreate, setNestedCreate] = useState(null);
 
   const readOnly = mode === "view";
 
@@ -46,7 +52,7 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     () => ({
       name: "",
       email: "",
-      role_id: null,
+      branch_assignments: [],
       active: true,
       password: "",
       password_confirmation: "",
@@ -59,7 +65,19 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     (r) => ({
       name: r.name,
       email: r.email,
-      role_id: r.role_id ?? r.role?.id ?? null,
+      branch_assignments: Array.isArray(r.branch_assignments)
+        ? r.branch_assignments.map((row) => ({
+            branch_id: Number(row?.branch_id),
+            role_id: Number(row?.role_id),
+          }))
+        : Array.isArray(r.branches)
+          ? r.branches
+              .map((branch) => ({
+                branch_id: Number(branch?.id),
+                role_id: Number(branch?.role_id ?? branch?.role?.id),
+              }))
+              .filter((row) => !Number.isNaN(row.branch_id) && !Number.isNaN(row.role_id))
+          : [],
       active: Boolean(r.active),
       password: "",
       password_confirmation: "",
@@ -82,7 +100,7 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
 
   const nameWatch = Form.useWatch("name", form);
   const emailWatch = Form.useWatch("email", form);
-  const roleIdWatch = Form.useWatch("role_id", form);
+  const branchAssignmentsWatch = Form.useWatch("branch_assignments", form);
   const passwordWatch = Form.useWatch("password", form);
   const passwordConfirmationWatch = Form.useWatch("password_confirmation", form);
 
@@ -95,12 +113,12 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     return requiredFieldsValid(
       name,
       email,
-      roleIdWatch,
+      branchAssignmentsWatch,
       mode === "create" ? "create" : "edit",
       password,
       passwordConfirmation,
     );
-  }, [nameWatch, emailWatch, roleIdWatch, passwordWatch, passwordConfirmationWatch, mode]);
+  }, [nameWatch, emailWatch, branchAssignmentsWatch, passwordWatch, passwordConfirmationWatch, mode]);
 
   const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
     open,
@@ -119,13 +137,20 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     [syncBaselineFromFormFields, resetBaselineToDefaults],
   );
 
+  const closeNestedCreate = useCallback(() => setNestedCreate(null), []);
+
+  const handleDrawerClose = useCallback(() => {
+    setNestedCreate(null);
+    onClose();
+  }, [onClose]);
+
   const { createMutation, updateMutation, applyPayload, submitting } = useUserDrawerMutations({
     form,
     mode,
     message,
     t,
     tApiErrors,
-    onClose,
+    onClose: handleDrawerClose,
     onCreated,
     onSyncCreateDiscardBaseline,
     defaults,
@@ -154,9 +179,35 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     readOnly,
     modal,
     t,
-    onClose,
+    onClose: handleDrawerClose,
     shouldConfirmDiscard,
   });
+
+  const handleNestedBranchCreated = useCallback(
+    /** @param {Record<string, unknown>} record */
+    (record) => {
+      const id = record?.id;
+      const rowIndex = nestedCreate?.type === "branch" ? nestedCreate.rowIndex : null;
+      if (id == null || Number.isNaN(Number(id)) || rowIndex == null) return;
+      form.setFieldValue(["branch_assignments", rowIndex, "branch_id"], Number(id));
+      queryClient.invalidateQueries({ queryKey: ["tenant", "branches"] });
+      setNestedCreate(null);
+    },
+    [form, nestedCreate, queryClient],
+  );
+
+  const handleNestedRoleCreated = useCallback(
+    /** @param {Record<string, unknown>} record */
+    (record) => {
+      const id = record?.id;
+      const rowIndex = nestedCreate?.type === "role" ? nestedCreate.rowIndex : null;
+      if (id == null || Number.isNaN(Number(id)) || rowIndex == null) return;
+      form.setFieldValue(["branch_assignments", rowIndex, "role_id"], Number(id));
+      queryClient.invalidateQueries({ queryKey: ["tenant", "roles"] });
+      setNestedCreate(null);
+    },
+    [form, nestedCreate, queryClient],
+  );
 
   const runCreate = useCallback(
     (intent) => {
@@ -212,6 +263,9 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
       }));
   }, [lastCreateIntent, createIntentLabel]);
 
+  const nestedBranchOpen = open && nestedCreate?.type === "branch";
+  const nestedRoleOpen = open && nestedCreate?.type === "role";
+
   return (
     <ResourceCrudDrawer
       title={title}
@@ -244,7 +298,33 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
         />
       }
     >
-      <UserDrawerForm form={form} readOnly={readOnly} mode={mode} open={open} t={t} />
+      <UserDrawerForm
+        form={form}
+        readOnly={readOnly}
+        mode={mode}
+        open={open}
+        t={t}
+        onOpenBranchCreate={readOnly ? undefined : (rowIndex) => setNestedCreate({ type: "branch", rowIndex })}
+        onOpenRoleCreate={readOnly ? undefined : (rowIndex) => setNestedCreate({ type: "role", rowIndex })}
+      />
+      {!readOnly ? (
+        <>
+          <BranchDrawer
+            open={Boolean(nestedBranchOpen)}
+            mode="create"
+            branchId={null}
+            onClose={closeNestedCreate}
+            onCreateSuccess={handleNestedBranchCreated}
+          />
+          <RoleDrawer
+            open={Boolean(nestedRoleOpen)}
+            mode="create"
+            roleId={null}
+            onClose={closeNestedCreate}
+            onCreateSuccess={handleNestedRoleCreated}
+          />
+        </>
+      ) : null}
     </ResourceCrudDrawer>
   );
 }

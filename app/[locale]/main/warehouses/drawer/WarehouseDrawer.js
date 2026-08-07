@@ -6,7 +6,10 @@ import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreate
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
+import { fetchBranches } from "@/services/branchesApi";
+import { fetchTenantUsers } from "@/services/tenantUsersApi";
 import { fetchWarehouse } from "@/services/warehousesApi";
+import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
@@ -51,10 +54,66 @@ export default function WarehouseDrawer({
 
   const readOnly = mode === "view";
 
+  const branchesQuery = useQuery({
+    queryKey: ["tenant", "branches"],
+    queryFn: fetchBranches,
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ["tenant", "users"],
+    queryFn: fetchTenantUsers,
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  const branchOptions = useMemo(() => {
+    const branches = Array.isArray(branchesQuery.data) ? branchesQuery.data : [];
+    return branches
+      .filter((b) => b?.id != null && b?.is_active !== false)
+      .map((b) => ({
+        value: Number(b.id),
+        label: typeof b.name === "string" && b.name.trim() ? b.name : String(b.id),
+      }));
+  }, [branchesQuery.data]);
+
+  const typeWatch = Form.useWatch("type", form);
+  const branchIdWatch = Form.useWatch("branch_id", form);
+
+  const userOptions = useMemo(() => {
+    const users = Array.isArray(usersQuery.data) ? usersQuery.data : [];
+    const isBranchType = typeWatch === "branch";
+    const branchId =
+      branchIdWatch == null || branchIdWatch === "" ? null : Number(branchIdWatch);
+
+    return users
+      .filter((u) => {
+        if (u?.id == null) return false;
+        if (!isBranchType) return true;
+        if (branchId == null) return false;
+        const ids = Array.isArray(u.branch_ids)
+          ? u.branch_ids.map(Number)
+          : Array.isArray(u.branches)
+            ? u.branches.map((b) => Number(b?.id)).filter((id) => !Number.isNaN(id))
+            : [];
+        return ids.includes(branchId);
+      })
+      .map((u) => ({
+        value: String(u.id),
+        label: typeof u.name === "string" && u.name.trim() ? u.name : String(u.email ?? u.id),
+      }));
+  }, [usersQuery.data, typeWatch, branchIdWatch]);
+
   const defaults = useMemo(
     () => ({
       name: "",
       shortcut_name: "",
+      type: "central",
+      branch_id: undefined,
+      address: "",
+      description: "",
+      manager_id: undefined,
       is_active: true,
       is_default: false,
       is_default_sales: false,
@@ -70,6 +129,11 @@ export default function WarehouseDrawer({
     (r) => ({
       name: r.name,
       shortcut_name: r.shortcut_name,
+      type: r.type ?? "central",
+      branch_id: r.branch_id == null ? undefined : Number(r.branch_id),
+      address: r.address ?? "",
+      description: r.description ?? "",
+      manager_id: r.manager_id == null ? undefined : String(r.manager_id),
       is_active: Boolean(r.is_active),
       is_default: Boolean(r.is_default),
       is_default_sales: Boolean(r.is_default_sales),
@@ -99,8 +163,8 @@ export default function WarehouseDrawer({
   const canSubmitRequired = useMemo(() => {
     const name = typeof nameWatch === "string" ? nameWatch : "";
     const shortcutName = typeof shortcutNameWatch === "string" ? shortcutNameWatch : "";
-    return requiredFieldsValid(name, shortcutName);
-  }, [nameWatch, shortcutNameWatch]);
+    return requiredFieldsValid(name, shortcutName, typeWatch, branchIdWatch);
+  }, [nameWatch, shortcutNameWatch, typeWatch, branchIdWatch]);
 
   const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
     open,
@@ -222,7 +286,7 @@ export default function WarehouseDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={5}
+      skeletonParagraphRows={8}
       footer={
         <ResourceDrawerFooter
           mode={mode}
@@ -244,7 +308,14 @@ export default function WarehouseDrawer({
         />
       }
     >
-      <WarehouseDrawerForm form={form} readOnly={readOnly} t={t} />
+      <WarehouseDrawerForm
+        form={form}
+        readOnly={readOnly}
+        t={t}
+        branchOptions={branchOptions}
+        userOptions={userOptions}
+        lookupsLoading={branchesQuery.isPending || usersQuery.isPending}
+      />
     </ResourceCrudDrawer>
   );
 }

@@ -12,7 +12,6 @@ import {
   IdcardOutlined,
   SettingOutlined,
   SafetyCertificateOutlined,
-  SettingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
@@ -62,10 +61,7 @@ export const ROUTES = {
   suppliers: "/main/suppliers",
   companyProfile: "/main/company-profile",
   tenantSettings: "/main/tenant-settings",
-<<<<<<< HEAD
   branches: "/main/branches",
-=======
->>>>>>> 875c12aa09351b0c338d3ecfa048209273db6677
   users: "/main/users",
   roles: "/main/roles",
   permissions: "/main/permissions",
@@ -256,15 +252,12 @@ export function buildMainNavItems(t, options = {}) {
           module: "core",
         },
         {
-<<<<<<< HEAD
           key: ROUTES.branches,
           icon: <ApartmentOutlined />,
           label: t("navBranches"),
           module: "core",
         },
         {
-=======
->>>>>>> 875c12aa09351b0c338d3ecfa048209273db6677
           key: ROUTES.tenantSettings,
           icon: <SettingOutlined />,
           label: t("navTenantSettings"),

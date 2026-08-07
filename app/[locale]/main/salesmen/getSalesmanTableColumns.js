@@ -54,6 +54,14 @@ export function getSalesmanTableColumns(t, actions = {}) {
       ellipsis: true,
     },
     {
+      title: t("colBranch"),
+      dataIndex: "branch_name",
+      key: "branch_name",
+      width: 140,
+      ellipsis: true,
+      render: (v) => (typeof v === "string" && v.trim() ? v : "\u2014"),
+    },
+    {
       title: t("colPhone"),
       dataIndex: "phone",
       key: "phone",

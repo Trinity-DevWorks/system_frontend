@@ -18,6 +18,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import AppBreadcrumb from "./AppBreadcrumb";
+import BranchSwitcher from "./BranchSwitcher";
 
 const { Header } = Layout;
 const SHELL_CHROME_HEIGHT_PX = 56;
@@ -173,6 +174,7 @@ export default function AppHeader({
           aria-hidden
         />
         <Space size={8} wrap={false} className="shrink-0 items-center">
+        <BranchSwitcher />
         <Dropdown
           menu={{ items: languageMenuItems, onClick: onLanguageMenuClick }}
           placement="bottomRight"

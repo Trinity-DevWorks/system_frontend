@@ -203,6 +203,7 @@ function SalesmenTable() {
           searchKeys: [
             "salesman_code",
             "full_name",
+            "branch_name",
             "phone",
             "email",
             "warehouse_name",
@@ -219,7 +220,7 @@ function SalesmenTable() {
         onBulkDelete={openBulkDeleteConfirm}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
-        scrollX={1320}
+        scrollX={1460}
         enableColumnDrag
         pagination={{
           mode: "client",
