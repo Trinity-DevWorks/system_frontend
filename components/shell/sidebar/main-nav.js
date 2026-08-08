@@ -1,6 +1,5 @@
 import {
   AppstoreOutlined,
-  BankOutlined,
   CreditCardOutlined,
   DashboardOutlined,
   DeploymentUnitOutlined,
@@ -8,9 +7,9 @@ import {
   FieldTimeOutlined,
   FileSearchOutlined,
   GoldOutlined,
+  HistoryOutlined,
   IdcardOutlined,
   SafetyCertificateOutlined,
-  SettingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
@@ -58,11 +57,13 @@ export const ROUTES = {
   customers: "/main/customers",
   supplierGroups: "/main/supplier-groups",
   suppliers: "/main/suppliers",
-  companyProfile: "/main/company-profile",
-  tenantSettings: "/main/tenant-settings",
+  settings: "/main/settings",
+  settingsCompanyProfile: "/main/settings/company-profile",
+  settingsCompanySettings: "/main/settings/company-settings",
   users: "/main/users",
   roles: "/main/roles",
   permissions: "/main/permissions",
+  auditLog: "/main/audit-log",
 };
 
 /**
@@ -244,18 +245,6 @@ export function buildMainNavItems(t, options = {}) {
       className: SECTION_DIVIDER_CLASS,
       children: [
         {
-          key: ROUTES.companyProfile,
-          icon: <BankOutlined />,
-          label: t("navCompanyProfile"),
-          module: "core",
-        },
-        {
-          key: ROUTES.tenantSettings,
-          icon: <SettingOutlined />,
-          label: t("navTenantSettings"),
-          module: "core",
-        },
-        {
           key: ROUTES.users,
           icon: <UserOutlined />,
           label: t("navUsers"),
@@ -271,6 +260,12 @@ export function buildMainNavItems(t, options = {}) {
           key: ROUTES.permissions,
           icon: <FileSearchOutlined />,
           label: t("navPermissions"),
+          module: "core",
+        },
+        {
+          key: ROUTES.auditLog,
+          icon: <HistoryOutlined />,
+          label: t("navAuditLog"),
           module: "core",
         },
       ],
