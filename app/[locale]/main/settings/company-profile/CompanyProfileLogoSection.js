@@ -13,7 +13,7 @@ import {
 import { DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Spin, Upload, theme } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 const MAX_ATTACHMENT_BYTES = 15360 * 1024;
 
@@ -36,7 +36,6 @@ export default function CompanyProfileLogoSection({
   const { message, modal } = App.useApp();
   const { token } = theme.useToken();
   const queryClient = useQueryClient();
-  const [objectUrl, setObjectUrl] = useState(/** @type {string | null} */ (null));
 
   const logoId = logo?.id ?? null;
 
@@ -48,15 +47,15 @@ export default function CompanyProfileLogoSection({
     refetchOnWindowFocus: false,
   });
 
-  useEffect(() => {
-    if (!previewQuery.data) {
-      setObjectUrl(null);
-      return undefined;
-    }
-    const url = URL.createObjectURL(previewQuery.data);
-    setObjectUrl(url);
-    return () => URL.revokeObjectURL(url);
+  const objectUrl = useMemo(() => {
+    if (!previewQuery.data) return null;
+    return URL.createObjectURL(previewQuery.data);
   }, [previewQuery.data]);
+
+  useEffect(() => {
+    if (!objectUrl) return undefined;
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [objectUrl]);
 
   const invalidateProfile = () =>
     queryClient.invalidateQueries({ queryKey: profileQueryKey });

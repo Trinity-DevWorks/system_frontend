@@ -21,7 +21,7 @@ export default function CompanyProfileForm({ form, t, onFinish }) {
       <Form.Item
         name="company_name"
         label={t("fieldCompanyName")}
-        rules={[
+        rules={[  
           { required: true, message: t("fieldCompanyNameRequired") },
           { max: 255, message: t("fieldCompanyNameMax") },
         ]}
