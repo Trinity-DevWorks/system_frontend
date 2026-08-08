@@ -48,7 +48,7 @@ function UsersTable() {
       data.map((row) => ({
         ...row,
         role_name: row?.role?.name ?? "",
-        active_label: getUserStatusLabel(row?.active, t),
+        active_label: getUserStatusLabel(row?.is_active, t),
       })),
     [data, t],
   );

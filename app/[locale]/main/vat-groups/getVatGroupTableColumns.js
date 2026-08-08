@@ -1,4 +1,5 @@
 import { formatTenantDate, formatTenantNumber } from "@/lib/tenant-format";
+import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
@@ -15,6 +16,10 @@ const formatPercentage = (value) => {
   const formatted = formatTenantNumber(value, { decimals: 2 });
   return formatted ? `${formatted}%` : "\u2014";
 };
+
+export function getVatGroupStatusLabel(value, t) {
+  return value ? t("statusActive") : t("statusInactive");
+}
 
 /**
  * @param {(key: string) => string} t `useTranslations("VatGroups")`
@@ -85,6 +90,14 @@ export function getVatGroupTableColumns(t, actions = {}) {
         ),
     },
     {
+      title: t("colStatus"),
+      dataIndex: "is_active",
+      key: "is_active",
+      width: 100,
+      sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
+      render: (value) => renderActiveInactiveStatus(value, t),
+    },
+    {
       title: t("colCreatedAt"),
       dataIndex: "created_at",
       key: "created_at",
@@ -148,4 +161,3 @@ export function getVatGroupTableColumns(t, actions = {}) {
     },
   ];
 }
-

@@ -58,6 +58,7 @@ export default function SupplierGroupDrawer({
     () => ({
       code: "",
       name: "",
+      is_active: true,
     }),
     [],
   );
@@ -67,6 +68,7 @@ export default function SupplierGroupDrawer({
     (r) => ({
       code: r.code,
       name: r.name,
+      is_active: r.is_active !== false,
     }),
     [],
   );

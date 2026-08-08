@@ -45,7 +45,7 @@ export function requiredFieldsValid(name, email, roleId, mode, password, passwor
 
 /**
  * @param {import("antd").FormInstance} form
- * @param {{ name: string; email: string; role_id: number | null; active: boolean; password: string; password_confirmation: string }} defaults
+ * @param {{ name: string; email: string; role_id: number | null; is_active: boolean; password: string; password_confirmation: string }} defaults
  */
 export function isCreateDirtyVsDefaults(form, defaults) {
   const v = form.getFieldsValue(true);
@@ -53,13 +53,13 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   const email = String(v.email ?? "").trim();
   const password = String(v.password ?? "");
   const passwordConfirmation = String(v.password_confirmation ?? "");
-  const isActive = v.active !== false;
+  const isActive = v.is_active !== false;
   const roleId = v.role_id ?? null;
 
   if (name !== String(defaults.name ?? "").trim()) return true;
   if (email !== String(defaults.email ?? "").trim()) return true;
   if (Number(roleId) !== Number(defaults.role_id)) return true;
-  if (isActive !== Boolean(defaults.active)) return true;
+  if (isActive !== Boolean(defaults.is_active)) return true;
   if (password !== String(defaults.password ?? "")) return true;
   if (passwordConfirmation !== String(defaults.password_confirmation ?? "")) return true;
   return false;
@@ -75,14 +75,14 @@ export function isEditDirtyVsLoaded(form, row) {
   const email = String(v.email ?? "").trim();
   const password = String(v.password ?? "");
   const passwordConfirmation = String(v.password_confirmation ?? "");
-  const isActive = v.active !== false;
+  const isActive = v.is_active !== false;
   const roleId = v.role_id ?? null;
   const loadedRoleId = row.role_id ?? row.role?.id ?? null;
 
   if (name !== String(row.name ?? "").trim()) return true;
   if (email !== String(row.email ?? "").trim()) return true;
   if (Number(roleId) !== Number(loadedRoleId)) return true;
-  if (isActive !== Boolean(row.active)) return true;
+  if (isActive !== Boolean(row.is_active)) return true;
   if (password !== "" || passwordConfirmation !== "") return true;
   return false;
 }
@@ -95,7 +95,7 @@ export function toUserCacheRow(row) {
     id: row.id,
     name: row.name,
     email: row.email,
-    active: row.active,
+    is_active: row.is_active,
     role_id: role?.id ?? row.role_id ?? null,
     role: role ? { id: role.id, name: role.name } : null,
     created_at: row.created_at,
@@ -122,7 +122,7 @@ export function userFormValuesToPayload(values, mode) {
   const payload = {
     name: String(values.name ?? "").trim(),
     email: String(values.email ?? "").trim(),
-    active: Boolean(values.active),
+    is_active: Boolean(values.is_active),
     role_id: Number(values.role_id),
   };
 

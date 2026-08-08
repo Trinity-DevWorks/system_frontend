@@ -30,7 +30,7 @@ export default function RoleDrawerForm({ form, readOnly, mode, systemRole, t }) 
       <Form.Item name="description" label={t("fieldDescription")}>
         <Input.TextArea rows={2} allowClear />
       </Form.Item>
-      <Form.Item name="active" label={t("fieldStatus")} valuePropName="checked">
+      <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
         <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />
       </Form.Item>
     </Form>

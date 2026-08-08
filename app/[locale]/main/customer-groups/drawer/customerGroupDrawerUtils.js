@@ -11,15 +11,17 @@ const CODE_PATTERN = /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
 
 /**
  * @param {import("antd").FormInstance} form
- * @param {{ code: string; name: string }} defaults
+ * @param {{ code: string; name: string; is_active: boolean }} defaults
  */
 export function isCreateDirtyVsDefaults(form, defaults) {
   const v = form.getFieldsValue(true);
   const code = String(v.code ?? "").trim().toUpperCase();
   const name = String(v.name ?? "").trim();
+  const isActive = v.is_active !== false;
 
   if (code !== String(defaults.code ?? "").trim().toUpperCase()) return true;
   if (name !== String(defaults.name ?? "").trim()) return true;
+  if (isActive !== Boolean(defaults.is_active)) return true;
   return false;
 }
 
@@ -31,9 +33,11 @@ export function isEditDirtyVsLoaded(form, row) {
   const v = form.getFieldsValue(true);
   const code = String(v.code ?? "").trim().toUpperCase();
   const name = String(v.name ?? "").trim();
+  const isActive = v.is_active !== false;
 
   if (code !== String(row.code ?? "").trim().toUpperCase()) return true;
   if (name !== String(row.name ?? "").trim()) return true;
+  if (isActive !== Boolean(row.is_active)) return true;
   return false;
 }
 
@@ -55,6 +59,7 @@ export function toCustomerGroupCacheRow(row) {
     id: row.id,
     code: row.code,
     name: row.name,
+    is_active: row.is_active !== false,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -76,5 +81,6 @@ export function customerGroupFormValuesToPayload(values) {
   return {
     code: String(values.code ?? "").trim().toUpperCase(),
     name: String(values.name ?? "").trim(),
+    is_active: values.is_active !== false,
   };
 }

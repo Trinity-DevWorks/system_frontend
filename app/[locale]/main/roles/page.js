@@ -47,7 +47,7 @@ function RolesTable() {
     () =>
       data.map((row) => ({
         ...row,
-        active_label: getRoleStatusLabel(row?.active, t),
+        active_label: getRoleStatusLabel(row?.is_active, t),
       })),
     [data, t],
   );
