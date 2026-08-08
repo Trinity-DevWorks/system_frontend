@@ -3,11 +3,6 @@
     "title": "ERP",
     "description": "تخطيط موارد المؤسسة"
   },
-  "Home": {
-    "title": "ERP",
-    "subtitle": "Next.js · Ant Design · TanStack Query",
-    "cta": "Ant Design"
-  },
   "Login": {
     "title": "سجّل الدخول للمتابعة",
     "email": "البريد الإلكتروني للعمل",

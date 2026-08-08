@@ -3,11 +3,6 @@
     "title": "ERP",
     "description": "Enterprise resource planning"
   },
-  "Home": {
-    "title": "ERP",
-    "subtitle": "Next.js · Ant Design · TanStack Query",
-    "cta": "Ant Design"
-  },
   "Login": {
     "title": "Sign in to continue",
     "email": "Work email",

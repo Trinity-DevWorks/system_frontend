@@ -289,11 +289,8 @@ export default async function proxy(request) {
   const hasTenantToken = request.cookies.get(TENANT_TOKEN_KEY)?.value;
   const hasCentralToken = request.cookies.get(CENTRAL_TOKEN_KEY)?.value;
 
-  const isCentralHome =
-    isCentralHost &&
-    Boolean(tenantFromHost) === false &&
-    (barePath === "/" || barePath === "");
-  const isPublicPath = isAuthGuestPath || isNotFoundPath || isCentralHome;
+  const isRootPath = barePath === "/" || barePath === "";
+  const isPublicPath = isAuthGuestPath || isNotFoundPath;
 
   if (isMainCentralPath) {
     if (!hasCentralToken && !isPublicPath) {
@@ -315,14 +312,24 @@ export default async function proxy(request) {
     }
   }
 
-  /** Tenant app root: send authenticated users to the shell home (overview), not the marketing placeholder. */
-  if (
-    tenantFromHost &&
-    hasTenantToken &&
-    (barePath === "/" || barePath === "")
-  ) {
+  /**
+   * App root is never a landing page: send users to the correct shell or login.
+   * - Tenant host → /main/overview (authed) or /login
+   * - Central host (e.g. localhost) → /central (authed) or /login
+   */
+  if (isRootPath) {
     const url = request.nextUrl.clone();
-    url.pathname = withLocalePrefix(currentLocale, "/main/overview");
+    if (tenantFromHost) {
+      url.pathname = withLocalePrefix(
+        currentLocale,
+        hasTenantToken ? "/main/overview" : "/login",
+      );
+    } else {
+      url.pathname = withLocalePrefix(
+        currentLocale,
+        hasCentralToken ? "/central" : "/login",
+      );
+    }
     return NextResponse.redirect(url);
   }
 
