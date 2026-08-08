@@ -1,6 +1,6 @@
 "use client";
 
-import { Form, Input } from "antd";
+import { Form, Input, Switch } from "antd";
 
 /**
  * @param {{
@@ -35,6 +35,9 @@ export default function CustomerGroupDrawerForm({ form, readOnly, t }) {
         ]}
       >
         <Input autoComplete="off" />
+      </Form.Item>
+      <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
+        <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />
       </Form.Item>
     </Form>
   );

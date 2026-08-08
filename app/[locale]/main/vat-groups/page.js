@@ -5,7 +5,7 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteVatGroup, fetchVatGroups } from "@/services/vatGroupsApi";
 import VatGroupDrawer from "./drawer/VatGroupDrawer";
-import { getVatGroupTableColumns } from "./getVatGroupTableColumns";
+import { getVatGroupStatusLabel, getVatGroupTableColumns } from "./getVatGroupTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
@@ -40,6 +40,15 @@ function VatGroupsTable() {
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
+
+  const tableData = useMemo(
+    () =>
+      data.map((row) => ({
+        ...row,
+        is_active_label: getVatGroupStatusLabel(row?.is_active, t),
+      })),
+    [data, t],
+  );
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
@@ -179,7 +188,7 @@ function VatGroupsTable() {
       <AppDataTable
         tableId="vat-groups"
         columns={columns}
-        dataSource={data}
+        dataSource={tableData}
         rowKey="id"
         loading={isPending}
         refreshFetching={isFetching}
@@ -187,7 +196,7 @@ function VatGroupsTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["id", "abrv", "name", "percentage"],
+          searchKeys: ["id", "abrv", "name", "percentage", "is_active_label"],
           showAdd: true,
           onAdd: openCreateDrawer,
           showRefresh: true,

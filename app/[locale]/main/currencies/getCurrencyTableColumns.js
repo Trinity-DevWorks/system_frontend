@@ -75,10 +75,10 @@ export function getCurrencyTableColumns(t, actions = {}) {
     },
     {
       title: t("colActive"),
-      dataIndex: "active",
-      key: "active",
+      dataIndex: "is_active",
+      key: "is_active",
       width: 100,
-      sorter: (a, b) => Number(b.active) - Number(a.active),
+      sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
       render: (value) =>
         value !== false ? <Tag color="success">{t("activeYes")}</Tag> : <Tag>{t("activeNo")}</Tag>,
     },
