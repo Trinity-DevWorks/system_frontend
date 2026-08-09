@@ -14,7 +14,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Select } from "antd";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 /**
  * Active branch switcher for the shell header.
@@ -40,23 +40,21 @@ export default function BranchSwitcher() {
     }
   }, [contextQuery.data?.active_branch_id]);
 
-  const options = useMemo(() => {
-    const list = Array.isArray(contextQuery.data?.accessible_branches)
-      ? contextQuery.data.accessible_branches
-      : [];
-    return list.map((b) => {
-      const base =
-        typeof b.shortcut_name === "string" && b.shortcut_name.trim()
-          ? `${b.name} (${b.shortcut_name})`
-          : String(b.name ?? b.id);
-      const inactive = b.is_active === false;
-      return {
-        value: Number(b.id),
-        label: inactive ? `${base} — ${t("branchInactive")}` : base,
-        disabled: inactive,
-      };
-    });
-  }, [contextQuery.data?.accessible_branches, t]);
+  const list = Array.isArray(contextQuery.data?.accessible_branches)
+    ? contextQuery.data.accessible_branches
+    : [];
+  const options = list.map((b) => {
+    const base =
+      typeof b.shortcut_name === "string" && b.shortcut_name.trim()
+        ? `${b.name} (${b.shortcut_name})`
+        : String(b.name ?? b.id);
+    const inactive = b.is_active === false;
+    return {
+      value: Number(b.id),
+      label: inactive ? `${base} — ${t("branchInactive")}` : base,
+      disabled: inactive,
+    };
+  });
 
   const activeId =
     contextQuery.data?.active_branch_id != null
