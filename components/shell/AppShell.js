@@ -11,6 +11,7 @@ import {
 } from "@/lib/sidebar-bookmarks";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { clearAllSessionTokens } from "@/lib/session";
+import { clearActiveBranchId } from "@/lib/active-branch";
 import { useTenantModules } from "@/lib/tenant-modules";
 import { useTenantSettings } from "@/lib/tenant-settings";
 import {
@@ -181,6 +182,7 @@ export default function AppShell({ children }) {
     }
 
     clearAllSessionTokens();
+    clearActiveBranchId();
 
     if (typeof message?.success === "function") {
       message.success(t("loggedOut"));

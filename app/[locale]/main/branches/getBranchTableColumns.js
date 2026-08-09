@@ -6,19 +6,16 @@ import { Button, Dropdown, Typography } from "antd";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
-export function getSalesmanStatusLabel(value, t) {
+export function getBranchStatusLabel(value, t) {
   return value ? t("statusActive") : t("statusInactive");
 }
 
-export function getSalesmanCommissionTypeLabel(type, t) {
-  const v = String(type ?? "");
-  const key = `commission_${v}`;
-  const translated = t(key);
-  return translated === key ? v : translated;
+export function getBranchDefaultLabel(value, t) {
+  return value ? t("defaultYes") : t("defaultNo");
 }
 
 /**
- * @param {(key: string) => string} t `useTranslations("Salesmen")`
+ * @param {(key: string) => string} t `useTranslations("Branches")`
  * @param {{
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
@@ -26,14 +23,28 @@ export function getSalesmanCommissionTypeLabel(type, t) {
  * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
-export function getSalesmanTableColumns(t, actions = {}) {
+export function getBranchTableColumns(t, actions = {}) {
   const { onView, onEdit, onDelete } = actions;
   return [
     {
-      title: t("colCode"),
-      dataIndex: "salesman_code",
-      key: "salesman_code",
-      width: 120,
+      title: t("colId"),
+      dataIndex: "id",
+      key: "id",
+      width: 72,
+      sorter: (a, b) => a.id - b.id,
+    },
+    {
+      title: t("colName"),
+      dataIndex: "name",
+      key: "name",
+      width: 180,
+      ellipsis: true,
+    },
+    {
+      title: t("colShortcutName"),
+      dataIndex: "shortcut_name",
+      key: "shortcut_name",
+      width: 110,
       ellipsis: true,
       render: (value) => {
         const v = typeof value === "string" ? value.trim() : "";
@@ -47,81 +58,60 @@ export function getSalesmanTableColumns(t, actions = {}) {
       },
     },
     {
-      title: t("colFullName"),
-      dataIndex: "full_name",
-      key: "full_name",
-      width: 200,
+      title: t("colEmail"),
+      dataIndex: "email",
+      key: "email",
+      width: 180,
       ellipsis: true,
-    },
-    {
-      title: t("colBranch"),
-      dataIndex: "branch_name",
-      key: "branch_name",
-      width: 140,
-      ellipsis: true,
-      render: (v) => (typeof v === "string" && v.trim() ? v : "\u2014"),
+      render: (value) => (typeof value === "string" && value.trim() ? value : "\u2014"),
     },
     {
       title: t("colPhone"),
       dataIndex: "phone",
       key: "phone",
-      width: 130,
-      ellipsis: true,
-      render: (v) => (typeof v === "string" && v.trim() ? v : "\u2014"),
-    },
-    {
-      title: t("colEmail"),
-      dataIndex: "email",
-      key: "email",
-      width: 200,
-      ellipsis: true,
-      render: (v) => (typeof v === "string" && v.trim() ? v : "\u2014"),
-    },
-    {
-      title: t("colWarehouse"),
-      dataIndex: "warehouse_name",
-      key: "warehouse_name",
-      width: 160,
-      ellipsis: true,
-      render: (v) => (typeof v === "string" && v.trim() ? v : "\u2014"),
-    },
-    {
-      title: t("colCommission"),
-      dataIndex: "commission_type",
-      key: "commission_type",
       width: 120,
-      render: (value, record) => {
-        const cv = record?.commission_value;
-        if (value === "none" || value == null) {
-          return getSalesmanCommissionTypeLabel(value, t);
-        }
-        if (value === "percent" && cv != null && cv !== "") {
-          return <span>{String(cv)}%</span>;
-        }
-        if (value === "fixed" && cv != null && cv !== "") {
-          return <span>{String(cv)}</span>;
-        }
-        if (cv != null && cv !== "") {
-          const label = getSalesmanCommissionTypeLabel(value, t);
-          return (
-            <span>
-              {label}
-              <Typography.Text type="secondary" className="ml-1 text-xs">
-                ({String(cv)})
-              </Typography.Text>
-            </span>
-          );
-        }
-        return getSalesmanCommissionTypeLabel(value, t);
+      ellipsis: true,
+      render: (value) => (typeof value === "string" && value.trim() ? value : "\u2014"),
+    },
+    {
+      title: t("colHours"),
+      key: "hours",
+      width: 120,
+      render: (_, record) => {
+        const open = typeof record?.opening_time === "string" ? record.opening_time : "";
+        const close = typeof record?.closing_time === "string" ? record.closing_time : "";
+        if (!open && !close) return "\u2014";
+        return `${open || "—"} – ${close || "—"}`;
       },
+    },
+    {
+      title: t("colManagerName"),
+      dataIndex: "manager_name",
+      key: "manager_name",
+      width: 150,
+      ellipsis: true,
+      render: (value) => (typeof value === "string" && value.trim() ? value : "\u2014"),
     },
     {
       title: t("colStatus"),
       dataIndex: "is_active",
       key: "is_active",
-      width: 100,
+      width: 110,
       sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
       render: (value) => renderActiveInactiveStatus(value, t),
+    },
+    {
+      title: t("colDefault"),
+      dataIndex: "is_default",
+      key: "is_default",
+      width: 110,
+      sorter: (a, b) => Number(b.is_default) - Number(a.is_default),
+      render: (value) =>
+        value ? (
+          <Typography.Text strong>{getBranchDefaultLabel(value, t)}</Typography.Text>
+        ) : (
+          <Typography.Text type="secondary">{getBranchDefaultLabel(value, t)}</Typography.Text>
+        ),
     },
     {
       title: t("colCreatedAt"),
@@ -129,7 +119,15 @@ export function getSalesmanTableColumns(t, actions = {}) {
       key: "created_at",
       width: 168,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
-      render: (value) => (formatTenantDate(value) || "\u2014"),
+      render: (value) => formatTenantDate(value) || "\u2014",
+    },
+    {
+      title: t("colUpdatedAt"),
+      dataIndex: "updated_at",
+      key: "updated_at",
+      width: 168,
+      sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
+      render: (value) => formatTenantDate(value) || "\u2014",
     },
     {
       title: t("colActions"),
@@ -162,7 +160,7 @@ export function getSalesmanTableColumns(t, actions = {}) {
                 label: t("actionDelete"),
                 icon: <DeleteOutlined />,
                 danger: true,
-                disabled: !onDelete,
+                disabled: !onDelete || Boolean(record?.is_default),
                 onClick: () => onDelete?.(record),
               },
             ],

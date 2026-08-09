@@ -6,60 +6,55 @@ import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreate
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { fetchBranches } from "@/services/branchesApi";
+import { BRANCH_CONTEXT_QUERY_KEY } from "@/lib/active-branch";
+import { fetchBranch } from "@/services/branchesApi";
+import { fetchBranchContext } from "@/services/branchContextApi";
 import { fetchTenantUsers } from "@/services/tenantUsersApi";
-import { fetchWarehouse } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
-import WarehouseDrawerForm from "./WarehouseDrawerForm";
-import { useWarehouseDrawerMutations } from "./useWarehouseDrawerMutations";
+import BranchDrawerForm from "./BranchDrawerForm";
+import { useBranchDrawerMutations } from "./useBranchDrawerMutations";
 import {
-  WAREHOUSE_CREATE_SAVE_INTENT_EVENT,
-  WAREHOUSE_CREATE_SAVE_INTENT_KEY,
+  BRANCH_CREATE_SAVE_INTENT_EVENT,
+  BRANCH_CREATE_SAVE_INTENT_KEY,
   isCreateDirtyVsDefaults,
   isEditDirtyVsLoaded,
+  parseTimeToDayjs,
   requiredFieldsValid,
-  toWarehouseCacheRow,
-} from "./warehouseDrawerUtils";
+  toBranchCacheRow,
+} from "./branchDrawerUtils";
 
-const WAREHOUSE_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "warehouses"]);
+const BRANCH_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "branches"]);
 
 /**
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
- *   warehouseId: number | null;
+ *   branchId: number | null;
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
-export default function WarehouseDrawer({
+export default function BranchDrawer({
   open,
   mode,
-  warehouseId,
+  branchId,
   tableSeedRecord = null,
   onClose,
   onCreated,
   onCreateSuccess,
 }) {
-  const t = useTranslations("Warehouses");
+  const t = useTranslations("Branches");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
   const [form] = Form.useForm();
-  const lastCreateIntent = usePersistedSaveIntent(WAREHOUSE_CREATE_SAVE_INTENT_KEY, WAREHOUSE_CREATE_SAVE_INTENT_EVENT);
+  const lastCreateIntent = usePersistedSaveIntent(BRANCH_CREATE_SAVE_INTENT_KEY, BRANCH_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
-
-  const branchesQuery = useQuery({
-    queryKey: ["tenant", "branches"],
-    queryFn: fetchBranches,
-    enabled: open,
-    staleTime: 5 * 60_000,
-  });
 
   const usersQuery = useQuery({
     queryKey: ["tenant", "users"],
@@ -68,78 +63,56 @@ export default function WarehouseDrawer({
     staleTime: 5 * 60_000,
   });
 
-  const branchOptions = useMemo(() => {
-    const branches = Array.isArray(branchesQuery.data) ? branchesQuery.data : [];
-    return branches
-      .filter((b) => b?.id != null && b?.is_active !== false)
-      .map((b) => ({
-        value: Number(b.id),
-        label: typeof b.name === "string" && b.name.trim() ? b.name : String(b.id),
-      }));
-  }, [branchesQuery.data]);
+  const branchContextQuery = useQuery({
+    queryKey: BRANCH_CONTEXT_QUERY_KEY,
+    queryFn: fetchBranchContext,
+    staleTime: 60_000,
+    enabled: open,
+  });
 
-  const typeWatch = Form.useWatch("type", form);
-  const branchIdWatch = Form.useWatch("branch_id", form);
+  const isOwner = Boolean(branchContextQuery.data?.is_owner);
 
   const userOptions = useMemo(() => {
     const users = Array.isArray(usersQuery.data) ? usersQuery.data : [];
-    const isBranchType = typeWatch === "branch";
-    const branchId =
-      branchIdWatch == null || branchIdWatch === "" ? null : Number(branchIdWatch);
-
     return users
-      .filter((u) => {
-        if (u?.id == null) return false;
-        if (!isBranchType) return true;
-        if (branchId == null) return false;
-        const ids = Array.isArray(u.branch_ids)
-          ? u.branch_ids.map(Number)
-          : Array.isArray(u.branches)
-            ? u.branches.map((b) => Number(b?.id)).filter((id) => !Number.isNaN(id))
-            : [];
-        return ids.includes(branchId);
-      })
+      .filter((u) => u?.id != null)
       .map((u) => ({
         value: String(u.id),
         label: typeof u.name === "string" && u.name.trim() ? u.name : String(u.email ?? u.id),
       }));
-  }, [usersQuery.data, typeWatch, branchIdWatch]);
+  }, [usersQuery.data]);
 
   const defaults = useMemo(
     () => ({
       name: "",
       shortcut_name: "",
-      type: "central",
-      branch_id: undefined,
       address: "",
-      description: "",
+      phone: "",
+      email: "",
+      timezone: "",
+      opening_time: undefined,
+      closing_time: undefined,
       manager_id: undefined,
       is_active: true,
       is_default: false,
-      is_default_sales: false,
-      is_default_production: false,
-      is_default_purchase: false,
-      is_default_storage: false,
     }),
     [],
   );
 
-  const mapSeedToCacheRow = useCallback((seed) => toWarehouseCacheRow(seed), []);
+  const mapSeedToCacheRow = useCallback((seed) => toBranchCacheRow(seed), []);
   const mapRecordToFormValues = useCallback(
     (r) => ({
       name: r.name,
       shortcut_name: r.shortcut_name,
-      type: r.type ?? "central",
-      branch_id: r.branch_id == null ? undefined : Number(r.branch_id),
       address: r.address ?? "",
-      description: r.description ?? "",
+      phone: r.phone ?? "",
+      email: r.email ?? "",
+      timezone: r.timezone ?? "",
+      opening_time: parseTimeToDayjs(r.opening_time),
+      closing_time: parseTimeToDayjs(r.closing_time),
       manager_id: r.manager_id == null ? undefined : String(r.manager_id),
       is_active: Boolean(r.is_active),
       is_default: Boolean(r.is_default),
-      is_default_sales: Boolean(r.is_default_sales),
-      is_default_production: Boolean(r.is_default_production),
-      is_default_purchase: Boolean(r.is_default_purchase),
-      is_default_storage: Boolean(r.is_default_storage),
     }),
     [],
   );
@@ -147,12 +120,12 @@ export default function WarehouseDrawer({
   const { detailEnabled, tableSeedMatches, fetchRemoteDetail, detailQuery } = useResourceDrawerDetailSync({
     open,
     mode,
-    recordId: warehouseId,
+    recordId: branchId,
     tableSeedRecord,
     form,
     defaults,
-    queryKeyPrefix: WAREHOUSE_DETAIL_QUERY_PREFIX,
-    fetchDetail: fetchWarehouse,
+    queryKeyPrefix: BRANCH_DETAIL_QUERY_PREFIX,
+    fetchDetail: fetchBranch,
     mapSeedToCacheRow,
     mapRecordToFormValues,
   });
@@ -163,8 +136,8 @@ export default function WarehouseDrawer({
   const canSubmitRequired = useMemo(() => {
     const name = typeof nameWatch === "string" ? nameWatch : "";
     const shortcutName = typeof shortcutNameWatch === "string" ? shortcutNameWatch : "";
-    return requiredFieldsValid(name, shortcutName, typeWatch, branchIdWatch);
-  }, [nameWatch, shortcutNameWatch, typeWatch, branchIdWatch]);
+    return requiredFieldsValid(name, shortcutName);
+  }, [nameWatch, shortcutNameWatch]);
 
   const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
     open,
@@ -183,7 +156,7 @@ export default function WarehouseDrawer({
     [syncBaselineFromFormFields, resetBaselineToDefaults],
   );
 
-  const { createMutation, updateMutation, applyPayload, submitting } = useWarehouseDrawerMutations({
+  const { createMutation, updateMutation, applyPayload, submitting } = useBranchDrawerMutations({
     form,
     message,
     t,
@@ -199,7 +172,7 @@ export default function WarehouseDrawer({
     if (mode !== "edit") return null;
     if (detailQuery.data) return /** @type {Record<string, unknown>} */ (detailQuery.data);
     if (tableSeedMatches && tableSeedRecord) {
-      return toWarehouseCacheRow(/** @type {Record<string, unknown>} */ (tableSeedRecord));
+      return toBranchCacheRow(/** @type {Record<string, unknown>} */ (tableSeedRecord));
     }
     return null;
   }, [mode, detailQuery.data, tableSeedMatches, tableSeedRecord]);
@@ -241,12 +214,12 @@ export default function WarehouseDrawer({
       .validateFields()
       .then((values) => {
         const payload = applyPayload(values);
-        if (mode === "edit" && warehouseId != null) {
-          updateMutation.mutate({ id: warehouseId, values: payload });
+        if (mode === "edit" && branchId != null) {
+          updateMutation.mutate({ id: branchId, values: payload });
         }
       })
       .catch(() => {});
-  }, [readOnly, form, applyPayload, mode, warehouseId, updateMutation]);
+  }, [readOnly, form, applyPayload, mode, branchId, updateMutation]);
 
   const title =
     mode === "create" ? t("drawerTitleCreate") : mode === "view" ? t("drawerTitleView") : t("drawerTitleEdit");
@@ -286,7 +259,7 @@ export default function WarehouseDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={8}
+      skeletonParagraphRows={10}
       footer={
         <ResourceDrawerFooter
           mode={mode}
@@ -308,13 +281,13 @@ export default function WarehouseDrawer({
         />
       }
     >
-      <WarehouseDrawerForm
+      <BranchDrawerForm
         form={form}
         readOnly={readOnly}
         t={t}
-        branchOptions={branchOptions}
         userOptions={userOptions}
-        lookupsLoading={branchesQuery.isPending || usersQuery.isPending}
+        lookupsLoading={usersQuery.isPending}
+        lockDefaultStatus={!readOnly && !isOwner}
       />
     </ResourceCrudDrawer>
   );

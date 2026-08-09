@@ -51,6 +51,7 @@ function WarehousesTable() {
         ...row,
         is_active_label: getWarehouseStatusLabel(row?.is_active, t),
         is_default_label: getWarehouseDefaultLabel(row?.is_default, t),
+        type_label: t(`type_${row?.type ?? "central"}`),
       })),
     [data, t],
   );
@@ -205,6 +206,9 @@ function WarehousesTable() {
             "id",
             "name",
             "shortcut_name",
+            "type_label",
+            "branch_name",
+            "manager_name",
             "is_active_label",
             "is_default_label",
           ],
@@ -218,7 +222,7 @@ function WarehousesTable() {
         onBulkDelete={openBulkDeleteConfirm}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
-        scrollX={1160}
+        scrollX={1520}
         enableColumnDrag
         pagination={{
           mode: "client",

@@ -3,15 +3,15 @@
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { createRole, updateRole } from "@/services/rolesApi";
+import { createBranch, updateBranch } from "@/services/branchesApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
-  ROLE_CREATE_SAVE_INTENT_EVENT,
-  ROLE_CREATE_SAVE_INTENT_KEY,
-  roleFormValuesToPayload,
-  sortRolesByName,
-} from "./roleDrawerUtils";
+  BRANCH_CREATE_SAVE_INTENT_EVENT,
+  BRANCH_CREATE_SAVE_INTENT_KEY,
+  branchFormValuesToPayload,
+  sortBranchesByName,
+} from "./branchDrawerUtils";
 
 /**
  * @param {{
@@ -26,7 +26,7 @@ import {
  *   defaults: Record<string, unknown>;
  * }} args
  */
-export function useRoleDrawerMutations({
+export function useBranchDrawerMutations({
   form,
   message,
   t,
@@ -39,12 +39,12 @@ export function useRoleDrawerMutations({
 }) {
   const queryClient = useQueryClient();
 
-  const applyPayload = useCallback((values) => roleFormValuesToPayload(values), []);
+  const applyPayload = useCallback((values) => branchFormValuesToPayload(values), []);
 
   const createMutation = useMutation({
-    mutationFn: ({ payload }) => createRole(payload),
+    mutationFn: ({ payload }) => createBranch(payload),
     onMutate: async ({ payload }) => {
-      const listKey = ["tenant", "roles"];
+      const listKey = ["tenant", "branches"];
       await queryClient.cancelQueries({ queryKey: listKey });
       const previous = queryClient.getQueryData(listKey);
       const optimisticId = -Date.now();
@@ -52,19 +52,18 @@ export function useRoleDrawerMutations({
       const optimisticRow = {
         id: optimisticId,
         ...payload,
-        permissions: null,
         created_at: now,
         updated_at: now,
       };
       queryClient.setQueryData(listKey, (old) => {
         const base = Array.isArray(old) ? old : [];
-        return sortRolesByName([...base, optimisticRow]);
+        return sortBranchesByName([...base, optimisticRow]);
       });
       return { previous, optimisticId };
     },
     onError: (err, _variables, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "roles"], context.previous);
+        queryClient.setQueryData(["tenant", "branches"], context.previous);
       }
       if (!applyApiFieldErrors(form, err)) {
         message.error(getLocalizedApiErrorMessage(tApiErrors, err));
@@ -73,15 +72,15 @@ export function useRoleDrawerMutations({
     onSuccess: (data, variables, context) => {
       const { intent } = variables;
       const optimisticId = context?.optimisticId;
-      const listKey = ["tenant", "roles"];
+      const listKey = ["tenant", "branches"];
 
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem(ROLE_CREATE_SAVE_INTENT_KEY, intent);
+          localStorage.setItem(BRANCH_CREATE_SAVE_INTENT_KEY, intent);
         } catch {
           /* ignore */
         }
-        notifyPersistedSaveIntent(ROLE_CREATE_SAVE_INTENT_EVENT);
+        notifyPersistedSaveIntent(BRANCH_CREATE_SAVE_INTENT_EVENT);
       }
 
       const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
@@ -90,10 +89,10 @@ export function useRoleDrawerMutations({
         if (!Array.isArray(old)) return old;
         const withoutTemp = optimisticId != null ? old.filter((r) => r.id !== optimisticId) : old;
         if (id == null) return withoutTemp;
-        return sortRolesByName([...withoutTemp.filter((r) => r.id !== id), data]);
+        return sortBranchesByName([...withoutTemp.filter((r) => r.id !== id), data]);
       });
       if (id != null) {
-        queryClient.setQueryData(["tenant", "roles", id], data);
+        queryClient.setQueryData(["tenant", "branches", id], data);
       }
 
       if (typeof onCreateSuccess === "function" && id != null) {
@@ -106,7 +105,6 @@ export function useRoleDrawerMutations({
         onSyncCreateDiscardBaseline?.("fromForm");
         return;
       }
-
       if (intent === "new") {
         form.resetFields();
         form.setFieldsValue(defaults);
@@ -122,15 +120,15 @@ export function useRoleDrawerMutations({
       onClose();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenant", "roles"] });
+      queryClient.invalidateQueries({ queryKey: ["tenant", "branches"] });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, values }) => updateRole(id, values),
+    mutationFn: ({ id, values }) => updateBranch(id, values),
     onMutate: async ({ id, values }) => {
-      const listKey = ["tenant", "roles"];
-      const detailKey = ["tenant", "roles", id];
+      const listKey = ["tenant", "branches"];
+      const detailKey = ["tenant", "branches", id];
       await queryClient.cancelQueries({ queryKey: listKey });
       await queryClient.cancelQueries({ queryKey: detailKey });
       const previousList = queryClient.getQueryData(listKey);
@@ -150,21 +148,21 @@ export function useRoleDrawerMutations({
     },
     onError: (err, _variables, context) => {
       if (context?.previousList !== undefined) {
-        queryClient.setQueryData(["tenant", "roles"], context.previousList);
+        queryClient.setQueryData(["tenant", "branches"], context.previousList);
       }
       if (context?.previousDetail !== undefined) {
-        queryClient.setQueryData(["tenant", "roles", context.id], context.previousDetail);
+        queryClient.setQueryData(["tenant", "branches", context.id], context.previousDetail);
       }
       if (!applyApiFieldErrors(form, err)) {
         message.error(getLocalizedApiErrorMessage(tApiErrors, err));
       }
     },
     onSuccess: (data, { id }) => {
-      const listKey = ["tenant", "roles"];
-      const detailKey = ["tenant", "roles", id];
+      const listKey = ["tenant", "branches"];
+      const detailKey = ["tenant", "branches", id];
       queryClient.setQueryData(listKey, (old) => {
         if (!Array.isArray(old)) return old;
-        return sortRolesByName(old.map((row) => (row.id === id ? data : row)));
+        return sortBranchesByName(old.map((row) => (row.id === id ? data : row)));
       });
       queryClient.setQueryData(detailKey, data);
       message.success(t("drawerUpdateSuccess"));
@@ -172,9 +170,9 @@ export function useRoleDrawerMutations({
     },
     onSettled: (_data, _error, variables) => {
       const id = variables?.id;
-      queryClient.invalidateQueries({ queryKey: ["tenant", "roles"] });
+      queryClient.invalidateQueries({ queryKey: ["tenant", "branches"] });
       if (id != null) {
-        queryClient.invalidateQueries({ queryKey: ["tenant", "roles", id] });
+        queryClient.invalidateQueries({ queryKey: ["tenant", "branches", id] });
       }
     },
   });

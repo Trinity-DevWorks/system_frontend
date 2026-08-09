@@ -45,11 +45,38 @@ function UsersTable() {
 
   const tableData = useMemo(
     () =>
-      data.map((row) => ({
-        ...row,
-        role_name: row?.role?.name ?? "",
-        active_label: getUserStatusLabel(row?.is_active, t),
-      })),
+      data.map((row) => {
+        const branches = Array.isArray(row?.branches) ? row.branches : [];
+        const roleNames = [
+          ...new Set(
+            branches
+              .map((branch) => {
+                if (typeof branch?.role?.name === "string" && branch.role.name.trim()) {
+                  return branch.role.name.trim();
+                }
+                return "";
+              })
+              .filter(Boolean),
+          ),
+        ];
+        const sharedRoleName =
+          typeof row?.role?.name === "string" && row.role.name.trim() ? row.role.name.trim() : "";
+
+        return {
+          ...row,
+          role_name: sharedRoleName || (roleNames.length > 0 ? roleNames.join(", ") : ""),
+          branches_label: branches
+            .map((branch) => {
+              const name = typeof branch?.name === "string" ? branch.name.trim() : "";
+              const roleName = typeof branch?.role?.name === "string" ? branch.role.name.trim() : "";
+              if (!name) return "";
+              return roleName ? `${name} (${roleName})` : name;
+            })
+            .filter(Boolean)
+            .join(", "),
+          active_label: getUserStatusLabel(row?.is_active, t),
+        };
+      }),
     [data, t],
   );
 
@@ -217,7 +244,7 @@ function UsersTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["name", "email", "role_name", "active_label"],
+          searchKeys: ["name", "email", "role_name", "branches_label", "active_label"],
           showAdd: true,
           onAdd: openCreateDrawer,
           showRefresh: true,
@@ -228,7 +255,7 @@ function UsersTable() {
         onBulkDelete={openBulkDeleteConfirm}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
-        scrollX={1180}
+        scrollX={1360}
         enableColumnDrag
         pagination={{
           mode: "client",
