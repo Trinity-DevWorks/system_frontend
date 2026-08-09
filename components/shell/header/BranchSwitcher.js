@@ -14,7 +14,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Select } from "antd";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 /**
  * Active branch switcher for the shell header.
@@ -32,18 +32,31 @@ export default function BranchSwitcher() {
     refetchOnWindowFocus: true,
   });
 
+  // Keep cookie in sync with server preference / resolved active branch (cross-device).
+  useEffect(() => {
+    const id = contextQuery.data?.active_branch_id;
+    if (id != null) {
+      setActiveBranchId(id);
+    }
+  }, [contextQuery.data?.active_branch_id]);
+
   const options = useMemo(() => {
     const list = Array.isArray(contextQuery.data?.accessible_branches)
       ? contextQuery.data.accessible_branches
       : [];
-    return list.map((b) => ({
-      value: Number(b.id),
-      label:
+    return list.map((b) => {
+      const base =
         typeof b.shortcut_name === "string" && b.shortcut_name.trim()
           ? `${b.name} (${b.shortcut_name})`
-          : String(b.name ?? b.id),
-    }));
-  }, [contextQuery.data?.accessible_branches]);
+          : String(b.name ?? b.id);
+      const inactive = b.is_active === false;
+      return {
+        value: Number(b.id),
+        label: inactive ? `${base} — ${t("branchInactive")}` : base,
+        disabled: inactive,
+      };
+    });
+  }, [contextQuery.data?.accessible_branches, t]);
 
   const activeId =
     contextQuery.data?.active_branch_id != null
@@ -88,6 +101,8 @@ export default function BranchSwitcher() {
       onChange={(value) => {
         const id = Number(value);
         if (!Number.isFinite(id) || id === activeId) return;
+        const opt = options.find((o) => o.value === id);
+        if (opt?.disabled) return;
         switchMutation.mutate(id);
       }}
       optionFilterProp="label"

@@ -3,14 +3,23 @@ import tenantApiService from "@/API/TenantApiService";
 /**
  * @returns {Promise<{
  *   active_branch_id: number | null;
- *   active_branch: { id: number; name: string; shortcut_name?: string | null; is_default?: boolean } | null;
- *   accessible_branches: Array<{ id: number; name: string; shortcut_name?: string | null; is_default?: boolean }>;
+ *   preferred_branch_id?: number | null;
+ *   active_branch: { id: number; name: string; shortcut_name?: string | null; is_default?: boolean; is_active?: boolean } | null;
+ *   accessible_branches: Array<{ id: number; name: string; shortcut_name?: string | null; is_default?: boolean; is_active?: boolean }>;
  *   is_owner: boolean;
  * }>}
  */
 export async function fetchBranchContext() {
   const data = await tenantApiService("GET", "branch-context");
-  return data && typeof data === "object" ? data : { active_branch_id: null, active_branch: null, accessible_branches: [], is_owner: false };
+  return data && typeof data === "object"
+    ? data
+    : {
+        active_branch_id: null,
+        preferred_branch_id: null,
+        active_branch: null,
+        accessible_branches: [],
+        is_owner: false,
+      };
 }
 
 /**

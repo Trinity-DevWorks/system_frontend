@@ -117,6 +117,7 @@
     "globalSearchAria": "Global search",
     "branchSwitcherPlaceholder": "Branch",
     "branchSwitcherAria": "Active branch",
+    "branchInactive": "Inactive",
     "branchSwitchSuccess": "Switched branch.",
     "branchSwitchError": "Could not switch branch."
   },
@@ -1100,6 +1101,7 @@
     "fieldManager": "Manager",
     "fieldManagerPlaceholder": "Select a user",
     "fieldStatus": "Status",
+    "fieldStatusDefaultOwnerOnly": "Only the Owner can deactivate the default branch.",
     "fieldDefault": "Default branch",
     "paginationEmpty": "No items",
     "paginationTotal": "{start}-{end} of {total}",
@@ -2180,6 +2182,7 @@
       "CURRENCY_PRIMARY_DELETE_FORBIDDEN": "Cannot delete the primary currency.",
       "BRANCH_DEFAULT_DELETE_FORBIDDEN": "Cannot delete the default branch. Set another branch as default first.",
       "BRANCH_DEFAULT_UNSET_FORBIDDEN": "Cannot unset the default branch. Set another branch as default first.",
+      "BRANCH_DEFAULT_DEACTIVATE_OWNER_ONLY": "Only the Owner can deactivate the default branch.",
       "BRANCH_DELETE_HAS_WAREHOUSES": "Cannot delete a branch that still has warehouses.",
       "BRANCH_DELETE_HAS_USERS": "Cannot delete a branch that still has users assigned.",
       "BRANCH_DELETE_HAS_SALESMEN": "Cannot delete a branch that still has salesmen.",

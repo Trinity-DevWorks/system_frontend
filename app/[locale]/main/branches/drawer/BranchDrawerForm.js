@@ -9,9 +9,20 @@ import { Form, Input, Select, Switch, TimePicker } from "antd";
  *   t: (key: string) => string;
  *   userOptions?: { value: string; label: string }[];
  *   lookupsLoading?: boolean;
+ *   lockDefaultStatus?: boolean;
  * }} props
  */
-export default function BranchDrawerForm({ form, readOnly, t, userOptions = [], lookupsLoading = false }) {
+export default function BranchDrawerForm({
+  form,
+  readOnly,
+  t,
+  userOptions = [],
+  lookupsLoading = false,
+  lockDefaultStatus = false,
+}) {
+  const isDefaultWatch = Form.useWatch("is_default", form);
+  const statusLocked = Boolean(lockDefaultStatus && isDefaultWatch);
+
   return (
     <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
       <Form.Item
@@ -77,8 +88,17 @@ export default function BranchDrawerForm({ form, readOnly, t, userOptions = [], 
           placeholder={t("fieldManagerPlaceholder")}
         />
       </Form.Item>
-      <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
-        <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />
+      <Form.Item
+        name="is_active"
+        label={t("fieldStatus")}
+        valuePropName="checked"
+        extra={statusLocked ? t("fieldStatusDefaultOwnerOnly") : undefined}
+      >
+        <Switch
+          checkedChildren={t("statusActive")}
+          unCheckedChildren={t("statusInactive")}
+          disabled={statusLocked}
+        />
       </Form.Item>
       <Form.Item name="is_default" label={t("fieldDefault")} valuePropName="checked">
         <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />

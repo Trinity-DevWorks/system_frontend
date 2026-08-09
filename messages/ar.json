@@ -117,6 +117,7 @@
     "globalSearchAria": "بحث عام",
     "branchSwitcherPlaceholder": "الفرع",
     "branchSwitcherAria": "الفرع النشط",
+    "branchInactive": "غير نشط",
     "branchSwitchSuccess": "تم تبديل الفرع.",
     "branchSwitchError": "تعذّر تبديل الفرع."
   },
@@ -1100,6 +1101,7 @@
     "fieldManager": "المدير",
     "fieldManagerPlaceholder": "اختر مستخدمًا",
     "fieldStatus": "الحالة",
+    "fieldStatusDefaultOwnerOnly": "يمكن لمالك النظام فقط إلغاء تفعيل الفرع الافتراضي.",
     "fieldDefault": "الفرع الافتراضي",
     "paginationEmpty": "لا عناصر",
     "paginationTotal": "{start}–{end} من {total}",
@@ -2180,6 +2182,7 @@
       "CURRENCY_PRIMARY_DELETE_FORBIDDEN": "لا يمكن حذف العملة الأساسية.",
       "BRANCH_DEFAULT_DELETE_FORBIDDEN": "لا يمكن حذف الفرع الافتراضي. عيّن فرعًا آخر كافتراضي أولًا.",
       "BRANCH_DEFAULT_UNSET_FORBIDDEN": "لا يمكن إلغاء الفرع الافتراضي. عيّن فرعًا آخر كافتراضي أولًا.",
+      "BRANCH_DEFAULT_DEACTIVATE_OWNER_ONLY": "يمكن لمالك النظام فقط إلغاء تفعيل الفرع الافتراضي.",
       "BRANCH_DELETE_HAS_WAREHOUSES": "لا يمكن حذف فرع لا يزال مرتبطًا بمستودعات.",
       "BRANCH_DELETE_HAS_USERS": "لا يمكن حذف فرع ما زال مرتبطًا بمستخدمين.",
       "BRANCH_DELETE_HAS_SALESMEN": "لا يمكن حذف فرع ما زال مرتبطًا بمندوبين.",

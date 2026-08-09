@@ -6,7 +6,9 @@ import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreate
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
+import { BRANCH_CONTEXT_QUERY_KEY } from "@/lib/active-branch";
 import { fetchBranch } from "@/services/branchesApi";
+import { fetchBranchContext } from "@/services/branchContextApi";
 import { fetchTenantUsers } from "@/services/tenantUsersApi";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -60,6 +62,15 @@ export default function BranchDrawer({
     enabled: open,
     staleTime: 5 * 60_000,
   });
+
+  const branchContextQuery = useQuery({
+    queryKey: BRANCH_CONTEXT_QUERY_KEY,
+    queryFn: fetchBranchContext,
+    staleTime: 60_000,
+    enabled: open,
+  });
+
+  const isOwner = Boolean(branchContextQuery.data?.is_owner);
 
   const userOptions = useMemo(() => {
     const users = Array.isArray(usersQuery.data) ? usersQuery.data : [];
@@ -276,6 +287,7 @@ export default function BranchDrawer({
         t={t}
         userOptions={userOptions}
         lookupsLoading={usersQuery.isPending}
+        lockDefaultStatus={!readOnly && !isOwner}
       />
     </ResourceCrudDrawer>
   );
