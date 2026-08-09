@@ -1,6 +1,6 @@
 "use client";
 
-import BrandLogo from "@/components/brand/BrandLogo";
+import WorkspaceBrandMark from "@/components/brand/WorkspaceBrandMark";
 import {
   BookOutlined,
   LeftOutlined,
@@ -29,6 +29,8 @@ export default function AppSidebar({
   mainNavItems,
   onMenuClick,
   brand,
+  /** @type {{ id: string, file_name?: string, mime_type?: string } | null | undefined} */
+  brandLogo = null,
   expandLabel,
   collapseLabel,
   onSettings,
@@ -145,28 +147,34 @@ export default function AppSidebar({
           borderBottom: shellBorder,
         }}
       >
-        {collapsed ? (
-          <Tooltip title={brand} placement="right">
-            <button
-              type="button"
-              onClick={() => setCollapsed((c) => !c)}
-              aria-label={expandLabel}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent p-0"
-              style={{ color: token.colorTextSecondary }}
-            >
-              <BrandLogo size={28} />
-            </button>
-          </Tooltip>
-        ) : (
+        <Tooltip title={collapsed ? brand : undefined} placement="right">
+          <button
+            type="button"
+            onClick={() => {
+              if (collapsed) setCollapsed(false);
+            }}
+            aria-label={collapsed ? expandLabel : brand}
+            disabled={!collapsed}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent p-0 ${
+              collapsed ? "" : "cursor-default"
+            }`}
+            style={{ color: token.colorTextSecondary }}
+          >
+            <WorkspaceBrandMark
+              logo={brandLogo}
+              alt={brand}
+              size={28}
+              className="shrink-0"
+            />
+          </button>
+        </Tooltip>
+        {!collapsed ? (
           <>
-            <div className="flex min-w-0 flex-1 items-center gap-2 leading-tight">
-              <BrandLogo size={28} className="shrink-0" />
-              <div
-                className="truncate text-sm font-semibold"
-                style={{ color: token.colorText }}
-              >
-                {brand}
-              </div>
+            <div
+              className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight"
+              style={{ color: token.colorText }}
+            >
+              {brand}
             </div>
             <Button
               type="default"
@@ -177,7 +185,7 @@ export default function AppSidebar({
               style={{ color: token.colorTextSecondary }}
             />
           </>
-        )}
+        ) : null}
       </div>
       <div
         className="flex flex-col"

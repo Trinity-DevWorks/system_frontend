@@ -33,6 +33,8 @@ function timezoneOptions() {
  *   t: (key: string) => string;
  *   onFinish: (values: Record<string, unknown>) => void;
  *   primaryCurrencyLabel?: string | null;
+ *   disabled?: boolean;
+ *   onValuesChange?: () => void;
  * }} props
  */
 export default function CompanySettingsForm({
@@ -40,6 +42,8 @@ export default function CompanySettingsForm({
   t,
   onFinish,
   primaryCurrencyLabel,
+  disabled = false,
+  onValuesChange,
 }) {
   const timezones = useMemo(() => timezoneOptions(), []);
 
@@ -47,9 +51,11 @@ export default function CompanySettingsForm({
     <Form
       form={form}
       layout="vertical"
-      requiredMark="optional"
+      requiredMark={disabled ? false : "optional"}
       className="max-w-2xl"
+      disabled={disabled}
       onFinish={onFinish}
+      onValuesChange={onValuesChange}
     >
       {primaryCurrencyLabel ? (
         <div className="mb-4 text-sm opacity-80">

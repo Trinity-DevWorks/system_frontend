@@ -10,6 +10,7 @@ import {
   saveSidebarBookmarks,
 } from "@/lib/sidebar-bookmarks";
 import { resolveHostMode } from "@/lib/runtime-mode";
+import { useCompanyProfile } from "@/lib/company-profile";
 import { clearAllSessionTokens } from "@/lib/session";
 import { clearActiveBranchId } from "@/lib/active-branch";
 import { useTenantModules } from "@/lib/tenant-modules";
@@ -53,6 +54,15 @@ export default function AppShell({ children }) {
 
   const { moduleSet, isError } = useTenantModules();
   const { settings, isReady: settingsReady } = useTenantSettings();
+  const { profile } = useCompanyProfile();
+
+  const workspaceBrand = useMemo(() => {
+    const name =
+      typeof profile.company_name === "string"
+        ? profile.company_name.trim()
+        : "";
+    return name || t("brand");
+  }, [profile.company_name, t]);
 
   /** Apply tenant preferred_language once when user has not overridden UI locale. */
   useEffect(() => {
@@ -203,7 +213,8 @@ export default function AppShell({ children }) {
           menuItems={menuItemsWithBookmarkStars}
           mainNavItems={menuItems}
           onMenuClick={onMenuClick}
-          brand={t("brand")}
+          brand={workspaceBrand}
+          brandLogo={profile.logo}
           expandLabel={t("expandSidebar")}
           collapseLabel={t("collapseSidebar")}
           onSettings={handleSettings}

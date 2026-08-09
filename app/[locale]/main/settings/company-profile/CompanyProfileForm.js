@@ -7,16 +7,26 @@ import { Form, Input } from "antd";
  *   form: import("antd").FormInstance;
  *   t: (key: string) => string;
  *   onFinish: (values: Record<string, unknown>) => void;
+ *   disabled?: boolean;
+ *   onValuesChange?: () => void;
  * }} props
  */
-export default function CompanyProfileForm({ form, t, onFinish }) {
+export default function CompanyProfileForm({
+  form,
+  t,
+  onFinish,
+  disabled = false,
+  onValuesChange,
+}) {
   return (
     <Form
       form={form}
       layout="vertical"
-      requiredMark="optional"
+      requiredMark={disabled ? false : "optional"}
       className="max-w-2xl"
+      disabled={disabled}
       onFinish={onFinish}
+      onValuesChange={onValuesChange}
     >
       <Form.Item
         name="company_name"
