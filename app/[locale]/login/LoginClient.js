@@ -8,6 +8,7 @@ import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
+import { BRANCH_CONTEXT_QUERY_KEY, setActiveBranchId } from "@/lib/active-branch";
 import { tenantModulesQueryKey } from "@/lib/tenant-modules";
 import {
   tenantSettingsQueryKey,
@@ -101,6 +102,13 @@ function LoginFormInner({ initialHost }) {
         );
 
         if (!isCentralLogin) {
+          const branchContext = response?.branch_context;
+          const activeId = branchContext?.active_branch_id;
+          if (activeId != null) {
+            setActiveBranchId(activeId);
+            queryClient.setQueryData(BRANCH_CONTEXT_QUERY_KEY, branchContext);
+          }
+
           try {
             const assigned = await tenantApiService(
               "GET",

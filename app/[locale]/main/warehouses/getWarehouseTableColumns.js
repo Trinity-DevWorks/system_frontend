@@ -44,7 +44,7 @@ export function getWarehouseTableColumns(t, actions = {}) {
       title: t("colShortcutName"),
       dataIndex: "shortcut_name",
       key: "shortcut_name",
-      width: 150,
+      width: 130,
       ellipsis: true,
       render: (value) => {
         const v = typeof value === "string" ? value.trim() : "";
@@ -56,6 +56,33 @@ export function getWarehouseTableColumns(t, actions = {}) {
           "\u2014"
         );
       },
+    },
+    {
+      title: t("colType"),
+      dataIndex: "type",
+      key: "type",
+      width: 130,
+      ellipsis: true,
+      render: (value) => {
+        const key = typeof value === "string" ? value : "central";
+        return t(`type_${key}`);
+      },
+    },
+    {
+      title: t("colBranch"),
+      dataIndex: "branch_name",
+      key: "branch_name",
+      width: 140,
+      ellipsis: true,
+      render: (value) => (typeof value === "string" && value.trim() ? value : "\u2014"),
+    },
+    {
+      title: t("colManager"),
+      dataIndex: "manager_name",
+      key: "manager_name",
+      width: 140,
+      ellipsis: true,
+      render: (value) => (typeof value === "string" && value.trim() ? value : "\u2014"),
     },
     {
       title: t("colStatus"),

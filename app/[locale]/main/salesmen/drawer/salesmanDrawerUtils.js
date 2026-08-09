@@ -16,8 +16,10 @@ export const SALESMAN_CREATE_SAVE_INTENT_EVENT = "salesmanDrawer:createSaveInten
  * @param {string} firstName
  * @param {string} lastName
  */
-export function requiredFieldsValid(firstName, lastName) {
-  return Boolean(String(firstName ?? "").trim() && String(lastName ?? "").trim());
+export function requiredFieldsValid(firstName, lastName, branchId) {
+  if (!String(firstName ?? "").trim() || !String(lastName ?? "").trim()) return false;
+  if (branchId == null || branchId === "" || Number.isNaN(Number(branchId))) return false;
+  return true;
 }
 
 /**
@@ -51,6 +53,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
     "commission_type",
     "commission_value",
     "target_amount",
+    "branch_id",
     "warehouse_id",
     "user_id",
     "notes",
@@ -60,7 +63,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
       if (!sameOptionalNumber(v[k], defaults[k])) return true;
       continue;
     }
-    if (k === "warehouse_id" || k === "user_id") {
+    if (k === "branch_id" || k === "warehouse_id" || k === "user_id") {
       if (!sameOptionalId(v[k], defaults[k])) return true;
       continue;
     }
@@ -87,6 +90,7 @@ export function isEditDirtyVsLoaded(form, row) {
     "commission_type",
     "commission_value",
     "target_amount",
+    "branch_id",
     "warehouse_id",
     "user_id",
     "notes",
@@ -96,7 +100,7 @@ export function isEditDirtyVsLoaded(form, row) {
       if (!sameOptionalNumber(v[k], row[k])) return true;
       continue;
     }
-    if (k === "warehouse_id" || k === "user_id") {
+    if (k === "branch_id" || k === "warehouse_id" || k === "user_id") {
       if (!sameOptionalId(v[k], row[k])) return true;
       continue;
     }
@@ -162,6 +166,8 @@ export function toSalesmanCacheRow(row) {
     commission_value: row.commission_value,
     target_amount: row.target_amount,
     hire_date: row.hire_date,
+    branch_id: row.branch_id,
+    branch_name: row.branch_name,
     warehouse_id: row.warehouse_id,
     warehouse_name: row.warehouse_name,
     user_id: row.user_id,
@@ -223,6 +229,7 @@ export function salesmanFormValuesToPayload(values) {
     commission_value: commissionValue == null ? null : String(commissionValue),
     target_amount: target,
     hire_date: hireDate,
+    branch_id: values.branch_id == null || values.branch_id === "" ? null : Number(values.branch_id),
     warehouse_id: w == null || w === "" ? null : Number(w),
     user_id: u == null || u === "" ? null : String(u),
     is_active: Boolean(values.is_active),

@@ -31,10 +31,11 @@ const ROLE_DETAIL_QUERY_PREFIX = /** @type {const} */ (["tenant", "roles"]);
  *   roleId: number | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  *   editSeedRecord?: Record<string, unknown> | null;
  * }} props
  */
-export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, editSeedRecord = null }) {
+export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onCreateSuccess, editSeedRecord = null }) {
   const t = useTranslations("Roles");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
@@ -114,6 +115,7 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, edi
     tApiErrors,
     onClose,
     onCreated,
+    onCreateSuccess,
     onSyncCreateDiscardBaseline,
     defaults,
   });

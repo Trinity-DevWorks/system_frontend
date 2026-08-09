@@ -2,18 +2,21 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
-import { deleteSalesman, fetchSalesmen } from "@/services/salesmenApi";
-import SalesmanDrawer from "./drawer/SalesmanDrawer";
-import { getSalesmanStatusLabel, getSalesmanTableColumns } from "./getSalesmanTableColumns";
+import { deleteBranch, fetchBranches } from "@/services/branchesApi";
+import BranchDrawer from "./drawer/BranchDrawer";
+import {
+  getBranchDefaultLabel,
+  getBranchStatusLabel,
+  getBranchTableColumns,
+} from "./getBranchTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-function SalesmenTable() {
-  const t = useTranslations("Salesmen");
+function BranchesTable() {
+  const t = useTranslations("Branches");
   const tApiErrors = useTranslations("ApiErrors");
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
@@ -27,8 +30,8 @@ function SalesmenTable() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["tenant", "salesmen"],
-    queryFn: fetchSalesmen,
+    queryKey: ["tenant", "branches"],
+    queryFn: fetchBranches,
     staleTime: 5 * 60_000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
@@ -46,63 +49,64 @@ function SalesmenTable() {
     () =>
       data.map((row) => ({
         ...row,
-        is_active_label: getSalesmanStatusLabel(row?.is_active, t),
+        is_active_label: getBranchStatusLabel(row?.is_active, t),
+        is_default_label: getBranchDefaultLabel(row?.is_default, t),
       })),
     [data, t],
   );
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerSalesmanId, setDrawerSalesmanId] = useState(/** @type {string | null} */ (null));
+  const [drawerBranchId, setDrawerBranchId] = useState(/** @type {number | null} */ (null));
   const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, salesmanId: /** @type {string | null} */ (null) });
+  const drawerSessionRef = useRef({ open: false, branchId: /** @type {number | null} */ (null) });
   useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, salesmanId: drawerSalesmanId };
-  }, [drawerOpen, drawerSalesmanId]);
+    drawerSessionRef.current = { open: drawerOpen, branchId: drawerBranchId };
+  }, [drawerOpen, drawerBranchId]);
 
   const openCreateDrawer = useCallback(() => {
     setDrawerTableSeed(null);
     setDrawerMode("create");
-    setDrawerSalesmanId(null);
+    setDrawerBranchId(null);
     setDrawerOpen(true);
   }, []);
 
   const openEditDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
+    const id = record?.id;
     if (id == null) return;
     setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerSalesmanId(id);
+    setDrawerBranchId(Number(id));
     setDrawerOpen(true);
   }, []);
 
   const openViewDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
+    const id = record?.id;
     if (id == null) return;
     setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("view");
-    setDrawerSalesmanId(id);
+    setDrawerBranchId(Number(id));
     setDrawerOpen(true);
   }, []);
 
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
-    setDrawerSalesmanId(null);
+    setDrawerBranchId(null);
     setDrawerTableSeed(null);
   }, []);
 
-  const handleSalesmanCreated = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
+  const handleBranchCreated = useCallback((record) => {
+    const id = record?.id;
     if (id == null) return;
     setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
     setDrawerMode("edit");
-    setDrawerSalesmanId(id);
+    setDrawerBranchId(Number(id));
   }, []);
 
   const deleteMutation = useMutation({
-    mutationFn: (/** @type {string} */ id) => deleteSalesman(id),
+    mutationFn: (/** @type {number} */ id) => deleteBranch(id),
     onMutate: async (id) => {
-      const listKey = ["tenant", "salesmen"];
+      const listKey = ["tenant", "branches"];
       await queryClient.cancelQueries({ queryKey: listKey });
       const previous = queryClient.getQueryData(listKey);
       queryClient.setQueryData(listKey, (old) => (Array.isArray(old) ? old.filter((row) => row.id !== id) : old));
@@ -110,7 +114,7 @@ function SalesmenTable() {
     },
     onError: (err, _id, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "salesmen"], context.previous);
+        queryClient.setQueryData(["tenant", "branches"], context.previous);
       }
       notification.error({
         title: t("deleteError"),
@@ -119,20 +123,20 @@ function SalesmenTable() {
     },
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
-      queryClient.removeQueries({ queryKey: ["tenant", "salesmen", deletedId] });
-      const { open, salesmanId } = drawerSessionRef.current;
-      if (open && salesmanId === deletedId) {
+      queryClient.removeQueries({ queryKey: ["tenant", "branches", deletedId] });
+      const { open, branchId } = drawerSessionRef.current;
+      if (open && branchId === deletedId) {
         closeDrawer();
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenant", "salesmen"] });
+      queryClient.invalidateQueries({ queryKey: ["tenant", "branches"] });
     },
   });
 
   const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
-    listQueryKey: ["tenant", "salesmen"],
-    deleteOne: deleteSalesman,
+    listQueryKey: ["tenant", "branches"],
+    deleteOne: deleteBranch,
     message,
     notification,
     modal,
@@ -141,18 +145,22 @@ function SalesmenTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.salesmanId,
+    getOpenRecordId: () => drawerSessionRef.current.branchId,
     closeDrawer,
   });
 
-  const requestDeleteSalesman = useCallback(
+  const requestDeleteBranch = useCallback(
     (record) => {
-      const id = normalizeEntityId(record?.id);
+      const id = record?.id;
       if (id == null) return;
-      const name =
-        typeof record?.full_name === "string" && record.full_name.trim()
-          ? record.full_name
-          : id;
+      if (record?.is_default) {
+        notification.error({
+          title: t("deleteError"),
+          description: t("deleteDefaultForbidden"),
+        });
+        return;
+      }
+      const name = typeof record?.name === "string" ? record.name : String(id);
       modal.confirm({
         title: t("deleteConfirmTitle"),
         content: t("deleteConfirmContent", { name }),
@@ -161,36 +169,39 @@ function SalesmenTable() {
         cancelText: t("deleteConfirmCancel"),
         onOk: async () => {
           try {
-            await deleteMutation.mutateAsync(id);
+            await deleteMutation.mutateAsync(Number(id));
           } catch {
-            /* mutation onError */
+            // onError on mutation already shows feedback; resolve so confirm closes.
           }
         },
       });
     },
-    [deleteMutation, modal, t],
+    [deleteMutation, modal, notification, t],
   );
 
   const columns = useMemo(
     () =>
-      getSalesmanTableColumns(t, {
+      getBranchTableColumns(t, {
         onView: openViewDrawer,
         onEdit: openEditDrawer,
-        onDelete: requestDeleteSalesman,
+        onDelete: requestDeleteBranch,
       }),
-    [t, openViewDrawer, openEditDrawer, requestDeleteSalesman],
+    [t, openViewDrawer, openEditDrawer, requestDeleteBranch],
   );
 
   const rowSelection = {
     selectedRowKeys,
     onChange: setSelectedRowKeys,
     columnWidth: 48,
+    getCheckboxProps: (record) => ({
+      disabled: Boolean(record?.is_default),
+    }),
   };
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppDataTable
-        tableId="salesmen"
+        tableId="branches"
         columns={columns}
         dataSource={tableData}
         rowKey="id"
@@ -201,14 +212,14 @@ function SalesmenTable() {
         toolbar={{
           showSearch: true,
           searchKeys: [
-            "salesman_code",
-            "full_name",
-            "branch_name",
-            "phone",
+            "id",
+            "name",
+            "shortcut_name",
             "email",
-            "warehouse_name",
-            "commission_type",
+            "phone",
+            "manager_name",
             "is_active_label",
+            "is_default_label",
           ],
           showAdd: true,
           onAdd: openCreateDrawer,
@@ -220,7 +231,7 @@ function SalesmenTable() {
         onBulkDelete={openBulkDeleteConfirm}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
-        scrollX={1460}
+        scrollX={1480}
         enableColumnDrag
         pagination={{
           mode: "client",
@@ -228,22 +239,22 @@ function SalesmenTable() {
           pageSizeOptions: [10, 20, 50],
         }}
       />
-      <SalesmanDrawer
+      <BranchDrawer
         open={drawerOpen}
         mode={drawerMode}
-        salesmanId={drawerSalesmanId}
+        branchId={drawerBranchId}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
-        onCreated={handleSalesmanCreated}
+        onCreated={handleBranchCreated}
       />
     </div>
   );
 }
 
-export default function SalesmenPage() {
+export default function BranchesPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <SalesmenTable />
+      <BranchesTable />
     </div>
   );
 }

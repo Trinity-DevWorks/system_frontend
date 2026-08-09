@@ -1,4 +1,5 @@
 import {
+  ApartmentOutlined,
   AppstoreOutlined,
   CreditCardOutlined,
   DashboardOutlined,
@@ -60,6 +61,7 @@ export const ROUTES = {
   settings: "/main/settings",
   settingsCompanyProfile: "/main/settings/company-profile",
   settingsCompanySettings: "/main/settings/company-settings",
+  branches: "/main/branches",
   users: "/main/users",
   roles: "/main/roles",
   permissions: "/main/permissions",
@@ -244,6 +246,12 @@ export function buildMainNavItems(t, options = {}) {
       label: t("navAdministration"),
       className: SECTION_DIVIDER_CLASS,
       children: [
+        {
+          key: ROUTES.branches,
+          icon: <ApartmentOutlined />,
+          label: t("navBranches"),
+          module: "core",
+        },
         {
           key: ROUTES.users,
           icon: <UserOutlined />,

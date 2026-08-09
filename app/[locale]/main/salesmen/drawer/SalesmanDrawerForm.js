@@ -12,6 +12,7 @@ const { TextArea } = Input;
  *   form: import("antd").FormInstance;
  *   readOnly: boolean;
  *   t: (key: string) => string;
+ *   branchOptions: { value: number | string; label: string }[];
  *   warehouseOptions: { value: number | string; label: string }[];
  *   addWarehouseSentinel?: string | null;
  *   onOpenWarehouseDrawer?: () => void;
@@ -23,6 +24,7 @@ export default function SalesmanDrawerForm({
   form,
   readOnly,
   t,
+  branchOptions,
   warehouseOptions,
   addWarehouseSentinel = null,
   onOpenWarehouseDrawer,
@@ -30,12 +32,25 @@ export default function SalesmanDrawerForm({
   lookupsLoading,
 }) {
   const commissionType = Form.useWatch("commission_type", form);
+  const branchId = Form.useWatch("branch_id", form);
 
   useEffect(() => {
     if (commissionType === "none") {
       form.setFieldValue("commission_value", undefined);
     }
   }, [commissionType, form]);
+
+  useEffect(() => {
+    if (readOnly) return;
+    const warehouseId = form.getFieldValue("warehouse_id");
+    if (warehouseId == null || warehouseId === "") return;
+    const sentinel = addWarehouseSentinel != null ? String(addWarehouseSentinel) : null;
+    if (sentinel != null && warehouseId === sentinel) return;
+    const stillAllowed = warehouseOptions.some((opt) => Number(opt.value) === Number(warehouseId));
+    if (!stillAllowed) {
+      form.setFieldValue("warehouse_id", undefined);
+    }
+  }, [branchId, warehouseOptions, form, readOnly, addWarehouseSentinel]);
 
   const sentinel = addWarehouseSentinel != null ? String(addWarehouseSentinel) : null;
   const warehouseGetValueFromEvent = sentinel
@@ -131,6 +146,19 @@ export default function SalesmanDrawerForm({
       <Form.Item name="hire_date" label={t("fieldHireDate")}>
         <DatePicker className="w-full" format={dayjsDatePattern()} allowClear />
       </Form.Item>
+      <Form.Item
+        name="branch_id"
+        label={t("fieldBranch")}
+        rules={[{ required: true, message: t("fieldBranchRequired") }]}
+      >
+        <Select
+          showSearch
+          optionFilterProp="label"
+          loading={lookupsLoading}
+          options={branchOptions}
+          placeholder={t("fieldBranchPlaceholder")}
+        />
+      </Form.Item>
       <Form.Item name="warehouse_id" label={t("fieldWarehouse")} getValueFromEvent={warehouseGetValueFromEvent}>
         <Select
           allowClear
@@ -139,6 +167,7 @@ export default function SalesmanDrawerForm({
           loading={lookupsLoading}
           options={warehouseOptions}
           placeholder={t("fieldWarehousePlaceholder")}
+          disabled={!readOnly && (branchId == null || branchId === "")}
           onSelect={warehouseOnSelect}
         />
       </Form.Item>

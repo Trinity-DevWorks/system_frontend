@@ -59,6 +59,14 @@ export function getUserTableColumns(t, actions = {}) {
       render: (value) => normalizeText(value) || "\u2014",
     },
     {
+      title: t("colBranches"),
+      dataIndex: "branches_label",
+      key: "branches_label",
+      width: 180,
+      ellipsis: true,
+      render: (value) => normalizeText(value) || "\u2014",
+    },
+    {
       title: t("colStatus"),
       dataIndex: "is_active",
       key: "is_active",

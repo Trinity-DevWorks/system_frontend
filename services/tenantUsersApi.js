@@ -36,10 +36,16 @@ export function updateTenantUser(id, body) {
 /**
  * @param {number | string} id
  * @param {number} roleId
+ * @param {number | null | undefined} [branchId]
  * @returns {Promise<unknown>}
  */
-export function updateTenantUserRole(id, roleId) {
-  return tenantApiService("PATCH", `users/${id}/role`, { role_id: roleId });
+export function updateTenantUserRole(id, roleId, branchId = null) {
+  /** @type {Record<string, unknown>} */
+  const body = { role_id: roleId };
+  if (branchId != null) {
+    body.branch_id = branchId;
+  }
+  return tenantApiService("PATCH", `users/${id}/role`, body);
 }
 
 /**
