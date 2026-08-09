@@ -74,7 +74,7 @@ function UsersTable() {
             })
             .filter(Boolean)
             .join(", "),
-          active_label: getUserStatusLabel(row?.active, t),
+          active_label: getUserStatusLabel(row?.is_active, t),
         };
       }),
     [data, t],

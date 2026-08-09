@@ -14,6 +14,19 @@ export function humanizePathSegment(slug) {
 }
 
 /**
+ * Labels for Settings workspace paths (not in the main sidebar Menu).
+ * @param {string} path
+ * @param {(key: string) => string} t
+ * @returns {string | null}
+ */
+function settingsPathLabel(path, t) {
+  if (path === ROUTES.settings) return t("navSettings");
+  if (path === ROUTES.settingsCompanyProfile) return t("navCompanyProfile");
+  if (path === ROUTES.settingsCompanySettings) return t("navCompanySettings");
+  return null;
+}
+
+/**
  * Build breadcrumb entries for the main app shell (paths under /main/...).
  *
  * @param {string} pathname Locale-agnostic pathname from next-intl (e.g. /main/overview).
@@ -47,7 +60,9 @@ export function buildBreadcrumbEntries(pathname, menuItems, t) {
     const path = `/main/${rest.slice(0, i + 1).join("/")}`;
     const segment = rest[i];
     const label =
-      findNavLabelForPath(menuItems, path) || humanizePathSegment(segment);
+      findNavLabelForPath(menuItems, path) ||
+      settingsPathLabel(path, t) ||
+      humanizePathSegment(segment);
     const isLast = i === rest.length - 1;
     crumbs.push({
       key: path,

@@ -48,7 +48,7 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
     () => ({
       name: "",
       description: "",
-      active: true,
+      is_active: true,
     }),
     [],
   );
@@ -57,7 +57,7 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
     (r) => ({
       name: r.name,
       description: r.description ?? "",
-      active: Boolean(r.active),
+      is_active: Boolean(r.is_active),
     }),
     [],
   );

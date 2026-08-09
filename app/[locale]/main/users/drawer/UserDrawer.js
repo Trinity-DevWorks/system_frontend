@@ -53,7 +53,7 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
       name: "",
       email: "",
       branch_assignments: [],
-      active: true,
+      is_active: true,
       password: "",
       password_confirmation: "",
     }),
@@ -78,7 +78,7 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
               }))
               .filter((row) => !Number.isNaN(row.branch_id) && !Number.isNaN(row.role_id))
           : [],
-      active: Boolean(r.active),
+      is_active: Boolean(r.is_active),
       password: "",
       password_confirmation: "",
     }),

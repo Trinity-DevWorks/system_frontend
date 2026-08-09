@@ -44,7 +44,7 @@ export default function UserDrawerForm({
 
   const roleOptions = useMemo(() => {
     const base = (Array.isArray(rolesQuery.data) ? rolesQuery.data : [])
-      .filter((r) => r && typeof r === "object" && r.active !== false)
+      .filter((r) => r && typeof r === "object" && r.is_active !== false)
       .map((r) => ({
         value: Number(r.id),
         label: typeof r.name === "string" ? r.name : String(r.id),
@@ -213,7 +213,7 @@ export default function UserDrawerForm({
         )}
       </Form.List>
 
-      <Form.Item name="active" label={t("fieldStatus")} valuePropName="checked">
+      <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
         <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />
       </Form.Item>
       {showPasswordFields ? (

@@ -72,6 +72,9 @@ export default function VatGroupDrawerForm({ form, readOnly, t }) {
       <Form.Item name="is_default" label={t("fieldDefault")} valuePropName="checked">
         <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />
       </Form.Item>
+      <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
+        <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />
+      </Form.Item>
     </Form>
   );
 }

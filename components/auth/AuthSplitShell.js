@@ -1,5 +1,6 @@
 "use client";
 
+import BrandLogo from "@/components/brand/BrandLogo";
 import { useThemeMode } from "@/components/AntdAppProvider";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
@@ -8,7 +9,6 @@ import {
   HomeOutlined,
   MoonOutlined,
   SettingOutlined,
-  ShopOutlined,
   SunOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
@@ -111,8 +111,8 @@ export default function AuthSplitShell({
           <div className="relative z-[1] mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col lg:mx-0">
             <header className="login-anim-in border-b border-white/10 pb-8">
               <div className="flex items-start gap-4">
-                <div className="login-brand-tile flex size-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white/15 to-white/5 shadow-lg shadow-black/30 ring-1 ring-white/20 backdrop-blur-sm">
-                  <ShopOutlined className="text-[26px] text-emerald-200" aria-hidden />
+                <div className="login-brand-tile flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-white/15 to-white/5 shadow-lg shadow-black/30 ring-1 ring-white/20 backdrop-blur-sm">
+                  <BrandLogo size={40} priority />
                 </div>
                 <div className="min-w-0">
                   <Typography.Title level={2} className="!mb-1 !mt-0 !leading-none">
@@ -122,10 +122,7 @@ export default function AuthSplitShell({
                       lang="en"
                     >
                       <span className="inline-block bg-gradient-to-br from-white via-emerald-100 to-emerald-300/85 bg-clip-text text-[1.625rem] font-semibold uppercase tracking-[0.22em] text-transparent drop-shadow-[0_1px_12px_rgba(16,185,129,0.35)] sm:text-[2.125rem] sm:tracking-[0.26em]">
-                        {t("posBrandMena")}
-                      </span>
-                      <span className="inline-flex items-center rounded-lg bg-gradient-to-br from-white to-emerald-50 px-2 py-1 text-lg font-black uppercase tracking-[0.06em] text-emerald-950 shadow-[0_8px_24px_-4px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.85)] ring-[1.5px] ring-white/40 sm:rounded-xl sm:px-2.5 sm:py-1 sm:text-xl">
-                        {t("posBrandPos")}
+                        {t("posBrand")}
                       </span>
                     </span>
                   </Typography.Title>

@@ -1,9 +1,14 @@
 import { formatTenantDate } from "@/lib/tenant-format";
+import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
+
+export function getSupplierGroupStatusLabel(value, t) {
+  return value ? t("statusActive") : t("statusInactive");
+}
 
 /**
  * @param {(key: string) => string} t `useTranslations("SupplierGroups")`
@@ -47,6 +52,14 @@ export function getSupplierGroupTableColumns(t, actions = {}) {
       key: "name",
       width: 260,
       ellipsis: true,
+    },
+    {
+      title: t("colStatus"),
+      dataIndex: "is_active",
+      key: "is_active",
+      width: 100,
+      sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
+      render: (value) => renderActiveInactiveStatus(value, t),
     },
     {
       title: t("colCreatedAt"),

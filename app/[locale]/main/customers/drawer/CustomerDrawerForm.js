@@ -30,7 +30,7 @@ function currencyOptionsForRow(currencies, currentRows, currentRowIndex, t) {
   );
   const list = Array.isArray(currencies) ? currencies : [];
   return list
-    .filter((c) => c && c.active !== false)
+    .filter((c) => c && c.is_active !== false)
     .map((c) => ({
       value: c.id,
       label: `${c.code ?? c.id}${c.is_primary ? ` (${t("fieldCurrencyPrimaryMark")})` : ""} — ${c.name ?? ""}`,

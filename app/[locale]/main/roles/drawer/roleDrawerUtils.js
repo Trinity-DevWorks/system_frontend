@@ -25,17 +25,17 @@ export function requiredFieldsValid(name) {
 
 /**
  * @param {import("antd").FormInstance} form
- * @param {{ name: string; description: string; active: boolean }} defaults
+ * @param {{ name: string; description: string; is_active: boolean }} defaults
  */
 export function isCreateDirtyVsDefaults(form, defaults) {
   const v = form.getFieldsValue(true);
   const name = String(v.name ?? "").trim();
   const description = String(v.description ?? "").trim();
-  const isActive = v.active !== false;
+  const isActive = v.is_active !== false;
 
   if (name !== String(defaults.name ?? "").trim()) return true;
   if (description !== String(defaults.description ?? "").trim()) return true;
-  if (isActive !== Boolean(defaults.active)) return true;
+  if (isActive !== Boolean(defaults.is_active)) return true;
   return false;
 }
 
@@ -47,12 +47,12 @@ export function isEditDirtyVsLoaded(form, row) {
   const v = form.getFieldsValue(true);
   const name = String(v.name ?? "").trim();
   const description = String(v.description ?? "").trim();
-  const isActive = v.active !== false;
+  const isActive = v.is_active !== false;
   const rowDesc = row.description == null ? "" : String(row.description).trim();
 
   if (name !== String(row.name ?? "").trim()) return true;
   if (description !== rowDesc) return true;
-  if (isActive !== Boolean(row.active)) return true;
+  if (isActive !== Boolean(row.is_active)) return true;
   return false;
 }
 
@@ -62,7 +62,7 @@ export function toRoleCacheRow(row) {
     id: row.id,
     name: row.name,
     description: row.description ?? null,
-    active: row.active,
+    is_active: row.is_active,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -91,6 +91,6 @@ export function roleFormValuesToPayload(values) {
   return {
     name: String(values.name ?? "").trim(),
     description,
-    active: Boolean(values.active),
+    is_active: Boolean(values.is_active),
   };
 }

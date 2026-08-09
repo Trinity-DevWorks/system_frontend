@@ -57,6 +57,7 @@ export default function VatGroupDrawer({
       name: "",
       percentage: 0,
       is_default: false,
+      is_active: true,
     }),
     [],
   );
@@ -68,6 +69,7 @@ export default function VatGroupDrawer({
       name: r.name,
       percentage: Number(r.percentage ?? 0),
       is_default: Boolean(r.is_default),
+      is_active: r.is_active !== false,
     }),
     [],
   );

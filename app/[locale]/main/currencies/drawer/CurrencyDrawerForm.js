@@ -55,7 +55,7 @@ export default function CurrencyDrawerForm({ form, readOnly, t }) {
                 <Form.Item name="symbol" label={t("fieldSymbol")} rules={[{ max: 16, message: t("fieldSymbolMax") }]}>
                   <Input autoComplete="off" placeholder={t("fieldSymbolPlaceholder")} />
                 </Form.Item>
-                <Form.Item name="active" label={t("fieldActive")} valuePropName="checked">
+                <Form.Item name="is_active" label={t("fieldActive")} valuePropName="checked">
                   <Switch checkedChildren={t("activeYes")} unCheckedChildren={t("activeNo")} />
                 </Form.Item>
                 <Form.Item name="is_primary" label={t("fieldPrimary")} valuePropName="checked">

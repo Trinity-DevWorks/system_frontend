@@ -24,6 +24,7 @@ import AppSidebar from "./sidebar/AppSidebar";
 import { decorateMenuItemsWithBookmarkStars } from "./sidebar/decorate-menu-bookmark-stars";
 import { filterMenuItemsByQuery } from "./sidebar/filter-nav-items";
 import {
+  ROUTES,
   buildMainNavItems,
   findNavLabelForPath,
   selectedKeysForPath,
@@ -159,6 +160,12 @@ export default function AppShell({ children }) {
     [router],
   );
 
+  const settingsActive = pathname === ROUTES.settings || pathname.startsWith(`${ROUTES.settings}/`);
+
+  const handleSettings = useCallback(() => {
+    router.push(ROUTES.settings);
+  }, [router]);
+
   const handleLogout = async () => {
     const host =
       typeof window !== "undefined" ? window.location.hostname : "";
@@ -199,6 +206,9 @@ export default function AppShell({ children }) {
           brand={t("brand")}
           expandLabel={t("expandSidebar")}
           collapseLabel={t("collapseSidebar")}
+          onSettings={handleSettings}
+          settingsLabel={t("navSettings")}
+          settingsActive={settingsActive}
           onLogout={handleLogout}
           logoutLabel={t("logout")}
           searchPlaceholder={t("searchNavPlaceholder")}

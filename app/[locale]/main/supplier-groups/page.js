@@ -5,7 +5,7 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteSupplierGroup, fetchSupplierGroups } from "@/services/supplierGroupsApi";
 import SupplierGroupDrawer from "./drawer/SupplierGroupDrawer";
-import { getSupplierGroupTableColumns } from "./getSupplierGroupTableColumns";
+import { getSupplierGroupStatusLabel, getSupplierGroupTableColumns } from "./getSupplierGroupTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
@@ -40,6 +40,15 @@ function SupplierGroupsTable() {
       description: getLocalizedApiErrorMessage(tApiErrors, error),
     });
   }, [isError, error, notification, t, tApiErrors]);
+
+  const tableData = useMemo(
+    () =>
+      data.map((row) => ({
+        ...row,
+        is_active_label: getSupplierGroupStatusLabel(row?.is_active, t),
+      })),
+    [data, t],
+  );
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
@@ -181,7 +190,7 @@ function SupplierGroupsTable() {
       <AppDataTable
         tableId="supplier-groups"
         columns={columns}
-        dataSource={data}
+        dataSource={tableData}
         rowKey="id"
         loading={isPending}
         refreshFetching={isFetching}
@@ -189,7 +198,7 @@ function SupplierGroupsTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["id", "code", "name"],
+          searchKeys: ["id", "code", "name", "is_active_label"],
           showAdd: true,
           onAdd: openCreateDrawer,
           showRefresh: true,

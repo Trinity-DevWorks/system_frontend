@@ -1,11 +1,12 @@
 "use client";
 
+import BrandLogo from "@/components/brand/BrandLogo";
 import {
   BookOutlined,
   LeftOutlined,
   LogoutOutlined,
-  RightOutlined,
   SearchOutlined,
+  SettingOutlined,
   StarFilled,
 } from "@ant-design/icons";
 import { Button, Input, Layout, Menu, Tooltip, theme } from "antd";
@@ -30,6 +31,9 @@ export default function AppSidebar({
   brand,
   expandLabel,
   collapseLabel,
+  onSettings,
+  settingsLabel,
+  settingsActive,
   onLogout,
   logoutLabel,
   searchPlaceholder,
@@ -142,19 +146,21 @@ export default function AppSidebar({
         }}
       >
         {collapsed ? (
-          <Tooltip title={expandLabel} placement="right">
-            <Button
-              type="default"
-              icon={<RightOutlined />}
+          <Tooltip title={brand} placement="right">
+            <button
+              type="button"
               onClick={() => setCollapsed((c) => !c)}
               aria-label={expandLabel}
-              className="h-9 w-9 shrink-0 rounded-xl"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent p-0"
               style={{ color: token.colorTextSecondary }}
-            />
+            >
+              <BrandLogo size={28} />
+            </button>
           </Tooltip>
         ) : (
           <>
-            <div className="min-w-0 flex-1 leading-tight">
+            <div className="flex min-w-0 flex-1 items-center gap-2 leading-tight">
+              <BrandLogo size={28} className="shrink-0" />
               <div
                 className="truncate text-sm font-semibold"
                 style={{ color: token.colorText }}
@@ -252,6 +258,44 @@ export default function AppSidebar({
               border: `1px solid ${token.colorBorderSecondary}`,
             }}
           >
+            {collapsed ? (
+              <Tooltip title={settingsLabel} placement="right">
+                <Button
+                  type="text"
+                  icon={<SettingOutlined />}
+                  onClick={onSettings}
+                  aria-label={settingsLabel}
+                  aria-current={settingsActive ? "page" : undefined}
+                  className="h-9 w-full !justify-center rounded-lg font-medium"
+                  style={
+                    settingsActive
+                      ? {
+                          color: token.colorPrimary,
+                          background: token.colorPrimaryBg,
+                        }
+                      : { color: token.colorText }
+                  }
+                />
+              </Tooltip>
+            ) : (
+              <Button
+                type="text"
+                icon={<SettingOutlined />}
+                onClick={onSettings}
+                aria-current={settingsActive ? "page" : undefined}
+                className="h-9 w-full justify-start rounded-lg font-medium"
+                style={
+                  settingsActive
+                    ? {
+                        color: token.colorPrimary,
+                        background: token.colorPrimaryBg,
+                      }
+                    : { color: token.colorText }
+                }
+              >
+                {settingsLabel}
+              </Button>
+            )}
             {collapsed ? (
               <Tooltip title={logoutLabel} placement="right">
                 <Button

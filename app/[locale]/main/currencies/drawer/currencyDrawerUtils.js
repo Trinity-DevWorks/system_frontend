@@ -24,7 +24,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
     "code",
     "iso_code",
     "symbol",
-    "active",
+    "is_active",
     "is_primary",
     "smallest_unit",
     "round_limit",
@@ -33,8 +33,8 @@ export function isCreateDirtyVsDefaults(form, defaults) {
     "allowed_difference_in_payment",
   ];
   for (const k of keys) {
-    const a = k === "active" || k === "is_primary" ? Boolean(v[k]) : numStr(v[k]);
-    const b = k === "active" || k === "is_primary" ? Boolean(defaults[k]) : numStr(defaults[k]);
+    const a = k === "is_active" || k === "is_primary" ? Boolean(v[k]) : numStr(v[k]);
+    const b = k === "is_active" || k === "is_primary" ? Boolean(defaults[k]) : numStr(defaults[k]);
     if (a !== b) return true;
   }
   return false;
@@ -51,7 +51,7 @@ export function isEditDirtyVsLoaded(form, row) {
     ["code", String(v.code ?? "").trim(), String(row.code ?? "").trim()],
     ["iso_code", String(v.iso_code ?? "").trim(), String(row.iso_code ?? "").trim()],
     ["symbol", String(v.symbol ?? "").trim(), String(row.symbol ?? "").trim()],
-    ["active", Boolean(v.active), row.active !== false],
+    ["is_active", Boolean(v.is_active), row.is_active !== false],
     ["is_primary", Boolean(v.is_primary), Boolean(row.is_primary)],
     ["smallest_unit", numStr(v.smallest_unit), numStr(row.smallest_unit)],
     ["round_limit", numStr(v.round_limit), numStr(row.round_limit)],
@@ -88,7 +88,7 @@ export function toCurrencyCacheRow(row) {
     acceptable_amount_overdue: row.acceptable_amount_overdue,
     allowed_difference_in_receipt: row.allowed_difference_in_receipt,
     allowed_difference_in_payment: row.allowed_difference_in_payment,
-    active: row.active,
+    is_active: row.is_active,
     is_primary: row.is_primary,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -120,7 +120,7 @@ export function currencyFormValuesToPayload(values, ctx) {
     iso_code: String(values.iso_code ?? "").trim(),
     symbol:
       values.symbol != null && String(values.symbol).trim() !== "" ? String(values.symbol).trim() : null,
-    active: values.active !== false,
+    is_active: values.is_active !== false,
     is_primary: isPrimary,
     smallest_unit:
       values.smallest_unit != null && values.smallest_unit !== ""

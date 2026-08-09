@@ -68,10 +68,10 @@ export function getUserTableColumns(t, actions = {}) {
     },
     {
       title: t("colStatus"),
-      dataIndex: "active",
-      key: "active",
+      dataIndex: "is_active",
+      key: "is_active",
       width: 96,
-      sorter: (a, b) => Number(b.active) - Number(a.active),
+      sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
       render: (value) => renderActiveInactiveStatus(value, t),
     },
     {
