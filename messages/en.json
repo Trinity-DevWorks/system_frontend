@@ -116,6 +116,8 @@
     "globalSearchAria": "Global search"
   },
   "CompanyProfile": {
+    "edit": "Edit",
+    "cancel": "Cancel",
     "save": "Save changes",
     "saveSuccess": "Company profile updated.",
     "saveError": "Could not update company profile.",
@@ -156,6 +158,8 @@
     "attachmentsUploadError": "Could not upload file."
   },
   "CompanySettings": {
+    "edit": "Edit",
+    "cancel": "Cancel",
     "save": "Save changes",
     "saveSuccess": "Company settings updated.",
     "saveError": "Could not update company settings.",

@@ -116,6 +116,8 @@
     "globalSearchAria": "بحث عام"
   },
   "CompanyProfile": {
+    "edit": "تعديل",
+    "cancel": "إلغاء",
     "save": "حفظ التغييرات",
     "saveSuccess": "تم تحديث ملف الشركة.",
     "saveError": "تعذر تحديث ملف الشركة.",
@@ -156,6 +158,8 @@
     "attachmentsUploadError": "تعذر رفع الملف."
   },
   "CompanySettings": {
+    "edit": "تعديل",
+    "cancel": "إلغاء",
     "save": "حفظ التغييرات",
     "saveSuccess": "تم تحديث إعدادات الشركة.",
     "saveError": "تعذر تحديث إعدادات الشركة.",
