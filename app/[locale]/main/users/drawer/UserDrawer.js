@@ -1,5 +1,6 @@
 "use client";
 
+import UserAvatarSection from "@/components/profile/UserAvatarSection";
 import BranchDrawer from "@/app/[locale]/main/branches/drawer/BranchDrawer";
 import RoleDrawer from "@/app/[locale]/main/roles/drawer/RoleDrawer";
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
@@ -52,6 +53,7 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     () => ({
       name: "",
       email: "",
+      phone: "",
       branch_assignments: [],
       is_active: true,
       password: "",
@@ -65,6 +67,7 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     (r) => ({
       name: r.name,
       email: r.email,
+      phone: typeof r.phone === "string" ? r.phone : "",
       branch_assignments: Array.isArray(r.branch_assignments)
         ? r.branch_assignments.map((row) => ({
             branch_id: Number(row?.branch_id),
@@ -266,6 +269,17 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
   const nestedBranchOpen = open && nestedCreate?.type === "branch";
   const nestedRoleOpen = open && nestedCreate?.type === "role";
 
+  const detailRecord =
+    detailQuery.data && typeof detailQuery.data === "object"
+      ? /** @type {Record<string, unknown>} */ (detailQuery.data)
+      : editSeedRecord && typeof editSeedRecord === "object"
+        ? editSeedRecord
+        : null;
+  const avatarBrief =
+    detailRecord?.avatar && typeof detailRecord.avatar === "object"
+      ? /** @type {{ id: string, file_name?: string, mime_type?: string }} */ (detailRecord.avatar)
+      : null;
+
   return (
     <ResourceCrudDrawer
       title={title}
@@ -298,6 +312,19 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
         />
       }
     >
+      {userId && mode !== "create" ? (
+        <div className="mb-4">
+          <UserAvatarSection
+            userId={userId}
+            avatar={avatarBrief}
+            invalidateQueryKeys={[["tenant", "users"], ["tenant", "auth-me"]]}
+            t={t}
+            tApiErrors={tApiErrors}
+            readOnly={readOnly}
+            size={72}
+          />
+        </div>
+      ) : null}
       <UserDrawerForm
         form={form}
         readOnly={readOnly}
