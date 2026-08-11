@@ -2210,7 +2210,7 @@
     "fieldPhone": "Phone",
     "fieldPhoneMax": "Phone must be at most 32 characters.",
     "avatarTitle": "Avatar",
-    "avatarHint": "Optional. Available after the user is created.",
+    "avatarHint": "Optional. Uploaded when you save the user.",
     "avatarUpload": "Upload photo",
     "avatarReplace": "Replace photo",
     "avatarRemove": "Remove",

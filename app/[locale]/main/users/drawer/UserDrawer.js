@@ -13,7 +13,7 @@ import { fetchTenantUser } from "@/services/tenantUsersApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   USER_CREATE_SAVE_INTENT_EVENT,
   USER_CREATE_SAVE_INTENT_KEY,
@@ -46,8 +46,16 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
   const lastCreateIntent = usePersistedSaveIntent(USER_CREATE_SAVE_INTENT_KEY, USER_CREATE_SAVE_INTENT_EVENT);
   /** @type {[null | { type: "branch" | "role"; rowIndex: number }, Function]} */
   const [nestedCreate, setNestedCreate] = useState(null);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState(/** @type {File | null} */ (null));
+
+  useEffect(() => {
+    if (!open || mode !== "create") {
+      setPendingAvatarFile(null);
+    }
+  }, [open, mode]);
 
   const readOnly = mode === "view";
+  const clearPendingAvatar = useCallback(() => setPendingAvatarFile(null), []);
 
   const defaults = useMemo(
     () => ({
@@ -157,6 +165,8 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     onCreated,
     onSyncCreateDiscardBaseline,
     defaults,
+    pendingAvatarFile,
+    onPendingAvatarCleared: clearPendingAvatar,
   });
 
   const editBaselineForDirty = useMemo(() => {
@@ -170,13 +180,13 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirty();
+    if (mode === "create") return isCreateDirty() || pendingAvatarFile != null;
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
+  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty, pendingAvatarFile]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,
@@ -312,11 +322,13 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
         />
       }
     >
-      {userId && mode !== "create" ? (
+      {mode === "create" || userId ? (
         <div className="mb-4">
           <UserAvatarSection
-            userId={userId}
-            avatar={avatarBrief}
+            userId={mode === "create" ? null : userId}
+            avatar={mode === "create" ? null : avatarBrief}
+            pendingFile={mode === "create" ? pendingAvatarFile : null}
+            onPendingFileChange={mode === "create" ? setPendingAvatarFile : undefined}
             invalidateQueryKeys={[["tenant", "users"], ["tenant", "auth-me"]]}
             t={t}
             tApiErrors={tApiErrors}

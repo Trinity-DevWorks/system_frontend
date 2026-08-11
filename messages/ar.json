@@ -2210,7 +2210,7 @@
     "fieldPhone": "الهاتف",
     "fieldPhoneMax": "يجب ألا يتجاوز رقم الهاتف 32 حرفًا.",
     "avatarTitle": "الصورة الشخصية",
-    "avatarHint": "اختياري. متاح بعد إنشاء المستخدم.",
+    "avatarHint": "اختياري. يُرفع عند حفظ المستخدم.",
     "avatarUpload": "رفع صورة",
     "avatarReplace": "استبدال الصورة",
     "avatarRemove": "إزالة",
