@@ -4,6 +4,7 @@ import AppDataTable from "@/components/tables/AppDataTable";
 import { purchaseOrdersQueryKey } from "@/components/stock/stockQueryCache";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { normalizeEntityId } from "@/lib/entityId";
+import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { cancelPurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, markPurchaseOrderAsSent } from "@/services/purchaseOrdersApi";
 import { fetchSuppliers } from "@/services/suppliersApi";
@@ -27,6 +28,7 @@ function PurchaseOrdersTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("stock");
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [supplierFilter, setSupplierFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -303,14 +305,25 @@ function PurchaseOrdersTable() {
   const columns = useMemo(
     () =>
       getPurchaseOrderTableColumns(t, {
-        onView: openViewDrawer,
-        onEdit: openEditDrawer,
-        onDelete: handleDelete,
-        onCancel: handleCancel,
+        onView: access.canView ? openViewDrawer : undefined,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onDelete: access.canDelete ? handleDelete : undefined,
+        onCancel: access.canEdit ? handleCancel : undefined,
         onDownloadPdf: handleDownloadPdf,
-        onMarkSent: handleMarkSent,
+        onMarkSent: access.canEdit ? handleMarkSent : undefined,
       }),
-    [t, openViewDrawer, openEditDrawer, handleDelete, handleCancel, handleDownloadPdf, handleMarkSent],
+    [
+      t,
+      access.canView,
+      access.canEdit,
+      access.canDelete,
+      openViewDrawer,
+      openEditDrawer,
+      handleDelete,
+      handleCancel,
+      handleDownloadPdf,
+      handleMarkSent,
+    ],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
@@ -383,7 +396,7 @@ function PurchaseOrdersTable() {
           enableClientSearch: true,
           showRefresh: true,
           onRefresh: () => refetch(),
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           addLabel: t("toolbarNewPo"),
           extra: filterToggle,

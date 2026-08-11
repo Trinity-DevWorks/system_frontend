@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteBrand, fetchBrands } from "@/services/brandsApi";
 import BrandDrawer from "./drawer/BrandDrawer";
@@ -17,6 +18,7 @@ function BrandsTable() {
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("brands");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const {
@@ -179,11 +181,11 @@ function BrandsTable() {
   const columns = useMemo(
     () =>
       getBrandTableColumns(t, {
-        onEdit: openEditDrawer,
-        onView: openViewDrawer,
-        onDelete: requestDeleteBrand,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onView: access.canView ? openViewDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteBrand : undefined,
       }),
-    [t, openEditDrawer, openViewDrawer, requestDeleteBrand],
+    [t, access.canEdit, access.canView, access.canDelete, openEditDrawer, openViewDrawer, requestDeleteBrand],
   );
 
   const handleRefresh = async () => {
@@ -216,14 +218,14 @@ function BrandsTable() {
         toolbar={{
           showSearch: true,
           searchKeys: ["code", "name", "id", "is_active_label"],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: handleRefresh,
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1200}

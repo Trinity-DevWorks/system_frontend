@@ -6,51 +6,85 @@ import {
   moduleForPath,
   useTenantModules,
 } from "@/lib/tenant-modules";
+import {
+  matrixAllows,
+  permissionResourceForPath,
+  usePermissions,
+} from "@/lib/permissions";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
 /**
- * Redirects away from routes whose module is not entitled.
- * Waits until assigned-modules have loaded; on fetch error, only core routes stay.
+ * Redirects away from routes whose module is not entitled, or whose
+ * permission matrix lacks view. Waits until modules + permissions have loaded.
  */
 export default function ModuleRouteGuard({ children }) {
   const t = useTranslations("Shell");
   const pathname = usePathname();
   const router = useRouter();
   const { message } = App.useApp();
-  const { moduleSet, isLoading, isError } = useTenantModules();
+  const { moduleSet, isLoading: modulesLoading, isError: modulesError } = useTenantModules();
+  const {
+    matrix,
+    isLoading: permissionsLoading,
+    isError: permissionsError,
+  } = usePermissions();
   const warnedPath = useRef(null);
 
   useEffect(() => {
-    if (isLoading) {
+    if (modulesLoading || permissionsLoading) {
       return;
     }
 
-    const required = moduleForPath(pathname);
-    if (!required || required === CORE_MODULE) {
-      return;
-    }
+    const requiredModule = moduleForPath(pathname);
+    if (requiredModule && requiredModule !== CORE_MODULE) {
+      const entitled = modulesError
+        ? false
+        : moduleSet == null
+          ? true
+          : moduleSet.has(requiredModule);
 
-    const entitled = isError
-      ? false
-      : moduleSet == null
-        ? true
-        : moduleSet.has(required);
-
-    if (entitled) {
-      return;
-    }
-
-    if (warnedPath.current !== pathname) {
-      warnedPath.current = pathname;
-      if (typeof message?.warning === "function") {
-        message.warning(t("moduleNotEntitled"));
+      if (!entitled) {
+        if (warnedPath.current !== pathname) {
+          warnedPath.current = pathname;
+          if (typeof message?.warning === "function") {
+            message.warning(t("moduleNotEntitled"));
+          }
+        }
+        router.replace("/main/overview");
+        return;
       }
     }
 
-    router.replace("/main/overview");
-  }, [isLoading, isError, moduleSet, pathname, router, message, t]);
+    const requiredPermission = permissionResourceForPath(pathname);
+    if (requiredPermission) {
+      // Fail closed on fetch error or empty/missing matrix.
+      const allowed =
+        !permissionsError && matrixAllows(matrix ?? {}, requiredPermission, "view");
+
+      if (!allowed) {
+        if (warnedPath.current !== pathname) {
+          warnedPath.current = pathname;
+          if (typeof message?.warning === "function") {
+            message.warning(t("permissionDenied"));
+          }
+        }
+        router.replace("/main/overview");
+      }
+    }
+  }, [
+    modulesLoading,
+    permissionsLoading,
+    modulesError,
+    permissionsError,
+    moduleSet,
+    matrix,
+    pathname,
+    router,
+    message,
+    t,
+  ]);
 
   return children;
 }

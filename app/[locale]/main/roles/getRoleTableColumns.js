@@ -3,7 +3,7 @@ import { renderActiveInactiveStatus } from "@/components/tables/ActiveStatusBadg
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
-import { isSystemRoleName } from "./drawer/roleDrawerUtils";
+import { isOwnerRoleName, isSystemRoleName } from "./drawer/roleDrawerUtils";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
@@ -90,6 +90,7 @@ export function getRoleTableColumns(t, actions = {}) {
       align: "center",
       render: (_, record) => {
         const systemRole = isSystemRoleName(record?.name);
+        const ownerRole = isOwnerRoleName(record?.name);
         return (
           <Dropdown
             trigger={["click"]}
@@ -106,7 +107,7 @@ export function getRoleTableColumns(t, actions = {}) {
                   key: "edit",
                   label: t("actionEdit"),
                   icon: <EditOutlined />,
-                  disabled: !onEdit,
+                  disabled: !onEdit || ownerRole,
                   onClick: () => onEdit?.(record),
                 },
                 { type: "divider" },

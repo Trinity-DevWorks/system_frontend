@@ -1,6 +1,7 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
+import { useResourceAccess } from "@/lib/permissions";
 import { App } from "antd";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -15,6 +16,7 @@ function ItemsTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
+  const access = useResourceAccess("items");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   const { tableData, isPending, refetch, handleRefresh, refreshFetching } = useItemsTableQuery({
@@ -42,11 +44,11 @@ function ItemsTable() {
   const columns = useMemo(
     () =>
       getItemTableColumns(t, {
-        onEdit: drawer.openEditDrawer,
-        onView: drawer.openViewDrawer,
-        onDelete: requestDeleteItem,
+        onEdit: access.canEdit ? drawer.openEditDrawer : undefined,
+        onView: access.canView ? drawer.openViewDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteItem : undefined,
       }),
-    [t, drawer.openEditDrawer, drawer.openViewDrawer, requestDeleteItem],
+    [t, access.canEdit, access.canView, access.canDelete, drawer.openEditDrawer, drawer.openViewDrawer, requestDeleteItem],
   );
 
   return (
@@ -63,14 +65,18 @@ function ItemsTable() {
         toolbar={{
           showSearch: true,
           searchKeys: ["sku", "item_code", "name", "item_type_label", "category.name", "brand.name", "is_active_label"],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: drawer.openCreateDrawer,
           showRefresh: true,
           onRefresh: handleRefresh,
         }}
-        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys, columnWidth: 48 }}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={
+          access.canDelete
+            ? { selectedRowKeys, onChange: setSelectedRowKeys, columnWidth: 48 }
+            : false
+        }
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1000}

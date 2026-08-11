@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { downloadAuditsCsv } from "@/services/auditsApi";
 import { DownloadOutlined } from "@ant-design/icons";
@@ -27,6 +28,7 @@ function AuditLogTable() {
   const t = useTranslations("AuditLog");
   const tApiErrors = useTranslations("ApiErrors");
   const { notification } = App.useApp();
+  const access = useResourceAccess("audits");
 
   const [eventFilter, setEventFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [auditableTypeFilter, setAuditableTypeFilter] = useState(
@@ -128,9 +130,9 @@ function AuditLogTable() {
   const columns = useMemo(
     () =>
       getAuditLogTableColumns(t, {
-        onView: (record) => setDetailRecord(record),
+        onView: access.canView ? (record) => setDetailRecord(record) : undefined,
       }),
-    [t],
+    [t, access.canView],
   );
 
   const { toggle: filterToggle, filterBar } = useAuditLogFilters({
@@ -259,13 +261,15 @@ function AuditLogTable() {
           extra: (
             <Space size={4} align="center">
               {filterToggle}
-              <Button
-                icon={<DownloadOutlined />}
-                loading={exporting}
-                onClick={handleExportCsv}
-              >
-                {t("exportCsv")}
-              </Button>
+              {access.canExport ? (
+                <Button
+                  icon={<DownloadOutlined />}
+                  loading={exporting}
+                  onClick={handleExportCsv}
+                >
+                  {t("exportCsv")}
+                </Button>
+              ) : null}
             </Space>
           ),
           filterBar,

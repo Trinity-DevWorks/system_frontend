@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteCurrency, fetchCurrencies } from "@/services/currenciesApi";
 import { SwapOutlined } from "@ant-design/icons";
@@ -20,6 +21,7 @@ function CurrenciesTable() {
   const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("currencies");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
     data = [],
@@ -173,12 +175,21 @@ function CurrenciesTable() {
   const columns = useMemo(
     () =>
       getCurrencyTableColumns(t, {
-        onView: openViewDrawer,
-        onEdit: openEditDrawer,
-        onDelete: requestDeleteCurrency,
-        onRateHistory: openRateHistory,
+        onView: access.canView ? openViewDrawer : undefined,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteCurrency : undefined,
+        onRateHistory: access.canView ? openRateHistory : undefined,
       }),
-    [t, openViewDrawer, openEditDrawer, requestDeleteCurrency, openRateHistory],
+    [
+      t,
+      access.canView,
+      access.canEdit,
+      access.canDelete,
+      openViewDrawer,
+      openEditDrawer,
+      requestDeleteCurrency,
+      openRateHistory,
+    ],
   );
 
   const rowSelection = {
@@ -201,19 +212,19 @@ function CurrenciesTable() {
         toolbar={{
           showSearch: true,
           searchKeys: ["id", "code", "iso_code", "name", "symbol"],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: () => refetch(),
-          extra: (
+          extra: access.canEdit ? (
             <Button icon={<SwapOutlined />} onClick={() => setExchangeOpen(true)}>
               {t("exchangeRatesButton")}
             </Button>
-          ),
+          ) : undefined,
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1280}
