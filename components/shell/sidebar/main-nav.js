@@ -62,6 +62,7 @@ export const ROUTES = {
   settings: "/main/settings",
   settingsCompanyProfile: "/main/settings/company-profile",
   settingsCompanySettings: "/main/settings/company-settings",
+  profile: "/main/profile",
   branches: "/main/branches",
   users: "/main/users",
   roles: "/main/roles",

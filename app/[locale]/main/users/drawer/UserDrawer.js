@@ -1,5 +1,6 @@
 "use client";
 
+import UserAvatarSection from "@/components/profile/UserAvatarSection";
 import BranchDrawer from "@/app/[locale]/main/branches/drawer/BranchDrawer";
 import RoleDrawer from "@/app/[locale]/main/roles/drawer/RoleDrawer";
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
@@ -12,7 +13,7 @@ import { fetchTenantUser } from "@/services/tenantUsersApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   USER_CREATE_SAVE_INTENT_EVENT,
   USER_CREATE_SAVE_INTENT_KEY,
@@ -45,13 +46,22 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
   const lastCreateIntent = usePersistedSaveIntent(USER_CREATE_SAVE_INTENT_KEY, USER_CREATE_SAVE_INTENT_EVENT);
   /** @type {[null | { type: "branch" | "role"; rowIndex: number }, Function]} */
   const [nestedCreate, setNestedCreate] = useState(null);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState(/** @type {File | null} */ (null));
+
+  useEffect(() => {
+    if (!open || mode !== "create") {
+      setPendingAvatarFile(null);
+    }
+  }, [open, mode]);
 
   const readOnly = mode === "view";
+  const clearPendingAvatar = useCallback(() => setPendingAvatarFile(null), []);
 
   const defaults = useMemo(
     () => ({
       name: "",
       email: "",
+      phone: "",
       branch_assignments: [],
       is_active: true,
       password: "",
@@ -65,6 +75,7 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     (r) => ({
       name: r.name,
       email: r.email,
+      phone: typeof r.phone === "string" ? r.phone : "",
       branch_assignments: Array.isArray(r.branch_assignments)
         ? r.branch_assignments.map((row) => ({
             branch_id: Number(row?.branch_id),
@@ -154,6 +165,8 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     onCreated,
     onSyncCreateDiscardBaseline,
     defaults,
+    pendingAvatarFile,
+    onPendingAvatarCleared: clearPendingAvatar,
   });
 
   const editBaselineForDirty = useMemo(() => {
@@ -167,13 +180,13 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirty();
+    if (mode === "create") return isCreateDirty() || pendingAvatarFile != null;
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
+  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty, pendingAvatarFile]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,
@@ -266,6 +279,17 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
   const nestedBranchOpen = open && nestedCreate?.type === "branch";
   const nestedRoleOpen = open && nestedCreate?.type === "role";
 
+  const detailRecord =
+    detailQuery.data && typeof detailQuery.data === "object"
+      ? /** @type {Record<string, unknown>} */ (detailQuery.data)
+      : editSeedRecord && typeof editSeedRecord === "object"
+        ? editSeedRecord
+        : null;
+  const avatarBrief =
+    detailRecord?.avatar && typeof detailRecord.avatar === "object"
+      ? /** @type {{ id: string, file_name?: string, mime_type?: string }} */ (detailRecord.avatar)
+      : null;
+
   return (
     <ResourceCrudDrawer
       title={title}
@@ -298,6 +322,21 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
         />
       }
     >
+      {mode === "create" || userId ? (
+        <div className="mb-4">
+          <UserAvatarSection
+            userId={mode === "create" ? null : userId}
+            avatar={mode === "create" ? null : avatarBrief}
+            pendingFile={mode === "create" ? pendingAvatarFile : null}
+            onPendingFileChange={mode === "create" ? setPendingAvatarFile : undefined}
+            invalidateQueryKeys={[["tenant", "users"], ["tenant", "auth-me"]]}
+            t={t}
+            tApiErrors={tApiErrors}
+            readOnly={readOnly}
+            size={72}
+          />
+        </div>
+      ) : null}
       <UserDrawerForm
         form={form}
         readOnly={readOnly}

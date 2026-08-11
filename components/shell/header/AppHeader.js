@@ -19,13 +19,14 @@ import { useMemo } from "react";
 import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import AppBreadcrumb from "./AppBreadcrumb";
 import BranchSwitcher from "./BranchSwitcher";
+import HeaderProfileAvatar from "./HeaderProfileAvatar";
 
 const { Header } = Layout;
 const SHELL_CHROME_HEIGHT_PX = 56;
 const shellIconBtnClass =
   "inline-flex h-9 w-9 items-center justify-center rounded-lg shadow-sm";
 const profileIconBtnClass =
-  "inline-flex h-9 w-9 items-center justify-center rounded-full shadow-sm";
+  "inline-flex h-9 w-9 min-w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border-0 bg-transparent p-0 shadow-sm leading-none";
 
 export default function AppHeader({
   colorBgContainer,
@@ -116,6 +117,10 @@ export default function AppHeader({
   const onProfileMenuClick = ({ key }) => {
     if (key === "logout") {
       onLogout?.();
+      return;
+    }
+    if (key === "profile") {
+      router.push("/main/profile");
     }
   };
 
@@ -224,14 +229,20 @@ export default function AppHeader({
           placement="bottomRight"
           trigger={["click"]}
         >
-          <Button
-            type="default"
+          <button
+            type="button"
             className={profileIconBtnClass}
             aria-label={tShell("profileMenu")}
             title={tShell("profile")}
+            style={{
+              width: 36,
+              height: 36,
+              border: `1px solid ${token.colorBorder}`,
+              background: token.colorBgContainer,
+            }}
           >
-            <UserOutlined style={{ color: token.colorTextSecondary }} />
-          </Button>
+            <HeaderProfileAvatar size={34} />
+          </button>
         </Dropdown>
         </Space>
       </div>
