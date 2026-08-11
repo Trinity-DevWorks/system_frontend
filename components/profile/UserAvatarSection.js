@@ -2,7 +2,6 @@
 
 import {
   deleteUserAttachment,
-  setUserAttachmentPrimary,
   uploadUserAttachment,
   userAvatarPreviewQueryKey,
   viewUserAttachmentBlob,
@@ -23,6 +22,7 @@ const MAX_ATTACHMENT_BYTES = 15360 * 1024;
  *
  * Create mode (no `userId`): stages a local `pendingFile` until the parent saves the user.
  * Edit/profile mode: uploads immediately via the attachments API.
+ * Backend replaces any previous avatar on store (single-image slot).
  *
  * @param {{
  *   userId: string | null | undefined;
@@ -87,15 +87,58 @@ export default function UserAvatarSection({
         uploaded && typeof uploaded === "object" && "id" in uploaded
           ? String(/** @type {{ id: unknown }} */ (uploaded).id)
           : null;
-      if (id && id !== avatarId) {
-        await setUserAttachmentPrimary(/** @type {string} */ (userId), id);
+      if (id) {
+        queryClient.setQueryData(userAvatarPreviewQueryKey(id), file);
       }
       return uploaded;
     },
-    onSuccess: async () => {
+    onSuccess: async (uploaded) => {
       message.success(t("avatarUploadSuccess"));
+      const brief =
+        uploaded && typeof uploaded === "object" && "id" in uploaded
+          ? {
+              id: String(/** @type {{ id: unknown }} */ (uploaded).id),
+              file_name:
+                typeof /** @type {{ file_name?: unknown }} */ (uploaded).file_name ===
+                "string"
+                  ? /** @type {{ file_name: string }} */ (uploaded).file_name
+                  : undefined,
+              mime_type:
+                typeof /** @type {{ mime_type?: unknown }} */ (uploaded).mime_type ===
+                "string"
+                  ? /** @type {{ mime_type: string }} */ (uploaded).mime_type
+                  : undefined,
+            }
+          : null;
+
+      if (userId && brief?.id) {
+        queryClient.setQueryData(["tenant", "users", userId], (old) => {
+          if (!old || typeof old !== "object") return old;
+          return { ...old, avatar: brief };
+        });
+        queryClient.setQueryData(["tenant", "users"], (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((row) =>
+            row && typeof row === "object" && String(row.id) === String(userId)
+              ? { ...row, avatar: brief }
+              : row,
+          );
+        });
+        queryClient.setQueryData(["tenant", "auth-me"], (old) => {
+          if (!old || typeof old !== "object") return old;
+          if (String(/** @type {{ id?: unknown }} */ (old).id) !== String(userId)) {
+            return old;
+          }
+          return { ...old, avatar: brief };
+        });
+      }
+
       await invalidateRelated();
-      queryClient.invalidateQueries({ queryKey: ["user-avatar-preview"] });
+      if (avatarId && avatarId !== brief?.id) {
+        queryClient.removeQueries({
+          queryKey: userAvatarPreviewQueryKey(avatarId),
+        });
+      }
     },
     onError: (err) => {
       message.error(
@@ -113,6 +156,27 @@ export default function UserAvatarSection({
       ),
     onSuccess: async () => {
       message.success(t("avatarRemoveSuccess"));
+      if (userId) {
+        queryClient.setQueryData(["tenant", "users", userId], (old) => {
+          if (!old || typeof old !== "object") return old;
+          return { ...old, avatar: null };
+        });
+        queryClient.setQueryData(["tenant", "users"], (old) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((row) =>
+            row && typeof row === "object" && String(row.id) === String(userId)
+              ? { ...row, avatar: null }
+              : row,
+          );
+        });
+        queryClient.setQueryData(["tenant", "auth-me"], (old) => {
+          if (!old || typeof old !== "object") return old;
+          if (String(/** @type {{ id?: unknown }} */ (old).id) !== String(userId)) {
+            return old;
+          }
+          return { ...old, avatar: null };
+        });
+      }
       await invalidateRelated();
       queryClient.removeQueries({
         queryKey: userAvatarPreviewQueryKey(avatarId),
@@ -193,7 +257,7 @@ export default function UserAvatarSection({
                     title: t("avatarRemoveConfirmTitle"),
                     okText: t("avatarRemoveConfirmOk"),
                     cancelText: t("avatarRemoveConfirmCancel"),
-                    onOk: () => removeMutation.mutate(),
+                    onOk: () => removeMutation.mutateAsync(),
                   });
                 }}
               >

@@ -4,7 +4,6 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import {
-  setUserAttachmentPrimary,
   uploadUserAttachment,
   userAvatarPreviewQueryKey,
 } from "@/services/userAttachmentsApi";
@@ -87,9 +86,6 @@ export function useUserDrawerMutations({
         const uploaded = await uploadUserAttachment(userId, file);
         const brief = attachmentToAvatarBrief(uploaded);
         if (brief?.id) {
-          if (!uploaded || typeof uploaded !== "object" || uploaded.is_primary !== true) {
-            await setUserAttachmentPrimary(userId, brief.id);
-          }
           queryClient.setQueryData(userAvatarPreviewQueryKey(brief.id), file);
           return { ...record, avatar: brief };
         }
