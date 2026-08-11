@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteCustomer, fetchCustomers } from "@/services/customersApi";
@@ -18,6 +19,7 @@ function CustomersTable() {
   const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("customers");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
     data = [],
@@ -174,11 +176,11 @@ function CustomersTable() {
   const columns = useMemo(
     () =>
       getCustomerTableColumns(t, {
-        onView: openViewDrawer,
-        onEdit: openEditDrawer,
-        onDelete: requestDeleteCustomer,
+        onView: access.canView ? openViewDrawer : undefined,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteCustomer : undefined,
       }),
-    [openEditDrawer, openViewDrawer, requestDeleteCustomer, t],
+    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, requestDeleteCustomer],
   );
 
   const rowSelection = {
@@ -208,14 +210,14 @@ function CustomersTable() {
             "email",
             "status_label",
           ],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: () => refetch(),
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1280}

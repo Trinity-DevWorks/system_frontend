@@ -2,6 +2,10 @@
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { BRANCH_CONTEXT_QUERY_KEY, setActiveBranchId } from "@/lib/active-branch";
+import {
+  normalizePermissionMatrix,
+  PERMISSIONS_QUERY_KEY,
+} from "@/lib/permissions";
 import { fetchBranchContext, switchBranch } from "@/services/branchContextApi";
 import {
   PURCHASE_ORDERS_QUERY_KEY,
@@ -40,6 +44,17 @@ export default function BranchSwitcher() {
     }
   }, [contextQuery.data?.active_branch_id]);
 
+  // Keep client RBAC matrix aligned when branch context is loaded/refetched.
+  useEffect(() => {
+    const permissions = contextQuery.data?.permissions;
+    if (permissions != null) {
+      queryClient.setQueryData(
+        PERMISSIONS_QUERY_KEY,
+        normalizePermissionMatrix(permissions),
+      );
+    }
+  }, [contextQuery.data?.permissions, queryClient]);
+
   const list = Array.isArray(contextQuery.data?.accessible_branches)
     ? contextQuery.data.accessible_branches
     : [];
@@ -65,7 +80,16 @@ export default function BranchSwitcher() {
     mutationFn: (branchId) => switchBranch(branchId),
     onSuccess: (data, branchId) => {
       setActiveBranchId(branchId);
+      const permissions = data?.permissions;
       queryClient.setQueryData(BRANCH_CONTEXT_QUERY_KEY, data);
+      if (permissions != null) {
+        queryClient.setQueryData(
+          PERMISSIONS_QUERY_KEY,
+          normalizePermissionMatrix(permissions),
+        );
+      } else {
+        queryClient.invalidateQueries({ queryKey: PERMISSIONS_QUERY_KEY });
+      }
       queryClient.invalidateQueries({ queryKey: ["tenant", "warehouses"] });
       queryClient.invalidateQueries({ queryKey: ["tenant", "salesmen"] });
       queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });

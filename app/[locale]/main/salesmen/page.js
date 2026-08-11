@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteSalesman, fetchSalesmen } from "@/services/salesmenApi";
@@ -18,6 +19,7 @@ function SalesmenTable() {
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("salesmen");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
     data = [],
@@ -174,11 +176,11 @@ function SalesmenTable() {
   const columns = useMemo(
     () =>
       getSalesmanTableColumns(t, {
-        onView: openViewDrawer,
-        onEdit: openEditDrawer,
-        onDelete: requestDeleteSalesman,
+        onView: access.canView ? openViewDrawer : undefined,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteSalesman : undefined,
       }),
-    [t, openViewDrawer, openEditDrawer, requestDeleteSalesman],
+    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, requestDeleteSalesman],
   );
 
   const rowSelection = {
@@ -210,14 +212,14 @@ function SalesmenTable() {
             "commission_type",
             "is_active_label",
           ],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: () => refetch(),
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1460}

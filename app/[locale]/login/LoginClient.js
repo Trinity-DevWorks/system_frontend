@@ -9,7 +9,12 @@ import { routing } from "@/i18n/routing";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
 import { BRANCH_CONTEXT_QUERY_KEY, setActiveBranchId } from "@/lib/active-branch";
+import { clearQueryCacheOnAuthChange } from "@/lib/clear-query-cache-on-auth";
 import { tenantModulesQueryKey } from "@/lib/tenant-modules";
+import {
+  normalizePermissionMatrix,
+  PERMISSIONS_QUERY_KEY,
+} from "@/lib/permissions";
 import {
   tenantSettingsQueryKey,
 } from "@/lib/tenant-settings";
@@ -96,6 +101,9 @@ function LoginFormInner({ initialHost }) {
 
       const bearerToken = response?.access_token ?? response?.token;
       if (bearerToken) {
+        // Drop previous principal's cached lists before seeding the new session.
+        clearQueryCacheOnAuthChange(queryClient);
+
         setSessionToken(
           isCentralLogin ? "central" : "tenant",
           bearerToken,
@@ -108,6 +116,11 @@ function LoginFormInner({ initialHost }) {
             setActiveBranchId(activeId);
             queryClient.setQueryData(BRANCH_CONTEXT_QUERY_KEY, branchContext);
           }
+
+          queryClient.setQueryData(
+            PERMISSIONS_QUERY_KEY,
+            normalizePermissionMatrix(response?.permissions),
+          );
 
           try {
             const assigned = await tenantApiService(

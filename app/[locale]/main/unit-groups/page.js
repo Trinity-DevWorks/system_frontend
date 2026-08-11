@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteUnitGroup, fetchUnitGroups } from "@/services/unitGroupsApi";
 import UnitGroupDrawer from "./drawer/UnitGroupDrawer";
@@ -21,6 +22,7 @@ function UnitGroupsTable() {
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("unit_groups");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
     data = [],
@@ -178,11 +180,11 @@ function UnitGroupsTable() {
   const columns = useMemo(
     () =>
       getUnitGroupTableColumns(t, {
-        onView: openViewDrawer,
-        onEdit: openEditDrawer,
-        onDelete: requestDeleteUnitGroup,
+        onView: access.canView ? openViewDrawer : undefined,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteUnitGroup : undefined,
       }),
-    [t, openViewDrawer, openEditDrawer, requestDeleteUnitGroup],
+    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, requestDeleteUnitGroup],
   );
 
   const rowSelection = {
@@ -212,14 +214,14 @@ function UnitGroupsTable() {
             "dimension_type_label",
             "is_active_label",
           ],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: () => refetch(),
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1160}

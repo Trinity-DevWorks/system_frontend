@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteCustomerGroup, fetchCustomerGroups } from "@/services/customerGroupsApi";
 import CustomerGroupDrawer from "./drawer/CustomerGroupDrawer";
@@ -17,6 +18,7 @@ function CustomerGroupsTable() {
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("customer_groups");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
     data = [],
@@ -172,11 +174,11 @@ function CustomerGroupsTable() {
   const columns = useMemo(
     () =>
       getCustomerGroupTableColumns(t, {
-        onView: openViewDrawer,
-        onEdit: openEditDrawer,
-        onDelete: requestDeleteCustomerGroup,
+        onView: access.canView ? openViewDrawer : undefined,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteCustomerGroup : undefined,
       }),
-    [t, openViewDrawer, openEditDrawer, requestDeleteCustomerGroup],
+    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, requestDeleteCustomerGroup],
   );
 
   const rowSelection = {
@@ -199,14 +201,14 @@ function CustomerGroupsTable() {
         toolbar={{
           showSearch: true,
           searchKeys: ["id", "code", "name", "is_active_label"],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: () => refetch(),
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1080}

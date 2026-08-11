@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { PURCHASE_ORDERS_QUERY_KEY } from "@/components/stock/stockQueryCache";
+import { useResourceAccess } from "@/lib/permissions";
 import { App, Button, Checkbox, Form, Select } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
@@ -38,6 +39,7 @@ function PurchasingAlertsTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification, message } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("stock");
 
   const [warehouseFilter, setWarehouseFilter] = useState(/** @type {number | undefined} */ (undefined));
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -161,9 +163,9 @@ function PurchasingAlertsTable() {
   const columns = useMemo(
     () =>
       getPurchasingAlertTableColumns(t, {
-        onCreatePo: handleCreatePoFromAlert,
+        onCreatePo: access.canAdd ? handleCreatePoFromAlert : undefined,
       }),
-    [t, handleCreatePoFromAlert],
+    [t, access.canAdd, handleCreatePoFromAlert],
   );
 
   const handleOpenBulkCreate = useCallback(() => {
@@ -265,8 +267,8 @@ function PurchasingAlertsTable() {
         refreshFetching={isFetching}
         onRetry={() => refetch()}
         emptyText={t("purchasingAlertsEmpty")}
-        rowSelection={rowSelection}
-        selectionBarExtra={selectionBarExtra}
+        rowSelection={access.canAdd ? rowSelection : false}
+        selectionBarExtra={access.canAdd ? selectionBarExtra : undefined}
         toolbar={{
           showSearch: true,
           searchKeys: ["item_sku", "item_name", "warehouse_name"],

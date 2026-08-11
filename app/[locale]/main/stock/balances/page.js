@@ -1,6 +1,7 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
+import { useResourceAccess } from "@/lib/permissions";
 import { App, Checkbox, Form, Select } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
@@ -15,6 +16,7 @@ function StockBalancesTable() {
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
   const { notification } = App.useApp();
+  const access = useResourceAccess("stock");
 
   const [warehouseFilter, setWarehouseFilter] = useState(/** @type {number | undefined} */ (undefined));
   const [onlyWithStock, setOnlyWithStock] = useState(true);
@@ -90,13 +92,15 @@ function StockBalancesTable() {
   const columns = useMemo(
     () =>
       getStockBalanceTableColumns(t, {
-        onAdjust: (record) =>
-          openAdjustment({
-            warehouseId: record?.warehouse_id,
-            itemId: record?.item_id != null ? String(record.item_id) : undefined,
-          }),
+        onAdjust: access.canAdd
+          ? (record) =>
+              openAdjustment({
+                warehouseId: record?.warehouse_id,
+                itemId: record?.item_id != null ? String(record.item_id) : undefined,
+              })
+          : undefined,
       }),
-    [t, openAdjustment],
+    [t, access.canAdd, openAdjustment],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
@@ -138,7 +142,7 @@ function StockBalancesTable() {
           enableClientSearch: true,
           showRefresh: true,
           onRefresh: () => refetch(),
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: () => openAdjustment(),
           addLabel: t("toolbarAdjust"),
           extra: filterToggle,

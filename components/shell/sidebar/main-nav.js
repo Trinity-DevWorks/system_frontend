@@ -33,7 +33,8 @@ const SECTION_DIVIDER_CLASS =
  * - `key` for navigation must be the path you pass to `router.push` (e.g. "/main/overview").
  *   Selection uses longest prefix match on those path keys (see `selectedKeysForPath`).
  * - Set `module` on leaves (and optionally groups) to gate by tenant entitlements.
- * - For permission-gated items, wrap the push in `if (canSee) { items.push(...) }` or filter in `buildMainNavItems`.
+ * - Set `permission` on leaves to gate by RBAC view (`resource_key` from config/rbac.php).
+ * - Filtering is applied in `buildMainNavItems` (modules then permissions).
  */
 export const ROUTES = {
   overview: "/main/overview",
@@ -99,8 +100,44 @@ function filterNavByModules(items, moduleSet) {
 }
 
 /**
+ * Hide leaves the user cannot view. Groups with no remaining children are dropped.
+ * Items without `permission` stay (e.g. overview).
+ *
+ * @param {import("antd").MenuProps["items"]} items
+ * @param {(resource: string, action: string) => boolean} [can]
+ * @returns {import("antd").MenuProps["items"]}
+ */
+function filterNavByPermissions(items, can) {
+  if (typeof can !== "function") {
+    return items;
+  }
+
+  const out = [];
+  for (const item of items ?? []) {
+    if (!item) continue;
+
+    if (item.children?.length) {
+      const children = filterNavByPermissions(item.children, can);
+      if (!children?.length) continue;
+      out.push({ ...item, children });
+      continue;
+    }
+
+    const resource = item.permission;
+    if (typeof resource === "string" && resource && !can(resource, "view")) {
+      continue;
+    }
+    out.push(item);
+  }
+  return out;
+}
+
+/**
  * @param {(key: string) => string} t Shell translations
- * @param {{ moduleSet?: Set<string> | null }} [options]
+ * @param {{
+ *   moduleSet?: Set<string> | null,
+ *   can?: (resource: string, action: string) => boolean,
+ * }} [options]
  * @returns {import("antd").MenuProps["items"]}
  */
 export function buildMainNavItems(t, options = {}) {
@@ -123,60 +160,70 @@ export function buildMainNavItems(t, options = {}) {
           icon: <TrademarkOutlined />,
           label: t("navBrands"),
           module: "master_data",
+          permission: "brands",
         },
         {
           key: ROUTES.categories,
           icon: <TagsOutlined />,
           label: t("navCategories"),
           module: "master_data",
+          permission: "categories",
         },
         {
           key: ROUTES.vatGroups,
           icon: <GoldOutlined />,
           label: t("navVatGroups"),
           module: "master_data",
+          permission: "vat_groups",
         },
         {
           key: ROUTES.unitGroups,
           icon: <DeploymentUnitOutlined />,
           label: t("navUnitGroups"),
           module: "inventory",
+          permission: "unit_groups",
         },
         {
           key: ROUTES.unitOfMeasurements,
           icon: <DeploymentUnitOutlined />,
           label: t("navUnitOfMeasurements"),
           module: "inventory",
+          permission: "unit_of_measurements",
         },
         {
           key: ROUTES.warehouses,
           icon: <ShopOutlined />,
           label: t("navWarehouses"),
           module: "inventory",
+          permission: "warehouses",
         },
         {
           key: ROUTES.currencies,
           icon: <GoldOutlined />,
           label: t("navCurrencies"),
           module: "master_data",
+          permission: "currencies",
         },
         {
           key: ROUTES.paymentMethods,
           icon: <CreditCardOutlined />,
           label: t("navPaymentMethods"),
           module: "master_data",
+          permission: "payment_methods",
         },
         {
           key: ROUTES.paymentTerms,
           icon: <FieldTimeOutlined />,
           label: t("navPaymentTerms"),
           module: "master_data",
+          permission: "payment_terms",
         },
         {
           key: ROUTES.salesmen,
           icon: <IdcardOutlined />,
           label: t("navSalesmen"),
           module: "sales",
+          permission: "salesmen",
         },
       ],
     },
@@ -191,12 +238,14 @@ export function buildMainNavItems(t, options = {}) {
           icon: <DropboxOutlined />,
           label: t("navItems"),
           module: "inventory",
+          permission: "items",
         },
         {
           key: ROUTES.stock,
           icon: <ShopOutlined />,
           label: t("navStock"),
           module: "inventory",
+          permission: "stock",
         },
       ],
     },
@@ -211,12 +260,14 @@ export function buildMainNavItems(t, options = {}) {
           icon: <TeamOutlined />,
           label: t("navCustomerGroups"),
           module: "sales",
+          permission: "customer_groups",
         },
         {
           key: ROUTES.customers,
           icon: <UserOutlined />,
           label: t("navCustomers"),
           module: "sales",
+          permission: "customers",
         },
       ],
     },
@@ -231,12 +282,14 @@ export function buildMainNavItems(t, options = {}) {
           icon: <TeamOutlined />,
           label: t("navSupplierGroups"),
           module: "purchasing",
+          permission: "supplier_groups",
         },
         {
           key: ROUTES.suppliers,
           icon: <UserOutlined />,
           label: t("navSuppliers"),
           module: "purchasing",
+          permission: "suppliers",
         },
       ],
     },
@@ -251,36 +304,42 @@ export function buildMainNavItems(t, options = {}) {
           icon: <ApartmentOutlined />,
           label: t("navBranches"),
           module: "core",
+          permission: "branches",
         },
         {
           key: ROUTES.users,
           icon: <UserOutlined />,
           label: t("navUsers"),
           module: "core",
+          permission: "users",
         },
         {
           key: ROUTES.roles,
           icon: <SafetyCertificateOutlined />,
           label: t("navRoles"),
           module: "core",
+          permission: "roles",
         },
         {
           key: ROUTES.permissions,
           icon: <FileSearchOutlined />,
           label: t("navPermissions"),
           module: "core",
+          permission: "permissions",
         },
         {
           key: ROUTES.auditLog,
           icon: <HistoryOutlined />,
           label: t("navAuditLog"),
           module: "core",
+          permission: "audits",
         },
       ],
     },
   ];
 
-  return filterNavByModules(items, options.moduleSet);
+  const byModule = filterNavByModules(items, options.moduleSet);
+  return filterNavByPermissions(byModule, options.can);
 }
 
 /**

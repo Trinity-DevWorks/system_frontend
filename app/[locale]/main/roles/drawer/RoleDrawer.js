@@ -15,6 +15,7 @@ import {
   ROLE_CREATE_SAVE_INTENT_KEY,
   isCreateDirtyVsDefaults,
   isEditDirtyVsLoaded,
+  isOwnerRoleName,
   isSystemRoleName,
   requiredFieldsValid,
   toRoleCacheRow,
@@ -91,6 +92,19 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
     return isSystemRoleName(loadedName);
   }, [mode, detailQuery.data, editSeedRecord]);
 
+  const ownerRole = useMemo(() => {
+    if (mode === "create") return false;
+    const loadedName =
+      typeof detailQuery.data?.name === "string"
+        ? detailQuery.data.name
+        : typeof editSeedRecord?.name === "string"
+          ? editSeedRecord.name
+          : "";
+    return isOwnerRoleName(loadedName);
+  }, [mode, detailQuery.data, editSeedRecord]);
+
+  // Owner is immutable even if opened in edit mode (API / deep-link safety).
+  const effectiveReadOnly = readOnly || ownerRole;
   const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
     open,
     mode,
@@ -130,17 +144,17 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
   }, [mode, detailQuery.data, tableSeedMatches, editSeedRecord]);
 
   const shouldConfirmDiscard = useCallback(() => {
-    if (readOnly) return false;
+    if (effectiveReadOnly) return false;
     if (mode === "create") return isCreateDirty();
     if (mode === "edit" && editBaselineForDirty) {
       return isEditDirtyVsLoaded(form, editBaselineForDirty);
     }
     if (mode === "edit") return form.isFieldsTouched(true);
     return false;
-  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
+  }, [effectiveReadOnly, mode, form, isCreateDirty, editBaselineForDirty]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
-    readOnly,
+    readOnly: effectiveReadOnly,
     modal,
     t,
     onClose,
@@ -161,7 +175,7 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
   );
 
   const handleEditSubmit = useCallback(() => {
-    if (readOnly) return;
+    if (effectiveReadOnly || ownerRole) return;
     form
       .validateFields()
       .then((values) => {
@@ -171,10 +185,16 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
         }
       })
       .catch(() => {});
-  }, [readOnly, form, applyPayload, mode, roleId, updateMutation]);
+  }, [effectiveReadOnly, ownerRole, form, applyPayload, mode, roleId, updateMutation]);
+
+  const footerMode = ownerRole && mode !== "create" ? "view" : mode;
 
   const title =
-    mode === "create" ? t("drawerTitleCreate") : mode === "view" ? t("drawerTitleView") : t("drawerTitleEdit");
+    mode === "create"
+      ? t("drawerTitleCreate")
+      : footerMode === "view"
+        ? t("drawerTitleView")
+        : t("drawerTitleEdit");
 
   const showDetailLoading = fetchRemoteDetail && detailQuery.isPending;
 
@@ -214,8 +234,8 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
       skeletonParagraphRows={5}
       footer={
         <ResourceDrawerFooter
-          mode={mode}
-          readOnly={readOnly}
+          mode={footerMode}
+          readOnly={effectiveReadOnly}
           t={t}
           forceClose={forceClose}
           requestClose={requestClose}
@@ -233,7 +253,14 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
         />
       }
     >
-      <RoleDrawerForm form={form} readOnly={readOnly} mode={mode} systemRole={systemRole} t={t} />
+      <RoleDrawerForm
+        form={form}
+        readOnly={effectiveReadOnly}
+        mode={footerMode}
+        systemRole={systemRole}
+        ownerRole={ownerRole}
+        t={t}
+      />
     </ResourceCrudDrawer>
   );
 }

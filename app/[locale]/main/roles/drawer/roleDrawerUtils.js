@@ -7,13 +7,23 @@
 export const ROLE_CREATE_SAVE_INTENT_KEY = "roleDrawer:createSaveIntent";
 export const ROLE_CREATE_SAVE_INTENT_EVENT = "roleDrawer:createSaveIntent:change";
 
-export const SYSTEM_ROLE_NAMES = new Set(["Owner", "Admin"]);
+export const OWNER_ROLE_NAME = "Owner";
+
+export const SYSTEM_ROLE_NAMES = new Set([OWNER_ROLE_NAME, "Admin"]);
 
 /**
  * @param {string} name
  */
 export function isSystemRoleName(name) {
   return SYSTEM_ROLE_NAMES.has(String(name ?? "").trim());
+}
+
+/**
+ * Owner role metadata and permissions are immutable for everyone.
+ * @param {string} name
+ */
+export function isOwnerRoleName(name) {
+  return String(name ?? "").trim() === OWNER_ROLE_NAME;
 }
 
 /**

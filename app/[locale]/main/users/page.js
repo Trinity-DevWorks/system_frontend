@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteTenantUser, fetchTenantUsers } from "@/services/tenantUsersApi";
@@ -18,6 +19,7 @@ function UsersTable() {
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("users");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const {
@@ -208,11 +210,11 @@ function UsersTable() {
   const columns = useMemo(
     () =>
       getUserTableColumns(t, {
-        onEdit: openEditDrawer,
-        onView: openViewDrawer,
-        onDelete: requestDeleteUser,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onView: access.canView ? openViewDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteUser : undefined,
       }),
-    [t, openEditDrawer, openViewDrawer, requestDeleteUser],
+    [t, access.canEdit, access.canView, access.canDelete, openEditDrawer, openViewDrawer, requestDeleteUser],
   );
 
   const handleRefresh = async () => {
@@ -245,14 +247,14 @@ function UsersTable() {
         toolbar={{
           showSearch: true,
           searchKeys: ["name", "email", "role_name", "branches_label", "active_label"],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: handleRefresh,
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1360}
