@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import {
   BellOutlined,
+  DownOutlined,
   GlobalOutlined,
   LogoutOutlined,
   MoonOutlined,
@@ -15,19 +16,21 @@ import {
 } from "@ant-design/icons";
 import { Badge, Button, Dropdown, Input, Layout, Space, theme } from "antd";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { cloneElement, isValidElement, useMemo } from "react";
 import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import { ROUTES, selectedKeysForPath } from "@/components/shell/sidebar/main-nav";
+import { useAuthMe } from "@/lib/auth-me";
 import AppBreadcrumb from "./AppBreadcrumb";
 import BranchSwitcher from "./BranchSwitcher";
 import HeaderProfileAvatar from "./HeaderProfileAvatar";
+import HeaderProfileMenuIdentity from "./HeaderProfileMenuIdentity";
 
 const { Header } = Layout;
 const SHELL_CHROME_HEIGHT_PX = 56;
 const shellIconBtnClass =
   "inline-flex h-9 w-9 items-center justify-center rounded-lg shadow-sm";
-const profileIconBtnClass =
-  "inline-flex h-9 w-9 min-w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border-0 bg-transparent p-0 shadow-sm leading-none";
+const profileChipBtnClass =
+  "inline-flex h-9 max-w-[16rem] shrink-0 items-center gap-2 overflow-hidden rounded-full border-0 bg-transparent p-0 ps-0.5 shadow-sm leading-none lg:pe-2.5";
 const PROFILE_MENU_LOGOUT_KEY = "logout";
 
 export default function AppHeader({
@@ -44,6 +47,8 @@ export default function AppHeader({
   const router = useRouter();
   const { setColorMode, colorMode, resolvedColorMode } = useThemeMode();
   const { token } = theme.useToken();
+  const { me } = useAuthMe();
+  const profileName = typeof me?.name === "string" ? me.name.trim() : "";
 
   const languageMenuItems = useMemo(
     () =>
@@ -239,23 +244,56 @@ export default function AppHeader({
             selectable: true,
             selectedKeys: profileSelectedKeys,
             onClick: onProfileMenuClick,
+            style: { boxShadow: "none" },
           }}
+          popupRender={(menu) => (
+            <div
+              className="w-56 overflow-hidden rounded-lg"
+              style={{
+                backgroundColor: token.colorBgElevated,
+                boxShadow: token.boxShadowSecondary,
+              }}
+            >
+              <HeaderProfileMenuIdentity />
+              <div
+                style={{ borderTop: `1px solid ${token.colorSplit}` }}
+                aria-hidden
+              />
+              {isValidElement(menu)
+                ? cloneElement(menu, {
+                    style: { boxShadow: "none", background: "transparent" },
+                  })
+                : menu}
+            </div>
+          )}
           placement="bottomRight"
           trigger={["click"]}
         >
           <button
             type="button"
-            className={profileIconBtnClass}
+            className={profileChipBtnClass}
             aria-label={tShell("profileMenu")}
-            title={tShell("profile")}
+            title={profileName || tShell("profile")}
             style={{
-              width: 36,
               height: 36,
+              lineHeight: 1,
               border: `1px solid ${token.colorBorder}`,
               background: token.colorBgContainer,
             }}
           >
-            <HeaderProfileAvatar size={34} />
+            <HeaderProfileAvatar size={28} />
+            {profileName ? (
+              <span
+                className="hidden min-w-0 max-w-[9rem] truncate text-sm font-medium lg:block"
+                style={{ color: token.colorText, lineHeight: 1.2 }}
+              >
+                {profileName}
+              </span>
+            ) : null}
+            <DownOutlined
+              className="hidden shrink-0 text-[10px] lg:block"
+              style={{ color: token.colorTextSecondary }}
+            />
           </button>
         </Dropdown>
         </Space>

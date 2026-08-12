@@ -9,7 +9,7 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { updateAuthMe } from "@/services/authMeApi";
 import { EditOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Form, Input, Select, Space, Spin } from "antd";
+import { Alert, App, Button, Card, Form, Input, Select, Space, Spin, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -198,48 +198,83 @@ export default function ProfilePage() {
     me.avatar && typeof me.avatar === "object"
       ? /** @type {{ id: string, file_name?: string, mime_type?: string }} */ (me.avatar)
       : null;
+  const displayName =
+    typeof me.name === "string" && me.name.trim() ? me.name.trim() : "\u2014";
+  const displayEmail = typeof me.email === "string" ? me.email.trim() : "";
+  const displayPhone = typeof me.phone === "string" ? me.phone.trim() : "";
+
+  const actions = !isEditing ? (
+    <Button type="default" icon={<EditOutlined />} onClick={startEditing}>
+      {t("edit")}
+    </Button>
+  ) : (
+    <Space wrap>
+      <Button onClick={cancelEditing} disabled={saveMutation.isPending}>
+        {t("cancel")}
+      </Button>
+      <Button
+        type={isDirty ? "primary" : "default"}
+        disabled={!isDirty}
+        loading={saveMutation.isPending}
+        onClick={() => form.submit()}
+      >
+        {t("save")}
+      </Button>
+    </Space>
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-2xl min-h-0 min-w-0 flex-col gap-4 pb-6 pt-2">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <UserAvatarSection
-            userId={userId}
-            avatar={avatar}
-            invalidateQueryKeys={[AUTH_ME_QUERY_KEY, ["tenant", "users"]]}
-            t={t}
-            tApiErrors={tApiErrors}
-            readOnly={!isEditing}
-          />
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-4">
+            <UserAvatarSection
+              userId={userId}
+              avatar={avatar}
+              invalidateQueryKeys={[AUTH_ME_QUERY_KEY, ["tenant", "users"]]}
+              t={t}
+              tApiErrors={tApiErrors}
+              readOnly={!isEditing}
+              hideLabels
+              size={88}
+            />
+            <div className="min-w-0 flex-1 pt-1">
+              <Typography.Title level={3} className="!mb-1 !mt-0 truncate">
+                {displayName}
+              </Typography.Title>
+              {displayEmail ? (
+                <Typography.Text
+                  type="secondary"
+                  copyable
+                  className="block max-w-full"
+                  ellipsis
+                  aria-label={t("fieldEmail")}
+                >
+                  {displayEmail}
+                </Typography.Text>
+              ) : null}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {roleLabel !== "\u2014" ? <Tag className="!m-0">{roleLabel}</Tag> : null}
+                {displayPhone ? (
+                  <Typography.Text type="secondary" aria-label={t("fieldPhone")}>
+                    {displayPhone}
+                  </Typography.Text>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0">{actions}</div>
         </div>
-        {!isEditing ? (
-          <Button type="default" icon={<EditOutlined />} onClick={startEditing}>
-            {t("edit")}
-          </Button>
-        ) : (
-          <Space wrap>
-            <Button onClick={cancelEditing} disabled={saveMutation.isPending}>
-              {t("cancel")}
-            </Button>
-            <Button
-              type={isDirty ? "primary" : "default"}
-              disabled={!isDirty}
-              loading={saveMutation.isPending}
-              onClick={() => form.submit()}
-            >
-              {t("save")}
-            </Button>
-          </Space>
-        )}
-      </div>
+      </Card>
 
-      <Form
-        form={form}
-        layout="vertical"
-        disabled={!isEditing}
-        onValuesChange={recomputeDirty}
-        onFinish={(values) => saveMutation.mutate(values)}
-      >
+      <Card title={t("accountDetails")}>
+        <Form
+          form={form}
+          layout="vertical"
+          disabled={!isEditing}
+          onValuesChange={recomputeDirty}
+          onFinish={(values) => saveMutation.mutate(values)}
+        >
         <Form.Item
           name="name"
           label={t("fieldName")}
@@ -305,7 +340,8 @@ export default function ProfilePage() {
             </Form.Item>
           </>
         ) : null}
-      </Form>
+        </Form>
+      </Card>
     </div>
   );
 }

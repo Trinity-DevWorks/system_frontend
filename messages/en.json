@@ -125,6 +125,7 @@
   "Profile": {
     "title": "My profile",
     "subtitle": "Your account details for this workspace.",
+    "accountDetails": "Account details",
     "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save changes",
