@@ -218,7 +218,7 @@ export default function UserAvatarSection({
       <div
         className={
           hideLabels
-            ? "flex flex-col items-start gap-2"
+            ? "flex flex-col items-center gap-2"
             : "flex flex-wrap items-center gap-3"
         }
       >
@@ -235,7 +235,7 @@ export default function UserAvatarSection({
           <Avatar size={size} icon={<UserOutlined />} />
         )}
         {canMutate ? (
-          <div className="flex flex-wrap gap-2">
+          <div className={hideLabels ? "flex flex-wrap justify-center gap-2" : "flex flex-wrap gap-2"}>
             <Upload
               accept="image/*"
               showUploadList={false}

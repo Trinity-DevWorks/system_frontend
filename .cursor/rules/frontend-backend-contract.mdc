@@ -1,0 +1,82 @@
+---
+description: Preserve API paths, snake_case fields, response envelopes, error handling, and coordinated backend compatibility.
+alwaysApply: false
+---
+
+# Frontend–Backend Contract
+
+Frontend changes must preserve the established backend API contract.
+
+Backend changes affecting the frontend must be coordinated across both repositories.
+
+## API locations
+
+Central API requests include the `/api` prefix.
+
+Tenant API requests do not use an `/api` prefix.
+
+Do not move or rewrite endpoint paths without checking:
+
+- backend routes
+- frontend services
+- runtime host configuration
+- all consumers
+
+## Response envelope
+
+The backend returns an `ApiResponse` envelope.
+
+The Axios layer unwraps it through existing helpers.
+
+Do not make feature code depend on raw Axios response shapes when services normally return unwrapped data.
+
+## Field naming
+
+Wire fields use snake_case.
+
+Keep form names, payloads, filters, and response access aligned with backend field names.
+
+Do not silently rename fields.
+
+## Special query conventions
+
+Treat special query parameters as feature-specific unless evidence shows otherwise.
+
+Current narrow conventions include:
+
+- `section=full` for customer detail
+- `refresh=1` for brands and categories
+- workflow filters for stock features
+
+Do not generalize these parameters to every resource.
+
+## Error handling
+
+Use existing normalized error helpers.
+
+Preserve backend:
+
+- HTTP status codes
+- validation error structures
+- SCREAMING_SNAKE error codes
+- permission failures
+- missing-module failures
+- domain workflow errors
+
+Do not introduce a one-off error format.
+
+## Coordinated changes
+
+Before changing an existing endpoint:
+
+1. Search `services/` for all consumers.
+2. Search feature pages and hooks for all call sites.
+3. Confirm payload and response dependencies.
+4. Update both frontend and backend when required.
+5. Document breaking changes explicitly.
+
+## Security
+
+Frontend guards improve UX only.
+
+Authentication, module entitlement, validation, and RBAC must still be enforced by the backend.

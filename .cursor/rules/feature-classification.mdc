@@ -1,0 +1,84 @@
+---
+description: Classify frontend features by complexity and follow a comparable existing implementation.
+alwaysApply: true
+---
+
+# Frontend Feature Classification
+
+Before implementing or restructuring a tenant frontend feature, classify it by complexity.
+
+Do not force every feature into the same folder structure or CRUD pattern.
+
+## Feature classes
+
+### Simple Catalog
+
+Examples:
+
+- Payment Methods
+- Payment Terms
+- Brands
+- Categories
+- VAT Groups
+- Warehouses
+
+Typical characteristics:
+
+- Flat list.
+- Small create/edit form.
+- One primary drawer.
+- Full-list API fetch.
+- Client-side table pagination.
+- Optimistic React Query updates are often appropriate.
+
+Use comparable simple catalog features as references.
+
+### Aggregate Entity
+
+Examples:
+
+- Customers
+- Suppliers
+- Items
+- Salesmen
+
+Typical characteristics:
+
+- Main entity plus nested data.
+- Attachments, contacts, addresses, balances, panels, or tabs.
+- More complex drawer structure.
+- Several API services or sub-resource calls.
+- Detail loading may differ from list loading.
+
+Use a comparable aggregate feature rather than copying a simple catalog structure.
+
+### Workflow Feature
+
+Examples:
+
+- Stock Transfers
+- Purchase Orders
+- Stock Adjustments
+
+Typical characteristics:
+
+- Status transitions.
+- Line editors.
+- Posting, cancelling, syncing, or other commands.
+- Filter-aware queries.
+- More complex mutation and cache invalidation behavior.
+- Optimistic list-row updates may be inappropriate.
+
+Use a comparable workflow feature as the primary reference.
+
+## Required workflow
+
+Before creating files:
+
+1. Identify the feature class.
+2. Inspect at least two comparable existing features.
+3. Select the closest reference based on complexity and behavior.
+4. Follow its route, folder, state, API, drawer, and query patterns.
+5. Clearly identify any required deviation.
+
+Prefer an existing pattern over introducing a new frontend architecture.
