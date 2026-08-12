@@ -6,6 +6,7 @@ import {
   PERM_FLAGS,
   applyFlagToRow,
   columnCheckState,
+  rowAllowsFlag,
 } from "./permissionsMatrixUtils";
 
 /**
@@ -81,7 +82,7 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
             <Checkbox
               checked={state.checked}
               indeterminate={state.indeterminate}
-              disabled={readOnly || filteredRows.length === 0}
+              disabled={readOnly || state.applicableCount === 0}
               aria-label={t("selectAllAction", { action: t(`action_${flag}`) })}
               onChange={(e) => setFlagForFiltered(flag, e.target.checked)}
             />
@@ -94,16 +95,21 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
         dataIndex: flag,
         align: /** @type {const} */ ("center"),
         width: 88,
-        render: (value, record) => (
-          <Checkbox
-            checked={Boolean(value)}
-            disabled={readOnly}
-            aria-label={`${String(record.resource_label ?? record.resource_key)} — ${t(`action_${flag}`)}`}
-            onChange={(e) =>
-              setFlag(Number(record.permission_id), flag, e.target.checked)
-            }
-          />
-        ),
+        render: (value, record) =>
+          rowAllowsFlag(record, flag) ? (
+            <Checkbox
+              checked={Boolean(value)}
+              disabled={readOnly}
+              aria-label={`${String(record.resource_label ?? record.resource_key)} — ${t(`action_${flag}`)}`}
+              onChange={(e) =>
+                setFlag(Number(record.permission_id), flag, e.target.checked)
+              }
+            />
+          ) : (
+            <Typography.Text type="secondary" aria-label={t("actionNotApplicable")}>
+              —
+            </Typography.Text>
+          ),
       };
     }),
   ];

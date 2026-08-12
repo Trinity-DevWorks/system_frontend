@@ -2323,6 +2323,7 @@
     "action_can_delete": "حذف",
     "action_can_import": "استيراد",
     "action_can_export": "تصدير",
+    "actionNotApplicable": "غير متاح",
     "selectAllAction": "تبديل الكل — {action}",
     "save": "حفظ التغييرات",
     "discard": "تجاهل",

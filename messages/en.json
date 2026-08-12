@@ -2323,6 +2323,7 @@
     "action_can_delete": "Delete",
     "action_can_import": "Import",
     "action_can_export": "Export",
+    "actionNotApplicable": "Not applicable",
     "selectAllAction": "Toggle all {action}",
     "save": "Save changes",
     "discard": "Discard",

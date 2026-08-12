@@ -34,6 +34,7 @@ const SECTION_DIVIDER_CLASS =
  *   Selection uses longest prefix match on those path keys (see `selectedKeysForPath`).
  * - Set `module` on leaves (and optionally groups) to gate by tenant entitlements.
  * - Set `permission` on leaves to gate by RBAC view (`resource_key` from config/rbac.php).
+ *   Import/export (and any extra action) must also be listed for that resource in rbac.php.
  * - Filtering is applied in `buildMainNavItems` (modules then permissions).
  */
 export const ROUTES = {
