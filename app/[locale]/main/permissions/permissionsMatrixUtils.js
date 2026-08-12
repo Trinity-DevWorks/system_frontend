@@ -1,6 +1,7 @@
 import { isOwnerRoleName } from "../roles/drawer/roleDrawerUtils";
 
 /** @typedef {"can_view" | "can_add" | "can_edit" | "can_delete" | "can_import" | "can_export"} PermFlag */
+/** @typedef {"view" | "add" | "edit" | "delete" | "import" | "export"} PermAction */
 
 /** @type {readonly PermFlag[]} */
 export const PERM_FLAGS = Object.freeze([
@@ -12,6 +13,26 @@ export const PERM_FLAGS = Object.freeze([
   "can_export",
 ]);
 
+/** @type {readonly PermAction[]} */
+export const PERM_ACTIONS = Object.freeze([
+  "view",
+  "add",
+  "edit",
+  "delete",
+  "import",
+  "export",
+]);
+
+/** @type {Readonly<Record<PermFlag, PermAction>>} */
+export const FLAG_TO_ACTION = Object.freeze({
+  can_view: "view",
+  can_add: "add",
+  can_edit: "edit",
+  can_delete: "delete",
+  can_import: "import",
+  can_export: "export",
+});
+
 /** Actions other than view — checking any of these implies view. */
 const MUTATING_FLAGS = /** @type {const} */ ([
   "can_add",
@@ -22,8 +43,38 @@ const MUTATING_FLAGS = /** @type {const} */ ([
 ]);
 
 /**
+ * @param {unknown} raw
+ * @returns {PermAction[]}
+ */
+function normalizeActions(raw) {
+  if (!Array.isArray(raw)) {
+    return [...PERM_ACTIONS];
+  }
+  /** @type {PermAction[]} */
+  const out = [];
+  const seen = new Set();
+  for (const item of raw) {
+    if (typeof item !== "string" || seen.has(item)) continue;
+    if (!PERM_ACTIONS.includes(/** @type {PermAction} */ (item))) continue;
+    seen.add(item);
+    out.push(/** @type {PermAction} */ (item));
+  }
+  return out.length ? out : [...PERM_ACTIONS];
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {PermFlag} flag
+ */
+export function rowAllowsFlag(row, flag) {
+  const action = FLAG_TO_ACTION[flag];
+  const actions = Array.isArray(row.actions) ? row.actions : PERM_ACTIONS;
+  return actions.includes(action);
+}
+
+/**
  * @param {unknown} catalogRow
- * @returns {{ permission_id: number; resource_key: string; resource_label: string } | null}
+ * @returns {{ permission_id: number; resource_key: string; resource_label: string; actions: PermAction[] } | null}
  */
 export function normalizeCatalogRow(catalogRow) {
   if (!catalogRow || typeof catalogRow !== "object") return null;
@@ -38,6 +89,7 @@ export function normalizeCatalogRow(catalogRow) {
       typeof row.resource_label === "string" && row.resource_label.trim()
         ? row.resource_label
         : key,
+    actions: normalizeActions(row.actions),
   };
 }
 
@@ -67,6 +119,7 @@ function flagsFromRolePerm(rolePerm) {
  *   permission_id: number;
  *   resource_key: string;
  *   resource_label: string;
+ *   actions: PermAction[];
  *   can_view: boolean;
  *   can_add: boolean;
  *   can_edit: boolean;
@@ -92,7 +145,14 @@ export function buildMatrixRows(catalog, rolePermissions) {
     const meta = normalizeCatalogRow(raw);
     if (!meta) continue;
     const flags = flagsFromRolePerm(byId.get(meta.permission_id));
-    rows.push({ ...meta, ...flags });
+    /** @type {Record<string, unknown>} */
+    const row = { ...meta, ...flags };
+    for (const flag of PERM_FLAGS) {
+      if (!rowAllowsFlag(row, flag)) {
+        row[flag] = false;
+      }
+    }
+    rows.push(row);
   }
   return rows;
 }
@@ -101,7 +161,7 @@ export function buildMatrixRows(catalog, rolePermissions) {
  * @param {Array<Record<string, unknown>>} rows
  */
 export function cloneMatrixRows(rows) {
-  return rows.map((r) => ({ ...r }));
+  return rows.map((r) => ({ ...r, actions: Array.isArray(r.actions) ? [...r.actions] : r.actions }));
 }
 
 /**
@@ -130,6 +190,8 @@ export function areMatrixRowsEqual(a, b) {
  * @param {boolean} checked
  */
 export function applyFlagToRow(row, flag, checked) {
+  if (!rowAllowsFlag(row, flag)) return row;
+
   const next = { ...row };
   if (flag === "can_view") {
     next.can_view = checked;
@@ -162,14 +224,18 @@ export function applyFlagToAllRows(rows, flag, checked) {
  * @param {PermFlag} flag
  */
 export function columnCheckState(rows, flag) {
-  if (!rows.length) return { checked: false, indeterminate: false };
+  const applicable = rows.filter((row) => rowAllowsFlag(row, flag));
+  if (!applicable.length) {
+    return { checked: false, indeterminate: false, applicableCount: 0 };
+  }
   let on = 0;
-  for (const row of rows) {
+  for (const row of applicable) {
     if (row[flag]) on += 1;
   }
   return {
-    checked: on === rows.length,
-    indeterminate: on > 0 && on < rows.length,
+    checked: on === applicable.length,
+    indeterminate: on > 0 && on < applicable.length,
+    applicableCount: applicable.length,
   };
 }
 
@@ -180,12 +246,12 @@ export function columnCheckState(rows, flag) {
 export function matrixRowsToPayload(rows) {
   return rows.map((row) => ({
     permission_id: Number(row.permission_id),
-    can_view: Boolean(row.can_view),
-    can_add: Boolean(row.can_add),
-    can_edit: Boolean(row.can_edit),
-    can_delete: Boolean(row.can_delete),
-    can_import: Boolean(row.can_import),
-    can_export: Boolean(row.can_export),
+    can_view: rowAllowsFlag(row, "can_view") && Boolean(row.can_view),
+    can_add: rowAllowsFlag(row, "can_add") && Boolean(row.can_add),
+    can_edit: rowAllowsFlag(row, "can_edit") && Boolean(row.can_edit),
+    can_delete: rowAllowsFlag(row, "can_delete") && Boolean(row.can_delete),
+    can_import: rowAllowsFlag(row, "can_import") && Boolean(row.can_import),
+    can_export: rowAllowsFlag(row, "can_export") && Boolean(row.can_export),
   }));
 }
 

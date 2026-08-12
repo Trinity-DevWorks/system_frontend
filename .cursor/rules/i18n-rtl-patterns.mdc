@@ -1,0 +1,61 @@
+---
+description: Follow next-intl localization, locale-aware navigation, translation namespaces, and RTL conventions.
+alwaysApply: false
+---
+
+# Internationalization and RTL
+
+The frontend uses `next-intl` with English and Arabic locales.
+
+All user-visible feature text should be localized.
+
+## Translation usage
+
+Use:
+
+`useTranslations("<Namespace>")`
+
+Follow existing feature namespaces in:
+
+- `messages/en.json`
+- `messages/ar.json`
+
+Add matching keys to both locale files.
+
+Do not hard-code English labels in feature pages, forms, drawers, notifications, or table columns.
+
+## Navigation
+
+Use locale-aware navigation utilities from:
+
+`@/i18n/navigation`
+
+Do not use raw `next/navigation` for navigation that must preserve locale unless an existing file intentionally does so.
+
+## Locale prefix
+
+The project uses locale prefix behavior equivalent to `as-needed`.
+
+The default English locale may not appear in the URL.
+
+Arabic routes are locale-prefixed.
+
+Do not assume every route always begins with `/en`.
+
+## RTL
+
+Arabic uses RTL layout.
+
+Follow existing Ant Design direction handling and drawer placement conventions.
+
+Do not hard-code left/right layout assumptions when direction-aware behavior exists.
+
+## API errors
+
+Use existing API error translation helpers and `ApiErrors` namespaces.
+
+Before adding a new backend error code to frontend handling:
+
+1. confirm the backend code
+2. add translations in both languages
+3. verify fallback behavior

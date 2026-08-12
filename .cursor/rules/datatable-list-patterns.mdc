@@ -1,0 +1,76 @@
+---
+description: Use AppDataTable and existing list-page conventions for tenant features.
+alwaysApply: false
+---
+
+# Tables and List Pages
+
+Use `AppDataTable` as the default list component for tenant feature pages.
+
+Do not create a separate generic table component for a new feature unless the existing table cannot support the requirement.
+
+## Current pagination convention
+
+Current feature pages use client-side `AppDataTable` pagination.
+
+Even when stock or workflow APIs apply server-side filters, the fetched result is currently paginated by the table on the client.
+
+Do not claim that server pagination is already a project-wide pattern.
+
+Do not switch an existing feature to server pagination without coordinating:
+
+- backend pagination
+- response metadata
+- React Query keys
+- table configuration
+- frontend controls
+
+## Columns
+
+Keep feature-specific column definitions in files such as:
+
+`get<Feature>TableColumns.js`
+
+Reuse existing formatting helpers, status renderers, action controls, and localized labels.
+
+## Search and filters
+
+Simple catalogs often use client-side search and table pagination.
+
+Workflow features may send filters to the backend and then display the returned collection using client pagination.
+
+Follow the closest comparable feature.
+
+## Page states
+
+Use existing conventions for:
+
+- loading
+- empty state
+- error state
+- row actions
+- refresh
+- selection
+
+Do not create one-off list-state UI if `AppDataTable` already provides the behavior.
+
+## Non-CRUD lists
+
+Not every `AppDataTable` page requires a CRUD drawer.
+
+Read-only balances, movements, alerts, or report-like pages may use a table without create/edit behavior.
+
+Classify the feature before adding drawer actions.
+
+## Table identity and bulk actions
+
+Provide a stable tableId following nearby features so column preferences can be stored through the existing table-preferences system.
+
+For simple catalogs, inspect whether comparable pages use:
+
+- useTenantListBulkDelete
+- row selection
+- selection toolbar
+- enableColumnDrag
+
+Do not enable these automatically for read-only or workflow lists.

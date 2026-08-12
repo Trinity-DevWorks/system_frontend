@@ -30,17 +30,6 @@ export function deleteUserAttachment(userId, attachmentId) {
 /**
  * @param {string} userId
  * @param {number | string} attachmentId
- */
-export function setUserAttachmentPrimary(userId, attachmentId) {
-  return tenantApiService(
-    "PUT",
-    `users/${userId}/attachments/${attachmentId}/primary`,
-  );
-}
-
-/**
- * @param {string} userId
- * @param {number | string} attachmentId
  * @returns {Promise<Blob>}
  */
 export function viewUserAttachmentBlob(userId, attachmentId) {

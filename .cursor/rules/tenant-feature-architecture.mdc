@@ -1,0 +1,65 @@
+---
+description: Follow the established App Router architecture for tenant frontend features.
+alwaysApply: true
+---
+
+# Tenant Feature Architecture
+
+Tenant application features belong under:
+
+`app/[locale]/main/<feature>/`
+
+Inventory and workflow features may belong under:
+
+`app/[locale]/main/stock/<feature>/`
+
+Do not create Pages Router routes or introduce a second routing architecture.
+
+## Default simple-feature structure
+
+A simple catalog commonly contains:
+
+- `page.js`
+- `get<Feature>TableColumns.js`
+- `drawer/<Feature>Drawer.js`
+- `drawer/<Feature>DrawerForm.js`
+- `drawer/<feature>DrawerUtils.js`
+- `drawer/use<Feature>DrawerMutations.js`
+
+This is a default for simple CRUD features, not a mandatory structure for aggregates or workflows.
+
+## Complex features
+
+Aggregate and workflow features may use additional folders such as:
+
+- `drawer/hooks/`
+- `drawer/components/`
+- `drawer/panels/`
+- `drawer/utils/`
+- shared filter components
+- shared cache-key helpers
+- line editors
+- attachment panels
+
+Follow the closest feature of matching complexity.
+
+## Shared code
+
+Use existing shared components and utilities from:
+
+- `components/`
+- `lib/`
+- `services/`
+- `API/`
+
+Do not duplicate shared table, drawer, error, API, or shell behavior inside individual features.
+
+## Language and imports
+
+The project uses JavaScript with JSDoc.
+
+Do not introduce TypeScript files unless explicitly requested as a coordinated migration.
+
+Use the `@/` path alias where consistent with nearby files.
+
+Use `JavaScript` with JSDoc where nearby files already use it. Do not introduce TypeScript unless explicitly requested as a coordinated migration.

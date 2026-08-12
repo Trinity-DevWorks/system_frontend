@@ -13,7 +13,7 @@ import { fetchTenantUser } from "@/services/tenantUsersApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   USER_CREATE_SAVE_INTENT_EVENT,
   USER_CREATE_SAVE_INTENT_KEY,
@@ -48,11 +48,9 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
   const [nestedCreate, setNestedCreate] = useState(null);
   const [pendingAvatarFile, setPendingAvatarFile] = useState(/** @type {File | null} */ (null));
 
-  useEffect(() => {
-    if (!open || mode !== "create") {
-      setPendingAvatarFile(null);
-    }
-  }, [open, mode]);
+  if ((!open || mode !== "create") && pendingAvatarFile != null) {
+    setPendingAvatarFile(null);
+  }
 
   const readOnly = mode === "view";
   const clearPendingAvatar = useCallback(() => setPendingAvatarFile(null), []);
@@ -165,7 +163,6 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     onCreated,
     onSyncCreateDiscardBaseline,
     defaults,
-    pendingAvatarFile,
     onPendingAvatarCleared: clearPendingAvatar,
   });
 
@@ -228,11 +225,11 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
         .validateFields()
         .then((values) => {
           const payload = applyPayload(values);
-          createMutation.mutate({ payload, intent });
+          createMutation.mutate({ payload, intent, pendingAvatarFile });
         })
         .catch(() => {});
     },
-    [form, applyPayload, createMutation],
+    [form, applyPayload, createMutation, pendingAvatarFile],
   );
 
   const handleEditSubmit = useCallback(() => {

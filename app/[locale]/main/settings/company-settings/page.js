@@ -192,15 +192,19 @@ export default function CompanySettingsPage() {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-col gap-2 pb-6">
-      <div className="mb-2 flex justify-end">{actions}</div>
-      <CompanySettingsForm
-        form={form}
-        t={t}
-        primaryCurrencyLabel={primaryCurrencyLabel}
-        disabled={!isEditing}
-        onValuesChange={recomputeDirty}
-        onFinish={(values) => saveMutation.mutate(values)}
-      />
+      <div className="flex items-start justify-end gap-3">
+        <div className="min-w-0 flex-1">
+          <CompanySettingsForm
+            form={form}
+            t={t}
+            primaryCurrencyLabel={primaryCurrencyLabel}
+            disabled={!isEditing}
+            onValuesChange={recomputeDirty}
+            onFinish={(values) => saveMutation.mutate(values)}
+          />
+        </div>
+        {actions}
+      </div>
     </div>
   );
 }

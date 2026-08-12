@@ -1,0 +1,65 @@
+---
+description: Preserve the established services, API facades, Axios clients, and response-envelope pipeline.
+alwaysApply: true
+---
+
+# API Services and HTTP Layer
+
+Resource pages and feature hooks should use the established API layering:
+
+Feature page or hook  
+→ `services/<resource>Api.js`  
+→ `API/TenantApiService.js` or `API/CentralApiService.js`  
+→ `lib/axios.js`
+
+Do not call Axios directly from normal resource pages or drawer components when a resource service is the established pattern.
+
+## Resource services
+
+Create thin named functions such as:
+
+- `fetch<Resource>`
+- `fetch<Resource>ById`
+- `create<Resource>`
+- `update<Resource>`
+- `delete<Resource>`
+
+Keep URL construction and request configuration in the service layer.
+
+## Tenant and central clients
+
+Use the tenant API client for tenant product features.
+
+Use the central API client only for central-platform flows.
+
+Cross-cutting authentication or module-loading utilities may call the API facade directly when matching existing code.
+
+Do not use that exception for ordinary resource CRUD.
+
+## Response handling
+
+Axios and `lib/api-envelope.js` form one response pipeline.
+
+Services normally return the unwrapped API `data`, not the full raw Axios response.
+
+Do not add a second response-unwrapping mechanism.
+
+## Request bodies
+
+Use snake_case field names to match the backend contract.
+
+Form utilities should normalize:
+
+- trimmed strings
+- nullable empty values
+- numeric values
+- booleans
+- dates
+
+Do not introduce camelCase-to-snake_case remapping when the forms already use snake_case names.
+
+## Errors
+
+Use the established frontend helpers for normalized API errors and notifications.
+
+Do not expose raw Axios errors directly to feature UI unless debugging.

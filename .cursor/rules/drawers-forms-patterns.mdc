@@ -1,0 +1,90 @@
+---
+description: Follow ResourceCrudDrawer and Ant Design form conventions for create, edit, and view experiences.
+alwaysApply: false
+---
+
+# Drawers and Forms
+
+Use `ResourceCrudDrawer` as the shared create, edit, and view chrome when the feature requires a resource drawer.
+
+Do not assume every feature must have a classic CRUD drawer.
+
+## Forms
+
+Use Ant Design `Form` with:
+
+`layout="vertical"`
+
+Use Ant Design field `rules` for normal CRUD validation.
+
+Zod is currently used for login and is not the dominant CRUD form-validation approach.
+
+Do not add a second form library or validation framework to standard resource forms.
+
+## Field names
+
+Form field names should generally match backend snake_case fields directly.
+
+Examples:
+
+- `is_active`
+- `currency_id`
+- `parent_id`
+- `payment_term_id`
+
+Utility functions should normalize values rather than rename every field.
+
+## Drawer modes
+
+Follow existing create, edit, and view-mode conventions.
+
+Reuse shared helpers for:
+
+- loading existing data
+- setting form values
+- resetting state
+- API field errors
+- success messages
+- drawer placement
+- RTL behavior
+
+## Complex drawers
+
+Aggregate and workflow drawers may contain:
+
+- panels
+- tabs
+- nested components
+- attachments
+- line editors
+- dedicated hooks
+- specialized footer actions
+
+Do not flatten complex drawers into the simple catalog structure.
+
+## Error handling
+
+Use:
+
+- `applyApiFieldErrors`
+- `getLocalizedApiErrorMessage`
+- Ant Design `message`
+- `notification`
+- `modal.confirm`
+
+according to existing nearby features.
+
+Do not duplicate API-error parsing inside each form.
+
+## Save intent and discard behavior
+
+For mature simple catalogs, inspect and reuse the existing patterns for:
+
+- ResourceDrawerFooter
+- save and close
+- save and create another
+- persisted save intent
+- create discard baseline
+- dirty-state confirmation
+
+Do not recreate these behaviors independently inside a new drawer.

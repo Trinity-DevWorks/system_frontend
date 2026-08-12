@@ -177,14 +177,18 @@ export default function CompanyProfilePage() {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-col gap-2 pb-6">
-      <div className="mb-2 flex justify-end">{actions}</div>
-      <CompanyProfileLogoSection
-        logo={profile.logo}
-        profileQueryKey={queryKey}
-        t={t}
-        tApiErrors={tApiErrors}
-        readOnly={!isEditing}
-      />
+      <div className="flex items-start justify-end gap-3">
+        <div className="min-w-0 flex-1">
+          <CompanyProfileLogoSection
+            logo={profile.logo}
+            profileQueryKey={queryKey}
+            t={t}
+            tApiErrors={tApiErrors}
+            readOnly={!isEditing}
+          />
+        </div>
+        {actions}
+      </div>
       <CompanyProfileForm
         form={form}
         t={t}
