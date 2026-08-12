@@ -122,6 +122,84 @@
     "branchSwitchSuccess": "Switched branch.",
     "branchSwitchError": "Could not switch branch."
   },
+  "Notifications": {
+    "markAllRead": "Mark all as read",
+    "panelTitle": "Notifications",
+    "pageTitle": "Notifications",
+    "pageSubtitle": "Review workspace alerts and activity.",
+    "filterAll": "All",
+    "filterUnread": "Unread",
+    "viewAll": "View all notifications",
+    "unreadSummary": "{count, plural, one {# unread} other {# unread}}",
+    "allCaughtUp": "You're all caught up",
+    "emptyTitle": "No notifications",
+    "emptyDescription": "Updates about orders, stock, and account changes will appear here.",
+    "emptyUnreadTitle": "No unread notifications",
+    "emptyUnreadDescription": "You're all caught up. New alerts will show here.",
+    "unreadDot": "Unread",
+    "types": {
+      "unknown": {
+        "title": "Notification",
+        "body": "You have a new notification."
+      },
+     "user": {
+        "created": {
+          "title": "Account created",
+          "body": "Welcome, {name}. Your workspace account is ready."
+        },
+        "role_assigned": {
+          "title": "Role updated",
+          "body": "Your assignments: {assignments}"
+        },
+        "deactivated": {
+          "title": "Account deactivated",
+          "body": "Your account was deactivated."
+        }
+      },
+      "branch": {
+        "user_assigned": {
+          "title": "Branch assignment",
+          "body": "You were assigned to {branch_name}."
+        }
+      },
+      "purchasing": {
+        "low_stock": {
+          "title": "Low stock alerts",
+          "body": "{alert_count} alert(s) need attention ({critical_count} out of stock)."
+        }
+      },
+      "purchase_order": {
+        "confirmed": {
+          "title": "Purchase order confirmed",
+          "body": "PO {po_number} was confirmed."
+        },
+        "sent": {
+          "title": "Purchase order sent",
+          "body": "PO {po_number} was marked as sent."
+        },
+        "cancelled": {
+          "title": "Purchase order cancelled",
+          "body": "PO {po_number} was cancelled."
+        }
+      },
+      "stock_transfer": {
+        "posted": {
+          "title": "Transfer posted",
+          "body": "Transfer {transfer_number} was posted."
+        },
+        "cancelled": {
+          "title": "Transfer cancelled",
+          "body": "Transfer {transfer_number} was cancelled."
+        }
+      },
+      "stock_movement": {
+        "posted": {
+          "title": "Stock movement",
+          "body": "A stock movement was posted."
+        }
+      }
+    }
+  },
   "Profile": {
     "title": "My profile",
     "subtitle": "Your account details for this workspace.",

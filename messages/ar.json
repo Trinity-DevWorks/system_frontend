@@ -122,6 +122,84 @@
     "branchSwitchSuccess": "تم تبديل الفرع.",
     "branchSwitchError": "تعذّر تبديل الفرع."
   },
+  "Notifications": {
+    "markAllRead": "تعليم الكل كمقروء",
+    "panelTitle": "الإشعارات",
+    "pageTitle": "الإشعارات",
+    "pageSubtitle": "راجع تنبيهات ونشاط مساحة العمل.",
+    "filterAll": "الكل",
+    "filterUnread": "غير مقروء",
+    "viewAll": "عرض كل الإشعارات",
+    "unreadSummary": "{count, plural, one {غير مقروء واحد} other {# غير مقروء}}",
+    "allCaughtUp": "لا توجد إشعارات جديدة",
+    "emptyTitle": "لا توجد إشعارات",
+    "emptyDescription": "ستظهر هنا التحديثات المتعلقة بالطلبات والمخزون والحساب.",
+    "emptyUnreadTitle": "لا توجد إشعارات غير مقروءة",
+    "emptyUnreadDescription": "أنت مطّلع على كل شيء. ستظهر التنبيهات الجديدة هنا.",
+    "unreadDot": "غير مقروء",
+    "types": {
+      "unknown": {
+        "title": "إشعار",
+        "body": "لديك إشعار جديد."
+      },
+      "user": {
+        "created": {
+          "title": "تم إنشاء الحساب",
+          "body": "مرحبًا {name}. حسابك في مساحة العمل جاهز."
+        },
+        "role_assigned": {
+          "title": "تم تحديث الدور",
+          "body": "تعييناتك: {assignments}"
+        },
+        "deactivated": {
+          "title": "تم تعطيل الحساب",
+          "body": "تم تعطيل حسابك."
+        }
+      },
+      "branch": {
+        "user_assigned": {
+          "title": "تعيين فرع",
+          "body": "تم تعيينك إلى {branch_name}."
+        }
+      },
+      "purchasing": {
+        "low_stock": {
+          "title": "تنبيهات انخفاض المخزون",
+          "body": "هناك {alert_count} تنبيه(ات) بحاجة للمتابعة ({critical_count} نفاد مخزون)."
+        }
+      },
+      "purchase_order": {
+        "confirmed": {
+          "title": "تم تأكيد أمر الشراء",
+          "body": "تم تأكيد أمر الشراء {po_number}."
+        },
+        "sent": {
+          "title": "تم إرسال أمر الشراء",
+          "body": "تم تعليم أمر الشراء {po_number} كمرسل."
+        },
+        "cancelled": {
+          "title": "تم إلغاء أمر الشراء",
+          "body": "تم إلغاء أمر الشراء {po_number}."
+        }
+      },
+      "stock_transfer": {
+        "posted": {
+          "title": "تم ترحيل التحويل",
+          "body": "تم ترحيل التحويل {transfer_number}."
+        },
+        "cancelled": {
+          "title": "تم إلغاء التحويل",
+          "body": "تم إلغاء التحويل {transfer_number}."
+        }
+      },
+      "stock_movement": {
+        "posted": {
+          "title": "حركة مخزون",
+          "body": "تم ترحيل حركة مخزون."
+        }
+      }
+    }
+  },
   "Profile": {
     "title": "ملفي الشخصي",
     "subtitle": "تفاصيل حسابك في مساحة العمل هذه.",

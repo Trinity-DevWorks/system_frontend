@@ -4,7 +4,6 @@ import { useThemeMode } from "@/components/AntdAppProvider";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import {
-  BellOutlined,
   GlobalOutlined,
   LogoutOutlined,
   MoonOutlined,
@@ -13,12 +12,13 @@ import {
   SunOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Badge, Button, Dropdown, Input, Layout, Space, theme } from "antd";
+import { Button, Dropdown, Input, Layout, Space, theme } from "antd";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import AppBreadcrumb from "./AppBreadcrumb";
 import BranchSwitcher from "./BranchSwitcher";
+import NotificationBell from "./NotificationBell";
 import HeaderProfileAvatar from "./HeaderProfileAvatar";
 
 const { Header } = Layout;
@@ -124,17 +124,6 @@ export default function AppHeader({
     }
   };
 
-  const notificationMenuItems = useMemo(
-    () => [
-      {
-        key: "empty",
-        label: tShell("notificationsEmpty"),
-        disabled: true,
-      },
-    ],
-    [tShell],
-  );
-
   return (
     <Header
       className="flex shrink-0 items-center gap-3 px-4 py-0 lg:gap-4 lg:px-6"
@@ -208,22 +197,7 @@ export default function AppHeader({
             <span style={{ color: token.colorWarning }}>{themeIcon}</span>
           </Button>
         </Dropdown>
-        <Dropdown
-          menu={{ items: notificationMenuItems }}
-          placement="bottomRight"
-          trigger={["click"]}
-        >
-          <Button
-            type="default"
-            className={shellIconBtnClass}
-            aria-label={tShell("notifications")}
-            title={tShell("notifications")}
-          >
-            <Badge dot>
-              <BellOutlined style={{ color: token.colorTextSecondary }} />
-            </Badge>
-          </Button>
-        </Dropdown>
+        <NotificationBell />
         <Dropdown
           menu={{ items: profileMenuItems, onClick: onProfileMenuClick }}
           placement="bottomRight"
