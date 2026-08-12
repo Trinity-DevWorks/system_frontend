@@ -202,9 +202,15 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto flex w-full max-w-2xl min-h-0 min-w-0 flex-col gap-4 pb-6 pt-2">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="m-0 text-xl font-semibold">{t("title")}</h1>
-          <p className="m-0 mt-1 text-sm opacity-70">{t("subtitle")}</p>
+        <div className="min-w-0 flex-1">
+          <UserAvatarSection
+            userId={userId}
+            avatar={avatar}
+            invalidateQueryKeys={[AUTH_ME_QUERY_KEY, ["tenant", "users"]]}
+            t={t}
+            tApiErrors={tApiErrors}
+            readOnly={!isEditing}
+          />
         </div>
         {!isEditing ? (
           <Button type="default" icon={<EditOutlined />} onClick={startEditing}>
@@ -226,15 +232,6 @@ export default function ProfilePage() {
           </Space>
         )}
       </div>
-
-      <UserAvatarSection
-        userId={userId}
-        avatar={avatar}
-        invalidateQueryKeys={[AUTH_ME_QUERY_KEY, ["tenant", "users"]]}
-        t={t}
-        tApiErrors={tApiErrors}
-        readOnly={!isEditing}
-      />
 
       <Form
         form={form}

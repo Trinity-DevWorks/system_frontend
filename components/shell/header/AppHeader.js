@@ -17,6 +17,7 @@ import { Badge, Button, Dropdown, Input, Layout, Space, theme } from "antd";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
+import { ROUTES, selectedKeysForPath } from "@/components/shell/sidebar/main-nav";
 import AppBreadcrumb from "./AppBreadcrumb";
 import BranchSwitcher from "./BranchSwitcher";
 import HeaderProfileAvatar from "./HeaderProfileAvatar";
@@ -27,6 +28,7 @@ const shellIconBtnClass =
   "inline-flex h-9 w-9 items-center justify-center rounded-lg shadow-sm";
 const profileIconBtnClass =
   "inline-flex h-9 w-9 min-w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border-0 bg-transparent p-0 shadow-sm leading-none";
+const PROFILE_MENU_LOGOUT_KEY = "logout";
 
 export default function AppHeader({
   colorBgContainer,
@@ -97,15 +99,17 @@ export default function AppHeader({
     setColorMode(key);
   };
 
+  // Navigable items use route paths as `key` (same as the sidebar). Selection is
+  // longest path-prefix match, so extra profile pages highlight without per-item `if`s.
   const profileMenuItems = useMemo(
     () => [
       {
-        key: "profile",
-        label: tShell("profileShow"),
+        key: ROUTES.profile,
+        label: tShell("profile"),
         icon: <UserOutlined />,
       },
       {
-        key: "logout",
+        key: PROFILE_MENU_LOGOUT_KEY,
         label: logoutLabel,
         danger: true,
         icon: <LogoutOutlined />,
@@ -114,13 +118,18 @@ export default function AppHeader({
     [logoutLabel, tShell],
   );
 
+  const profileSelectedKeys = useMemo(
+    () => selectedKeysForPath(pathname, profileMenuItems),
+    [pathname, profileMenuItems],
+  );
+
   const onProfileMenuClick = ({ key }) => {
-    if (key === "logout") {
+    if (key === PROFILE_MENU_LOGOUT_KEY) {
       onLogout?.();
       return;
     }
-    if (key === "profile") {
-      router.push("/main/profile");
+    if (typeof key === "string" && key.startsWith("/")) {
+      router.push(key);
     }
   };
 
@@ -225,7 +234,12 @@ export default function AppHeader({
           </Button>
         </Dropdown>
         <Dropdown
-          menu={{ items: profileMenuItems, onClick: onProfileMenuClick }}
+          menu={{
+            items: profileMenuItems,
+            selectable: true,
+            selectedKeys: profileSelectedKeys,
+            onClick: onProfileMenuClick,
+          }}
           placement="bottomRight"
           trigger={["click"]}
         >
