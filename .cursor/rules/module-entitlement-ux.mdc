@@ -1,0 +1,70 @@
+---
+description: Keep frontend module route guards and sidebar module metadata aligned with backend entitlements.
+alwaysApply: false
+---
+
+# Module Entitlement UX
+
+Frontend module checks are for navigation and user experience.
+
+Backend middleware remains the security authority.
+
+Do not treat frontend module gating as sufficient authorization.
+
+## Dual registration
+
+When adding a tenant feature that belongs to a sellable module, update both:
+
+1. `lib/tenant-modules.js`
+   - path-to-module rules
+   - used by `ModuleRouteGuard`
+
+2. `components/shell/sidebar/main-nav.js`
+   - navigation item module metadata
+   - used by sidebar filtering
+
+These two mappings must remain aligned.
+
+Updating only one creates inconsistent navigation or route behavior.
+
+When adding a navigable feature, also add:
+
+- The route constant under ROUTES in components/shell/sidebar/main-nav.js.
+- The actual sidebar navigation item in buildMainNavItems().
+- The correct module metadata on that navigation item.
+
+## Module codes
+
+Use backend module codes exactly.
+
+Examples include:
+
+- `core`
+- `master_data`
+- `inventory`
+- `sales`
+- `purchasing`
+
+Do not invent frontend-only module names.
+
+## Missing-module behavior
+
+Follow the existing UX:
+
+- notify the user
+- redirect to the overview page
+- do not display inaccessible module pages
+
+The missing-module experience is currently handled primarily by `ModuleRouteGuard` and shell messaging.
+
+Do not rely on a localized `MODULE_NOT_ENTITLED` API error key unless it is actually added to the translation catalog.
+
+## Permissions
+
+Action-level frontend permission gating is not currently implemented.
+
+Do not invent a `can()` architecture as part of an unrelated feature.
+
+Backend RBAC remains authoritative.
+
+Any future frontend permission system should be introduced as a coordinated feature.

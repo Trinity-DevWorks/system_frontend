@@ -34,6 +34,7 @@ const MAX_ATTACHMENT_BYTES = 15360 * 1024;
  *   tApiErrors: (key: string) => string;
  *   readOnly?: boolean;
  *   size?: number;
+ *   hideLabels?: boolean;
  * }} props
  */
 export default function UserAvatarSection({
@@ -46,6 +47,7 @@ export default function UserAvatarSection({
   tApiErrors,
   readOnly = false,
   size = 96,
+  hideLabels = false,
 }) {
   const { message, modal } = App.useApp();
   const { token } = theme.useToken();
@@ -192,16 +194,34 @@ export default function UserAvatarSection({
   const busy = uploadMutation.isPending || removeMutation.isPending;
   const showPendingSpinner =
     Boolean(avatarId) && previewQuery.isPending && !objectUrl && !pendingObjectUrl;
+  const uploadLabel = staging
+    ? pendingFile
+      ? t("avatarReplace")
+      : t("avatarUpload")
+    : avatarId
+      ? t("avatarReplace")
+      : t("avatarUpload");
+  const buttonSize = hideLabels ? "small" : "middle";
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="text-sm font-medium" style={{ color: token.colorText }}>
-        {t("avatarTitle")}
-      </div>
-      <div className="text-xs" style={{ color: token.colorTextSecondary }}>
-        {t("avatarHint")}
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
+      {hideLabels ? null : (
+        <>
+          <div className="text-sm font-medium" style={{ color: token.colorText }}>
+            {t("avatarTitle")}
+          </div>
+          <div className="text-xs" style={{ color: token.colorTextSecondary }}>
+            {t("avatarHint")}
+          </div>
+        </>
+      )}
+      <div
+        className={
+          hideLabels
+            ? "flex flex-col items-center gap-2"
+            : "flex flex-wrap items-center gap-3"
+        }
+      >
         {showPendingSpinner ? (
           <span
             className="inline-flex items-center justify-center"
@@ -215,7 +235,7 @@ export default function UserAvatarSection({
           <Avatar size={size} icon={<UserOutlined />} />
         )}
         {canMutate ? (
-          <div className="flex flex-wrap gap-2">
+          <div className={hideLabels ? "flex flex-wrap justify-center gap-2" : "flex flex-wrap gap-2"}>
             <Upload
               accept="image/*"
               showUploadList={false}
@@ -233,14 +253,14 @@ export default function UserAvatarSection({
                 return false;
               }}
             >
-              <Button icon={<UploadOutlined />} loading={uploadMutation.isPending}>
-                {staging
-                  ? pendingFile
-                    ? t("avatarReplace")
-                    : t("avatarUpload")
-                  : avatarId
-                    ? t("avatarReplace")
-                    : t("avatarUpload")}
+              <Button
+                icon={<UploadOutlined />}
+                loading={uploadMutation.isPending}
+                size={buttonSize}
+                aria-label={uploadLabel}
+                title={uploadLabel}
+              >
+                {hideLabels ? null : uploadLabel}
               </Button>
             </Upload>
             {(staging && pendingFile) || (!staging && avatarId) ? (
@@ -248,6 +268,9 @@ export default function UserAvatarSection({
                 danger
                 icon={<DeleteOutlined />}
                 loading={removeMutation.isPending}
+                size={buttonSize}
+                aria-label={t("avatarRemove")}
+                title={t("avatarRemove")}
                 onClick={() => {
                   if (staging) {
                     onPendingFileChange(null);
@@ -261,7 +284,7 @@ export default function UserAvatarSection({
                   });
                 }}
               >
-                {t("avatarRemove")}
+                {hideLabels ? null : t("avatarRemove")}
               </Button>
             ) : null}
           </div>

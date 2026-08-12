@@ -1,0 +1,66 @@
+---
+description: Preserve tenant and central host separation, bearer-token authentication, and proxy route guards.
+alwaysApply: false
+---
+
+# Authentication and Host Mode
+
+The frontend has separate tenant and central application surfaces.
+
+## Tenant application
+
+Tenant UI lives under:
+
+`app/[locale]/main/`
+
+It uses:
+
+- `AppShell`
+- tenant token
+- tenant API client
+- module route guard
+- tenant-host URLs
+
+## Central application
+
+Central UI lives under:
+
+`app/[locale]/central/`
+
+It does not use the tenant `main` layout or `AppShell`.
+
+Do not place central pages under `/main/central`.
+
+## Route protection
+
+`proxy.js` handles host-aware access checks.
+
+Central hosts should not access `/main/*`.
+
+Tenant hosts should not access `/central` or `/central/*`.
+
+Do not add a second middleware file unless explicitly migrating the Next.js 16 proxy architecture.
+
+## Tokens
+
+Authentication uses bearer tokens stored in cookies and sent through the `Authorization` header.
+
+The confirmed backend response key is:
+
+`access_token`
+
+A fallback to `token` exists in frontend code but should be treated as defensive or legacy, not as the preferred contract.
+
+## Axios behavior
+
+`withCredentials: true` is present, but the current architecture is bearer-token based.
+
+Do not infer or implement Sanctum cookie-session SPA authentication unless explicitly requested.
+
+## Logout and 401
+
+Follow the existing logout and 401 behavior:
+
+- Shell logout uses clearAllSessionTokens().
+- Axios 401 handling clears the token associated with the current API mode.
+- Redirect to the localized login route.

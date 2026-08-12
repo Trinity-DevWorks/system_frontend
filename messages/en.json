@@ -125,6 +125,7 @@
   "Profile": {
     "title": "My profile",
     "subtitle": "Your account details for this workspace.",
+    "accountDetails": "Account details",
     "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save changes",
@@ -2323,6 +2324,7 @@
     "action_can_delete": "Delete",
     "action_can_import": "Import",
     "action_can_export": "Export",
+    "actionNotApplicable": "Not applicable",
     "selectAllAction": "Toggle all {action}",
     "save": "Save changes",
     "discard": "Discard",

@@ -1,0 +1,76 @@
+---
+description: Follow existing TanStack React Query conventions for queries, mutations, optimistic updates, and invalidation.
+alwaysApply: false
+---
+
+# React Query and Cache Patterns
+
+TanStack React Query is the project’s server-state system.
+
+Do not introduce Redux, Zustand, SWR, or another server-state library unless explicitly requested.
+
+## Queries
+
+For simple tenant catalogs, use stable query keys similar to:
+
+`["tenant", "<resource>"]`
+
+For filtered or workflow features, include relevant filters in the query key or reuse existing query-key helpers.
+
+Inspect comparable features before defining a new key structure.
+
+## Stale time
+
+Follow the closest existing feature.
+
+Simple reference catalogs often use longer stale times.
+
+Workflow data often uses shorter stale times and more frequent invalidation.
+
+Do not apply one stale-time value globally.
+
+## Simple CRUD mutations
+
+Optimistic updates are common for simple catalog and CRM CRUD.
+
+When following that pattern, preserve:
+
+- `onMutate`
+- cancellation of active queries
+- snapshot of previous data
+- optimistic list update
+- rollback in `onError`
+- reconciliation in `onSuccess`
+- invalidation in `onSettled`
+
+## Complex and workflow mutations
+
+Items, stock transfers, purchase orders, and adjustments do not consistently use optimistic list rows.
+
+For workflows:
+
+- prefer mutation followed by invalidation or refetch
+- avoid inventing optimistic state for complex transitions
+- invalidate all affected query keys
+- preserve status and line consistency
+
+## Cache helpers
+
+Reuse existing cache-key or cache-update utilities when the domain already provides them.
+
+Do not create duplicate query-key logic inside multiple components.
+
+## Local state
+
+Use React local state for drawers, selected records, filters, and transient UI state unless an existing shared abstraction is already used.
+
+Current feature UI state is not generally synchronized to URL search parameters.
+
+Do not introduce URL-state synchronization without an explicit requirement.
+
+For resources with detail fetching, the common key family is:
+
+- List: ["tenant", "<resource>"]
+- Detail: ["tenant", "<resource>", id]
+
+Keep list and detail cache updates aligned during mutations.
