@@ -1,6 +1,7 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
+import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { fetchWarehouses } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ function StockMovementsTable() {
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
   const { notification } = App.useApp();
+  const access = useResourceAccess("stock");
 
   const [warehouseFilter, setWarehouseFilter] = useState(/** @type {number | undefined} */ (undefined));
   const [typeFilter, setTypeFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -165,7 +167,7 @@ function StockMovementsTable() {
           enableClientSearch: true,
           showRefresh: true,
           onRefresh: () => refetch(),
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: () => setAdjustmentOpen(true),
           addLabel: t("toolbarAdjust"),
           extra: filterToggle,

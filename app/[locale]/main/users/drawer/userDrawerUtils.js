@@ -127,6 +127,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
 
   if (name !== String(defaults.name ?? "").trim()) return true;
   if (email !== String(defaults.email ?? "").trim()) return true;
+  if (String(v.phone ?? "").trim() !== String(defaults.phone ?? "").trim()) return true;
   if (!branchAssignmentsEqual(branchAssignments, defaults.branch_assignments)) return true;
   if (isActive !== Boolean(defaults.is_active)) return true;
   if (password !== String(defaults.password ?? "")) return true;
@@ -150,6 +151,7 @@ export function isEditDirtyVsLoaded(form, row) {
 
   if (name !== String(row.name ?? "").trim()) return true;
   if (email !== String(row.email ?? "").trim()) return true;
+  if (String(v.phone ?? "").trim() !== String(row.phone ?? "").trim()) return true;
   if (!branchAssignmentsEqual(branchAssignments, loadedAssignments)) return true;
   if (isActive !== Boolean(row.is_active)) return true;
   if (password !== "" || passwordConfirmation !== "") return true;
@@ -169,12 +171,15 @@ export function toUserCacheRow(row) {
     id: row.id,
     name: row.name,
     email: row.email,
+    phone: row.phone ?? null,
     is_active: row.is_active,
+    preferred_branch_id: row.preferred_branch_id ?? null,
     role_id: role?.id ?? row.role_id ?? null,
     role: role ? { id: role.id, name: role.name } : null,
     branches,
     branch_ids: branchIds,
     branch_assignments: branchAssignments,
+    avatar: row.avatar ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -199,6 +204,10 @@ export function userFormValuesToPayload(values, mode) {
   const payload = {
     name: String(values.name ?? "").trim(),
     email: String(values.email ?? "").trim(),
+    phone: (() => {
+      const phone = String(values.phone ?? "").trim();
+      return phone === "" ? null : phone;
+    })(),
     is_active: Boolean(values.is_active),
     branch_assignments: normalizeBranchAssignments(values.branch_assignments),
   };

@@ -3,7 +3,6 @@
 import { companyLogoPreviewQueryKey } from "@/components/brand/WorkspaceBrandMark";
 import {
   deleteCompanyProfileAttachment,
-  setCompanyProfileAttachmentPrimary,
   uploadCompanyProfileAttachment,
   viewCompanyProfileAttachmentBlob,
 } from "@/services/companyProfileAttachmentsApi";
@@ -62,14 +61,19 @@ export default function CompanyProfileLogoSection({
         uploaded && typeof uploaded === "object" && "id" in uploaded
           ? String(/** @type {{ id: unknown }} */ (uploaded).id)
           : null;
-      if (id && id !== logoId) {
-        await setCompanyProfileAttachmentPrimary(id);
+      if (id) {
+        queryClient.setQueryData(companyLogoPreviewQueryKey(id), file);
       }
       return uploaded;
     },
     onSuccess: async () => {
       message.success(t("logoUploadSuccess"));
       await invalidateProfile();
+      if (logoId) {
+        queryClient.removeQueries({
+          queryKey: companyLogoPreviewQueryKey(logoId),
+        });
+      }
       queryClient.invalidateQueries({
         queryKey: ["company-profile", "logo-preview"],
       });

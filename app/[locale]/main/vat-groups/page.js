@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteVatGroup, fetchVatGroups } from "@/services/vatGroupsApi";
 import VatGroupDrawer from "./drawer/VatGroupDrawer";
@@ -17,6 +18,7 @@ function VatGroupsTable() {
   const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("vat_groups");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
     data = [],
@@ -170,11 +172,11 @@ function VatGroupsTable() {
   const columns = useMemo(
     () =>
       getVatGroupTableColumns(t, {
-        onView: openViewDrawer,
-        onEdit: openEditDrawer,
-        onDelete: requestDeleteVatGroup,
+        onView: access.canView ? openViewDrawer : undefined,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteVatGroup : undefined,
       }),
-    [t, openViewDrawer, openEditDrawer, requestDeleteVatGroup],
+    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, requestDeleteVatGroup],
   );
 
   const rowSelection = {
@@ -197,14 +199,14 @@ function VatGroupsTable() {
         toolbar={{
           showSearch: true,
           searchKeys: ["id", "abrv", "name", "percentage", "is_active_label"],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: () => refetch(),
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1180}

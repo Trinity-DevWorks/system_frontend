@@ -109,6 +109,13 @@ export default function UserDrawerForm({
       >
         <Input autoComplete="off" type="email" />
       </Form.Item>
+      <Form.Item
+        name="phone"
+        label={t("fieldPhone")}
+        rules={[{ max: 32, message: t("fieldPhoneMax") }]}
+      >
+        <Input autoComplete="off" />
+      </Form.Item>
 
       <Form.List
         name="branch_assignments"

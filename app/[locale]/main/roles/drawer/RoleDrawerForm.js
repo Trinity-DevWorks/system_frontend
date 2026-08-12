@@ -8,10 +8,11 @@ import { Form, Input, Switch } from "antd";
  *   readOnly: boolean;
  *   mode: "create" | "edit" | "view";
  *   systemRole: boolean;
+ *   ownerRole?: boolean;
  *   t: (key: string) => string;
  * }} props
  */
-export default function RoleDrawerForm({ form, readOnly, mode, systemRole, t }) {
+export default function RoleDrawerForm({ form, readOnly, mode, systemRole, ownerRole = false, t }) {
   const nameDisabled = readOnly || (mode === "edit" && systemRole);
 
   return (
@@ -23,7 +24,7 @@ export default function RoleDrawerForm({ form, readOnly, mode, systemRole, t }) 
           { required: true, message: t("fieldNameRequired") },
           { max: 100, message: t("fieldNameMax") },
         ]}
-        extra={systemRole ? t("fieldNameSystemHint") : undefined}
+        extra={ownerRole ? t("fieldOwnerImmutableHint") : systemRole ? t("fieldNameSystemHint") : undefined}
       >
         <Input autoComplete="off" disabled={nameDisabled} />
       </Form.Item>

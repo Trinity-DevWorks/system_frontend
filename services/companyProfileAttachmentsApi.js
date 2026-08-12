@@ -41,17 +41,6 @@ export function deleteCompanyProfileAttachment(attachmentId) {
 
 /**
  * @param {number | string} attachmentId
- * @returns {Promise<unknown>}
- */
-export function setCompanyProfileAttachmentPrimary(attachmentId) {
-  return tenantApiService(
-    "PUT",
-    `company-profile/attachments/${attachmentId}/primary`,
-  );
-}
-
-/**
- * @param {number | string} attachmentId
  * @returns {Promise<Blob>}
  */
 export function downloadCompanyProfileAttachmentBlob(attachmentId) {

@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteUnitOfMeasurement, fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
 import UnitOfMeasurementDrawer from "./drawer/UnitOfMeasurementDrawer";
@@ -42,6 +43,7 @@ function UnitOfMeasurementsTable() {
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("unit_of_measurements");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [selectedUnitGroupId, setSelectedUnitGroupId] = useState();
   const {
@@ -262,9 +264,9 @@ function UnitOfMeasurementsTable() {
   const columns = useMemo(
     () =>
       getUnitOfMeasurementTableColumns(t, {
-        onView: openViewDrawer,
-        onEdit: openEditDrawer,
-        onDelete: requestDeleteUnitOfMeasurement,
+        onView: access.canView ? openViewDrawer : undefined,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteUnitOfMeasurement : undefined,
         unitGroupFilter: {
           options: unitGroupOptions,
           value: activeUnitGroupId,
@@ -273,6 +275,9 @@ function UnitOfMeasurementsTable() {
       }),
     [
       activeUnitGroupId,
+      access.canView,
+      access.canEdit,
+      access.canDelete,
       handleUnitGroupFilterChange,
       openEditDrawer,
       openViewDrawer,
@@ -314,14 +319,14 @@ function UnitOfMeasurementsTable() {
             "unit_group_dimension_type_label",
             "is_active_label",
           ],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: () => refetch(),
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1660}

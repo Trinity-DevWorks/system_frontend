@@ -2,10 +2,11 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceAccess } from "@/lib/permissions";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteRole, fetchRoles } from "@/services/rolesApi";
 import RoleDrawer from "./drawer/RoleDrawer";
-import { isSystemRoleName } from "./drawer/roleDrawerUtils";
+import { isOwnerRoleName, isSystemRoleName } from "./drawer/roleDrawerUtils";
 import { getRoleStatusLabel, getRoleTableColumns } from "./getRoleTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
@@ -18,6 +19,7 @@ function RolesTable() {
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const access = useResourceAccess("roles");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const {
@@ -74,15 +76,6 @@ function RolesTable() {
     setDrawerOpen(true);
   }, []);
 
-  const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerRoleId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
   const openViewDrawer = useCallback((record) => {
     const id = record?.id;
     if (id == null) return;
@@ -91,6 +84,23 @@ function RolesTable() {
     setDrawerRoleId(Number(id));
     setDrawerOpen(true);
   }, []);
+
+  const openEditDrawer = useCallback(
+    (record) => {
+      const id = record?.id;
+      if (id == null) return;
+      // Owner role is immutable — open view instead of edit.
+      if (isOwnerRoleName(record?.name)) {
+        openViewDrawer(record);
+        return;
+      }
+      setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
+      setDrawerMode("edit");
+      setDrawerRoleId(Number(id));
+      setDrawerOpen(true);
+    },
+    [openViewDrawer],
+  );
 
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
@@ -192,11 +202,11 @@ function RolesTable() {
   const columns = useMemo(
     () =>
       getRoleTableColumns(t, {
-        onEdit: openEditDrawer,
-        onView: openViewDrawer,
-        onDelete: requestDeleteRole,
+        onEdit: access.canEdit ? openEditDrawer : undefined,
+        onView: access.canView ? openViewDrawer : undefined,
+        onDelete: access.canDelete ? requestDeleteRole : undefined,
       }),
-    [t, openEditDrawer, openViewDrawer, requestDeleteRole],
+    [t, access.canEdit, access.canView, access.canDelete, openEditDrawer, openViewDrawer, requestDeleteRole],
   );
 
   const handleRefresh = async () => {
@@ -229,14 +239,14 @@ function RolesTable() {
         toolbar={{
           showSearch: true,
           searchKeys: ["name", "description", "id", "active_label"],
-          showAdd: true,
+          showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
           onRefresh: handleRefresh,
         }}
-        rowSelection={rowSelection}
-        showSelectionBar
-        onBulkDelete={openBulkDeleteConfirm}
+        rowSelection={access.canDelete ? rowSelection : false}
+        showSelectionBar={access.canDelete}
+        onBulkDelete={access.canDelete ? openBulkDeleteConfirm : undefined}
         bulkDeleteLoading={bulkDeletePending}
         stickyHeader
         scrollX={1100}

@@ -3,6 +3,10 @@
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
+import {
+  uploadUserAttachment,
+  userAvatarPreviewQueryKey,
+} from "@/services/userAttachmentsApi";
 import { createTenantUser, updateTenantUser } from "@/services/tenantUsersApi";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -12,6 +16,21 @@ import {
   sortUsersByName,
   userFormValuesToPayload,
 } from "./userDrawerUtils";
+
+/**
+ * @param {unknown} uploaded
+ * @returns {{ id: string, file_name?: string, mime_type?: string } | null}
+ */
+function attachmentToAvatarBrief(uploaded) {
+  if (!uploaded || typeof uploaded !== "object" || !("id" in uploaded)) return null;
+  const row = /** @type {{ id: unknown, file_name?: unknown, mime_type?: unknown }} */ (uploaded);
+  if (row.id == null || row.id === "") return null;
+  return {
+    id: String(row.id),
+    file_name: typeof row.file_name === "string" ? row.file_name : undefined,
+    mime_type: typeof row.mime_type === "string" ? row.mime_type : undefined,
+  };
+}
 
 /**
  * @param {{
@@ -24,6 +43,7 @@ import {
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
  *   defaults: Record<string, unknown>;
+ *   onPendingAvatarCleared?: () => void;
  * }} args
  */
 export function useUserDrawerMutations({
@@ -36,6 +56,7 @@ export function useUserDrawerMutations({
   onCreated,
   onSyncCreateDiscardBaseline,
   defaults,
+  onPendingAvatarCleared,
 }) {
   const queryClient = useQueryClient();
 
@@ -45,7 +66,32 @@ export function useUserDrawerMutations({
   );
 
   const createMutation = useMutation({
-    mutationFn: ({ payload }) => createTenantUser(payload),
+    mutationFn: async ({ payload, pendingAvatarFile }) => {
+      const created = await createTenantUser(payload);
+      const record =
+        created && typeof created === "object"
+          ? /** @type {Record<string, unknown>} */ (created)
+          : null;
+      if (!record || record.id == null) return created;
+
+      const file = pendingAvatarFile;
+      if (!file) return created;
+
+      const userId = String(record.id);
+      try {
+        const uploaded = await uploadUserAttachment(userId, file);
+        const brief = attachmentToAvatarBrief(uploaded);
+        if (brief?.id) {
+          queryClient.setQueryData(userAvatarPreviewQueryKey(brief.id), file);
+          return { ...record, avatar: brief };
+        }
+      } catch (err) {
+        message.warning(
+          getLocalizedApiErrorMessage(tApiErrors, err) || t("avatarUploadError"),
+        );
+      }
+      return created;
+    },
     onMutate: async ({ payload }) => {
       const listKey = ["tenant", "users"];
       await queryClient.cancelQueries({ queryKey: listKey });
@@ -98,6 +144,8 @@ export function useUserDrawerMutations({
       if (id != null) {
         queryClient.setQueryData(["tenant", "users", id], data);
       }
+
+      onPendingAvatarCleared?.();
 
       if (intent === "keep") {
         onCreated?.(record ?? {});
