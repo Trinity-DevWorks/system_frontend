@@ -6,6 +6,7 @@ export const STOCK_MOVEMENT_TYPE_VALUES = [
   "purchase",
   "transfer_in",
   "transfer_out",
+  "transfer_return",
   "production_in",
   "production_out",
   "bundle_sale",

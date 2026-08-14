@@ -2,15 +2,17 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
+import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteBrand, fetchBrands } from "@/services/brandsApi";
 import BrandDrawer from "./drawer/BrandDrawer";
 import { getBrandStatusLabel, getBrandTableColumns } from "./getBrandTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function BrandsTable() {
   const t = useTranslations("Brands");
@@ -59,53 +61,18 @@ function BrandsTable() {
     columnWidth: 48,
   };
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerBrandId, setDrawerBrandId] = useState(/** @type {number | null} */ (null));
-  const [drawerEditSeed, setDrawerEditSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, brandId: /** @type {number | null} */ (null) });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, brandId: drawerBrandId };
-  }, [drawerOpen, drawerBrandId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerEditSeed(null);
-    setDrawerMode("create");
-    setDrawerBrandId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerBrandId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerBrandId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerBrandId(null);
-    setDrawerEditSeed(null);
-  }, []);
-
-  const handleBrandCreated = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerBrandId(Number(id));
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerBrandId,
+    tableSeed: drawerEditSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleBrandCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteBrand(id),
@@ -130,8 +97,8 @@ function BrandsTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "brands", deletedId] });
-      const { open, brandId } = drawerSessionRef.current;
-      if (open && brandId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
         closeDrawer();
       }
     },
@@ -151,7 +118,7 @@ function BrandsTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.brandId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -239,7 +206,7 @@ function BrandsTable() {
       <BrandDrawer
         open={drawerOpen}
         mode={drawerMode}
-        brandId={drawerBrandId}
+        brandId={drawerBrandId == null ? null : Number(drawerBrandId)}
         editSeedRecord={drawerEditSeed}
         onClose={closeDrawer}
         onCreated={handleBrandCreated}
@@ -251,7 +218,15 @@ function BrandsTable() {
 export default function BrandsPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <BrandsTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <BrandsTable />
+      </Suspense>
     </div>
   );
 }

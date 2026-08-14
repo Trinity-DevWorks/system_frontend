@@ -93,6 +93,8 @@
     "navAuditLog": "Audit Log",
     "settingsDescription": "Manage company identity and operational preferences for this workspace.",
     "settingsCompanyGroup": "Company",
+    "settingsUserGroup": "User",
+    "navPreferences": "Preferences",
     "settingsSecondaryNavAria": "Settings sections",
     "logout": "Sign out",
     "loggedOut": "Signed out",
@@ -198,6 +200,23 @@
           "body": "A stock movement was posted."
         }
       }
+    }
+  },
+  "NotificationPreferences": {
+    "title": "Preferences",
+    "subtitle": "Choose how you receive each notification type in this workspace.",
+    "save": "Save changes",
+    "reset": "Reset",
+    "saveSuccess": "Preferences saved.",
+    "saveError": "Could not save preferences.",
+    "loadError": "Could not load preferences.",
+    "columnType": "Notification",
+    "channelInApp": "In-app",
+    "channelEmail": "Email",
+    "groups": {
+      "account": "Account",
+      "purchasing": "Purchasing",
+      "stock": "Stock"
     }
   },
   "Profile": {
@@ -1331,7 +1350,9 @@
     "purchaseOrdersEmpty": "No purchase orders match your filters.",
     "toolbarNewPo": "New purchase order",
     "purchasingAlertsEmpty": "No purchasing alerts match your filters.",
+    "purchasingAlertViewDrawerTitle": "Purchasing alert",
     "colItemSku": "SKU",
+    "colItemCode": "Item code",
     "colItemName": "Item",
     "colWarehouse": "Warehouse",
     "colQuantity": "On hand",
@@ -1393,6 +1414,10 @@
     "movementType_production_out": "Production out",
     "movementType_bundle_sale": "Bundle sale",
     "adjustmentDrawerTitle": "Stock adjustment",
+    "adjustmentViewDrawerTitle": "Adjustment details",
+    "movementViewDrawerTitle": "Movement details",
+    "movementViewUnavailableTitle": "Cannot open this movement",
+    "movementViewUnavailableContent": "This transfer movement is missing its linked transfer reference.",
     "drawerCancel": "Cancel",
     "drawerSaveUpdate": "Post adjustment",
     "drawerCreateSuccess": "Stock adjustment posted.",

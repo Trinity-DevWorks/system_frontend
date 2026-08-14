@@ -2,7 +2,9 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
+import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deletePaymentTerm, fetchPaymentTerms } from "@/services/paymentTermsApi";
 import PaymentTermDrawer from "./drawer/PaymentTermDrawer";
@@ -12,9 +14,9 @@ import {
   getPaymentTermTableColumns,
 } from "./getPaymentTermTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function PaymentTermsTable() {
   const t = useTranslations("PaymentTerms");
@@ -57,53 +59,18 @@ function PaymentTermsTable() {
     [data, t],
   );
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerPaymentTermId, setDrawerPaymentTermId] = useState(/** @type {number | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, paymentTermId: /** @type {number | null} */ (null) });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, paymentTermId: drawerPaymentTermId };
-  }, [drawerOpen, drawerPaymentTermId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerPaymentTermId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerPaymentTermId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerPaymentTermId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerPaymentTermId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handlePaymentTermCreated = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerPaymentTermId(Number(id));
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerPaymentTermId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handlePaymentTermCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deletePaymentTerm(id),
@@ -126,8 +93,8 @@ function PaymentTermsTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "payment-terms", deletedId] });
-      const { open, paymentTermId } = drawerSessionRef.current;
-      if (open && paymentTermId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
         closeDrawer();
       }
     },
@@ -147,7 +114,7 @@ function PaymentTermsTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.paymentTermId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -233,7 +200,7 @@ function PaymentTermsTable() {
       <PaymentTermDrawer
         open={drawerOpen}
         mode={drawerMode}
-        paymentTermId={drawerPaymentTermId}
+        paymentTermId={drawerPaymentTermId == null ? null : Number(drawerPaymentTermId)}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handlePaymentTermCreated}
@@ -245,7 +212,15 @@ function PaymentTermsTable() {
 export default function PaymentTermsPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <PaymentTermsTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <PaymentTermsTable />
+      </Suspense>
     </div>
   );
 }

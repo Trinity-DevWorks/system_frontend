@@ -1,6 +1,8 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { normalizeEntityId, parseNumericEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { fetchWarehouses } from "@/services/warehousesApi";
@@ -16,7 +18,13 @@ import {
 } from "../shared/StockTableFilters";
 import { STOCK_MOVEMENT_TYPE_VALUES } from "../shared/stockMovementTypes";
 import { getStockMovementTypeLabel } from "../shared/stockMovementTypes";
+import StockTransferDrawer from "../transfers/drawer/StockTransferDrawer";
 import { getStockMovementTableColumns } from "./getStockMovementTableColumns";
+import {
+  isUuidLikeEntityId,
+  resolveStockMovementViewTarget,
+} from "./resolveStockMovementViewTarget";
+import StockMovementViewDrawer from "./StockMovementViewDrawer";
 import { useStockMovementsTableQuery } from "./useStockMovementsTableQuery";
 
 function StockMovementsTable() {
@@ -43,6 +51,21 @@ function StockMovementsTable() {
     to: toIso,
   });
 
+  const {
+    open: drawerOpen,
+    recordId: drawerRecordId,
+    tableSeed: drawerTableSeed,
+    openViewDrawer,
+    closeDrawer,
+  } = useResourceDrawerUrl({
+    allowCreateInUrl: false,
+    defaultMode: "view",
+  });
+
+  const viewingTransfer = drawerOpen && isUuidLikeEntityId(drawerRecordId);
+  const viewingMovement =
+    drawerOpen && drawerRecordId != null && !isUuidLikeEntityId(drawerRecordId);
+
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
     queryFn: fetchWarehouses,
@@ -53,7 +76,7 @@ function StockMovementsTable() {
     () =>
       rawTableData.map((row) => ({
         ...row,
-        item_sku: row?.item?.sku ?? "",
+        item_code: row?.item?.item_code ?? "",
         item_name: row?.item?.name ?? "",
         type_label: getStockMovementTypeLabel(t, row?.type),
       })),
@@ -112,7 +135,34 @@ function StockMovementsTable() {
     return lines;
   }, [dateRangeLabel, t, typeLabel, warehouseLabel]);
 
-  const columns = useMemo(() => getStockMovementTableColumns(t), [t]);
+  const handleView = useCallback(
+    (record) => {
+      const target = resolveStockMovementViewTarget(
+        /** @type {Record<string, unknown>} */ (record),
+      );
+      if (!target) {
+        notification.warning({
+          title: t("movementViewUnavailableTitle"),
+          description: t("movementViewUnavailableContent"),
+        });
+        return;
+      }
+      if (target.kind === "transfer") {
+        openViewDrawer({ id: target.transferId });
+        return;
+      }
+      openViewDrawer(/** @type {Record<string, unknown>} */ (record));
+    },
+    [notification, openViewDrawer, t],
+  );
+
+  const columns = useMemo(
+    () =>
+      getStockMovementTableColumns(t, {
+        onView: access.canView ? handleView : undefined,
+      }),
+    [t, access.canView, handleView],
+  );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,
@@ -150,6 +200,10 @@ function StockMovementsTable() {
     ),
   });
 
+  const movementDrawerId = viewingMovement
+    ? (parseNumericEntityId(drawerRecordId) ?? normalizeEntityId(drawerRecordId))
+    : null;
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppDataTable
@@ -163,7 +217,7 @@ function StockMovementsTable() {
         emptyText={t("movementsEmpty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["item_sku", "item_name", "type_label", "notes"],
+          searchKeys: ["item_code", "item_name", "type_label", "notes"],
           enableClientSearch: true,
           showRefresh: true,
           onRefresh: () => refetch(),
@@ -174,7 +228,7 @@ function StockMovementsTable() {
           filterBar,
         }}
         stickyHeader
-        scrollX={1280}
+        scrollX={1360}
         pagination={{
           mode: "client",
           pageSize: 50,
@@ -182,6 +236,21 @@ function StockMovementsTable() {
         }}
       />
       <StockAdjustmentDrawer open={adjustmentOpen} onClose={() => setAdjustmentOpen(false)} />
+      <StockMovementViewDrawer
+        open={viewingMovement}
+        movementId={movementDrawerId}
+        tableSeedRecord={
+          drawerTableSeed && !isUuidLikeEntityId(drawerTableSeed.id) ? drawerTableSeed : null
+        }
+        onClose={closeDrawer}
+      />
+      <StockTransferDrawer
+        open={viewingTransfer}
+        mode="view"
+        transferId={viewingTransfer ? String(drawerRecordId) : null}
+        tableSeedRecord={null}
+        onClose={closeDrawer}
+      />
     </div>
   );
 }

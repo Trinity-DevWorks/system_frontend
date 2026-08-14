@@ -2,7 +2,9 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
+import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteBranch, fetchBranches } from "@/services/branchesApi";
 import BranchDrawer from "./drawer/BranchDrawer";
@@ -12,9 +14,9 @@ import {
   getBranchTableColumns,
 } from "./getBranchTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function BranchesTable() {
   const t = useTranslations("Branches");
@@ -57,53 +59,18 @@ function BranchesTable() {
     [data, t],
   );
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerBranchId, setDrawerBranchId] = useState(/** @type {number | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, branchId: /** @type {number | null} */ (null) });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, branchId: drawerBranchId };
-  }, [drawerOpen, drawerBranchId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerBranchId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerBranchId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerBranchId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerBranchId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handleBranchCreated = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerBranchId(Number(id));
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerBranchId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleBranchCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteBranch(id),
@@ -126,8 +93,8 @@ function BranchesTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "branches", deletedId] });
-      const { open, branchId } = drawerSessionRef.current;
-      if (open && branchId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
         closeDrawer();
       }
     },
@@ -147,7 +114,7 @@ function BranchesTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.branchId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -244,7 +211,7 @@ function BranchesTable() {
       <BranchDrawer
         open={drawerOpen}
         mode={drawerMode}
-        branchId={drawerBranchId}
+        branchId={drawerBranchId == null ? null : Number(drawerBranchId)}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handleBranchCreated}
@@ -256,7 +223,15 @@ function BranchesTable() {
 export default function BranchesPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <BranchesTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <BranchesTable />
+      </Suspense>
     </div>
   );
 }

@@ -72,12 +72,21 @@ export async function syncStockTransferLines(transferId, body) {
 }
 
 /**
- * Post transfer (moves stock between warehouses).
+ * Dispatch transfer (removes stock from source warehouse).
  * @param {number | string} transferId
  * @returns {Promise<unknown>}
  */
-export function postStockTransfer(transferId) {
-  return tenantApiService("POST", `stock/transfers/${transferId}/post`);
+export function dispatchStockTransfer(transferId) {
+  return tenantApiService("POST", `stock/transfers/${transferId}/dispatch`);
+}
+
+/**
+ * Receive transfer (adds stock to destination warehouse).
+ * @param {number | string} transferId
+ * @returns {Promise<unknown>}
+ */
+export function receiveStockTransfer(transferId) {
+  return tenantApiService("POST", `stock/transfers/${transferId}/receive`);
 }
 
 /**

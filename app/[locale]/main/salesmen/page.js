@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
@@ -9,9 +10,9 @@ import { deleteSalesman, fetchSalesmen } from "@/services/salesmenApi";
 import SalesmanDrawer from "./drawer/SalesmanDrawer";
 import { getSalesmanStatusLabel, getSalesmanTableColumns } from "./getSalesmanTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function SalesmenTable() {
   const t = useTranslations("Salesmen");
@@ -53,53 +54,18 @@ function SalesmenTable() {
     [data, t],
   );
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerSalesmanId, setDrawerSalesmanId] = useState(/** @type {string | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, salesmanId: /** @type {string | null} */ (null) });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, salesmanId: drawerSalesmanId };
-  }, [drawerOpen, drawerSalesmanId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerSalesmanId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerSalesmanId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerSalesmanId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerSalesmanId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handleSalesmanCreated = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerSalesmanId(id);
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerSalesmanId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleSalesmanCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl();
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteSalesman(id),
@@ -122,8 +88,8 @@ function SalesmenTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "salesmen", deletedId] });
-      const { open, salesmanId } = drawerSessionRef.current;
-      if (open && salesmanId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && String(recordId) === String(deletedId)) {
         closeDrawer();
       }
     },
@@ -143,7 +109,7 @@ function SalesmenTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.salesmanId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -233,7 +199,7 @@ function SalesmenTable() {
       <SalesmanDrawer
         open={drawerOpen}
         mode={drawerMode}
-        salesmanId={drawerSalesmanId}
+        salesmanId={drawerSalesmanId == null ? null : String(drawerSalesmanId)}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handleSalesmanCreated}
@@ -245,7 +211,15 @@ function SalesmenTable() {
 export default function SalesmenPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <SalesmenTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <SalesmenTable />
+      </Suspense>
     </div>
   );
 }

@@ -9,6 +9,8 @@
  */
 
 import NotificationListItem from "@/components/shell/header/NotificationListItem";
+import { ROUTES } from "@/components/shell/sidebar/main-nav";
+import { navigateNotificationActionPath } from "@/lib/drawer/navigateNotificationActionPath";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   fetchNotifications,
@@ -20,7 +22,8 @@ import { ArrowRightOutlined, BellOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge, Button, Empty, Popover, Segmented, Skeleton, theme } from "antd";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 
 const POLL_MS = 45_000;
 const PANEL_WIDTH = 400;
@@ -28,11 +31,27 @@ const LIST_MAX_HEIGHT = 360;
 const shellIconBtnClass =
   "inline-flex h-9 w-9 items-center justify-center rounded-lg shadow-sm";
 
-export default function NotificationBell() {
+function NotificationBellFallback() {
+  const tShell = useTranslations("Shell");
+  const { token } = theme.useToken();
+  return (
+    <Button
+      type="default"
+      className={shellIconBtnClass}
+      aria-label={tShell("notifications")}
+      title={tShell("notifications")}
+    >
+      <BellOutlined style={{ color: token.colorTextSecondary, fontSize: 16 }} />
+    </Button>
+  );
+}
+
+function NotificationBellInner() {
   const t = useTranslations("Notifications");
   const tShell = useTranslations("Shell");
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { token } = theme.useToken();
   const [open, setOpen] = useState(false);
@@ -119,15 +138,17 @@ export default function NotificationBell() {
     }
 
     setOpen(false);
-    const path = typeof row.action_path === "string" ? row.action_path : null;
-    if (path && path !== pathname) {
-      router.push(path);
-    }
+    navigateNotificationActionPath({
+      actionPath: typeof row.action_path === "string" ? row.action_path : null,
+      pathname,
+      search: searchParams.toString(),
+      router,
+    });
   };
 
   const handleViewAll = () => {
     setOpen(false);
-    router.push("/main/notifications");
+    router.push(ROUTES.notifications);
   };
 
   const panel = (
@@ -292,5 +313,13 @@ export default function NotificationBell() {
         </Badge>
       </Button>
     </Popover>
+  );
+}
+
+export default function NotificationBell() {
+  return (
+    <Suspense fallback={<NotificationBellFallback />}>
+      <NotificationBellInner />
+    </Suspense>
   );
 }

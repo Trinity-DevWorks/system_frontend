@@ -2,7 +2,9 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
+import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteUnitOfMeasurement, fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
 import UnitOfMeasurementDrawer from "./drawer/UnitOfMeasurementDrawer";
@@ -12,9 +14,9 @@ import {
   getUnitOfMeasurementTableColumns,
 } from "./getUnitOfMeasurementTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function getUnitGroupName(row) {
   const name = row?.unit_group?.name;
@@ -141,56 +143,18 @@ function UnitOfMeasurementsTable() {
     setSelectedRowKeys([]);
   }, []);
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerUnitOfMeasurementId, setDrawerUnitOfMeasurementId] = useState(/** @type {number | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({
-    open: false,
-    unitOfMeasurementId: /** @type {number | null} */ (null),
-  });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, unitOfMeasurementId: drawerUnitOfMeasurementId };
-  }, [drawerOpen, drawerUnitOfMeasurementId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerUnitOfMeasurementId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerUnitOfMeasurementId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerUnitOfMeasurementId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerUnitOfMeasurementId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handleUnitOfMeasurementCreated = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerUnitOfMeasurementId(Number(id));
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerUnitOfMeasurementId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleUnitOfMeasurementCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteUnitOfMeasurement(id),
@@ -213,8 +177,8 @@ function UnitOfMeasurementsTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "unit-of-measurements", deletedId] });
-      const { open, unitOfMeasurementId } = drawerSessionRef.current;
-      if (open && unitOfMeasurementId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
         closeDrawer();
       }
     },
@@ -234,7 +198,7 @@ function UnitOfMeasurementsTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.unitOfMeasurementId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -340,7 +304,9 @@ function UnitOfMeasurementsTable() {
       <UnitOfMeasurementDrawer
         open={drawerOpen}
         mode={drawerMode}
-        unitOfMeasurementId={drawerUnitOfMeasurementId}
+        unitOfMeasurementId={
+          drawerUnitOfMeasurementId == null ? null : Number(drawerUnitOfMeasurementId)
+        }
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handleUnitOfMeasurementCreated}
@@ -352,7 +318,15 @@ function UnitOfMeasurementsTable() {
 export default function UnitOfMeasurementsPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <UnitOfMeasurementsTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <UnitOfMeasurementsTable />
+      </Suspense>
     </div>
   );
 }

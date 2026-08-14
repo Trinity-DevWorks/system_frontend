@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
@@ -9,9 +10,9 @@ import { deleteCustomer, fetchCustomers } from "@/services/customersApi";
 import CustomerDrawer from "./drawer/CustomerDrawer";
 import { getCustomerStatusLabel, getCustomerTableColumns } from "./getCustomerTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function CustomersTable() {
   const t = useTranslations("Customers");
@@ -53,56 +54,18 @@ function CustomersTable() {
     [data, t],
   );
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerCustomerId, setDrawerCustomerId] = useState(/** @type {string | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({
-    open: false,
-    customerId: /** @type {string | null} */ (null),
-  });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, customerId: drawerCustomerId };
-  }, [drawerOpen, drawerCustomerId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerCustomerId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(null);
-    setDrawerMode("edit");
-    setDrawerCustomerId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(null);
-    setDrawerMode("view");
-    setDrawerCustomerId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerCustomerId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handleCustomerCreated = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerCustomerId(id);
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerCustomerId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleCustomerCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl();
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteCustomer(id),
@@ -125,8 +88,8 @@ function CustomersTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "customers", deletedId] });
-      const { open, customerId } = drawerSessionRef.current;
-      if (open && customerId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && String(recordId) === String(deletedId)) {
         closeDrawer();
       }
     },
@@ -146,7 +109,7 @@ function CustomersTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.customerId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -231,7 +194,7 @@ function CustomersTable() {
       <CustomerDrawer
         open={drawerOpen}
         mode={drawerMode}
-        customerId={drawerCustomerId}
+        customerId={drawerCustomerId == null ? null : String(drawerCustomerId)}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handleCustomerCreated}
@@ -243,7 +206,15 @@ function CustomersTable() {
 export default function CustomersPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <CustomersTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <CustomersTable />
+      </Suspense>
     </div>
   );
 }

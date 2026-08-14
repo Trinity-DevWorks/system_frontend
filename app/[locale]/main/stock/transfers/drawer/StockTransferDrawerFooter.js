@@ -10,11 +10,15 @@ import { Button, Space } from "antd";
  *   requestClose: () => void;
  *   submitting: boolean;
  *   saveDisabled: boolean;
- *   postDisabled: boolean;
+ *   dispatchDisabled: boolean;
  *   showDelete: boolean;
  *   showCancelTransfer: boolean;
+ *   showLifecycleActions?: boolean;
+ *   canReceive?: boolean;
+ *   canCancelInTransit?: boolean;
  *   onSave: () => void;
- *   onPost: () => void;
+ *   onDispatch: () => void;
+ *   onReceive?: () => void;
  *   onCancelTransfer: () => void;
  *   onDelete: () => void;
  * }} props
@@ -26,17 +30,37 @@ export default function StockTransferDrawerFooter({
   requestClose,
   submitting,
   saveDisabled,
-  postDisabled,
+  dispatchDisabled,
   showDelete,
   showCancelTransfer,
+  showLifecycleActions = false,
+  canReceive = false,
+  canCancelInTransit = false,
   onSave,
-  onPost,
+  onDispatch,
+  onReceive,
   onCancelTransfer,
   onDelete,
 }) {
   if (readOnly) {
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {showLifecycleActions ? (
+          <Space wrap>
+            {canReceive ? (
+              <Button type="primary" disabled={submitting} onClick={onReceive}>
+                {t("actionReceiveTransfer")}
+              </Button>
+            ) : null}
+            {canCancelInTransit ? (
+              <Button disabled={submitting} onClick={onCancelTransfer}>
+                {t("actionCancelTransfer")}
+              </Button>
+            ) : null}
+          </Space>
+        ) : (
+          <span />
+        )}
         <Button onClick={forceClose}>{t("drawerClose")}</Button>
       </div>
     );
@@ -66,11 +90,11 @@ export default function StockTransferDrawerFooter({
         </Button>
         <Button
           type="primary"
-          disabled={postDisabled || submitting}
+          disabled={dispatchDisabled || submitting}
           loading={submitting}
-          onClick={onPost}
+          onClick={onDispatch}
         >
-          {t("actionPost")}
+          {t("actionDispatchTransfer")}
         </Button>
       </Space>
     </div>

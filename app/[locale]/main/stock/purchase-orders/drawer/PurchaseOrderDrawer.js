@@ -18,6 +18,7 @@ import {
   isPurchaseOrderCancellable,
   isPurchaseOrderConfirmed,
   isPurchaseOrderDraft,
+  isPurchaseOrderPrintable,
 } from "../../shared/purchaseOrderStatuses";
 import PurchaseOrderDrawerFooter from "./PurchaseOrderDrawerFooter";
 import PurchaseOrderDrawerForm from "./PurchaseOrderDrawerForm";
@@ -323,15 +324,16 @@ export default function PurchaseOrderDrawer({
 
   const handleMarkSent = useCallback(() => {
     modal.confirm({
-      title: loadedSentAt ? t("poMarkSentAgainConfirmTitle") : t("poMarkSentConfirmTitle"),
-      content: loadedSentAt ? t("poMarkSentAgainConfirmContent") : t("poMarkSentConfirmContent"),
+      title: t("poMarkSentConfirmTitle"),
+      content: t("poMarkSentConfirmContent"),
       okText: t("actionMarkPoSent"),
       cancelText: t("drawerCancel"),
       onOk: () => markSentMutation.mutateAsync(),
     });
-  }, [modal, t, loadedSentAt, markSentMutation]);
+  }, [modal, t, markSentMutation]);
 
-  const showSupplierActions = isPurchaseOrderConfirmed(effectiveStatus);
+  const showSupplierActions = isPurchaseOrderPrintable(effectiveStatus);
+  const canMarkSent = isPurchaseOrderConfirmed(effectiveStatus);
   const supplierActionPending = pdfMutation.isPending || markSentMutation.isPending;
 
   const patchLine = useCallback((index, patch) => {
@@ -384,7 +386,7 @@ export default function PurchaseOrderDrawer({
           showDelete={!readOnly && orderId != null}
           showCancelOrder={!readOnly && orderId != null && isPurchaseOrderCancellable(effectiveStatus)}
           showSupplierActions={showSupplierActions}
-          isSent={Boolean(loadedSentAt)}
+          canMarkSent={canMarkSent}
           pdfLoading={pdfMutation.isPending}
           onSave={handleSave}
           onConfirm={handleConfirm}

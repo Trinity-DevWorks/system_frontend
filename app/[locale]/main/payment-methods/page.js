@@ -2,7 +2,9 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
+import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deletePaymentMethod, fetchPaymentMethods } from "@/services/paymentMethodsApi";
 import PaymentMethodDrawer from "./drawer/PaymentMethodDrawer";
@@ -13,9 +15,9 @@ import {
   getPaymentMethodTypeLabel,
 } from "./getPaymentMethodTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function PaymentMethodsTable() {
   const t = useTranslations("PaymentMethods");
@@ -59,53 +61,18 @@ function PaymentMethodsTable() {
     [data, t],
   );
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerPaymentMethodId, setDrawerPaymentMethodId] = useState(/** @type {number | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, paymentMethodId: /** @type {number | null} */ (null) });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, paymentMethodId: drawerPaymentMethodId };
-  }, [drawerOpen, drawerPaymentMethodId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerPaymentMethodId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerPaymentMethodId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerPaymentMethodId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerPaymentMethodId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handlePaymentMethodCreated = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerPaymentMethodId(Number(id));
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerPaymentMethodId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handlePaymentMethodCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deletePaymentMethod(id),
@@ -128,8 +95,8 @@ function PaymentMethodsTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "payment-methods", deletedId] });
-      const { open, paymentMethodId } = drawerSessionRef.current;
-      if (open && paymentMethodId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
         closeDrawer();
       }
     },
@@ -149,7 +116,7 @@ function PaymentMethodsTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.paymentMethodId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -236,7 +203,7 @@ function PaymentMethodsTable() {
       <PaymentMethodDrawer
         open={drawerOpen}
         mode={drawerMode}
-        paymentMethodId={drawerPaymentMethodId}
+        paymentMethodId={drawerPaymentMethodId == null ? null : Number(drawerPaymentMethodId)}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handlePaymentMethodCreated}
@@ -248,7 +215,15 @@ function PaymentMethodsTable() {
 export default function PaymentMethodsPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <PaymentMethodsTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <PaymentMethodsTable />
+      </Suspense>
     </div>
   );
 }

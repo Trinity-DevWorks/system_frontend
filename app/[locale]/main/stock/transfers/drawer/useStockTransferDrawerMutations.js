@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Stock transfer drawer mutations — save draft, post, cancel, delete.
+ * Stock transfer drawer mutations — save draft, dispatch, receive, cancel, delete.
  */
 
 import {
@@ -18,8 +18,9 @@ import {
   cancelStockTransfer,
   createStockTransfer,
   deleteStockTransfer,
+  dispatchStockTransfer,
   fetchStockTransfer,
-  postStockTransfer,
+  receiveStockTransfer,
   syncStockTransferLines,
   updateStockTransfer,
 } from "@/services/stockTransfersApi";
@@ -42,7 +43,8 @@ import {
  *   lines: import("./stockTransferDrawerUtils").TransferLineFormRow[];
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onSaved?: (record: Record<string, unknown>) => void;
- *   onPosted?: (record: Record<string, unknown>) => void;
+ *   onDispatched?: (record: Record<string, unknown>) => void;
+ *   onReceived?: (record: Record<string, unknown>) => void;
  *   onCancelled?: (record: Record<string, unknown>) => void;
  *   onDeleted?: () => void;
  *   onClose?: () => void;
@@ -58,7 +60,8 @@ export function useStockTransferDrawerMutations({
   lines,
   onCreated,
   onSaved,
-  onPosted,
+  onDispatched,
+  onReceived,
   onCancelled,
   onDeleted,
   onClose,
@@ -113,7 +116,7 @@ export function useStockTransferDrawerMutations({
     },
   });
 
-  const postMutation = useMutation({
+  const dispatchMutation = useMutation({
     mutationFn: async ({ values }) => {
       let id = transferId;
       if (id == null) {
@@ -124,25 +127,44 @@ export function useStockTransferDrawerMutations({
         await updateStockTransfer(id, transferHeaderToPayload(values));
         await syncStockTransferLines(id, { lines: getValidTransferLines(lines) });
       }
-      return postStockTransfer(id);
+      return dispatchStockTransfer(id);
     },
     onError: (err) => {
       if (!applyApiFieldErrors(form, err)) {
         notification.error({
-          title: t("transferPostError"),
+          title: t("transferDispatchError"),
           description: getLocalizedApiErrorMessage(tApiErrors, err),
         });
       }
     },
     onSuccess: (record) => {
-      message.success(t("transferPostSuccess"));
+      message.success(t("transferDispatchSuccess"));
       invalidateStockLedger();
       const id = normalizeEntityId(record?.id ?? transferId);
       if (id != null) cacheTransferDetail(id, record);
       if (transferId == null) {
         onCreated?.(/** @type {Record<string, unknown>} */ (record));
       }
-      onPosted?.(/** @type {Record<string, unknown>} */ (record));
+      onDispatched?.(/** @type {Record<string, unknown>} */ (record));
+    },
+  });
+
+  const receiveMutation = useMutation({
+    mutationFn: () => {
+      if (transferId == null) throw new Error("Missing transfer id");
+      return receiveStockTransfer(transferId);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("transferReceiveError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (record) => {
+      message.success(t("transferReceiveSuccess"));
+      invalidateStockLedger();
+      cacheTransferDetail(transferId, record);
+      onReceived?.(/** @type {Record<string, unknown>} */ (record));
       onClose?.();
     },
   });
@@ -188,13 +210,15 @@ export function useStockTransferDrawerMutations({
 
   const submitting =
     saveMutation.isPending ||
-    postMutation.isPending ||
+    dispatchMutation.isPending ||
+    receiveMutation.isPending ||
     cancelMutation.isPending ||
     deleteMutation.isPending;
 
   return {
     saveMutation,
-    postMutation,
+    dispatchMutation,
+    receiveMutation,
     cancelMutation,
     deleteMutation,
     submitting,

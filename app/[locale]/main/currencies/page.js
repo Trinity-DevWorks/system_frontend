@@ -2,7 +2,9 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
+import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteCurrency, fetchCurrencies } from "@/services/currenciesApi";
 import { SwapOutlined } from "@ant-design/icons";
@@ -11,9 +13,9 @@ import CurrencyExchangeRatesModal from "./CurrencyExchangeRatesModal";
 import CurrencyDrawer from "./drawer/CurrencyDrawer";
 import { getCurrencyTableColumns } from "./getCurrencyTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Button } from "antd";
+import { App, Button, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function CurrenciesTable() {
   const t = useTranslations("Currencies");
@@ -46,56 +48,21 @@ function CurrenciesTable() {
     });
   }, [isError, error, notification, t, tApiErrors]);
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerCurrencyId, setDrawerCurrencyId] = useState(/** @type {number | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
   const [historyRecord, setHistoryRecord] = useState(/** @type {Record<string, unknown> | null} */ (null));
   const [exchangeOpen, setExchangeOpen] = useState(false);
 
-  const drawerSessionRef = useRef({ open: false, currencyId: /** @type {number | null} */ (null) });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, currencyId: drawerCurrencyId };
-  }, [drawerOpen, drawerCurrencyId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerCurrencyId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerCurrencyId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerCurrencyId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerCurrencyId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handleCurrencyCreated = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerCurrencyId(Number(id));
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerCurrencyId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleCurrencyCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteCurrency(id),
@@ -120,8 +87,8 @@ function CurrenciesTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "currencies", deletedId] });
-      const { open, currencyId } = drawerSessionRef.current;
-      if (open && currencyId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
         closeDrawer();
       }
     },
@@ -141,7 +108,7 @@ function CurrenciesTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.currencyId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -238,7 +205,7 @@ function CurrenciesTable() {
       <CurrencyDrawer
         open={drawerOpen}
         mode={drawerMode}
-        currencyId={drawerCurrencyId}
+        currencyId={drawerCurrencyId == null ? null : Number(drawerCurrencyId)}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handleCurrencyCreated}
@@ -260,7 +227,15 @@ function CurrenciesTable() {
 export default function CurrenciesPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <CurrenciesTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <CurrenciesTable />
+      </Suspense>
     </div>
   );
 }

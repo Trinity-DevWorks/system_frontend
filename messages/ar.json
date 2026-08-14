@@ -93,6 +93,8 @@
     "navAuditLog": "سجل التدقيق",
     "settingsDescription": "إدارة هوية الشركة والتفضيلات التشغيلية لمساحة العمل هذه.",
     "settingsCompanyGroup": "الشركة",
+    "settingsUserGroup": "المستخدم",
+    "navPreferences": "التفضيلات",
     "settingsSecondaryNavAria": "أقسام الإعدادات",
     "logout": "خروج",
     "loggedOut": "تم تسجيل الخروج",
@@ -198,6 +200,23 @@
           "body": "تم ترحيل حركة مخزون."
         }
       }
+    }
+  },
+  "NotificationPreferences": {
+    "title": "التفضيلات",
+    "subtitle": "اختر كيف تستلم كل نوع إشعار في مساحة العمل هذه.",
+    "save": "حفظ التغييرات",
+    "reset": "إعادة تعيين",
+    "saveSuccess": "تم حفظ التفضيلات.",
+    "saveError": "تعذّر حفظ التفضيلات.",
+    "loadError": "تعذّر تحميل التفضيلات.",
+    "columnType": "الإشعار",
+    "channelInApp": "داخل التطبيق",
+    "channelEmail": "البريد",
+    "groups": {
+      "account": "الحساب",
+      "purchasing": "المشتريات",
+      "stock": "المخزون"
     }
   },
   "Profile": {
@@ -1331,7 +1350,9 @@
     "purchaseOrdersEmpty": "لا توجد أوامر شراء مطابقة للفلاتر.",
     "toolbarNewPo": "أمر شراء جديد",
     "purchasingAlertsEmpty": "لا توجد تنبيهات شراء مطابقة للفلاتر.",
-    "colItemSku": "رمز الصنف",
+    "purchasingAlertViewDrawerTitle": "تنبيه شراء",
+    "colItemSku": "SKU",
+    "colItemCode": "رمز الصنف",
     "colItemName": "الصنف",
     "colWarehouse": "المستودع",
     "colQuantity": "الرصيد",
@@ -1393,6 +1414,10 @@
     "movementType_production_out": "إنتاج صادر",
     "movementType_bundle_sale": "بيع مجموعة",
     "adjustmentDrawerTitle": "تعديل مخزون",
+    "adjustmentViewDrawerTitle": "تفاصيل التعديل",
+    "movementViewDrawerTitle": "تفاصيل الحركة",
+    "movementViewUnavailableTitle": "تعذر فتح هذه الحركة",
+    "movementViewUnavailableContent": "حركة التحويل هذه لا تحتوي على مرجع التحويل المرتبط.",
     "drawerCancel": "إلغاء",
     "drawerSaveUpdate": "ترحيل التعديل",
     "drawerCreateSuccess": "تم ترحيل تعديل المخزون.",

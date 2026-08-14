@@ -27,6 +27,7 @@ import { stockAdjustmentValuesToPayload } from "./stockAdjustmentDrawerUtils";
  *   t: (key: string) => string;
  *   tApiErrors: (key: string) => string;
  *   onClose: () => void;
+ *   onPosted?: (movement: unknown) => void;
  * }} args
  */
 export function useStockAdjustmentDrawerMutations({
@@ -36,6 +37,7 @@ export function useStockAdjustmentDrawerMutations({
   t,
   tApiErrors,
   onClose,
+  onPosted,
 }) {
   const queryClient = useQueryClient();
 
@@ -51,12 +53,16 @@ export function useStockAdjustmentDrawerMutations({
         });
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       message.success(t("adjustmentSuccess"));
       queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
       invalidatePurchasingAlertsQueries(queryClient);
-      onClose();
+      if (typeof onPosted === "function") {
+        onPosted(data);
+      } else {
+        onClose();
+      }
     },
   });
 

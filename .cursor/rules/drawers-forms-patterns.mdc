@@ -88,3 +88,23 @@ For mature simple catalogs, inspect and reuse the existing patterns for:
 - dirty-state confirmation
 
 Do not recreate these behaviors independently inside a new drawer.
+
+## URL-addressable drawers (deep links)
+
+List pages that open resource drawers should use `useResourceDrawerUrl` from `lib/drawer/useResourceDrawerUrl.js` instead of local `useState` for open/mode/id.
+
+Stable search-param contract:
+
+- Closed: no `drawer` / `mode` params
+- Open existing: `?drawer=<id>&mode=view|edit`
+- Create: `?drawer=new&mode=create`
+
+Rules:
+
+- Prefer `router.replace` when syncing params (avoid Back-stack spam).
+- Clear params only through the page `closeDrawer` path (after dirty discard confirm).
+- Keep table-row seed in React state only — never put payloads in the URL.
+- Notification `action_path` values should include `drawer` + `mode=view` for supported lists (purchase orders, transfers).
+- Wrap the list table that calls `useSearchParams` in `<Suspense>`.
+
+Do not put nested drawer, tab, or expand state in the URL.

@@ -1,5 +1,10 @@
 import { DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MailOutlined, MoreOutlined, StopOutlined } from "@ant-design/icons";
-import { getPurchaseOrderStatusLabel, isPurchaseOrderCancellable, isPurchaseOrderConfirmed } from "../shared/purchaseOrderStatuses";
+import {
+  getPurchaseOrderStatusLabel,
+  isPurchaseOrderCancellable,
+  isPurchaseOrderConfirmed,
+  isPurchaseOrderPrintable,
+} from "../shared/purchaseOrderStatuses";
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
@@ -68,7 +73,13 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
       render: (value) => {
         const label = getPurchaseOrderStatusLabel(t, value);
         const color =
-          value === "confirmed" ? "success" : value === "cancelled" ? "default" : "processing";
+          value === "confirmed"
+            ? "success"
+            : value === "sent"
+              ? "cyan"
+              : value === "cancelled"
+                ? "default"
+                : "processing";
         return <Tag color={color}>{label}</Tag>;
       },
     },
@@ -114,6 +125,7 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
         const isDraft = record?.status === "draft";
         const canCancel = isPurchaseOrderCancellable(record?.status);
         const isConfirmed = isPurchaseOrderConfirmed(record?.status);
+        const isPrintable = isPurchaseOrderPrintable(record?.status);
         const items = [
           {
             key: "view",
@@ -121,7 +133,7 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
-          ...(isConfirmed
+          ...(isPrintable
             ? [
                 {
                   key: "pdf",
@@ -129,16 +141,16 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
                   label: t("actionDownloadPoPdf"),
                   onClick: () => onDownloadPdf?.(record),
                 },
-                ...(!record?.sent_at
-                  ? [
-                      {
-                        key: "mark-sent",
-                        icon: <MailOutlined />,
-                        label: t("actionMarkPoSent"),
-                        onClick: () => onMarkSent?.(record),
-                      },
-                    ]
-                  : []),
+              ]
+            : []),
+          ...(isConfirmed
+            ? [
+                {
+                  key: "mark-sent",
+                  icon: <MailOutlined />,
+                  label: t("actionMarkPoSent"),
+                  onClick: () => onMarkSent?.(record),
+                },
               ]
             : []),
           ...(isDraft

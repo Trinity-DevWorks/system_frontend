@@ -3,7 +3,9 @@
 import tenantApiService from "@/API/TenantApiService";
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
+import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteCategory, fetchCategories } from "@/services/categoriesApi";
 import CategoryDrawer from "./drawer/CategoryDrawer";
@@ -12,9 +14,9 @@ import {
   getCategoryTableColumns,
 } from "./getCategoryTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function CategoriesTable() {
   const t = useTranslations("Categories");
@@ -64,54 +66,19 @@ function CategoriesTable() {
     columnWidth: 48,
   };
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerCategoryId, setDrawerCategoryId] = useState(/** @type {number | null} */ (null));
-  /** Snapshot row for edit/view from table (or create response); avoids refetch when it matches `drawerCategoryId`. */
-  const [drawerEditSeed, setDrawerEditSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, categoryId: /** @type {number | null} */ (null) });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, categoryId: drawerCategoryId };
-  }, [drawerOpen, drawerCategoryId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerEditSeed(null);
-    setDrawerMode("create");
-    setDrawerCategoryId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerCategoryId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerCategoryId(Number(id));
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerCategoryId(null);
-    setDrawerEditSeed(null);
-  }, []);
-
-  const handleCategoryCreated = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerCategoryId(Number(id));
-  }, []);
+  /** `tableSeed` is a snapshot row for edit/view from the table (or create response); avoids refetch when it matches `drawerCategoryId`. */
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerCategoryId,
+    tableSeed: drawerEditSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleCategoryCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteCategory(id),
@@ -136,8 +103,8 @@ function CategoriesTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "categories", deletedId] });
-      const { open, categoryId } = drawerSessionRef.current;
-      if (open && categoryId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
         closeDrawer();
       }
     },
@@ -157,7 +124,7 @@ function CategoriesTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.categoryId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -246,7 +213,7 @@ function CategoriesTable() {
     <CategoryDrawer
       open={drawerOpen}
       mode={drawerMode}
-      categoryId={drawerCategoryId}
+      categoryId={drawerCategoryId == null ? null : Number(drawerCategoryId)}
       editSeedRecord={drawerEditSeed}
       onClose={closeDrawer}
       onCreated={handleCategoryCreated}
@@ -258,7 +225,15 @@ function CategoriesTable() {
 export default function CategoriesPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <CategoriesTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <CategoriesTable />
+      </Suspense>
     </div>
   );
 }

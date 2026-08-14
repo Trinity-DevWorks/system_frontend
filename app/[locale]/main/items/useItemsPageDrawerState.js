@@ -1,80 +1,35 @@
 /**
- * Items list page drawer state — open/close, mode, item id, edit seed, and session tracking.
+ * Items list page drawer state — URL-addressable open/close via useResourceDrawerUrl.
  *
  * Used by:
  * - app/[locale]/main/items/page.js
  */
 
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { normalizeEntityId } from "@/lib/entityId";
-import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useItemsPageDrawerState() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerItemId, setDrawerItemId] = useState(/** @type {string | null} */ (null));
-  const [drawerEditSeed, setDrawerEditSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, itemId: /** @type {string | null} */ (null) });
-
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, itemId: drawerItemId };
-  }, [drawerOpen, drawerItemId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerEditSeed(null);
-    setDrawerMode("create");
-    setDrawerItemId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerItemId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerItemId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerItemId(null);
-    setDrawerEditSeed(null);
-  }, []);
-
-  const handleItemCreated = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerItemId(id);
-  }, []);
-
-  const getOpenDrawerItemId = useCallback(() => drawerSessionRef.current.itemId, []);
-  const isDrawerViewingItem = useCallback(
-    (id) => drawerSessionRef.current.open && drawerSessionRef.current.itemId === id,
-    [],
-  );
+  const drawer = useResourceDrawerUrl({
+    parseId: normalizeEntityId,
+  });
 
   return {
-    drawerOpen,
-    drawerMode,
-    drawerItemId,
-    drawerEditSeed,
-    openCreateDrawer,
-    openEditDrawer,
-    openViewDrawer,
-    closeDrawer,
-    handleItemCreated,
-    getOpenDrawerItemId,
-    isDrawerViewingItem,
+    drawerOpen: drawer.open,
+    drawerMode: drawer.mode,
+    drawerItemId:
+      typeof drawer.recordId === "string" || typeof drawer.recordId === "number"
+        ? String(drawer.recordId)
+        : null,
+    drawerEditSeed: drawer.tableSeed,
+    openCreateDrawer: drawer.openCreateDrawer,
+    openEditDrawer: drawer.openEditDrawer,
+    openViewDrawer: drawer.openViewDrawer,
+    closeDrawer: drawer.closeDrawer,
+    handleItemCreated: drawer.promoteCreated,
+    getOpenDrawerItemId: () => {
+      const id = drawer.sessionRef.current.recordId;
+      return id == null ? null : String(id);
+    },
+    isDrawerViewingItem: (id) => drawer.isViewingRecord(id),
   };
 }

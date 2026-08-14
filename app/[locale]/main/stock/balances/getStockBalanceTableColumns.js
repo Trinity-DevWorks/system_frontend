@@ -16,15 +16,15 @@ export function getStockBalanceTableColumns(t, actions = {}) {
 
   return [
     {
-      title: t("colItemSku"),
-      key: "item_sku",
+      title: t("colItemCode"),
+      key: "item_code",
       width: 120,
       ellipsis: true,
       render: (_v, record) => {
-        const sku = record?.item?.sku;
-        return typeof sku === "string" && sku.trim() ? (
+        const code = record?.item?.item_code;
+        return typeof code === "string" && code.trim() ? (
           <Typography.Text code className="text-xs">
-            {sku}
+            {code}
           </Typography.Text>
         ) : (
           "—"

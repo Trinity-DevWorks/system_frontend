@@ -2,16 +2,18 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
+import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
 import { deleteRole, fetchRoles } from "@/services/rolesApi";
 import RoleDrawer from "./drawer/RoleDrawer";
 import { isOwnerRoleName, isSystemRoleName } from "./drawer/roleDrawerUtils";
 import { getRoleStatusLabel, getRoleTableColumns } from "./getRoleTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function RolesTable() {
   const t = useTranslations("Roles");
@@ -60,61 +62,30 @@ function RolesTable() {
     columnWidth: 48,
   };
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerRoleId, setDrawerRoleId] = useState(/** @type {number | null} */ (null));
-  const [drawerEditSeed, setDrawerEditSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, roleId: /** @type {number | null} */ (null) });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, roleId: drawerRoleId };
-  }, [drawerOpen, drawerRoleId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerEditSeed(null);
-    setDrawerMode("create");
-    setDrawerRoleId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerRoleId(Number(id));
-    setDrawerOpen(true);
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerRoleId,
+    tableSeed: drawerEditSeed,
+    openCreateDrawer,
+    openEditDrawer: openRoleEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleRoleCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
   const openEditDrawer = useCallback(
     (record) => {
-      const id = record?.id;
-      if (id == null) return;
       // Owner role is immutable — open view instead of edit.
       if (isOwnerRoleName(record?.name)) {
         openViewDrawer(record);
         return;
       }
-      setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-      setDrawerMode("edit");
-      setDrawerRoleId(Number(id));
-      setDrawerOpen(true);
+      openRoleEditDrawer(record);
     },
-    [openViewDrawer],
+    [openRoleEditDrawer, openViewDrawer],
   );
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerRoleId(null);
-    setDrawerEditSeed(null);
-  }, []);
-
-  const handleRoleCreated = useCallback((record) => {
-    const id = record?.id;
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerRoleId(Number(id));
-  }, []);
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteRole(id),
@@ -139,8 +110,8 @@ function RolesTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "roles", deletedId] });
-      const { open, roleId } = drawerSessionRef.current;
-      if (open && roleId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
         closeDrawer();
       }
     },
@@ -160,7 +131,7 @@ function RolesTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.roleId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -260,7 +231,7 @@ function RolesTable() {
       <RoleDrawer
         open={drawerOpen}
         mode={drawerMode}
-        roleId={drawerRoleId}
+        roleId={drawerRoleId == null ? null : Number(drawerRoleId)}
         editSeedRecord={drawerEditSeed}
         onClose={closeDrawer}
         onCreated={handleRoleCreated}
@@ -272,7 +243,15 @@ function RolesTable() {
 export default function RolesPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <RolesTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <RolesTable />
+      </Suspense>
     </div>
   );
 }

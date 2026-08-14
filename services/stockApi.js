@@ -57,6 +57,14 @@ export async function fetchStockMovements(params = {}) {
 }
 
 /**
+ * @param {number | string} movementId
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export function fetchStockMovement(movementId) {
+  return tenantApiService("GET", `stock/movements/${encodeURIComponent(String(movementId))}`);
+}
+
+/**
  * Manual stock adjustment (quantity_delta in base UOM; negative = out).
  * @param {Record<string, unknown>} body
  * @returns {Promise<unknown>}

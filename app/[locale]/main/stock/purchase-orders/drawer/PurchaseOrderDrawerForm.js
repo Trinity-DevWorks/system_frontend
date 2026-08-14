@@ -56,6 +56,8 @@ export default function PurchaseOrderDrawerForm({
                   color={
                     poStatus === "confirmed"
                       ? "success"
+                      : poStatus === "sent"
+                        ? "cyan"
                       : poStatus === "cancelled"
                         ? "default"
                         : "processing"
@@ -71,7 +73,7 @@ export default function PurchaseOrderDrawerForm({
         </Row>
       ) : null}
 
-      {showMeta && poStatus === "confirmed" ? (
+      {showMeta && (poStatus === "confirmed" || poStatus === "sent") ? (
         <Row gutter={[16, 0]}>
           <Col xs={24} sm={12}>
             <Form.Item label={<ResourceDrawerFieldLabel text={t("poFieldSentAt")} />}>

@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
@@ -9,9 +10,9 @@ import { deleteSupplier, fetchSuppliers } from "@/services/suppliersApi";
 import SupplierDrawer from "./drawer/SupplierDrawer";
 import { getSupplierStatusLabel, getSupplierTableColumns } from "./getSupplierTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function SuppliersTable() {
   const t = useTranslations("Suppliers");
@@ -53,56 +54,18 @@ function SuppliersTable() {
     [data, t],
   );
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerSupplierId, setDrawerSupplierId] = useState(/** @type {string | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({
-    open: false,
-    supplierId: /** @type {string | null} */ (null),
-  });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, supplierId: drawerSupplierId };
-  }, [drawerOpen, drawerSupplierId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerSupplierId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerSupplierId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerSupplierId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerSupplierId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handleSupplierCreated = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerSupplierId(id);
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerSupplierId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleSupplierCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl();
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteSupplier(id),
@@ -125,8 +88,8 @@ function SuppliersTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "suppliers", deletedId] });
-      const { open, supplierId } = drawerSessionRef.current;
-      if (open && supplierId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && String(recordId) === String(deletedId)) {
         closeDrawer();
       }
     },
@@ -146,7 +109,7 @@ function SuppliersTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.supplierId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -233,7 +196,7 @@ function SuppliersTable() {
       <SupplierDrawer
         open={drawerOpen}
         mode={drawerMode}
-        supplierId={drawerSupplierId}
+        supplierId={drawerSupplierId == null ? null : String(drawerSupplierId)}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handleSupplierCreated}
@@ -245,7 +208,15 @@ function SuppliersTable() {
 export default function SuppliersPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <SuppliersTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <SuppliersTable />
+      </Suspense>
     </div>
   );
 }

@@ -9,6 +9,7 @@
  */
 
 import NotificationListItem from "@/components/shell/header/NotificationListItem";
+import { navigateNotificationActionPath } from "@/lib/drawer/navigateNotificationActionPath";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   fetchNotifications,
@@ -23,18 +24,21 @@ import {
   Pagination,
   Segmented,
   Skeleton,
+  Spin,
   Typography,
   theme,
 } from "antd";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 
 const PAGE_SIZE = 20;
 
-export default function NotificationsPage() {
+function NotificationsPageInner() {
   const t = useTranslations("Notifications");
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { token } = theme.useToken();
   /** @type {["all" | "unread", function]} */
@@ -109,10 +113,12 @@ export default function NotificationsPage() {
         // continue
       }
     }
-    const path = typeof row.action_path === "string" ? row.action_path : null;
-    if (path && path !== pathname) {
-      router.push(path);
-    }
+    navigateNotificationActionPath({
+      actionPath: typeof row.action_path === "string" ? row.action_path : null,
+      pathname,
+      search: searchParams.toString(),
+      router,
+    });
   };
 
   return (
@@ -207,5 +213,19 @@ export default function NotificationsPage() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+export default function NotificationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-40 items-center justify-center p-2">
+          <Spin />
+        </div>
+      }
+    >
+      <NotificationsPageInner />
+    </Suspense>
   );
 }

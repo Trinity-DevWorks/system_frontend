@@ -2,9 +2,9 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { useResourceAccess } from "@/lib/permissions";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import ItemDrawer from "./drawer/ItemDrawer";
 import { getItemTableColumns } from "./getItemTableColumns";
 import { useItemsDelete } from "./useItemsDelete";
@@ -99,7 +99,15 @@ function ItemsTable() {
 export default function ItemsPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <ItemsTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <ItemsTable />
+      </Suspense>
     </div>
   );
 }

@@ -54,6 +54,12 @@ export const STOCK_TRANSFER_DETAIL_QUERY_PREFIX = /** @type {const} */ ([
   "transfer",
 ]);
 
+export const STOCK_MOVEMENT_DETAIL_QUERY_PREFIX = /** @type {const} */ ([
+  "tenant",
+  "stock",
+  "movement",
+]);
+
 /** @typedef {{ warehouse_id?: number; item_id?: number; search?: string; status?: string; only_alerts?: boolean }} PurchasingAlertFilters */
 
 export const PURCHASING_ALERTS_QUERY_KEY = ["tenant", "stock", "purchasing-alerts"];
@@ -71,6 +77,12 @@ export const PURCHASING_ALERTS_SUMMARY_QUERY_KEY = [
   "purchasing-alerts",
   "summary",
 ];
+
+export const PURCHASING_ALERT_DETAIL_QUERY_PREFIX = /** @type {const} */ ([
+  "tenant",
+  "stock",
+  "purchasing-alert",
+]);
 
 /**
  * @param {import("@tanstack/react-query").QueryClient} queryClient

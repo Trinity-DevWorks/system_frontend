@@ -1,13 +1,16 @@
 "use client";
 
 /**
- * Compact secondary nav for the Settings workspace (Company Profile / Company Settings).
- * Not a second application sidebar — sits inside content beside the selected page.
+ * Compact secondary nav for the Settings workspace.
+ *
+ * What: Grouped links for Company and User settings pages.
+ * Used for: SettingsWorkspace beside company profile/settings and user preferences.
+ * Solves: Keeps personal notification prefs under User without mixing them into company admin pages.
  */
 
 import { ROUTES } from "@/components/shell/sidebar/main-nav";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { BankOutlined, SettingOutlined } from "@ant-design/icons";
+import { BankOutlined, BellOutlined, SettingOutlined } from "@ant-design/icons";
 import { theme } from "antd";
 import { useTranslations } from "next-intl";
 
@@ -67,13 +70,47 @@ function SettingsNavRow({ path, label, icon, active, onNavigate }) {
   );
 }
 
+/**
+ * @param {{
+ *   title: string,
+ *   items: Array<{ path: string, label: string, icon: import("react").ReactNode }>,
+ *   pathname: string,
+ *   onNavigate: (path: string) => void,
+ * }} props
+ */
+function SettingsNavGroup({ title, items, pathname, onNavigate }) {
+  const { token } = theme.useToken();
+
+  return (
+    <div className="mb-4 last:mb-0">
+      <div
+        className="mb-1.5 px-2.5 text-xs font-semibold uppercase tracking-wide"
+        style={{ color: token.colorTextSecondary }}
+      >
+        {title}
+      </div>
+      <div className="flex flex-col gap-0.5">
+        {items.map((item) => (
+          <SettingsNavRow
+            key={item.path}
+            path={item.path}
+            label={item.label}
+            icon={item.icon}
+            active={isActivePath(item.path, pathname)}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsSecondaryNav() {
   const t = useTranslations("Shell");
   const pathname = usePathname();
   const router = useRouter();
-  const { token } = theme.useToken();
 
-  const items = [
+  const companyItems = [
     {
       path: ROUTES.settingsCompanyProfile,
       label: t("navCompanyProfile"),
@@ -86,29 +123,31 @@ export default function SettingsSecondaryNav() {
     },
   ];
 
+  const userItems = [
+    {
+      path: ROUTES.settingsPreferences,
+      label: t("navPreferences"),
+      icon: <BellOutlined />,
+    },
+  ];
+
   return (
     <nav
       aria-label={t("settingsSecondaryNavAria")}
       className="w-full shrink-0 md:w-46 lg:w-50"
     >
-      <div
-        className="mb-1.5 px-2.5 text-xs font-semibold uppercase tracking-wide"
-        style={{ color: token.colorTextSecondary }}
-      >
-        {t("settingsCompanyGroup")}
-      </div>
-      <div className="flex flex-col gap-0.5">
-        {items.map((item) => (
-          <SettingsNavRow
-            key={item.path}
-            path={item.path}
-            label={item.label}
-            icon={item.icon}
-            active={isActivePath(item.path, pathname)}
-            onNavigate={(path) => router.push(path)}
-          />
-        ))}
-      </div>
+      <SettingsNavGroup
+        title={t("settingsCompanyGroup")}
+        items={companyItems}
+        pathname={pathname}
+        onNavigate={(path) => router.push(path)}
+      />
+      <SettingsNavGroup
+        title={t("settingsUserGroup")}
+        items={userItems}
+        pathname={pathname}
+        onNavigate={(path) => router.push(path)}
+      />
     </nav>
   );
 }

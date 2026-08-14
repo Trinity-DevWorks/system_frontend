@@ -2,6 +2,8 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { PURCHASE_ORDERS_QUERY_KEY } from "@/components/stock/stockQueryCache";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { parseNumericEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { App, Button, Checkbox, Form, Select } from "antd";
 import { useTranslations } from "next-intl";
@@ -13,6 +15,7 @@ import {
   buildPurchaseOrderCreateSeedFromAlert,
   groupAlertsIntoPurchaseOrderSeeds,
 } from "./purchaseOrderFromAlertUtils";
+import PurchasingAlertViewDrawer from "./PurchasingAlertViewDrawer";
 import { usePurchasingAlertsTableQuery } from "./usePurchasingAlertsTableQuery";
 import { fetchWarehouses } from "@/services/warehousesApi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +50,18 @@ function PurchasingAlertsTable() {
   const [selectedRowKeys, setSelectedRowKeys] = useState(/** @type {import("react").Key[]} */ ([]));
 
   const [poDrawer, setPoDrawer] = useState(CLOSED_PO_DRAWER_STATE);
+
+  const {
+    open: alertViewOpen,
+    recordId: alertViewId,
+    tableSeed: alertViewSeed,
+    openViewDrawer,
+    closeDrawer: closeAlertViewDrawer,
+  } = useResourceDrawerUrl({
+    allowCreateInUrl: false,
+    defaultMode: "view",
+    parseId: parseNumericEntityId,
+  });
 
   const { tableData: rawTableData, isPending, isFetching, refetch } = usePurchasingAlertsTableQuery({
     t,
@@ -92,7 +107,7 @@ function PurchasingAlertsTable() {
     () =>
       rawTableData.map((row) => ({
         ...row,
-        item_sku: row?.item?.sku ?? "",
+        item_code: row?.item?.item_code ?? "",
         item_name: row?.item?.name ?? "",
         warehouse_name: row?.warehouse?.name ?? "",
       })),
@@ -147,6 +162,18 @@ function PurchasingAlertsTable() {
     setPoDrawer((prev) => ({ open: true, key: prev.key + 1, seed: first, queue: rest, bulkFlow }));
   }, []);
 
+  const handleViewAlert = useCallback(
+    (record) => {
+      const replenishmentId = parseNumericEntityId(record?.replenishment_id);
+      if (replenishmentId == null) return;
+      openViewDrawer({
+        .../** @type {Record<string, unknown>} */ (record),
+        id: replenishmentId,
+      });
+    },
+    [openViewDrawer],
+  );
+
   const handleCreatePoFromAlert = useCallback(
     (record) => {
       const seed = buildPurchaseOrderCreateSeedFromAlert(/** @type {Record<string, unknown>} */ (record));
@@ -155,17 +182,21 @@ function PurchasingAlertsTable() {
         return;
       }
 
+      if (alertViewOpen) {
+        closeAlertViewDrawer();
+      }
       openDrawerWithSeeds([seed]);
     },
-    [message, openDrawerWithSeeds, t],
+    [alertViewOpen, closeAlertViewDrawer, message, openDrawerWithSeeds, t],
   );
 
   const columns = useMemo(
     () =>
       getPurchasingAlertTableColumns(t, {
+        onView: access.canView ? handleViewAlert : undefined,
         onCreatePo: access.canAdd ? handleCreatePoFromAlert : undefined,
       }),
-    [t, access.canAdd, handleCreatePoFromAlert],
+    [t, access.canView, access.canAdd, handleViewAlert, handleCreatePoFromAlert],
   );
 
   const handleOpenBulkCreate = useCallback(() => {
@@ -190,8 +221,19 @@ function PurchasingAlertsTable() {
       message.info(t("poFromAlertsDrawerQueue", { count: seeds.length }));
     }
 
+    if (alertViewOpen) {
+      closeAlertViewDrawer();
+    }
     openDrawerWithSeeds(seeds, { bulkFlow: seeds.length > 1 });
-  }, [message, openDrawerWithSeeds, selectedRowKeys, t, tableDataByKey]);
+  }, [
+    alertViewOpen,
+    closeAlertViewDrawer,
+    message,
+    openDrawerWithSeeds,
+    selectedRowKeys,
+    t,
+    tableDataByKey,
+  ]);
 
   const handlePoDrawerClose = useCallback(() => {
     setPoDrawer((prev) => ({ ...CLOSED_PO_DRAWER_STATE, key: prev.key }));
@@ -271,7 +313,7 @@ function PurchasingAlertsTable() {
         selectionBarExtra={access.canAdd ? selectionBarExtra : undefined}
         toolbar={{
           showSearch: true,
-          searchKeys: ["item_sku", "item_name", "warehouse_name"],
+          searchKeys: ["item_code", "item_name", "warehouse_name"],
           enableClientSearch: true,
           showRefresh: true,
           onRefresh: () => refetch(),
@@ -285,6 +327,15 @@ function PurchasingAlertsTable() {
           pageSize: 20,
           pageSizeOptions: [10, 20, 50, 100],
         }}
+      />
+
+      <PurchasingAlertViewDrawer
+        open={alertViewOpen && !poDrawer.open}
+        replenishmentId={alertViewOpen ? alertViewId : null}
+        tableSeedRecord={alertViewSeed}
+        onClose={closeAlertViewDrawer}
+        canCreatePo={access.canAdd}
+        onCreatePo={access.canAdd ? handleCreatePoFromAlert : undefined}
       />
 
       <PurchaseOrderDrawer

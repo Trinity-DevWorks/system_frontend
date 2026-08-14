@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Stock transfer drawer — draft header/lines, save, post, cancel, delete.
+ * Stock transfer drawer — draft header/lines, save, dispatch, receive, cancel, delete.
  */
 
 import ResourceCrudDrawer from "@/components/resource-drawer/ResourceCrudDrawer";
@@ -13,7 +13,12 @@ import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isStockTransferDraft } from "../../shared/stockTransferStatuses";
+import {
+  isStockTransferCancellable,
+  isStockTransferDraft,
+  isStockTransferInTransit,
+  isStockTransferReceivable,
+} from "../../shared/stockTransferStatuses";
 import StockTransferDrawerFooter from "./StockTransferDrawerFooter";
 import StockTransferDrawerForm from "./StockTransferDrawerForm";
 import StockTransferLineEditor from "./StockTransferLineEditor";
@@ -58,6 +63,8 @@ export default function StockTransferDrawer({
   const [headerBaseline, setHeaderBaseline] = useState(() => getStockTransferDefaults());
   const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
   const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
+  const [loadedDispatchedAt, setLoadedDispatchedAt] = useState(/** @type {string | null} */ (null));
+  const [loadedReceivedAt, setLoadedReceivedAt] = useState(/** @type {string | null} */ (null));
 
   const defaults = useMemo(() => getStockTransferDefaults(), []);
   const loadedDetailVersionRef = useRef(0);
@@ -84,6 +91,8 @@ export default function StockTransferDrawer({
       setHeaderBaseline(mapTransferRecordToForm(record));
       setLoadedStatus(typeof record.status === "string" ? record.status : null);
       setLoadedNumber(typeof record.transfer_number === "string" ? record.transfer_number : null);
+      setLoadedDispatchedAt(typeof record.dispatched_at === "string" ? record.dispatched_at : null);
+      setLoadedReceivedAt(typeof record.received_at === "string" ? record.received_at : null);
       form.setFieldsValue(mapTransferRecordToForm(record));
     },
     [form],
@@ -97,6 +106,8 @@ export default function StockTransferDrawer({
     setHeaderBaseline(defaults);
     setLoadedStatus("draft");
     setLoadedNumber(null);
+    setLoadedDispatchedAt(null);
+    setLoadedReceivedAt(null);
     loadedDetailVersionRef.current = 0;
   }, [form, defaults]);
 
@@ -187,7 +198,7 @@ export default function StockTransferDrawer({
     [onCreated, syncBaselinesFromRecordAndBump],
   );
 
-  const { saveMutation, postMutation, cancelMutation, deleteMutation, submitting } =
+  const { saveMutation, dispatchMutation, receiveMutation, cancelMutation, deleteMutation, submitting } =
     useStockTransferDrawerMutations({
       form,
       message,
@@ -198,7 +209,8 @@ export default function StockTransferDrawer({
       lines,
       onCreated: handleCreated,
       onSaved: syncBaselinesFromRecordAndBump,
-      onPosted: syncBaselinesFromRecordAndBump,
+      onDispatched: syncBaselinesFromRecordAndBump,
+      onReceived: syncBaselinesFromRecordAndBump,
       onCancelled: syncBaselinesFromRecordAndBump,
       onDeleted: forceClose,
       onClose: forceClose,
@@ -227,30 +239,44 @@ export default function StockTransferDrawer({
       .catch(() => {});
   }, [form, saveMutation]);
 
-  const handlePost = useCallback(() => {
+  const handleDispatch = useCallback(() => {
     form
       .validateFields()
       .then((values) => {
         modal.confirm({
-          title: t("transferPostConfirmTitle"),
-          content: t("transferPostConfirmContent"),
-          okText: t("transferPostConfirmOk"),
+          title: t("transferDispatchConfirmTitle"),
+          content: t("transferDispatchConfirmContent"),
+          okText: t("transferDispatchConfirmOk"),
           cancelText: t("drawerCancel"),
-          onOk: () => postMutation.mutateAsync({ values }),
+          onOk: () => dispatchMutation.mutateAsync({ values }),
         });
       })
       .catch(() => {});
-  }, [form, modal, t, postMutation]);
+  }, [form, modal, t, dispatchMutation]);
+
+  const handleReceive = useCallback(() => {
+    modal.confirm({
+      title: t("transferReceiveConfirmTitle"),
+      content: t("transferReceiveConfirmContent"),
+      okText: t("actionReceiveTransfer"),
+      cancelText: t("drawerCancel"),
+      onOk: () => receiveMutation.mutateAsync(),
+    });
+  }, [modal, t, receiveMutation]);
 
   const handleCancelTransfer = useCallback(() => {
     modal.confirm({
-      title: t("transferCancelConfirmTitle"),
-      content: t("transferCancelConfirmContent"),
+      title: isStockTransferInTransit(effectiveStatus)
+        ? t("transferCancelInTransitConfirmTitle")
+        : t("transferCancelConfirmTitle"),
+      content: isStockTransferInTransit(effectiveStatus)
+        ? t("transferCancelInTransitConfirmContent")
+        : t("transferCancelConfirmContent"),
       okText: t("transferCancelConfirmOk"),
       cancelText: t("drawerCancel"),
       onOk: () => cancelMutation.mutateAsync(),
     });
-  }, [modal, t, cancelMutation]);
+  }, [modal, t, cancelMutation, effectiveStatus]);
 
   const handleDelete = useCallback(() => {
     const name = loadedNumber ?? String(transferId ?? "");
@@ -287,6 +313,9 @@ export default function StockTransferDrawer({
         : t("transferDrawerTitleEdit");
 
   const showDetailLoading = fetchRemoteDetail && detailQuery.isLoading;
+  const showLifecycleActions = isStockTransferInTransit(effectiveStatus);
+  const canReceive = isStockTransferReceivable(effectiveStatus);
+  const canCancelInTransit = isStockTransferInTransit(effectiveStatus);
 
   return (
     <ResourceCrudDrawer
@@ -310,11 +339,17 @@ export default function StockTransferDrawer({
           requestClose={requestClose}
           submitting={submitting}
           saveDisabled={!canSubmitRequired}
-          postDisabled={!canSubmitRequired}
+          dispatchDisabled={!canSubmitRequired}
           showDelete={!readOnly && transferId != null}
-          showCancelTransfer={!readOnly && transferId != null}
+          showCancelTransfer={
+            !readOnly && transferId != null && isStockTransferCancellable(effectiveStatus)
+          }
+          showLifecycleActions={showLifecycleActions}
+          canReceive={canReceive}
+          canCancelInTransit={canCancelInTransit}
           onSave={handleSave}
-          onPost={handlePost}
+          onDispatch={handleDispatch}
+          onReceive={handleReceive}
           onCancelTransfer={handleCancelTransfer}
           onDelete={handleDelete}
         />
@@ -328,6 +363,8 @@ export default function StockTransferDrawer({
         warehousesPending={drawerData.warehousesPending}
         transferNumber={loadedNumber}
         transferStatus={effectiveStatus}
+        dispatchedAt={loadedDispatchedAt}
+        receivedAt={loadedReceivedAt}
         showMeta={mode !== "create"}
       />
       <StockTransferLineEditor

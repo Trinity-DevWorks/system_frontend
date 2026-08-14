@@ -26,6 +26,17 @@ export async function fetchPurchasingAlerts(params = {}) {
 }
 
 /**
+ * @param {number | string} replenishmentId
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export function fetchPurchasingAlert(replenishmentId) {
+  return tenantApiService(
+    "GET",
+    `stock/purchasing-alerts/${encodeURIComponent(String(replenishmentId))}`,
+  );
+}
+
+/**
  * @returns {Promise<number>}
  */
 export async function fetchPurchasingAlertSummary() {

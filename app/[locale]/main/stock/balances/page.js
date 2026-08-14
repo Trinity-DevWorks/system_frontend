@@ -62,7 +62,7 @@ function StockBalancesTable() {
     () =>
       rawTableData.map((row) => ({
         ...row,
-        item_sku: row?.item?.sku ?? "",
+        item_code: row?.item?.item_code ?? "",
         item_name: row?.item?.name ?? "",
         warehouse_name: row?.warehouse?.name ?? "",
       })),
@@ -138,7 +138,7 @@ function StockBalancesTable() {
         emptyText={t("balancesEmpty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["item_sku", "item_name", "warehouse_name", "quantity"],
+          searchKeys: ["item_code", "item_name", "warehouse_name", "quantity"],
           enableClientSearch: true,
           showRefresh: true,
           onRefresh: () => refetch(),

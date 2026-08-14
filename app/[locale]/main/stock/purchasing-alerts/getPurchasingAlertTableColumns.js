@@ -1,6 +1,6 @@
-import { formatStockQuantity, formatUomLabel } from "../shared/formatStockQuantity";
-import { FileAddOutlined, MoreOutlined } from "@ant-design/icons";
+import { EyeOutlined, FileAddOutlined, MoreOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Tag } from "antd";
+import { formatStockQuantity, formatUomLabel } from "../shared/formatStockQuantity";
 
 /** @type {Record<string, string>} */
 const STATUS_TAG_COLOR = {
@@ -12,18 +12,24 @@ const STATUS_TAG_COLOR = {
 
 /**
  * @param {(key: string) => string} t
- * @param {{ onCreatePo?: (record: Record<string, unknown>) => void }} [handlers]
+ * @param {{
+ *   onView?: (record: Record<string, unknown>) => void;
+ *   onCreatePo?: (record: Record<string, unknown>) => void;
+ * }} [handlers]
  * @returns {import("antd").TableProps["columns"]}
  */
 export function getPurchasingAlertTableColumns(t, handlers = {}) {
-  const { onCreatePo } = handlers;
+  const { onView, onCreatePo } = handlers;
   return [
     {
-      title: t("colItemSku"),
-      key: "item_sku",
+      title: t("colItemCode"),
+      key: "item_code",
       width: 120,
       ellipsis: true,
-      render: (_v, record) => record?.item?.sku ?? "—",
+      render: (_v, record) => {
+        const code = record?.item?.item_code;
+        return typeof code === "string" && code.trim() ? code : "—";
+      },
     },
     {
       title: t("colItemName"),
@@ -121,31 +127,45 @@ export function getPurchasingAlertTableColumns(t, handlers = {}) {
       render: (_v, record) =>
         record?.lead_time_days != null ? t("leadTimeDays", { days: record.lead_time_days }) : "—",
     },
-    {
-      title: t("colActions"),
-      key: "actions",
-      width: 72,
-      fixed: "right",
-      render: (_v, record) => {
-        const suggestedQty = Number(record?.suggested_order_qty);
-        const canCreate = Number.isFinite(suggestedQty) && suggestedQty > 0;
-
-        const items = [
+    ...(onView || onCreatePo
+      ? [
           {
-            key: "create-po",
-            icon: <FileAddOutlined />,
-            label: t("actionCreatePoFromAlert"),
-            disabled: !canCreate,
-            onClick: () => onCreatePo?.(record),
-          },
-        ];
+            title: t("colActions"),
+            key: "actions",
+            width: 72,
+            fixed: "right",
+            render: (_v, record) => {
+              const suggestedQty = Number(record?.suggested_order_qty);
+              const canCreate = Number.isFinite(suggestedQty) && suggestedQty > 0;
 
-        return (
-          <Dropdown menu={{ items }} trigger={["click"]}>
-            <Button type="text" icon={<MoreOutlined />} aria-label={t("actionMenu")} />
-          </Dropdown>
-        );
-      },
-    },
+              /** @type {import("antd").MenuProps["items"]} */
+              const items = [];
+              if (onView) {
+                items.push({
+                  key: "view",
+                  icon: <EyeOutlined />,
+                  label: t("actionView"),
+                  onClick: () => onView(record),
+                });
+              }
+              if (onCreatePo) {
+                items.push({
+                  key: "create-po",
+                  icon: <FileAddOutlined />,
+                  label: t("actionCreatePoFromAlert"),
+                  disabled: !canCreate,
+                  onClick: () => onCreatePo(record),
+                });
+              }
+
+              return (
+                <Dropdown menu={{ items }} trigger={["click"]}>
+                  <Button type="text" icon={<MoreOutlined />} aria-label={t("actionMenu")} />
+                </Dropdown>
+              );
+            },
+          },
+        ]
+      : []),
   ];
 }

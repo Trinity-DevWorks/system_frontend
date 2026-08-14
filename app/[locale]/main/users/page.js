@@ -2,6 +2,7 @@
 
 import AppDataTable from "@/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
@@ -9,9 +10,9 @@ import { deleteTenantUser, fetchTenantUsers } from "@/services/tenantUsersApi";
 import UserDrawer from "./drawer/UserDrawer";
 import { getUserStatusLabel, getUserTableColumns } from "./getUserTableColumns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 function UsersTable() {
   const t = useTranslations("Users");
@@ -88,53 +89,18 @@ function UsersTable() {
     columnWidth: 48,
   };
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerUserId, setDrawerUserId] = useState(/** @type {string | null} */ (null));
-  const [drawerEditSeed, setDrawerEditSeed] = useState(/** @type {Record<string, unknown> | null} */ (null));
-  const drawerSessionRef = useRef({ open: false, userId: /** @type {string | null} */ (null) });
-  useEffect(() => {
-    drawerSessionRef.current = { open: drawerOpen, userId: drawerUserId };
-  }, [drawerOpen, drawerUserId]);
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerEditSeed(null);
-    setDrawerMode("create");
-    setDrawerUserId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerUserId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerUserId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerUserId(null);
-    setDrawerEditSeed(null);
-  }, []);
-
-  const handleUserCreated = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerEditSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerUserId(id);
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerUserId,
+    tableSeed: drawerEditSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleUserCreated,
+    sessionRef: drawerSessionRef,
+  } = useResourceDrawerUrl();
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteTenantUser(id),
@@ -159,8 +125,8 @@ function UsersTable() {
     onSuccess: (_data, deletedId) => {
       message.success(t("deleteSuccess"));
       queryClient.removeQueries({ queryKey: ["tenant", "users", deletedId] });
-      const { open, userId } = drawerSessionRef.current;
-      if (open && userId === deletedId) {
+      const { open, recordId } = drawerSessionRef.current;
+      if (open && recordId != null && String(recordId) === String(deletedId)) {
         closeDrawer();
       }
     },
@@ -180,7 +146,7 @@ function UsersTable() {
     tApiErrors,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenRecordId: () => drawerSessionRef.current.userId,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
 
@@ -268,7 +234,11 @@ function UsersTable() {
       <UserDrawer
         open={drawerOpen}
         mode={drawerMode}
-        userId={drawerUserId}
+        userId={
+          typeof drawerUserId === "string" || typeof drawerUserId === "number"
+            ? String(drawerUserId)
+            : null
+        }
         editSeedRecord={drawerEditSeed}
         onClose={closeDrawer}
         onCreated={handleUserCreated}
@@ -280,7 +250,15 @@ function UsersTable() {
 export default function UsersPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <UsersTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <UsersTable />
+      </Suspense>
     </div>
   );
 }

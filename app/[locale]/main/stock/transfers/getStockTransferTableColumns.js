@@ -1,5 +1,10 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
-import { getStockTransferStatusLabel } from "../shared/stockTransferStatuses";
+import { DeleteOutlined, EditOutlined, EyeOutlined, InboxOutlined, MoreOutlined, StopOutlined } from "@ant-design/icons";
+import {
+  getStockTransferStatusLabel,
+  isStockTransferCancellable,
+  isStockTransferDraft,
+  isStockTransferReceivable,
+} from "../shared/stockTransferStatuses";
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
@@ -12,10 +17,12 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
+ *   onReceive?: (record: unknown) => void;
+ *   onCancel?: (record: unknown) => void;
  * }} [actions]
  */
 export function getStockTransferTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete } = actions;
+  const { onView, onEdit, onDelete, onReceive, onCancel } = actions;
 
   return [
     {
@@ -57,7 +64,13 @@ export function getStockTransferTableColumns(t, actions = {}) {
       render: (value) => {
         const label = getStockTransferStatusLabel(t, value);
         const color =
-          value === "posted" ? "success" : value === "cancelled" ? "default" : "processing";
+          value === "received"
+            ? "success"
+            : value === "in_transit"
+              ? "warning"
+              : value === "cancelled"
+                ? "default"
+                : "processing";
         return <Tag color={color}>{label}</Tag>;
       },
     },
@@ -70,21 +83,29 @@ export function getStockTransferTableColumns(t, actions = {}) {
       sorter: (a, b) => Number(a.lines_count ?? 0) - Number(b.lines_count ?? 0),
     },
     {
-      title: t("colPostedAt"),
-      dataIndex: "posted_at",
-      key: "posted_at",
-      width: 200,
-      sorter: (a, b) => toTime(a.posted_at) - toTime(b.posted_at),
-      render: (value) => (formatTenantDateTime(value) || "\u2014"),
+      title: t("colDispatchedAt"),
+      dataIndex: "dispatched_at",
+      key: "dispatched_at",
+      width: 180,
+      sorter: (a, b) => toTime(a.dispatched_at) - toTime(b.dispatched_at),
+      render: (value) => formatTenantDateTime(value) || "\u2014",
+    },
+    {
+      title: t("colReceivedAt"),
+      dataIndex: "received_at",
+      key: "received_at",
+      width: 180,
+      sorter: (a, b) => toTime(a.received_at) - toTime(b.received_at),
+      render: (value) => formatTenantDateTime(value) || "\u2014",
     },
     {
       title: t("colCreatedAt"),
       dataIndex: "created_at",
       key: "created_at",
-      width: 200,
+      width: 180,
       sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
       defaultSortOrder: "descend",
-      render: (value) => (formatTenantDateTime(value) || "\u2014"),
+      render: (value) => formatTenantDateTime(value) || "\u2014",
     },
     {
       title: t("colActions"),
@@ -92,7 +113,9 @@ export function getStockTransferTableColumns(t, actions = {}) {
       width: 72,
       fixed: "right",
       render: (_, record) => {
-        const isDraft = record?.status === "draft";
+        const isDraft = isStockTransferDraft(record?.status);
+        const canReceive = isStockTransferReceivable(record?.status);
+        const canCancel = isStockTransferCancellable(record?.status) && !isDraft;
         const items = [
           {
             key: "view",
@@ -114,6 +137,26 @@ export function getStockTransferTableColumns(t, actions = {}) {
                   danger: true,
                   label: t("actionDelete"),
                   onClick: () => onDelete?.(record),
+                },
+              ]
+            : []),
+          ...(canReceive
+            ? [
+                {
+                  key: "receive",
+                  icon: <InboxOutlined />,
+                  label: t("actionReceiveTransfer"),
+                  onClick: () => onReceive?.(record),
+                },
+              ]
+            : []),
+          ...(canCancel
+            ? [
+                {
+                  key: "cancel",
+                  icon: <StopOutlined />,
+                  label: t("actionCancelTransfer"),
+                  onClick: () => onCancel?.(record),
                 },
               ]
             : []),

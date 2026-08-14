@@ -14,7 +14,7 @@ import { Button, Space } from "antd";
  *   showDelete: boolean;
  *   showCancelOrder: boolean;
  *   showSupplierActions?: boolean;
- *   isSent?: boolean;
+ *   canMarkSent?: boolean;
  *   pdfLoading?: boolean;
  *   onSave: () => void;
  *   onConfirm: () => void;
@@ -35,7 +35,7 @@ export default function PurchaseOrderDrawerFooter({
   showDelete,
   showCancelOrder,
   showSupplierActions = false,
-  isSent = false,
+  canMarkSent = false,
   pdfLoading = false,
   onSave,
   onConfirm,
@@ -52,9 +52,11 @@ export default function PurchaseOrderDrawerFooter({
             <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
               {t("actionDownloadPoPdf")}
             </Button>
-            <Button disabled={submitting} onClick={onMarkSent}>
-              {isSent ? t("actionMarkPoSentAgain") : t("actionMarkPoSent")}
-            </Button>
+            {canMarkSent ? (
+              <Button disabled={submitting} onClick={onMarkSent}>
+                {t("actionMarkPoSent")}
+              </Button>
+            ) : null}
           </Space>
         ) : (
           <span />

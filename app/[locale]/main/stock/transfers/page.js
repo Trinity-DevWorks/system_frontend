@@ -3,15 +3,16 @@
 import AppDataTable from "@/components/tables/AppDataTable";
 import { stockTransfersQueryKey } from "@/components/stock/stockQueryCache";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { deleteStockTransfer } from "@/services/stockTransfersApi";
 import { fetchWarehouses } from "@/services/warehousesApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, DatePicker, Form, Select } from "antd";
+import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { STOCK_TRANSFER_STATUS_VALUES } from "../shared/stockTransferStatuses";
 import { getStockTransferStatusLabel } from "../shared/stockTransferStatuses";
 import {
@@ -94,51 +95,17 @@ function StockTransfersTable() {
     [rawTableData, t],
   );
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerTransferId, setDrawerTransferId] = useState(/** @type {string | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(
-    /** @type {Record<string, unknown> | null} */ (null),
-  );
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerTransferId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerTransferId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerTransferId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerTransferId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handleTransferCreated = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerTransferId(id);
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerTransferId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleTransferCreated,
+  } = useResourceDrawerUrl();
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteStockTransfer(id),
@@ -309,7 +276,11 @@ function StockTransfersTable() {
       <StockTransferDrawer
         open={drawerOpen}
         mode={drawerMode}
-        transferId={drawerTransferId}
+        transferId={
+          typeof drawerTransferId === "string" || typeof drawerTransferId === "number"
+            ? String(drawerTransferId)
+            : null
+        }
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handleTransferCreated}
@@ -321,7 +292,15 @@ function StockTransfersTable() {
 export default function StockTransfersPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <StockTransfersTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <StockTransfersTable />
+      </Suspense>
     </div>
   );
 }

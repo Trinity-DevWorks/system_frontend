@@ -3,6 +3,7 @@
 import AppDataTable from "@/components/tables/AppDataTable";
 import { purchaseOrdersQueryKey } from "@/components/stock/stockQueryCache";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
@@ -10,9 +11,9 @@ import { cancelPurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, mar
 import { fetchSuppliers } from "@/services/suppliersApi";
 import { fetchWarehouses } from "@/services/warehousesApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, DatePicker, Form, Select } from "antd";
+import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { PURCHASE_ORDER_STATUS_VALUES, getPurchaseOrderStatusLabel } from "../shared/purchaseOrderStatuses";
 import {
   formatStockFilterDateRange,
@@ -109,51 +110,17 @@ function PurchaseOrdersTable() {
     [rawTableData, t],
   );
 
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [drawerOrderId, setDrawerOrderId] = useState(/** @type {string | null} */ (null));
-  const [drawerTableSeed, setDrawerTableSeed] = useState(
-    /** @type {Record<string, unknown> | null} */ (null),
-  );
-
-  const openCreateDrawer = useCallback(() => {
-    setDrawerTableSeed(null);
-    setDrawerMode("create");
-    setDrawerOrderId(null);
-    setDrawerOpen(true);
-  }, []);
-
-  const openEditDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerOrderId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const openViewDrawer = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("view");
-    setDrawerOrderId(id);
-    setDrawerOpen(true);
-  }, []);
-
-  const closeDrawer = useCallback(() => {
-    setDrawerOpen(false);
-    setDrawerOrderId(null);
-    setDrawerTableSeed(null);
-  }, []);
-
-  const handleOrderCreated = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setDrawerTableSeed(record && typeof record === "object" ? { ...record } : null);
-    setDrawerMode("edit");
-    setDrawerOrderId(id);
-  }, []);
+  const {
+    open: drawerOpen,
+    mode: drawerMode,
+    recordId: drawerOrderId,
+    tableSeed: drawerTableSeed,
+    openCreateDrawer,
+    openEditDrawer,
+    openViewDrawer,
+    closeDrawer,
+    promoteCreated: handleOrderCreated,
+  } = useResourceDrawerUrl();
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deletePurchaseOrder(id),
@@ -413,7 +380,7 @@ function PurchaseOrdersTable() {
       <PurchaseOrderDrawer
         open={drawerOpen}
         mode={drawerMode}
-        orderId={drawerOrderId}
+        orderId={typeof drawerOrderId === "string" || typeof drawerOrderId === "number" ? String(drawerOrderId) : null}
         tableSeedRecord={drawerTableSeed}
         onClose={closeDrawer}
         onCreated={handleOrderCreated}
@@ -425,7 +392,15 @@ function PurchaseOrdersTable() {
 export default function PurchaseOrdersPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <PurchaseOrdersTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <PurchaseOrdersTable />
+      </Suspense>
     </div>
   );
 }

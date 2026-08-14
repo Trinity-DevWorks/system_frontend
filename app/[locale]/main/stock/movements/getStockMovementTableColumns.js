@@ -1,16 +1,22 @@
+import { EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import { formatTenantDateTime } from "@/lib/tenant-format";
+import { Button, Dropdown, Typography } from "antd";
+import dayjs from "dayjs";
 import { formatStockQuantity, formatUomLabel } from "../shared/formatStockQuantity";
 import { getStockMovementTypeLabel } from "../shared/stockMovementTypes";
-import { Typography } from "antd";
-import dayjs from "dayjs";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
 /**
  * @param {(key: string) => string} t
+ * @param {{
+ *   onView?: (record: unknown) => void;
+ * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
-export function getStockMovementTableColumns(t) {
+export function getStockMovementTableColumns(t, actions = {}) {
+  const { onView } = actions;
+
   return [
     {
       title: t("colMovementDate"),
@@ -32,15 +38,15 @@ export function getStockMovementTableColumns(t) {
       render: (value) => getStockMovementTypeLabel(t, value),
     },
     {
-      title: t("colItemSku"),
-      key: "item_sku",
+      title: t("colItemCode"),
+      key: "item_code",
       width: 110,
       ellipsis: true,
       render: (_v, record) => {
-        const sku = record?.item?.sku;
-        return typeof sku === "string" && sku.trim() ? (
+        const code = record?.item?.item_code;
+        return typeof code === "string" && code.trim() ? (
           <Typography.Text code className="text-xs">
-            {sku}
+            {code}
           </Typography.Text>
         ) : (
           "—"
@@ -110,5 +116,31 @@ export function getStockMovementTableColumns(t) {
       ellipsis: true,
       render: (value) => (typeof value === "string" && value.trim() ? value : "—"),
     },
+    ...(onView
+      ? [
+          {
+            title: t("colActions"),
+            key: "actions",
+            width: 72,
+            fixed: "right",
+            render: (_, record) => {
+              const items = [
+                {
+                  key: "view",
+                  icon: <EyeOutlined />,
+                  label: t("actionView"),
+                  onClick: () => onView(record),
+                },
+              ];
+
+              return (
+                <Dropdown menu={{ items }} trigger={["click"]}>
+                  <Button type="text" icon={<MoreOutlined />} aria-label={t("actionMenu")} />
+                </Dropdown>
+              );
+            },
+          },
+        ]
+      : []),
   ];
 }
