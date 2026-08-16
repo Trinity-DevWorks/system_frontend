@@ -12,6 +12,8 @@ import NotificationListItem from "@/components/shell/header/NotificationListItem
 import { navigateNotificationActionPath } from "@/lib/drawer/navigateNotificationActionPath";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
+  clearAllNotifications,
+  clearReadNotifications,
   fetchNotifications,
   fetchUnreadNotificationCount,
   markAllNotificationsRead,
@@ -19,6 +21,8 @@ import {
 } from "@/services/notificationsApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  App,
+  Button,
   Card,
   Empty,
   Pagination,
@@ -36,6 +40,7 @@ const PAGE_SIZE = 20;
 
 function NotificationsPageInner() {
   const t = useTranslations("Notifications");
+  const { message, modal } = App.useApp();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -62,6 +67,13 @@ function NotificationsPageInner() {
     staleTime: 15_000,
   });
 
+  // Separate from the filtered list so Clear buttons stay accurate on the Unread tab.
+  const allCountQuery = useQuery({
+    queryKey: ["tenant", "notifications", "all-count"],
+    queryFn: () => fetchNotifications({ page: 1, per_page: 1 }),
+    staleTime: 15_000,
+  });
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["tenant", "notifications"] });
   };
@@ -76,9 +88,33 @@ function NotificationsPageInner() {
     onSuccess: invalidate,
   });
 
+  const clearReadMutation = useMutation({
+    mutationFn: clearReadNotifications,
+    onSuccess: (data) => {
+      setPage(1);
+      invalidate();
+      message.success(t("clearReadSuccess", { count: Number(data?.deleted) || 0 }));
+    },
+    onError: () => message.error(t("clearError")),
+  });
+
+  const clearAllMutation = useMutation({
+    mutationFn: clearAllNotifications,
+    onSuccess: (data) => {
+      setPage(1);
+      invalidate();
+      message.success(t("clearAllSuccess", { count: Number(data?.deleted) || 0 }));
+    },
+    onError: () => message.error(t("clearError")),
+  });
+
   const unreadCount = unreadQuery.data ?? 0;
   const items = listQuery.data?.items ?? [];
   const total = Number(listQuery.data?.pagination?.total) || items.length;
+  const allCount =
+    Number(allCountQuery.data?.pagination?.total) ||
+    (filter === "all" ? total : 0);
+  const readCount = Math.max(0, allCount - unreadCount);
   const loading = listQuery.isLoading && items.length === 0;
 
   const segmentedOptions = useMemo(
@@ -121,6 +157,42 @@ function NotificationsPageInner() {
     });
   };
 
+  const confirmClearRead = () => {
+    if (readCount < 1) return;
+    modal.confirm({
+      title: t("clearReadConfirmTitle"),
+      content: t("clearReadConfirmBody"),
+      okText: t("clearConfirmOk"),
+      cancelText: t("clearConfirmCancel"),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await clearReadMutation.mutateAsync();
+        } catch {
+          // Mutation feedback is shown by onError; close the confirmation.
+        }
+      },
+    });
+  };
+
+  const confirmClearAll = () => {
+    if (allCount < 1) return;
+    modal.confirm({
+      title: t("clearAllConfirmTitle"),
+      content: t("clearAllConfirmBody"),
+      okText: t("clearConfirmOk"),
+      cancelText: t("clearConfirmCancel"),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await clearAllMutation.mutateAsync();
+        } catch {
+          // Mutation feedback is shown by onError; close the confirmation.
+        }
+      },
+    });
+  };
+
   return (
     <div className="mx-auto w-full max-w-3xl p-2">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -132,18 +204,34 @@ function NotificationsPageInner() {
             {t("pageSubtitle")}
           </Typography.Paragraph>
         </div>
-        <button
-          type="button"
-          disabled={unreadCount < 1 || markAllMutation.isPending}
-          onClick={() => markAllMutation.mutate()}
-          className="border-0 bg-transparent p-0 text-sm font-medium disabled:opacity-40"
-          style={{
-            color: token.colorPrimary,
-            cursor: unreadCount < 1 ? "not-allowed" : "pointer",
-          }}
-        >
-          {t("markAllRead")}
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            type="text"
+            size="small"
+            disabled={unreadCount < 1}
+            loading={markAllMutation.isPending}
+            onClick={() => markAllMutation.mutate()}
+          >
+            {t("markAllRead")}
+          </Button>
+          <Button
+            size="small"
+            disabled={readCount < 1}
+            loading={clearReadMutation.isPending}
+            onClick={confirmClearRead}
+          >
+            {t("clearRead")}
+          </Button>
+          <Button
+            danger
+            size="small"
+            disabled={allCount < 1}
+            loading={clearAllMutation.isPending}
+            onClick={confirmClearAll}
+          >
+            {t("clearAll")}
+          </Button>
+        </div>
       </div>
 
       <div className="mb-3 max-w-xs">

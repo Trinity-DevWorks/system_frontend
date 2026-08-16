@@ -384,7 +384,7 @@ export default function PurchaseOrderDrawer({
           saveDisabled={!canSubmitRequired}
           confirmDisabled={!canSubmitRequired}
           showDelete={!readOnly && orderId != null}
-          showCancelOrder={!readOnly && orderId != null && isPurchaseOrderCancellable(effectiveStatus)}
+          showCancelOrder={orderId != null && isPurchaseOrderCancellable(effectiveStatus)}
           showSupplierActions={showSupplierActions}
           canMarkSent={canMarkSent}
           pdfLoading={pdfMutation.isPending}

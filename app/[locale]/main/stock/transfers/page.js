@@ -1,13 +1,23 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
-import { stockTransfersQueryKey } from "@/components/stock/stockQueryCache";
+import {
+  invalidatePurchasingAlertsQueries,
+  STOCK_BALANCES_QUERY_KEY,
+  STOCK_MOVEMENTS_QUERY_KEY,
+  stockTransfersQueryKey,
+} from "@/components/stock/stockQueryCache";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { deleteStockTransfer } from "@/services/stockTransfersApi";
+import {
+  cancelStockTransfer,
+  deleteStockTransfer,
+  dispatchStockTransfer,
+  receiveStockTransfer,
+} from "@/services/stockTransfersApi";
 import { fetchWarehouses } from "@/services/warehousesApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
@@ -107,11 +117,18 @@ function StockTransfersTable() {
     promoteCreated: handleTransferCreated,
   } = useResourceDrawerUrl();
 
+  const invalidateStockLedger = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: stockTransfersQueryKey() });
+    invalidatePurchasingAlertsQueries(queryClient);
+  }, [queryClient]);
+
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteStockTransfer(id),
     onSuccess: () => {
       message.success(t("transferDeleteSuccess"));
-      queryClient.invalidateQueries({ queryKey: stockTransfersQueryKey() });
+      invalidateStockLedger();
     },
     onError: (err) => {
       notification.error({
@@ -120,6 +137,93 @@ function StockTransfersTable() {
       });
     },
   });
+
+  const dispatchMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => dispatchStockTransfer(id),
+    onSuccess: () => {
+      message.success(t("transferDispatchSuccess"));
+      invalidateStockLedger();
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("transferDispatchError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
+  const receiveMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => receiveStockTransfer(id),
+    onSuccess: () => {
+      message.success(t("transferReceiveSuccess"));
+      invalidateStockLedger();
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("transferReceiveError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => cancelStockTransfer(id),
+    onSuccess: () => {
+      message.success(t("transferCancelSuccess"));
+      invalidateStockLedger();
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("transferCancelError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
+  const handleDispatch = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("transferDispatchConfirmTitle"),
+        content: t("transferDispatchConfirmContent"),
+        okText: t("transferDispatchConfirmOk"),
+        cancelText: t("drawerCancel"),
+        onOk: () => dispatchMutation.mutateAsync(id),
+      });
+    },
+    [modal, t, dispatchMutation],
+  );
+
+  const handleReceive = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("transferReceiveConfirmTitle"),
+        content: t("transferReceiveConfirmContent"),
+        okText: t("actionReceiveTransfer"),
+        cancelText: t("drawerCancel"),
+        onOk: () => receiveMutation.mutateAsync(id),
+      });
+    },
+    [modal, t, receiveMutation],
+  );
+
+  const handleCancel = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("transferCancelInTransitConfirmTitle"),
+        content: t("transferCancelInTransitConfirmContent"),
+        okText: t("transferCancelConfirmOk"),
+        cancelText: t("drawerCancel"),
+        onOk: () => cancelMutation.mutateAsync(id),
+      });
+    },
+    [modal, t, cancelMutation],
+  );
 
   const handleDelete = useCallback(
     (record) => {
@@ -189,8 +293,22 @@ function StockTransfersTable() {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
+        onDispatch: access.canEdit ? handleDispatch : undefined,
+        onReceive: access.canEdit ? handleReceive : undefined,
+        onCancel: access.canEdit ? handleCancel : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, handleDelete],
+    [
+      t,
+      access.canView,
+      access.canEdit,
+      access.canDelete,
+      openViewDrawer,
+      openEditDrawer,
+      handleDelete,
+      handleDispatch,
+      handleReceive,
+      handleCancel,
+    ],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({

@@ -20,7 +20,7 @@ export function resolveStockMovementViewTarget(record) {
   if (!record || typeof record !== "object") return null;
 
   const type = typeof record.type === "string" ? record.type : "";
-  if (type === "transfer_in" || type === "transfer_out") {
+  if (type === "transfer_in" || type === "transfer_out" || type === "transfer_return") {
     const transferId = normalizeEntityId(record.reference_id);
     if (transferId == null) return null;
     return { kind: "transfer", transferId };

@@ -86,7 +86,7 @@ export function notificationVisual(notification, token) {
     iconBg: token.colorPrimaryBg,
   };
 
-  if (type === "purchasing.low_stock" || severity === "critical") {
+  if (type.startsWith("purchasing.low_stock") || severity === "critical") {
     visual = {
       Icon: WarningOutlined,
       accent: token.colorWarning,

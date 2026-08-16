@@ -1,7 +1,8 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined, InboxOutlined, MoreOutlined, StopOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, InboxOutlined, MoreOutlined, SendOutlined, StopOutlined } from "@ant-design/icons";
 import {
   getStockTransferStatusLabel,
   isStockTransferCancellable,
+  isStockTransferDispatchable,
   isStockTransferDraft,
   isStockTransferReceivable,
 } from "../shared/stockTransferStatuses";
@@ -17,12 +18,13 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
+ *   onDispatch?: (record: unknown) => void;
  *   onReceive?: (record: unknown) => void;
  *   onCancel?: (record: unknown) => void;
  * }} [actions]
  */
 export function getStockTransferTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onReceive, onCancel } = actions;
+  const { onView, onEdit, onDelete, onDispatch, onReceive, onCancel } = actions;
 
   return [
     {
@@ -114,6 +116,7 @@ export function getStockTransferTableColumns(t, actions = {}) {
       fixed: "right",
       render: (_, record) => {
         const isDraft = isStockTransferDraft(record?.status);
+        const canDispatch = isStockTransferDispatchable(record?.status);
         const canReceive = isStockTransferReceivable(record?.status);
         const canCancel = isStockTransferCancellable(record?.status) && !isDraft;
         const items = [
@@ -131,6 +134,16 @@ export function getStockTransferTableColumns(t, actions = {}) {
                   label: t("actionEdit"),
                   onClick: () => onEdit?.(record),
                 },
+                ...(canDispatch
+                  ? [
+                      {
+                        key: "dispatch",
+                        icon: <SendOutlined />,
+                        label: t("actionDispatchTransfer"),
+                        onClick: () => onDispatch?.(record),
+                      },
+                    ]
+                  : []),
                 {
                   key: "delete",
                   icon: <DeleteOutlined />,

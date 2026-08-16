@@ -47,14 +47,21 @@ export default function PurchaseOrderDrawerFooter({
   if (readOnly) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {showSupplierActions ? (
+        {showSupplierActions || showCancelOrder ? (
           <Space wrap>
-            <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
-              {t("actionDownloadPoPdf")}
-            </Button>
+            {showSupplierActions ? (
+              <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
+                {t("actionDownloadPoPdf")}
+              </Button>
+            ) : null}
             {canMarkSent ? (
               <Button disabled={submitting} onClick={onMarkSent}>
                 {t("actionMarkPoSent")}
+              </Button>
+            ) : null}
+            {showCancelOrder ? (
+              <Button disabled={submitting} onClick={onCancelOrder}>
+                {t("actionCancelPo")}
               </Button>
             ) : null}
           </Space>

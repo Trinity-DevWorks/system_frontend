@@ -40,6 +40,7 @@ const PREFERENCE_GROUPS = [
     id: "purchasing",
     types: [
       "purchasing.low_stock",
+      "purchasing.low_stock_item",
       "purchase_order.confirmed",
       "purchase_order.sent",
       "purchase_order.cancelled",
@@ -48,7 +49,8 @@ const PREFERENCE_GROUPS = [
   {
     id: "stock",
     types: [
-      "stock_transfer.posted",
+      "stock_transfer.dispatched",
+      "stock_transfer.received",
       "stock_transfer.cancelled",
       "stock_movement.posted",
     ],

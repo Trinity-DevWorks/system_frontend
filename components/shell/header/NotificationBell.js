@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * Header notification inbox popover (Phase 1 — polling).
+ * Header notification inbox popover.
  *
- * What: Mock-aligned panel — title, mark-all, All/Unread tabs, rows, view-all footer.
+ * What: Title, mark-all, unread rows, and view-all footer.
  * Used for: AppHeader chrome.
- * Solves: Delivers an enterprise notification menu matching the product design until Phase 2 Reverb.
+ * Solves: Enterprise notification menu with Reverb realtime and long-poll fallback.
  */
 
 import NotificationListItem from "@/components/shell/header/NotificationListItem";
@@ -20,12 +20,12 @@ import {
 } from "@/services/notificationsApi";
 import { ArrowRightOutlined, BellOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge, Button, Empty, Popover, Segmented, Skeleton, theme } from "antd";
+import { Badge, Button, Empty, Popover, Skeleton, theme } from "antd";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useState } from "react";
 
-const POLL_MS = 45_000;
+const POLL_MS = 5 * 60_000;
 const PANEL_WIDTH = 400;
 const LIST_MAX_HEIGHT = 360;
 const shellIconBtnClass =
@@ -55,8 +55,6 @@ function NotificationBellInner() {
   const queryClient = useQueryClient();
   const { token } = theme.useToken();
   const [open, setOpen] = useState(false);
-  /** @type {["all" | "unread", function]} */
-  const [filter, setFilter] = useState(/** @type {"all" | "unread"} */ ("all"));
 
   const unreadQuery = useQuery({
     queryKey: ["tenant", "notifications", "unread-count"],
@@ -66,11 +64,11 @@ function NotificationBellInner() {
   });
 
   const listQuery = useQuery({
-    queryKey: ["tenant", "notifications", "list", filter],
+    queryKey: ["tenant", "notifications", "list", "unread"],
     queryFn: () =>
       fetchNotifications({
         per_page: 12,
-        unread: filter === "unread",
+        unread: true,
       }),
     refetchInterval: POLL_MS,
     staleTime: 15_000,
@@ -94,29 +92,6 @@ function NotificationBellInner() {
   const unreadCount = unreadQuery.data ?? 0;
   const items = listQuery.data?.items ?? [];
   const loading = open && listQuery.isFetching && items.length === 0;
-
-  const segmentedOptions = useMemo(
-    () => [
-      { label: t("filterAll"), value: "all" },
-      {
-        label: (
-          <span className="inline-flex items-center gap-1.5">
-            {t("filterUnread")}
-            {unreadCount > 0 ? (
-              <span
-                className="inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold leading-[18px] text-white"
-                style={{ background: token.colorPrimary }}
-              >
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            ) : null}
-          </span>
-        ),
-        value: "unread",
-      },
-    ],
-    [t, token.colorPrimary, unreadCount],
-  );
 
   const onOpenChange = (nextOpen) => {
     setOpen(nextOpen);
@@ -181,17 +156,6 @@ function NotificationBellInner() {
         </button>
       </div>
 
-      {/* All / Unread */}
-      <div className="px-4 pb-3">
-        <Segmented
-          block
-          size="middle"
-          value={filter}
-          options={segmentedOptions}
-          onChange={(value) => setFilter(/** @type {"all" | "unread"} */ (value))}
-        />
-      </div>
-
       <div
         style={{
           height: 1,
@@ -226,15 +190,13 @@ function NotificationBellInner() {
                     className="text-sm font-medium"
                     style={{ color: token.colorText }}
                   >
-                    {filter === "unread" ? t("emptyUnreadTitle") : t("emptyTitle")}
+                    {t("emptyUnreadTitle")}
                   </div>
                   <div
                     className="text-xs"
                     style={{ color: token.colorTextSecondary }}
                   >
-                    {filter === "unread"
-                      ? t("emptyUnreadDescription")
-                      : t("emptyDescription")}
+                    {t("emptyUnreadDescription")}
                   </div>
                 </div>
               }

@@ -12,6 +12,7 @@ import {
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { useCompanyProfile } from "@/lib/company-profile";
 import { clearAllSessionTokens } from "@/lib/session";
+import { disconnectEcho } from "@/lib/echo";
 import { clearActiveBranchId } from "@/lib/active-branch";
 import { clearQueryCacheOnAuthChange } from "@/lib/clear-query-cache-on-auth";
 import { useTenantModules } from "@/lib/tenant-modules";
@@ -24,6 +25,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { App, Layout, theme as antdTheme } from "antd";
 import AppHeader from "./header/AppHeader";
 import ModuleRouteGuard from "./ModuleRouteGuard";
+import NotificationRealtimeProvider from "./NotificationRealtimeProvider";
 import AppSidebar from "./sidebar/AppSidebar";
 import { decorateMenuItemsWithBookmarkStars } from "./sidebar/decorate-menu-bookmark-stars";
 import { filterMenuItemsByQuery } from "./sidebar/filter-nav-items";
@@ -201,6 +203,7 @@ export default function AppShell({ children }) {
     }
 
     clearAllSessionTokens();
+    disconnectEcho();
     clearActiveBranchId();
     clearQueryCacheOnAuthChange(queryClient);
 
@@ -212,6 +215,7 @@ export default function AppShell({ children }) {
 
   return (
     <App>
+      <NotificationRealtimeProvider>
       <Layout className="h-dvh overflow-hidden">
         <AppSidebar
           collapsed={collapsed}
@@ -267,6 +271,7 @@ export default function AppShell({ children }) {
           </Content>
         </Layout>
       </Layout>
+      </NotificationRealtimeProvider>
     </App>
   );
 }

@@ -62,6 +62,20 @@ export function markAllNotificationsRead() {
 }
 
 /**
+ * @returns {Promise<unknown>}
+ */
+export function clearReadNotifications() {
+  return tenantApiService("DELETE", "notifications/read");
+}
+
+/**
+ * @returns {Promise<unknown>}
+ */
+export function clearAllNotifications() {
+  return tenantApiService("DELETE", "notifications");
+}
+
+/**
  * @returns {Promise<unknown[]>}
  */
 export async function fetchNotificationPreferences() {

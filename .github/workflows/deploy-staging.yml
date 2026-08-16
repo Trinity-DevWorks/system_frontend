@@ -23,6 +23,10 @@ jobs:
       NEXT_PUBLIC_TENANT_ROOT_DOMAIN: localhost
       NEXT_PUBLIC_CENTRAL_API_PORT: "8000"
       NEXT_PUBLIC_TENANT_API_PORT: "8000"
+      NEXT_PUBLIC_REVERB_APP_KEY: local-reverb-key
+      NEXT_PUBLIC_REVERB_HOST: localhost
+      NEXT_PUBLIC_REVERB_PORT: "8080"
+      NEXT_PUBLIC_REVERB_SCHEME: http
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,6 +43,10 @@ jobs:
             --build-arg NEXT_PUBLIC_TENANT_ROOT_DOMAIN="$NEXT_PUBLIC_TENANT_ROOT_DOMAIN" \
             --build-arg NEXT_PUBLIC_CENTRAL_API_PORT="$NEXT_PUBLIC_CENTRAL_API_PORT" \
             --build-arg NEXT_PUBLIC_TENANT_API_PORT="$NEXT_PUBLIC_TENANT_API_PORT" \
+            --build-arg NEXT_PUBLIC_REVERB_APP_KEY="$NEXT_PUBLIC_REVERB_APP_KEY" \
+            --build-arg NEXT_PUBLIC_REVERB_HOST="$NEXT_PUBLIC_REVERB_HOST" \
+            --build-arg NEXT_PUBLIC_REVERB_PORT="$NEXT_PUBLIC_REVERB_PORT" \
+            --build-arg NEXT_PUBLIC_REVERB_SCHEME="$NEXT_PUBLIC_REVERB_SCHEME" \
             -t system-frontend:staging \
             .
 
