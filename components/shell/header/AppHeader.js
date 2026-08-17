@@ -4,7 +4,6 @@ import { useThemeMode } from "@/components/AntdAppProvider";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import {
-  DownOutlined,
   GlobalOutlined,
   LogoutOutlined,
   MoonOutlined,
@@ -18,19 +17,14 @@ import { useLocale, useTranslations } from "next-intl";
 import { cloneElement, isValidElement, useMemo } from "react";
 import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import { ROUTES, selectedKeysForPath } from "@/components/shell/sidebar/main-nav";
-import { useAuthMe } from "@/lib/auth-me";
 import AppBreadcrumb from "./AppBreadcrumb";
-import BranchSwitcher from "./BranchSwitcher";
 import NotificationBell from "./NotificationBell";
-import HeaderProfileAvatar from "./HeaderProfileAvatar";
 import HeaderProfileMenuIdentity from "./HeaderProfileMenuIdentity";
 
 const { Header } = Layout;
 const SHELL_CHROME_HEIGHT_PX = 56;
 const shellIconBtnClass =
   "inline-flex h-9 w-9 items-center justify-center rounded-lg shadow-sm";
-const profileChipBtnClass =
-  "inline-flex h-9 max-w-[16rem] shrink-0 items-center gap-2 overflow-hidden rounded-full border-0 bg-transparent p-0 ps-0.5 shadow-sm leading-none lg:pe-2.5";
 const PROFILE_MENU_LOGOUT_KEY = "logout";
 
 export default function AppHeader({
@@ -47,8 +41,6 @@ export default function AppHeader({
   const router = useRouter();
   const { setColorMode, colorMode, resolvedColorMode } = useThemeMode();
   const { token } = theme.useToken();
-  const { me } = useAuthMe();
-  const profileName = typeof me?.name === "string" ? me.name.trim() : "";
 
   const languageMenuItems = useMemo(
     () =>
@@ -182,7 +174,6 @@ export default function AppHeader({
           aria-hidden
         />
         <Space size={8} wrap={false} className="shrink-0 items-center">
-        <BranchSwitcher />
         <Dropdown
           menu={{ items: languageMenuItems, onClick: onLanguageMenuClick }}
           placement="bottomRight"
@@ -243,32 +234,14 @@ export default function AppHeader({
           placement="bottomRight"
           trigger={["click"]}
         >
-          <button
-            type="button"
-            className={profileChipBtnClass}
+          <Button
+            type="default"
+            className={shellIconBtnClass}
             aria-label={tShell("profileMenu")}
-            title={profileName || tShell("profile")}
-            style={{
-              height: 36,
-              lineHeight: 1,
-              border: `1px solid ${token.colorBorder}`,
-              background: token.colorBgContainer,
-            }}
+            title={tShell("profile")}
           >
-            <HeaderProfileAvatar size={28} />
-            {profileName ? (
-              <span
-                className="hidden min-w-0 max-w-[9rem] truncate text-sm font-medium lg:block"
-                style={{ color: token.colorText, lineHeight: 1.2 }}
-              >
-                {profileName}
-              </span>
-            ) : null}
-            <DownOutlined
-              className="hidden shrink-0 text-[10px] lg:block"
-              style={{ color: token.colorTextSecondary }}
-            />
-          </button>
+            <UserOutlined style={{ color: token.colorTextSecondary }} />
+          </Button>
         </Dropdown>
         </Space>
       </div>

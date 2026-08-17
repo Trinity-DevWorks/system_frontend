@@ -4,7 +4,6 @@ import WorkspaceBrandMark from "@/components/brand/WorkspaceBrandMark";
 import {
   BookOutlined,
   LeftOutlined,
-  LogoutOutlined,
   SearchOutlined,
   SettingOutlined,
   StarFilled,
@@ -12,6 +11,7 @@ import {
 import { Button, Input, Layout, Menu, Tooltip, theme } from "antd";
 import { useMemo, useState } from "react";
 import { findNavIconForPath } from "./main-nav";
+import BranchSwitcher from "../header/BranchSwitcher";
 
 const { Sider } = Layout;
 const SHELL_CHROME_HEIGHT_PX = 56;
@@ -36,8 +36,6 @@ export default function AppSidebar({
   onSettings,
   settingsLabel,
   settingsActive,
-  onLogout,
-  logoutLabel,
   searchPlaceholder,
   searchQuery,
   onSearchChange,
@@ -242,6 +240,7 @@ export default function AppSidebar({
               items={menuItems}
               className="shell-main-nav border-none bg-transparent"
               classNames={{ popup: { root: "shell-main-nav-popup" } }}
+              getPopupContainer={() => document.body}
               style={{ background: "transparent", borderInlineEnd: "none" }}
               onClick={onMenuClick}
             />
@@ -258,9 +257,18 @@ export default function AppSidebar({
             </div>
           )}
         </div>
-        <div className="shrink-0 p-2.5" style={{ borderTop: shellBorder }}>
+        <div className="shrink-0 space-y-2 p-2.5" style={{ borderTop: shellBorder }}>
           <div
-            className="flex flex-col gap-1 rounded-xl p-1.5"
+            className="rounded-xl p-1.5"
+            style={{
+              background: token.colorFillQuaternary,
+              border: `1px solid ${token.colorBorderSecondary}`,
+            }}
+          >
+            <BranchSwitcher collapsed={collapsed} />
+          </div>
+          <div
+            className="rounded-xl p-1.5"
             style={{
               background: token.colorFillQuaternary,
               border: `1px solid ${token.colorBorderSecondary}`,
@@ -302,28 +310,6 @@ export default function AppSidebar({
                 }
               >
                 {settingsLabel}
-              </Button>
-            )}
-            {collapsed ? (
-              <Tooltip title={logoutLabel} placement="right">
-                <Button
-                  type="text"
-                  danger
-                  icon={<LogoutOutlined />}
-                  onClick={onLogout}
-                  aria-label={logoutLabel}
-                  className="h-9 w-full !justify-center rounded-lg font-medium"
-                />
-              </Tooltip>
-            ) : (
-              <Button
-                type="text"
-                danger
-                icon={<LogoutOutlined />}
-                onClick={onLogout}
-                className="h-9 w-full justify-start rounded-lg font-medium"
-              >
-                {logoutLabel}
               </Button>
             )}
           </div>

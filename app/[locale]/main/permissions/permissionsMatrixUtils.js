@@ -33,15 +33,6 @@ export const FLAG_TO_ACTION = Object.freeze({
   can_export: "export",
 });
 
-/** Actions other than view — checking any of these implies view. */
-const MUTATING_FLAGS = /** @type {const} */ ([
-  "can_add",
-  "can_edit",
-  "can_delete",
-  "can_import",
-  "can_export",
-]);
-
 /**
  * @param {unknown} raw
  * @returns {PermAction[]}
@@ -183,7 +174,9 @@ export function areMatrixRowsEqual(a, b) {
 }
 
 /**
- * Apply a flag change with view-implication rules.
+ * Apply a flag change. Enabling any action other than view also enables view,
+ * since a page cannot be reached without it. Disabling view never touches the
+ * other actions.
  *
  * @param {Record<string, unknown>} row
  * @param {PermFlag} flag
@@ -193,18 +186,8 @@ export function applyFlagToRow(row, flag, checked) {
   if (!rowAllowsFlag(row, flag)) return row;
 
   const next = { ...row };
-  if (flag === "can_view") {
-    next.can_view = checked;
-    if (!checked) {
-      for (const f of MUTATING_FLAGS) {
-        next[f] = false;
-      }
-    }
-    return next;
-  }
-
   next[flag] = checked;
-  if (checked) {
+  if (checked && flag !== "can_view" && rowAllowsFlag(row, "can_view")) {
     next.can_view = true;
   }
   return next;
@@ -217,6 +200,74 @@ export function applyFlagToRow(row, flag, checked) {
  */
 export function applyFlagToAllRows(rows, flag, checked) {
   return rows.map((row) => applyFlagToRow(row, flag, checked));
+}
+
+/**
+ * Set every applicable action on a row on or off.
+ *
+ * @param {Record<string, unknown>} row
+ * @param {boolean} checked
+ */
+export function applyAllFlagsToRow(row, checked) {
+  const next = { ...row };
+  for (const flag of PERM_FLAGS) {
+    if (rowAllowsFlag(row, flag)) {
+      next[flag] = checked;
+    }
+  }
+  return next;
+}
+
+/**
+ * Checkbox state for “all actions on this row”.
+ *
+ * @param {Record<string, unknown>} row
+ */
+export function rowAllCheckState(row) {
+  let applicable = 0;
+  let on = 0;
+  for (const flag of PERM_FLAGS) {
+    if (!rowAllowsFlag(row, flag)) continue;
+    applicable += 1;
+    if (row[flag]) on += 1;
+  }
+  if (!applicable) {
+    return { checked: false, indeterminate: false, applicableCount: 0 };
+  }
+  return {
+    checked: on === applicable,
+    indeterminate: on > 0 && on < applicable,
+    applicableCount: applicable,
+  };
+}
+
+/**
+ * Header checkbox state for the All column across visible rows.
+ *
+ * @param {Array<Record<string, unknown>>} rows
+ */
+export function allRowsCheckState(rows) {
+  if (!rows.length) {
+    return { checked: false, indeterminate: false, applicableCount: 0 };
+  }
+  let applicableCount = 0;
+  let full = 0;
+  let any = 0;
+  for (const row of rows) {
+    const state = rowAllCheckState(row);
+    if (state.applicableCount === 0) continue;
+    applicableCount += 1;
+    if (state.checked) full += 1;
+    if (state.checked || state.indeterminate) any += 1;
+  }
+  if (!applicableCount) {
+    return { checked: false, indeterminate: false, applicableCount: 0 };
+  }
+  return {
+    checked: full === applicableCount,
+    indeterminate: any > 0 && full < applicableCount,
+    applicableCount,
+  };
 }
 
 /**

@@ -92,8 +92,18 @@ export default function UserDrawerForm({
         name="name"
         label={t("fieldName")}
         rules={[
-          { required: true, message: t("fieldNameRequired") },
+          { required: true, whitespace: true, message: t("fieldNameRequired") },
           { max: 255, message: t("fieldNameMax") },
+          {
+            validator(_, value) {
+              const name = String(value ?? "").trim();
+              if (!name) return Promise.resolve();
+              if (!/^[\p{L}\p{M}][\p{L}\p{M} .'\u2019-]*$/u.test(name)) {
+                return Promise.reject(new Error(t("fieldNameInvalid")));
+              }
+              return Promise.resolve();
+            },
+          },
         ]}
       >
         <Input autoComplete="off" />

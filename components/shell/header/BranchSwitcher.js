@@ -15,15 +15,18 @@ import {
   STOCK_MOVEMENTS_QUERY_KEY,
   STOCK_TRANSFERS_QUERY_KEY,
 } from "@/components/stock/stockQueryCache";
+import { ApartmentOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Select } from "antd";
+import { App, Button, Dropdown, Select, Tooltip } from "antd";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 /**
- * Active branch switcher for the shell header.
+ * Active branch switcher (sidebar).
+ *
+ * @param {{ collapsed?: boolean }} [props]
  */
-export default function BranchSwitcher() {
+export default function BranchSwitcher({ collapsed = false }) {
   const t = useTranslations("Shell");
   const tApiErrors = useTranslations("ApiErrors");
   const { message } = App.useApp();
@@ -107,26 +110,61 @@ export default function BranchSwitcher() {
     },
   });
 
+  const selectBranch = (value) => {
+    const id = Number(value);
+    if (!Number.isFinite(id) || id === activeId) return;
+    const opt = options.find((o) => o.value === id);
+    if (opt?.disabled) return;
+    switchMutation.mutate(id);
+  };
+
   if (options.length === 0 && !contextQuery.isPending) {
     return null;
   }
 
+  const loading = contextQuery.isPending || switchMutation.isPending;
+  const currentLabel =
+    options.find((o) => o.value === activeId)?.label ?? t("branchSwitcherPlaceholder");
+
+  if (collapsed) {
+    return (
+      <Dropdown
+        menu={{
+          items: options.map((o) => ({
+            key: String(o.value),
+            label: o.label,
+            disabled: o.disabled,
+          })),
+          selectable: true,
+          selectedKeys: Number.isFinite(activeId) ? [String(activeId)] : [],
+          onClick: ({ key }) => selectBranch(key),
+        }}
+        trigger={["click"]}
+        placement="rightTop"
+      >
+        <Tooltip title={currentLabel} placement="right">
+          <Button
+            type="text"
+            icon={<ApartmentOutlined />}
+            loading={loading}
+            aria-label={t("branchSwitcherAria")}
+            className="h-9 w-full !justify-center rounded-lg font-medium"
+          />
+        </Tooltip>
+      </Dropdown>
+    );
+  }
+
   return (
     <Select
-      className="min-w-[9.5rem] max-w-[14rem]"
+      className="w-full"
       size="middle"
-      loading={contextQuery.isPending || switchMutation.isPending}
+      loading={loading}
       options={options}
       value={Number.isFinite(activeId) ? activeId : undefined}
       placeholder={t("branchSwitcherPlaceholder")}
       aria-label={t("branchSwitcherAria")}
-      onChange={(value) => {
-        const id = Number(value);
-        if (!Number.isFinite(id) || id === activeId) return;
-        const opt = options.find((o) => o.value === id);
-        if (opt?.disabled) return;
-        switchMutation.mutate(id);
-      }}
+      onChange={selectBranch}
       optionFilterProp="label"
       showSearch={options.length > 5}
     />

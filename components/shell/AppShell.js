@@ -234,8 +234,6 @@ export default function AppShell({ children }) {
           onSettings={handleSettings}
           settingsLabel={t("navSettings")}
           settingsActive={settingsActive}
-          onLogout={handleLogout}
-          logoutLabel={t("logout")}
           searchPlaceholder={t("searchNavPlaceholder")}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}

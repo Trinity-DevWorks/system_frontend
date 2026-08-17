@@ -160,8 +160,43 @@ html {
 }
 
 .shell-main-nav-popup.ant-menu-submenu-popup .ant-menu {
+  min-width: 12.5rem;
   border-radius: 12px;
   padding-block: 4px;
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-item,
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-submenu-title {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start !important;
+  padding-inline: 12px !important;
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-title-content,
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-item-icon + span {
+  max-width: none !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  white-space: nowrap;
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-title-content-with-extra {
+  display: inline-flex !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  align-items: center;
+  opacity: 1 !important;
+  overflow: visible !important;
+  white-space: nowrap;
+}
+
+.shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-item-extra {
+  margin-inline-start: auto;
+  flex-shrink: 0;
 }
 
 .shell-main-nav-popup.ant-menu-submenu-popup .ant-menu-item {

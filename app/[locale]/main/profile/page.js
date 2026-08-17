@@ -34,6 +34,7 @@ function meToFormValues(me) {
         : null,
     password: "",
     password_confirmation: "",
+    current_password: "",
     _branches: branches,
     _role: me.role && typeof me.role === "object" ? me.role : null,
   };
@@ -80,13 +81,16 @@ export default function ProfilePage() {
     return "—";
   }, [me]);
 
+  const currentPassword = Form.useWatch("current_password", form);
+  const canChangePassword = String(currentPassword ?? "").length > 0;
+
   const recomputeDirty = useCallback(() => {
     if (!editBaseline || !isEditing) {
       setIsDirty(false);
       return;
     }
     const v = form.getFieldsValue(true);
-    const keys = ["name", "email", "phone", "preferred_branch_id", "password", "password_confirmation"];
+    const keys = ["name", "phone", "preferred_branch_id", "password", "password_confirmation"];
     let dirty = false;
     for (const key of keys) {
       const cur = v[key] ?? "";
@@ -106,6 +110,7 @@ export default function ProfilePage() {
       email: serverBaseline.email,
       phone: serverBaseline.phone,
       preferred_branch_id: serverBaseline.preferred_branch_id,
+      current_password: "",
       password: "",
       password_confirmation: "",
     });
@@ -115,8 +120,7 @@ export default function ProfilePage() {
     mutationFn: (values) => {
       /** @type {Record<string, unknown>} */
       const body = {
-        name: values.name,
-        email: values.email,
+        name: String(values.name ?? "").trim(),
         phone: emptyToNull(values.phone),
         preferred_branch_id:
           values.preferred_branch_id != null && values.preferred_branch_id !== ""
@@ -125,11 +129,12 @@ export default function ProfilePage() {
       };
       const pwd = String(values.password ?? "");
       if (pwd) {
+        body.current_password = values.current_password;
         body.password = pwd;
         body.password_confirmation = values.password_confirmation;
       }
       return updateAuthMe(
-        /** @type {{ name: string; email: string; phone?: string | null; password?: string | null; password_confirmation?: string | null; preferred_branch_id?: number | null }} */ (
+        /** @type {{ name: string; phone?: string | null; current_password?: string | null; password?: string | null; password_confirmation?: string | null; preferred_branch_id?: number | null }} */ (
           body
         ),
       );
@@ -157,6 +162,7 @@ export default function ProfilePage() {
       email: values.email,
       phone: values.phone,
       preferred_branch_id: values.preferred_branch_id,
+      current_password: "",
       password: "",
       password_confirmation: "",
     });
@@ -165,6 +171,7 @@ export default function ProfilePage() {
       email: values.email,
       phone: values.phone,
       preferred_branch_id: values.preferred_branch_id,
+      current_password: "",
       password: "",
       password_confirmation: "",
     });
@@ -272,15 +279,33 @@ export default function ProfilePage() {
           form={form}
           layout="vertical"
           disabled={!isEditing}
-          onValuesChange={recomputeDirty}
+          onValuesChange={(changed) => {
+            if (
+              "current_password" in changed &&
+              !String(changed.current_password ?? "").length
+            ) {
+              form.setFieldsValue({ password: "", password_confirmation: "" });
+            }
+            recomputeDirty();
+          }}
           onFinish={(values) => saveMutation.mutate(values)}
         >
         <Form.Item
           name="name"
           label={t("fieldName")}
           rules={[
-            { required: true, message: t("fieldNameRequired") },
+            { required: true, whitespace: true, message: t("fieldNameRequired") },
             { max: 255, message: t("fieldNameMax") },
+            {
+              validator(_, value) {
+                const name = String(value ?? "").trim();
+                if (!name) return Promise.resolve();
+                if (!/^[\p{L}\p{M}][\p{L}\p{M} .'\u2019-]*$/u.test(name)) {
+                  return Promise.reject(new Error(t("fieldNameInvalid")));
+                }
+                return Promise.resolve();
+              },
+            },
           ]}
         >
           <Input autoComplete="name" />
@@ -288,12 +313,9 @@ export default function ProfilePage() {
         <Form.Item
           name="email"
           label={t("fieldEmail")}
-          rules={[
-            { required: true, message: t("fieldEmailRequired") },
-            { type: "email", message: t("fieldEmailInvalid") },
-          ]}
+          extra={isEditing ? t("fieldEmailReadOnlyHint") : undefined}
         >
-          <Input autoComplete="email" />
+          <Input autoComplete="email" disabled readOnly />
         </Form.Item>
         <Form.Item
           name="phone"
@@ -301,9 +323,6 @@ export default function ProfilePage() {
           rules={[{ max: 32, message: t("fieldPhoneMax") }]}
         >
           <Input autoComplete="tel" />
-        </Form.Item>
-        <Form.Item label={t("fieldRole")}>
-          <Input value={roleLabel} disabled readOnly />
         </Form.Item>
         <Form.Item name="preferred_branch_id" label={t("fieldPreferredBranch")}>
           <Select
@@ -315,16 +334,40 @@ export default function ProfilePage() {
         {isEditing ? (
           <>
             <Form.Item
+              name="current_password"
+              label={t("fieldCurrentPassword")}
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    const pwd = getFieldValue("password");
+                    if (!pwd) return Promise.resolve();
+                    if (String(value ?? "").length) return Promise.resolve();
+                    return Promise.reject(new Error(t("fieldCurrentPasswordRequired")));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password
+                autoComplete="current-password"
+                placeholder={t("fieldCurrentPasswordPlaceholder")}
+              />
+            </Form.Item>
+            <Form.Item
               name="password"
               label={t("fieldPassword")}
+              dependencies={["current_password"]}
               rules={[{ min: 8, message: t("fieldPasswordMin") }]}
             >
-              <Input.Password autoComplete="new-password" placeholder={t("fieldPasswordOptional")} />
+              <Input.Password
+                autoComplete="new-password"
+                disabled={!canChangePassword}
+                placeholder={t("fieldPasswordOptional")}
+              />
             </Form.Item>
             <Form.Item
               name="password_confirmation"
               label={t("fieldPasswordConfirmation")}
-              dependencies={["password"]}
+              dependencies={["password", "current_password"]}
               rules={[
                 ({ getFieldValue }) => ({
                   validator(_, value) {
@@ -336,7 +379,7 @@ export default function ProfilePage() {
                 }),
               ]}
             >
-              <Input.Password autoComplete="new-password" />
+              <Input.Password autoComplete="new-password" disabled={!canChangePassword} />
             </Form.Item>
           </>
         ) : null}

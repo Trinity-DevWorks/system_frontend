@@ -4,8 +4,11 @@ import { Checkbox, Table, Typography } from "antd";
 import { useMemo } from "react";
 import {
   PERM_FLAGS,
+  allRowsCheckState,
+  applyAllFlagsToRow,
   applyFlagToRow,
   columnCheckState,
+  rowAllCheckState,
   rowAllowsFlag,
 } from "./permissionsMatrixUtils";
 
@@ -55,6 +58,30 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
     onChange(next);
   };
 
+  const setAllForRow = (permissionId, checked) => {
+    if (readOnly) return;
+    onChange(
+      rows.map((row) =>
+        Number(row.permission_id) === Number(permissionId)
+          ? applyAllFlagsToRow(row, checked)
+          : row,
+      ),
+    );
+  };
+
+  const setAllForFiltered = (checked) => {
+    if (readOnly) return;
+    onChange(
+      rows.map((row) =>
+        filteredIdSet.has(Number(row.permission_id))
+          ? applyAllFlagsToRow(row, checked)
+          : row,
+      ),
+    );
+  };
+
+  const allHeaderState = allRowsCheckState(filteredRows);
+
   /** @type {import("antd").TableProps<Record<string, unknown>>["columns"]} */
   const columns = [
     {
@@ -73,6 +100,44 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
           </Typography.Text>
         </div>
       ),
+    },
+    {
+      title: (
+        <div className="flex flex-col items-center gap-1">
+          <Checkbox
+            checked={allHeaderState.checked}
+            indeterminate={allHeaderState.indeterminate}
+            disabled={readOnly || allHeaderState.applicableCount === 0}
+            aria-label={t("selectAllMatrix")}
+            onChange={(e) => setAllForFiltered(e.target.checked)}
+          />
+          <span className="text-xs font-medium whitespace-nowrap">{t("colAll")}</span>
+        </div>
+      ),
+      key: "all",
+      align: /** @type {const} */ ("center"),
+      width: 72,
+      render: (_value, record) => {
+        const state = rowAllCheckState(record);
+        if (state.applicableCount === 0) {
+          return (
+            <Typography.Text type="secondary" aria-label={t("actionNotApplicable")}>
+              —
+            </Typography.Text>
+          );
+        }
+        return (
+          <Checkbox
+            checked={state.checked}
+            indeterminate={state.indeterminate}
+            disabled={readOnly}
+            aria-label={t("selectAllRow", {
+              resource: String(record.resource_label ?? record.resource_key ?? ""),
+            })}
+            onChange={(e) => setAllForRow(Number(record.permission_id), e.target.checked)}
+          />
+        );
+      },
     },
     ...PERM_FLAGS.map((flag) => {
       const state = columnCheckState(filteredRows, flag);
@@ -122,7 +187,7 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
       dataSource={filteredRows}
       pagination={false}
       sticky
-      scroll={{ x: 900, y: "calc(100dvh - 14rem)" }}
+      scroll={{ x: 980, y: "calc(100dvh - 14rem)" }}
       locale={{ emptyText: t("emptyMatrix") }}
       className="permissions-matrix-table min-w-0"
     />

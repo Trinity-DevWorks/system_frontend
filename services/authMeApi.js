@@ -15,8 +15,8 @@ export async function fetchAuthMe() {
 /**
  * @param {{
  *   name: string;
- *   email: string;
  *   phone?: string | null;
+ *   current_password?: string | null;
  *   password?: string | null;
  *   password_confirmation?: string | null;
  *   preferred_branch_id?: number | null;
