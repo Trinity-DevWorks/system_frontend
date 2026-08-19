@@ -1,7 +1,8 @@
 "use client";
 
 import { isRtlLocale } from "@/i18n/constants";
-import { ConfigProvider, theme as antdTheme } from "antd";
+import { applyAppThemeToDocument, getAntdThemeConfig } from "@/lib/app-theme";
+import { ConfigProvider } from "antd";
 import arEG from "antd/locale/ar_EG";
 import enUS from "antd/locale/en_US";
 import { useLocale } from "next-intl";
@@ -29,16 +30,6 @@ const COLOR_MODE_STORAGE_KEY = "app-color-mode";
 const COLOR_MODE_SYSTEM = "system";
 const COLOR_MODE_LIGHT = "light";
 const COLOR_MODE_DARK = "dark";
-
-function applyColorModeToDocument(isDark) {
-  const root = document.documentElement;
-  if (isDark) {
-    root.classList.add("dark");
-  } else {
-    root.classList.remove("dark");
-  }
-  root.style.colorScheme = isDark ? "dark" : "light";
-}
 
 const ThemeModeContext = createContext(null);
 
@@ -102,7 +93,7 @@ export default function AntdAppProvider({ children }) {
       : colorMode;
 
   useEffect(() => {
-    applyColorModeToDocument(resolvedColorMode === COLOR_MODE_DARK);
+    applyAppThemeToDocument(resolvedColorMode === COLOR_MODE_DARK);
   }, [resolvedColorMode]);
 
   const setColorMode = useCallback((mode) => {
@@ -136,12 +127,7 @@ export default function AntdAppProvider({ children }) {
   }, [systemPrefersDark]);
 
   const themeConfig = useMemo(
-    () => ({
-      algorithm:
-        resolvedColorMode === COLOR_MODE_DARK
-          ? antdTheme.darkAlgorithm
-          : antdTheme.defaultAlgorithm,
-    }),
+    () => getAntdThemeConfig(resolvedColorMode === COLOR_MODE_DARK),
     [resolvedColorMode],
   );
 

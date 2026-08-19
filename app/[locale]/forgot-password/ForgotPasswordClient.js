@@ -64,17 +64,18 @@ function ForgotPasswordForm({ initialHost }) {
     <AuthSplitShell
       isCentral={isCentral}
       tenantLabel={tenantLabel}
-      leadText={t("lead")}
     >
-      <Typography.Title
-        level={3}
-        className="login-anim-in login-anim-delay-2 !mb-2 !mt-0 !text-[1.35rem] !font-semibold !leading-snug !tracking-tight !text-slate-900 dark:!text-white sm:!text-[1.65rem]"
-      >
-        {t("title")}
-      </Typography.Title>
-      <Typography.Paragraph className="login-anim-in login-anim-delay-2 !mb-8 !text-sm !text-slate-500 dark:!text-slate-400">
-        {t("subtitle")}
-      </Typography.Paragraph>
+      <div className="mb-8 text-center">
+        <Typography.Title
+          level={3}
+          className="!mb-1 !mt-0 !text-2xl !font-bold !leading-snug !tracking-tight !text-[var(--ant-color-text)]"
+        >
+          {t("title")}
+        </Typography.Title>
+        <Typography.Paragraph className="!mb-0 !text-sm !text-[var(--ant-color-text-secondary)]">
+          {t("subtitle")}
+        </Typography.Paragraph>
+      </div>
 
       <Form
         className="login-anim-in login-anim-delay-3"
@@ -85,11 +86,7 @@ function ForgotPasswordForm({ initialHost }) {
         size="large"
       >
         <Form.Item
-          label={
-            <span className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
-              {tLogin("email")}
-            </span>
-          }
+          label={tLogin("email")}
           name="email"
           className="!mb-6"
           rules={[{ required: true, type: "email" }]}
@@ -97,7 +94,7 @@ function ForgotPasswordForm({ initialHost }) {
           <Input
             id="forgot-email"
             autoComplete="email"
-            className="login-form-input !rounded-lg !shadow-none"
+            className="login-form-input"
             placeholder={tLogin("emailPlaceholder")}
             prefix={
               <MailOutlined
@@ -116,7 +113,7 @@ function ForgotPasswordForm({ initialHost }) {
             loading={mutation.isPending}
             block
             size="large"
-            className="!h-12 !rounded-xl !text-[15px] !font-semibold !shadow-md !shadow-emerald-900/25 !transition-transform active:!scale-[0.99] motion-reduce:!transform-none"
+            className="login-submit-btn"
           >
             {t("submit")}
           </Button>
@@ -126,7 +123,7 @@ function ForgotPasswordForm({ initialHost }) {
       <div className="login-anim-in login-anim-delay-5 mt-2">
         <Link
           href="/login"
-          className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+          className="login-inline-link inline-flex items-center gap-2 text-sm font-medium"
         >
           <ArrowLeftOutlined aria-hidden />
           {t("backToLogin")}

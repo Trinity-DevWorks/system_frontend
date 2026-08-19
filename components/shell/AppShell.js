@@ -24,8 +24,9 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { App, Layout, theme as antdTheme } from "antd";
 import AppHeader from "./header/AppHeader";
-import ModuleRouteGuard from "./ModuleRouteGuard";
+import AppShellMainContent from "./AppShellMainContent";
 import NotificationRealtimeProvider from "./NotificationRealtimeProvider";
+import { SidebarCollapseProvider } from "./SidebarCollapseContext";
 import AppSidebar from "./sidebar/AppSidebar";
 import { decorateMenuItemsWithBookmarkStars } from "./sidebar/decorate-menu-bookmark-stars";
 import { filterMenuItemsByQuery } from "./sidebar/filter-nav-items";
@@ -47,9 +48,8 @@ export default function AppShell({ children }) {
   const locale = useLocale();
   const queryClient = useQueryClient();
   const { message } = App.useApp();
-  const [collapsed, setCollapsed] = useState(false);
   const {
-    token: { colorBgContainer, borderRadiusLG, colorSplit },
+    token: { colorBgContainer, colorBgLayout, borderRadiusLG, colorSplit },
   } = antdTheme.useToken();
 
   /** rc-menu generates non-stable IDs during SSR; render Menu only after mount. */
@@ -216,59 +216,55 @@ export default function AppShell({ children }) {
   return (
     <App>
       <NotificationRealtimeProvider>
-      <Layout className="h-dvh overflow-hidden">
-        <AppSidebar
-          collapsed={collapsed}
-          setCollapsed={setCollapsed}
-          colorBgContainer={colorBgContainer}
-          colorSplit={colorSplit}
-          menuMounted={menuMounted}
-          selectedKeys={selectedKeys}
-          menuItems={menuItemsWithBookmarkStars}
-          mainNavItems={menuItems}
-          onMenuClick={onMenuClick}
-          brand={workspaceBrand}
-          brandLogo={profile.logo}
-          expandLabel={t("expandSidebar")}
-          collapseLabel={t("collapseSidebar")}
-          onSettings={handleSettings}
-          settingsLabel={t("navSettings")}
-          settingsActive={settingsActive}
-          searchPlaceholder={t("searchNavPlaceholder")}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          bookmarks={bookmarks}
-          bookmarksTitle={t("bookmarks")}
-          removeBookmarkAria={t("removeBookmark")}
-          onRemoveBookmark={handleRemoveBookmark}
-          onClearAllBookmarks={handleClearAllBookmarks}
-          clearAllBookmarksLabel={t("clearAllBookmarks")}
-          onBookmarkNavigate={handleBookmarkNavigate}
-          currentPath={pathname}
-        />
-        <Layout className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <AppHeader
-            colorBgContainer={colorBgContainer}
-            colorSplit={colorSplit}
-            menuItems={menuItems}
-            onLogout={handleLogout}
-            logoutLabel={t("logout")}
-          />
-          <Content
-            className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden p-3"
-            style={{
-              background: colorBgContainer,
-              // borderRadius: borderRadiusLG,
-            }}
-          >
-            <div className="app-hide-scrollbar min-h-0 min-w-0 flex-1 overflow-auto">
-              <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-                <ModuleRouteGuard>{children}</ModuleRouteGuard>
-              </div>
-            </div>
-          </Content>
-        </Layout>
-      </Layout>
+        <SidebarCollapseProvider>
+          <Layout className="h-dvh overflow-hidden">
+            <AppSidebar
+              colorBgContainer={colorBgContainer}
+              colorSplit={colorSplit}
+              menuMounted={menuMounted}
+              selectedKeys={selectedKeys}
+              menuItems={menuItemsWithBookmarkStars}
+              mainNavItems={menuItems}
+              onMenuClick={onMenuClick}
+              brand={workspaceBrand}
+              brandLogo={profile.logo}
+              expandLabel={t("expandSidebar")}
+              collapseLabel={t("collapseSidebar")}
+              onSettings={handleSettings}
+              settingsLabel={t("navSettings")}
+              settingsActive={settingsActive}
+              searchPlaceholder={t("searchNavPlaceholder")}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              bookmarks={bookmarks}
+              bookmarksTitle={t("bookmarks")}
+              removeBookmarkAria={t("removeBookmark")}
+              onRemoveBookmark={handleRemoveBookmark}
+              onClearAllBookmarks={handleClearAllBookmarks}
+              clearAllBookmarksLabel={t("clearAllBookmarks")}
+              onBookmarkNavigate={handleBookmarkNavigate}
+              currentPath={pathname}
+            />
+            <Layout className="min-h-0 min-w-0 flex-1 overflow-hidden">
+              <AppHeader
+                colorBgContainer={colorBgContainer}
+                colorSplit={colorSplit}
+                menuItems={menuItems}
+                onLogout={handleLogout}
+                logoutLabel={t("logout")}
+              />
+              <Content
+                className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden p-3"
+                style={{
+                  background: colorBgLayout,
+                  // borderRadius: borderRadiusLG,
+                }}
+              >
+                <AppShellMainContent>{children}</AppShellMainContent>
+              </Content>
+            </Layout>
+          </Layout>
+        </SidebarCollapseProvider>
       </NotificationRealtimeProvider>
     </App>
   );

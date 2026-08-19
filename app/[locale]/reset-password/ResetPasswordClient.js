@@ -101,17 +101,18 @@ function ResetPasswordForm({ initialHost }) {
     <AuthSplitShell
       isCentral={isCentral}
       tenantLabel={tenantLabel}
-      leadText={t("lead")}
     >
-      <Typography.Title
-        level={3}
-        className="login-anim-in login-anim-delay-2 !mb-2 !mt-0 !text-[1.35rem] !font-semibold !leading-snug !tracking-tight !text-slate-900 dark:!text-white sm:!text-[1.65rem]"
-      >
-        {t("title")}
-      </Typography.Title>
-      <Typography.Paragraph className="login-anim-in login-anim-delay-2 !mb-8 !text-sm !text-slate-500 dark:!text-slate-400">
-        {t("subtitle")}
-      </Typography.Paragraph>
+      <div className="mb-8 text-center">
+        <Typography.Title
+          level={3}
+          className="!mb-1 !mt-0 !text-2xl !font-bold !leading-snug !tracking-tight !text-[var(--ant-color-text)]"
+        >
+          {t("title")}
+        </Typography.Title>
+        <Typography.Paragraph className="!mb-0 !text-sm !text-[var(--ant-color-text-secondary)]">
+          {t("subtitle")}
+        </Typography.Paragraph>
+      </div>
 
       {!token ? (
         <Typography.Paragraph className="!mb-6 !text-sm !text-amber-700 dark:!text-amber-400">
@@ -129,11 +130,7 @@ function ResetPasswordForm({ initialHost }) {
         initialValues={{ email: emailFromQuery }}
       >
         <Form.Item
-          label={
-            <span className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
-              {tLogin("email")}
-            </span>
-          }
+          label={tLogin("email")}
           name="email"
           className="!mb-5"
           rules={[{ required: true, type: "email" }]}
@@ -141,7 +138,7 @@ function ResetPasswordForm({ initialHost }) {
           <Input
             id="reset-email"
             autoComplete="email"
-            className="login-form-input !rounded-lg !shadow-none"
+            className="login-form-input"
             placeholder={tLogin("emailPlaceholder")}
             prefix={
               <MailOutlined
@@ -152,11 +149,7 @@ function ResetPasswordForm({ initialHost }) {
           />
         </Form.Item>
         <Form.Item
-          label={
-            <span className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
-              {t("password")}
-            </span>
-          }
+          label={t("password")}
           name="password"
           className="!mb-5"
           rules={[{ required: true, min: 8 }]}
@@ -164,7 +157,7 @@ function ResetPasswordForm({ initialHost }) {
           <Input.Password
             id="reset-password"
             autoComplete="new-password"
-            className="login-form-input !rounded-lg !shadow-none"
+            className="login-form-input"
             placeholder={tLogin("passwordPlaceholder")}
             prefix={
               <LockOutlined
@@ -175,11 +168,7 @@ function ResetPasswordForm({ initialHost }) {
           />
         </Form.Item>
         <Form.Item
-          label={
-            <span className="text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
-              {t("passwordConfirmation")}
-            </span>
-          }
+          label={t("passwordConfirmation")}
           name="password_confirmation"
           className="!mb-6"
           dependencies={["password"]}
@@ -198,7 +187,7 @@ function ResetPasswordForm({ initialHost }) {
           <Input.Password
             id="reset-password-confirmation"
             autoComplete="new-password"
-            className="login-form-input !rounded-lg !shadow-none"
+            className="login-form-input"
             placeholder={tLogin("passwordPlaceholder")}
             prefix={
               <LockOutlined
@@ -218,7 +207,7 @@ function ResetPasswordForm({ initialHost }) {
             disabled={!token}
             block
             size="large"
-            className="!h-12 !rounded-xl !text-[15px] !font-semibold !shadow-md !shadow-emerald-900/25 !transition-transform active:!scale-[0.99] motion-reduce:!transform-none"
+            className="login-submit-btn"
           >
             {t("submit")}
           </Button>
@@ -228,7 +217,7 @@ function ResetPasswordForm({ initialHost }) {
       <div className="login-anim-in login-anim-delay-5 mt-2">
         <Link
           href="/login"
-          className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+          className="login-inline-link inline-flex items-center gap-2 text-sm font-medium"
         >
           <ArrowLeftOutlined aria-hidden />
           {t("backToLogin")}

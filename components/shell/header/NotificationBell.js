@@ -256,24 +256,25 @@ function NotificationBellInner() {
         },
       }}
     >
-      <Button
-        type="default"
-        className={shellIconBtnClass}
-        aria-label={tShell("notifications")}
-        title={tShell("notifications")}
+      <Badge
+        count={unreadCount}
+        size="small"
+        overflowCount={99}
+        offset={[-2, 2]}
+        color={token.colorError}
+        className="shell-notification-badge"
       >
-        <Badge
-          count={unreadCount > 0 ? unreadCount : 0}
-          size="small"
-          overflowCount={99}
-          offset={[2, -2]}
-          color={token.colorError}
+        <Button
+          type="default"
+          className={shellIconBtnClass}
+          aria-label={tShell("notifications")}
+          title={tShell("notifications")}
         >
           <BellOutlined
             style={{ color: token.colorTextSecondary, fontSize: 16 }}
           />
-        </Badge>
-      </Button>
+        </Button>
+      </Badge>
     </Popover>
   );
 }

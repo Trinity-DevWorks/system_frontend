@@ -10,6 +10,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Input, Layout, Menu, Tooltip, theme } from "antd";
 import { useMemo, useState } from "react";
+import { useSidebarCollapse } from "../SidebarCollapseContext";
 import { findNavIconForPath } from "./main-nav";
 import BranchSwitcher from "../header/BranchSwitcher";
 
@@ -18,8 +19,6 @@ const SHELL_CHROME_HEIGHT_PX = 56;
 const BOOKMARKS_SUBMENU_KEY = "__shell_bookmarks__";
 
 export default function AppSidebar({
-  collapsed,
-  setCollapsed,
   colorBgContainer,
   colorSplit,
   menuMounted,
@@ -48,6 +47,7 @@ export default function AppSidebar({
   onBookmarkNavigate,
   currentPath,
 }) {
+  const { collapsed, setCollapsed } = useSidebarCollapse();
   const { token } = theme.useToken();
   const [bookmarkOpenKeys, setBookmarkOpenKeys] = useState(() => [BOOKMARKS_SUBMENU_KEY]);
 
@@ -124,6 +124,20 @@ export default function AppSidebar({
 
   const shellBorder = `1px solid ${colorSplit}`;
 
+  const handleCollapsedBodyClick = (event) => {
+    if (!collapsed) return;
+    const el = event.target;
+    if (!(el instanceof Element)) return;
+    if (
+      el.closest(
+        "button, a, .ant-menu-item, .ant-menu-submenu-title, .ant-select, .ant-dropdown-trigger, input, textarea",
+      )
+    ) {
+      return;
+    }
+    setCollapsed(false);
+  };
+
   return (
     <Sider
       collapsible
@@ -132,6 +146,8 @@ export default function AppSidebar({
       trigger={null}
       width={230}
       collapsedWidth={72}
+      className={`shell-app-sider${collapsed ? " cursor-pointer" : ""}`}
+      onClick={handleCollapsedBodyClick}
       style={{
         background: colorBgContainer,
         borderInlineEnd: shellBorder,
@@ -242,7 +258,14 @@ export default function AppSidebar({
               classNames={{ popup: { root: "shell-main-nav-popup" } }}
               getPopupContainer={() => document.body}
               style={{ background: "transparent", borderInlineEnd: "none" }}
-              onClick={onMenuClick}
+              onClick={(info) => {
+                if (collapsed) {
+                  info.domEvent?.stopPropagation?.();
+                  setCollapsed(false);
+                  return;
+                }
+                onMenuClick(info);
+              }}
             />
           ) : (
             <div className="px-3 py-2" aria-hidden>

@@ -3,15 +3,25 @@
 /* Class-based dark mode for Tailwind `dark:` utilities (not OS-only). */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Page chrome — names avoid clashing with Tailwind theme tokens. */
+/* Page chrome — fallbacks match APP_PALETTE in lib/app-theme.js (JS overwrites after hydrate). */
 :root {
-  --app-page-bg: #ffffff;
-  --app-page-fg: #171717;
+  --app-page-bg: #f8fafc;
+  --app-page-fg: #0f172a;
+  --app-brand: #1d4e89;
+  --app-brand-accent: #2563eb;
+  --app-navy: #0f172a;
+  --app-navy-deep: #0a1628;
+  --app-sky: #38bdf8;
+  --app-success: #059669;
+  --app-warning: #d97706;
+  --app-error: #dc2626;
 }
 
 html.dark {
-  --app-page-bg: #0a0a0a;
-  --app-page-fg: #ededed;
+  --app-page-bg: #0b0f19;
+  --app-page-fg: #f1f5f9;
+  --app-brand: #3b82f6;
+  --app-brand-accent: #60a5fa;
 }
 
 html {
@@ -30,6 +40,20 @@ html {
   display: none;
   width: 0;
   height: 0;
+}
+
+/* Main content pane: isolate layout work while the sidebar width animates. */
+.app-shell-main-scroll {
+  contain: layout style;
+}
+
+/* Sidebar width animation — short duration to limit table reflow frames. */
+.shell-app-sider.ant-layout-sider {
+  transition:
+    width 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    min-width 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    flex 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* App shell sidebar: main navigation */
@@ -239,25 +263,33 @@ html {
 }
 
 /*
- * AppDataTable: vertical bar only when content overflows (rc-table uses overflow-y: scroll
- * with data, which always reserves a scrollbar). Horizontal already uses overflow-x: auto.
+ * AppDataTable scroll lives on `.app-data-table-scroll` (toolbar, rows, footer).
+ * Force rc-table inner wrappers visible so horizontal + vertical scroll share
+ * that scrollport instead of a nested overflow box.
  */
-.app-data-table .ant-table-body {
-  overflow-y: auto !important;
+.app-data-table-scroll {
   scrollbar-width: thin;
 }
 
-.app-data-table .ant-table-body::-webkit-scrollbar {
+.app-data-table-scroll::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
-.app-data-table .ant-table-body::-webkit-scrollbar-thumb {
+.app-data-table-scroll::-webkit-scrollbar-thumb {
   border-radius: 9999px;
   background-color: color-mix(in srgb, currentColor 22%, transparent);
 }
 
-.app-data-table .ant-table-body::-webkit-scrollbar-track {
+.app-data-table-scroll::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.app-data-table-scroll .ant-table-container,
+.app-data-table-scroll .ant-table-content,
+.app-data-table-scroll .ant-table-body,
+.app-data-table-scroll .ant-table-header {
+  overflow: visible !important;
 }
 
 .app-data-table th.items-table-image-cell,
@@ -322,6 +354,8 @@ html.dark {
 @theme inline {
   --color-background: var(--app-page-bg);
   --color-foreground: var(--app-page-fg);
+  --color-brand: var(--app-brand);
+  --color-brand-accent: var(--app-brand-accent);
   --font-sans: var(--font-locale);
 }
 
@@ -330,6 +364,66 @@ body {
   background-color: var(--app-page-bg);
   color: var(--app-page-fg);
   font-family: var(--font-locale), sans-serif;
+}
+
+.app-auth-link {
+  color: var(--app-brand);
+}
+
+.app-auth-link:hover {
+  color: var(--app-brand-accent);
+}
+
+.app-status-on {
+  border-color: color-mix(in srgb, var(--app-success) 32%, transparent);
+  background-color: color-mix(in srgb, var(--app-success) 10%, transparent);
+  color: var(--app-success);
+}
+
+.app-status-off {
+  border-color: color-mix(in srgb, var(--app-error) 32%, transparent);
+  background-color: color-mix(in srgb, var(--app-error) 10%, transparent);
+  color: var(--app-error);
+}
+
+.app-filter-icon-active {
+  border-color: color-mix(in srgb, var(--app-brand) 30%, transparent);
+  background-color: color-mix(in srgb, var(--app-brand) 10%, transparent);
+  color: var(--app-brand);
+}
+
+.app-tag-brand.ant-tag {
+  color: var(--app-brand);
+  background: color-mix(in srgb, var(--app-brand) 12%, transparent);
+  border-color: color-mix(in srgb, var(--app-brand) 28%, transparent);
+}
+
+/* Header notification count — global span/div line-height: 1.6 throws Ant Badge off-center. */
+.shell-notification-badge.ant-badge {
+  display: inline-flex;
+  line-height: 0;
+}
+
+.shell-notification-badge .ant-badge-count,
+.shell-notification-badge .ant-badge-count-sm {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px !important;
+  line-height: 1 !important;
+  font-size: 10px !important;
+  font-weight: 600;
+}
+
+.shell-notification-badge .ant-badge-count .ant-scroll-number-only,
+.shell-notification-badge .ant-badge-count .ant-scroll-number-only-unit {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  line-height: 1 !important;
 }
 
 html {
@@ -532,23 +626,144 @@ html {
   animation: login-top-accent-glow 4.5s ease-in-out infinite;
 }
 
+.login-page {
+  --login-accent: #4f46e5;
+  --login-accent-hover: #4338ca;
+  --login-accent-sky: #60a5fa;
+}
+
+.login-hero-name {
+  color: var(--login-accent);
+}
+
+.login-hero-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--login-accent);
+}
+
+.login-brand-wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.login-brand-wordmark-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.login-brand-mark {
+  position: relative;
+  display: inline-block;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+}
+
+.login-brand-mark span {
+  position: absolute;
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 0.18rem;
+  transform: rotate(12deg);
+}
+
+.login-brand-mark span:first-child {
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  background: linear-gradient(135deg, var(--login-accent), var(--login-accent-sky));
+}
+
+.login-brand-mark span:last-child {
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  border: 1.5px solid var(--login-accent);
+  background: color-mix(in srgb, var(--login-accent-sky) 18%, transparent);
+}
+
+.login-brand-mena {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  background: linear-gradient(90deg, var(--login-accent), var(--login-accent-sky));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.login-brand-solutions {
+  padding-block-start: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--login-accent) 72%, #64748b);
+}
+
+html.dark .login-brand-solutions {
+  color: color-mix(in srgb, var(--login-accent-sky) 80%, #e2e8f0);
+}
+
+.login-brand-wordmark-rule {
+  display: block;
+  width: 8.5rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--login-accent),
+    var(--login-accent-sky),
+    transparent
+  );
+}
+
+.login-inline-link {
+  color: var(--login-accent);
+}
+
+.login-inline-link:hover {
+  color: var(--login-accent-hover);
+}
+
+.login-form-card .ant-form-item-label .login-inline-link {
+  font-weight: 500 !important;
+}
+
+.login-submit-btn.ant-btn-primary {
+  height: 48px !important;
+  border: none !important;
+  border-radius: 0.75rem !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  background: linear-gradient(
+    to right,
+    var(--login-accent),
+    var(--login-accent-sky)
+  ) !important;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--login-accent) 35%, transparent);
+}
+
+.login-submit-btn.ant-btn-primary:not(:disabled):hover {
+  background: linear-gradient(
+    to right,
+    var(--login-accent-hover),
+    var(--login-accent)
+  ) !important;
+}
+
 .login-form-card {
-  transition:
-    transform 0.28s ease,
-    box-shadow 0.28s ease;
+  box-shadow: 0 20px 40px -16px rgb(15 23 42 / 0.14);
 }
 
 .login-form-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 28px 56px -16px rgba(15, 23, 42, 0.14),
-    0 0 0 1px rgba(15, 23, 42, 0.05);
-}
-
-html.dark .login-form-card:hover {
-  box-shadow:
-    0 28px 56px -16px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(255, 255, 255, 0.06);
+  transform: none;
 }
 
 /* Login card — Form labels */
@@ -565,54 +780,51 @@ html.dark .login-form-card:hover {
   font-size: 14px !important;
   font-weight: 600 !important;
   line-height: 1.5 !important;
-  color: rgb(30 41 59) !important;
-}
-
-html.dark .login-form-card .ant-form-item .ant-form-item-label > label {
-  color: rgb(241 245 249) !important;
+  color: var(--app-page-fg) !important;
 }
 
 /* Login card — inputs: ~h-10, text-base, focus ring (shadcn-like) */
 .login-form-card .ant-input-affix-wrapper {
-  min-height: 40px !important;
+  min-height: 44px !important;
   padding-block: 0 !important;
   padding-inline-start: 12px !important;
   padding-inline-end: 12px !important;
-  border-radius: 0.5rem !important;
+  border-radius: 0.75rem !important;
+  background: #f3f4f6 !important;
   box-shadow: none !important;
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 
+html.dark .login-form-card .ant-input-affix-wrapper {
+  background: rgb(31 41 55) !important;
+}
+
 .login-form-card .ant-input-affix-wrapper .ant-input {
   font-size: 1rem !important;
   line-height: 1.5rem !important;
+  background: transparent !important;
 }
 
 .login-form-card
   .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover {
-  border-color: rgb(148 163 184) !important;
+  border-color: var(--login-accent) !important;
 }
 
 .login-form-card .ant-input-affix-wrapper-focused,
 .login-form-card .ant-input-affix-wrapper:focus-within {
-  border-color: rgb(16 185 129) !important;
-  box-shadow: 0 0 0 2px rgb(16 185 129 / 0.22) !important;
+  border-color: var(--login-accent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--login-accent) 20%, transparent) !important;
 }
 
-html.dark .login-form-card .ant-input-affix-wrapper-focused,
-html.dark .login-form-card .ant-input-affix-wrapper:focus-within {
-  border-color: rgb(52 211 153) !important;
-  box-shadow: 0 0 0 2px rgb(52 211 153 / 0.28) !important;
+.login-form-card .ant-input-affix-wrapper .anticon {
+  color: var(--ant-color-text-secondary);
 }
 
-.login-form-card .ant-input-affix-wrapper .ant-input-password-icon.anticon {
-  color: rgb(100 116 139);
-}
-
-html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.anticon {
-  color: rgb(148 163 184);
+.login-form-card .ant-input-affix-wrapper-focused .anticon,
+.login-form-card .ant-input-affix-wrapper:focus-within .anticon {
+  color: var(--login-accent);
 }
 
 .login-feature-card {
@@ -642,9 +854,9 @@ html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.ant
   box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.45);
 }
 
-/* Login — left rail: rotating gradient (slate → emerald), design unchanged. */
+/* Login — left rail: rotating gradient (navy → brand). */
 .login-aside-bg {
-  background-color: rgb(2 6 23);
+  background-color: var(--app-navy-deep);
 }
 
 .login-aside-bg::before {
@@ -654,10 +866,10 @@ html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.ant
   z-index: 0;
   background: linear-gradient(
     135deg,
-    rgb(2 6 23) 0%,
-    rgb(15 23 42) 38%,
-    rgb(6 78 59) 68%,
-    rgb(2 6 23) 100%
+    var(--app-navy-deep) 0%,
+    var(--app-navy) 32%,
+    var(--app-brand) 62%,
+    var(--app-navy-deep) 100%
   );
   animation: login-aside-bg-rotate 20s linear infinite;
   will-change: transform;
@@ -748,6 +960,11 @@ html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.ant
 
 .stock-module-tabs.ant-tabs {
   margin: 0;
+  flex-shrink: 0;
+}
+
+.stock-module-tabs .ant-tabs-content-holder {
+  display: none;
 }
 
 .stock-module-tabs .ant-tabs-nav {
@@ -1199,9 +1416,49 @@ html.dark .login-form-card .ant-input-affix-wrapper .ant-input-password-icon.ant
   color: var(--ant-color-text);
 }
 
+.login-success-check {
+  animation: login-success-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+.login-success-bar {
+  width: 0;
+  background: linear-gradient(
+    to right,
+    var(--login-accent),
+    var(--login-accent-sky)
+  );
+  animation: login-success-fill 1.6s ease-in-out both;
+}
+
+@keyframes login-success-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes login-success-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .login-anim-in {
+  .login-anim-in,
+  .login-success-check {
     animation: none;
+  }
+
+  .login-success-bar {
+    animation: none;
+    width: 100%;
   }
 
   .login-orb-breathe,

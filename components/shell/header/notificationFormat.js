@@ -101,8 +101,8 @@ export function notificationVisual(notification, token) {
   } else if (type === "user.created") {
     visual = {
       Icon: UserAddOutlined,
-      accent: "#9254de",
-      iconBg: "rgba(146, 84, 222, 0.15)",
+      accent: token.colorPrimary,
+      iconBg: token.colorPrimaryBg,
     };
   } else if (type === "user.role_assigned") {
     visual = {
@@ -119,8 +119,8 @@ export function notificationVisual(notification, token) {
   } else if (type.startsWith("branch.")) {
     visual = {
       Icon: TeamOutlined,
-      accent: "#9254de",
-      iconBg: "rgba(146, 84, 222, 0.15)",
+      accent: token.colorInfo || token.colorPrimary,
+      iconBg: token.colorInfoBg || token.colorPrimaryBg,
     };
   } else if (type.startsWith("stock_transfer.") || type.startsWith("stock_movement.")) {
     visual = {
