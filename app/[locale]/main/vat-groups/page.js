@@ -6,13 +6,14 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteVatGroup, fetchVatGroups } from "@/services/vatGroupsApi";
 import VatGroupDrawer from "./drawer/VatGroupDrawer";
 import { getVatGroupStatusLabel, getVatGroupTableColumns } from "./getVatGroupTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function VatGroupsTable() {
   const t = useTranslations("VatGroups");
@@ -23,35 +24,28 @@ function VatGroupsTable() {
   const access = useResourceAccess("vat_groups");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "vat-groups"],
     queryFn: fetchVatGroups,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    tableId: "vat-groups",
+    t,
+    tApiErrors,
+    notification,
   });
-
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
-      data.map((row) => ({
+      rows.map((row) => ({
         ...row,
         is_active_label: getVatGroupStatusLabel(row?.is_active, t),
       })),
-    [data, t],
+    [rows, t],
   );
 
   const {
@@ -69,17 +63,7 @@ function VatGroupsTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteVatGroup(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "vat-groups"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) => (Array.isArray(old) ? old.filter((row) => row.id !== id) : old));
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "vat-groups"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -165,7 +149,8 @@ function VatGroupsTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["id", "abrv", "name", "percentage", "is_active_label"],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
@@ -178,11 +163,7 @@ function VatGroupsTable() {
         stickyHeader
         scrollX={1180}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <VatGroupDrawer
         open={drawerOpen}

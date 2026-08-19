@@ -7,7 +7,7 @@ import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreate
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { fetchBrand, fetchBrands } from "@/services/brandsApi";
+import { fetchBrand, fetchBrandNames } from "@/services/brandsApi";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
@@ -90,7 +90,7 @@ export default function BrandDrawer({
 
   const brandsQuery = useQuery({
     queryKey: ["tenant", "brands"],
-    queryFn: () => fetchBrands(),
+    queryFn: () => fetchBrandNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });

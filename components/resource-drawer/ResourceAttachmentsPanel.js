@@ -22,6 +22,7 @@ import {
 import ResourceDrawerPanelHeader from "@/components/resource-drawer/ResourceDrawerPanelHeader";
 import { getAttachmentUploadErrorMessage, getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { isPersistedEntityId, normalizeEntityId } from "@/lib/entityId";
+import { snapshotTenantListCache, restoreTenantListCache } from "@/lib/tables/tenantListCache";
 import { InboxOutlined, UploadOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Badge, Button, Empty, Spin, Upload } from "antd";
@@ -161,7 +162,9 @@ export default function ResourceAttachmentsPanel({
     onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey });
       const previousAttachments = queryClient.getQueryData(queryKey);
-      const previousItems = enablePrimaryImage ? queryClient.getQueryData(ITEMS_LIST_QUERY_KEY) : undefined;
+      const previousItems = enablePrimaryImage
+        ? snapshotTenantListCache(queryClient, ITEMS_LIST_QUERY_KEY)
+        : undefined;
       const base = Array.isArray(previousAttachments) ? previousAttachments : [];
       const nextList = removeAttachmentFromList(base, id);
       patchAttachmentsCache(() => nextList);
@@ -179,7 +182,7 @@ export default function ResourceAttachmentsPanel({
         queryClient.setQueryData(queryKey, context.previousAttachments);
       }
       if (context?.previousItems !== undefined) {
-        queryClient.setQueryData(ITEMS_LIST_QUERY_KEY, context.previousItems);
+        restoreTenantListCache(queryClient, context.previousItems);
       }
       message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t("attachmentsDeleteError"));
     },

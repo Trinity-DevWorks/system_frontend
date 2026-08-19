@@ -57,7 +57,7 @@ export default function PurchaseOrderDrawerForm({
                     poStatus === "confirmed"
                       ? "success"
                       : poStatus === "sent"
-                        ? "cyan"
+                        ? "blue"
                       : poStatus === "cancelled"
                         ? "default"
                         : "processing"

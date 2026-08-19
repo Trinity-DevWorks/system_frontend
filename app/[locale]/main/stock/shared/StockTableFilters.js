@@ -5,7 +5,7 @@
  */
 
 import { FilterOutlined } from "@ant-design/icons";
-import { Button, ConfigProvider, Form, Popover, Space, Tag, Typography } from "antd";
+import { Button, ConfigProvider, Form, Popover, Space, Tag, Typography, theme } from "antd";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
@@ -47,6 +47,7 @@ export function useStockTableFilters({
   children,
 }) {
   const t = useTranslations("Stock");
+  const { token } = theme.useToken();
   const [open, setOpen] = useState(defaultExpanded);
 
   const hasActive = activeCount > 0;
@@ -88,7 +89,8 @@ export function useStockTableFilters({
               {open ? t("filterHideFilters") : t("filterShowFilters")}
               {hasActive ? (
                 <span
-                  className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#1677ff] px-1 text-[11px] font-semibold leading-none text-white"
+                  className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-semibold leading-none text-white"
+                  style={{ background: token.colorPrimary }}
                   aria-label={t("filterActiveSummary")}
                 >
                   {activeCount}
@@ -104,7 +106,7 @@ export function useStockTableFilters({
         ) : null}
       </Space>
     ),
-    [activeCount, hasActive, onClearAll, open, popoverContent, t],
+    [activeCount, hasActive, onClearAll, open, popoverContent, t, token.colorPrimary],
   );
 
   const filterBar = useMemo(() => {

@@ -39,7 +39,7 @@ import {
   Typography,
 } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { ColumnDragShell, SortableTableBodyCell, SortableTableHeaderCell } from "./AppDataTableColumnDrag";
 
 const DEFAULT_SCROLL_X = 1000;
@@ -47,7 +47,7 @@ const PICKER_SKIP = new Set(["actions"]);
 
 /**
  * Reusable list shell: toolbar, filters, density, column visibility, selection bar,
- * sticky table + horizontal scroll, footer (summary / pager / page size).
+ * fill-height table with a single scroll for toolbar, rows, and pagination.
  *
  * @param {object} props
  * @param {string} props.tableId Stable id for localStorage (per screen).
@@ -74,6 +74,7 @@ const PICKER_SKIP = new Set(["actions"]);
  *   showImportExcel?: boolean,
  *   onImportExcel?: () => void,
  *   enableClientSearch?: boolean,
+ *   onSearchChange?: (query: string) => void,
  *   extra?: import("react").ReactNode,
  *   filterBar?: import("react").ReactNode,
  * }} [props.toolbar]
@@ -82,11 +83,10 @@ const PICKER_SKIP = new Set(["actions"]);
  * @param {boolean} [props.bulkDeleteLoading]
  * @param {import("react").ReactNode} [props.selectionBarExtra]
  * @param {boolean} [props.showSelectionBar]
- * @param {boolean} [props.stickyHeader]
  * @param {number} [props.scrollX]
  * @param {boolean} [props.enableColumnDrag] Drag-reorder headers (@dnd-kit, like ant.design Table demo); persists order in localStorage.
  * @param {false | {
- *   mode: "client" | "server" | "placeholder",
+ *   mode?: "server",
  *   pageSize?: number,
  *   pageSizeOptions?: number[],
  *   current?: number,
@@ -94,9 +94,11 @@ const PICKER_SKIP = new Set(["actions"]);
  *   onPageChange?: (page: number, pageSize: number) => void,
  *   summaryRange?: { start: number; end: number; total: number } | null,
  *   disabled?: boolean,
- * }} [props.pagination] For server mode, pass summaryRange from API meta (1-based inclusive).
+ * }} [props.pagination] Server-paginated footer. Pass summaryRange from API meta (1-based inclusive).
  */
-export default function AppDataTable({
+export default memo(AppDataTable);
+
+function AppDataTable({
   tableId,
   columns,
   dataSource,
@@ -112,7 +114,6 @@ export default function AppDataTable({
   bulkDeleteLoading = false,
   selectionBarExtra = null,
   showSelectionBar = true,
-  stickyHeader = true,
   scrollX = DEFAULT_SCROLL_X,
   pagination = false,
   enableColumnDrag = false,
@@ -134,11 +135,12 @@ export default function AppDataTable({
     showImportExcel = true,
     onImportExcel,
     enableClientSearch = true,
+    onSearchChange,
     extra,
     filterBar,
   } = toolbar;
 
-  const paginationMode = pagination ? pagination.mode : false;
+  const paginationMode = pagination ? "server" : false;
   const serverSummary = pagination?.summaryRange;
   const pageSizeOptions = pagination?.pageSizeOptions ?? [10, 20, 50];
 
@@ -169,10 +171,9 @@ export default function AppDataTable({
     [columns],
   );
 
-  const [clientPage, setClientPage] = useState(1);
-  const [clientPageSize, setClientPageSize] = useState(
-    () => (pagination?.mode === "client" && pagination.pageSize ? pagination.pageSize : 20),
-  );
+  const skipFirstSearchEmitRef = useRef(true);
+  const onSearchChangeRef = useRef(onSearchChange);
+  onSearchChangeRef.current = onSearchChange;
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -226,7 +227,12 @@ export default function AppDataTable({
   }, [searchDraft]);
 
   useEffect(() => {
-    queueMicrotask(() => setClientPage(1));
+    if (typeof onSearchChangeRef.current !== "function") return;
+    if (skipFirstSearchEmitRef.current) {
+      skipFirstSearchEmitRef.current = false;
+      return;
+    }
+    onSearchChangeRef.current(searchQuery);
   }, [searchQuery]);
 
   const filteredRows = useMemo(() => {
@@ -243,30 +249,7 @@ export default function AppDataTable({
     );
   }, [dataSource, searchKeys, searchQuery, paginationMode, enableClientSearch]);
 
-  const effectiveClientPageSize = clientPageSize;
-
-  const pageCount =
-    paginationMode === "client"
-      ? Math.max(1, Math.ceil(filteredRows.length / effectiveClientPageSize) || 1)
-      : 1;
-  const currentClientPage =
-    paginationMode === "client" ? Math.min(clientPage, pageCount) : 1;
-
-  const displayedRows = useMemo(() => {
-    if (paginationMode === "server") {
-      return filteredRows;
-    }
-    if (paginationMode === "client") {
-      const start = (currentClientPage - 1) * effectiveClientPageSize;
-      return filteredRows.slice(start, start + effectiveClientPageSize);
-    }
-    return filteredRows;
-  }, [
-    filteredRows,
-    paginationMode,
-    currentClientPage,
-    effectiveClientPageSize,
-  ]);
+  const displayedRows = filteredRows;
 
   const selectedKeys =
     rowSelection && typeof rowSelection.selectedRowKeys !== "undefined"
@@ -487,90 +470,33 @@ export default function AppDataTable({
   );
 
   const paginationSummaryText = useMemo(() => {
-    if (paginationMode === "server") {
-      const total = pagination?.total ?? 0;
-      if (total === 0) return t("paginationEmpty");
-      if (serverSummary) {
-        const { start, end, total: ttot } = serverSummary;
-        return t("paginationTotal", { start, end, total: ttot });
-      }
-      const cur = pagination?.current ?? 1;
-      const ps = pagination?.pageSize ?? 20;
-      const start = (cur - 1) * ps + 1;
-      const end = Math.min(cur * ps, total);
-      return t("paginationTotal", { start, end, total });
+    if (paginationMode !== "server") return "";
+    const total = pagination?.total ?? 0;
+    if (total === 0) return t("paginationEmpty");
+    if (serverSummary) {
+      const { start, end, total: ttot } = serverSummary;
+      return t("paginationTotal", { start, end, total: ttot });
     }
-    if (paginationMode === "placeholder") {
-      if ((pagination.total ?? filteredRows.length) === 0) return t("paginationEmpty");
-      return t("paginationTotal", {
-        start: 1,
-        end: pagination.total ?? filteredRows.length,
-        total: pagination.total ?? filteredRows.length,
-      });
-    }
-    if (filteredRows.length === 0) return t("paginationEmpty");
-    if (paginationMode === "client") {
-      return t("paginationTotal", {
-        start: (currentClientPage - 1) * effectiveClientPageSize + 1,
-        end: Math.min(currentClientPage * effectiveClientPageSize, filteredRows.length),
-        total: filteredRows.length,
-      });
-    }
-    return t("paginationTotal", {
-      start: 1,
-      end: filteredRows.length,
-      total: filteredRows.length,
-    });
-  }, [
-    pagination,
-    paginationMode,
-    serverSummary,
-    filteredRows.length,
-    currentClientPage,
-    effectiveClientPageSize,
-    t,
-  ]);
+    const cur = pagination?.current ?? 1;
+    const ps = pagination?.pageSize ?? 20;
+    const start = (cur - 1) * ps + 1;
+    const end = Math.min(cur * ps, total);
+    return t("paginationTotal", { start, end, total });
+  }, [pagination, paginationMode, serverSummary, t]);
 
-  const pagerCurrent =
-    paginationMode === "server" ? pagination.current ?? 1 : currentClientPage;
-  const pagerPageSize =
-    paginationMode === "server" ? pagination.pageSize ?? 20 : effectiveClientPageSize;
-  const pagerTotal =
-    paginationMode === "server"
-      ? pagination.total ?? 0
-      : paginationMode === "client"
-        ? filteredRows.length
-        : pagination?.total ?? filteredRows.length;
-
-  const pagerDisabled =
-    paginationMode === "placeholder" ||
-    pagination?.disabled === true ||
-    loading;
+  const pagerCurrent = pagination?.current ?? 1;
+  const pagerPageSize = pagination?.pageSize ?? 20;
+  const pagerTotal = pagination?.total ?? 0;
+  const pagerDisabled = pagination?.disabled === true || loading;
 
   const handlePagerChange = (nextPage, nextPageSize) => {
-    if (paginationMode === "server" && pagination.onPageChange) {
-      pagination.onPageChange(nextPage, nextPageSize);
-      rowSelection?.onChange?.([], []);
-      return;
-    }
-    if (paginationMode === "client") {
-      rowSelection?.onChange?.([], []);
-      setClientPage(nextPage);
-      setClientPageSize(nextPageSize);
-    }
+    pagination?.onPageChange?.(nextPage, nextPageSize);
+    rowSelection?.onChange?.([], []);
   };
 
   const handlePageSizeSelect = (nextSize) => {
-    if (paginationMode === "server" && pagination.onPageChange) {
-      pagination.onPageChange(1, nextSize);
-      rowSelection?.onChange?.([], []);
-      return;
-    }
-    if (paginationMode === "client") {
-      rowSelection?.onChange?.([], []);
-      setClientPage(1);
-      setClientPageSize(nextSize);
-    }
+    pagination?.onPageChange?.(1, nextSize);
+    rowSelection?.onChange?.([], []);
   };
 
   const showFooter = pagination !== false;
@@ -591,7 +517,7 @@ export default function AppDataTable({
         pagination={false}
         locale={{ emptyText: emptyText ?? t("empty") }}
         size={tableSize}
-        sticky={stickyHeader}
+        sticky={false}
         scroll={scroll}
         className="[&_.ant-table]:rounded-none"
         components={columnDndActive && sortableIds.length > 0 ? dragTableComponents : undefined}
@@ -620,7 +546,6 @@ export default function AppDataTable({
     emptyText,
     t,
     tableSize,
-    stickyHeader,
     scroll,
     tableId,
     columnDndActive,
@@ -633,152 +558,154 @@ export default function AppDataTable({
   ]);
 
   return (
-    <div className="flex min-w-0 flex-col gap-2">
-      <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <Space wrap size="small" className="min-w-0">
-          {showSearch && paginationMode !== "server" ? (
-            <Input.Search
-              allowClear
-              placeholder={t("searchPlaceholder")}
-              value={searchDraft}
-              onChange={(e) => setSearchDraft(e.target.value)}
-              style={{ minWidth: 200, maxWidth: 320 }}
-              aria-label={t("searchAria")}
-            />
-          ) : null}
-          {showRefresh && onRefresh ? (
-            <Tooltip title={t("refresh")}>
-              <Button
-                icon={<ReloadOutlined spin={loading || refreshFetching} />}
-                onClick={handleRefresh}
-                disabled={loading || refreshFetching}
-                aria-label={t("refresh")}
-              />
-            </Tooltip>
-          ) : null}
-          <Tooltip
-            title={density === "compact" ? t("densityComfortable") : t("densityCompact")}
-          >
-            <Button
-              icon={<ColumnHeightOutlined />}
-              onClick={() =>
-                setDensityAndSave(density === "compact" ? "comfortable" : "compact")
-              }
-              aria-label={t("densityToggleAria")}
-            />
-          </Tooltip>
-          <Dropdown
-            open={columnPickerOpen}
-            onOpenChange={(open, info) => {
-              if (!open && info?.source === "menu") return;
-              setColumnPickerOpen(open);
-            }}
-            menu={{ items: columnMenuItems }}
-            trigger={["click"]}
-            disabled={!prefsReady}
-          >
-            <Button icon={<EyeOutlined />} aria-label={t("columnsAria")}>
-              {t("columns")}
-            </Button>
-          </Dropdown>
-          {extra}
-        </Space>
-        <Space wrap size="small" className="shrink-0 justify-end">
-          {showImportExportCluster && importExportMenuItems.length > 0 ? (
-            <Dropdown
-              trigger={["click"]}
-              placement="bottomRight"
-              menu={{
-                items: importExportMenuItems,
-                onClick: handleImportExportMenuClick,
-              }}
-            >
-              <Button icon={<ExportOutlined />} aria-label={t("importExportMenuAria")}>
-                {t("importExportMenu")}
-              </Button>
-            </Dropdown>
-          ) : null}
-          {showAdd && onAdd ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
-              {addLabel ?? t("add")}
-            </Button>
-          ) : null}
-        </Space>
-      </div>
-
-      {filterBar ? <div className="min-w-0">{filterBar}</div> : null}
-
-      {showSelectionBar && rowSelection && selectedKeys.length > 0 ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 dark:border-white/10 dark:bg-white/[0.06]">
-          <Typography.Text type="secondary">
-            {t("selectedCount", { count: selectedKeys.length })}
-          </Typography.Text>
-          <Space size="small" separator={<Divider vertical />}>
-            <Button
-              type="link"
-              size="small"
-              onClick={() => rowSelection.onChange?.([], [])}
-            >
-              {t("clearSelection")}
-            </Button>
-            {typeof onBulkDelete === "function" ? (
-              <Button
-                type="link"
-                danger
-                size="small"
-                loading={bulkDeleteLoading}
-                onClick={() => onBulkDelete(selectedKeys)}
-                aria-label={t("bulkDeleteAria")}
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="app-data-table-scroll min-h-0 min-w-0 flex-1 overflow-auto">
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <Space wrap size="small" className="min-w-0">
+              {showSearch ? (
+                <Input.Search
+                  allowClear
+                  placeholder={t("searchPlaceholder")}
+                  value={searchDraft}
+                  onChange={(e) => setSearchDraft(e.target.value)}
+                  style={{ minWidth: 200, maxWidth: 320 }}
+                  aria-label={t("searchAria")}
+                />
+              ) : null}
+              {showRefresh && onRefresh ? (
+                <Tooltip title={t("refresh")}>
+                  <Button
+                    icon={<ReloadOutlined spin={loading || refreshFetching} />}
+                    onClick={handleRefresh}
+                    disabled={loading || refreshFetching}
+                    aria-label={t("refresh")}
+                  />
+                </Tooltip>
+              ) : null}
+              <Tooltip
+                title={density === "compact" ? t("densityComfortable") : t("densityCompact")}
               >
-                {t("bulkDelete")}
-              </Button>
-            ) : null}
-            {selectionBarExtra}
-            {typeof onBulkDelete !== "function" && !selectionBarExtra ? (
-              <Tooltip title={t("bulkSoon")}>
-                <Button type="link" size="small" disabled>
-                  {t("bulkActions")}
-                </Button>
+                <Button
+                  icon={<ColumnHeightOutlined />}
+                  onClick={() =>
+                    setDensityAndSave(density === "compact" ? "comfortable" : "compact")
+                  }
+                  aria-label={t("densityToggleAria")}
+                />
               </Tooltip>
-            ) : null}
-          </Space>
-        </div>
-      ) : null}
-
-      <div className="app-data-table flex min-w-0 flex-col overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
-        <div className="overflow-hidden">{renderedTable}</div>
-        {showFooter ? (
-          <div className="grid grid-cols-1 items-center gap-3 border-t border-black/10 bg-black/[0.02] px-3 py-2 sm:grid-cols-[1fr_auto_1fr] dark:border-white/10 dark:bg-white/[0.04]">
-            <Typography.Text type="secondary" className="min-w-0 justify-self-start">
-              {paginationSummaryText}
-            </Typography.Text>
-            <div className="flex w-full justify-center justify-self-center sm:w-auto">
-              <Pagination
-                current={pagerCurrent}
-                pageSize={pagerPageSize}
-                total={pagerTotal}
-                showSizeChanger={false}
-                showTotal={false}
-                disabled={pagerDisabled}
-                hideOnSinglePage={
-                  paginationMode === "client" ? false : paginationMode === "server"
-                }
-                onChange={handlePagerChange}
-              />
-            </div>
-            <Select
-              className="min-w-[7rem] justify-self-end"
-              value={pagerPageSize}
-              disabled={pagerDisabled}
-              options={pageSizeOptions.map((n) => ({
-                value: n,
-                label: t("paginationPerPage", { size: n }),
-              }))}
-              aria-label={t("paginationPageSizeAria")}
-              onChange={handlePageSizeSelect}
-            />
+              <Dropdown
+                open={columnPickerOpen}
+                onOpenChange={(open, info) => {
+                  if (!open && info?.source === "menu") return;
+                  setColumnPickerOpen(open);
+                }}
+                menu={{ items: columnMenuItems }}
+                trigger={["click"]}
+                disabled={!prefsReady}
+              >
+                <Button icon={<EyeOutlined />} aria-label={t("columnsAria")}>
+                  {t("columns")}
+                </Button>
+              </Dropdown>
+              {extra}
+            </Space>
+            <Space wrap size="small" className="shrink-0 justify-end">
+              {showImportExportCluster && importExportMenuItems.length > 0 ? (
+                <Dropdown
+                  trigger={["click"]}
+                  placement="bottomRight"
+                  menu={{
+                    items: importExportMenuItems,
+                    onClick: handleImportExportMenuClick,
+                  }}
+                >
+                  <Button icon={<ExportOutlined />} aria-label={t("importExportMenuAria")}>
+                    {t("importExportMenu")}
+                  </Button>
+                </Dropdown>
+              ) : null}
+              {showAdd && onAdd ? (
+                <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
+                  {addLabel ?? t("add")}
+                </Button>
+              ) : null}
+            </Space>
           </div>
-        ) : null}
+
+          {filterBar ? <div className="min-w-0">{filterBar}</div> : null}
+
+          {showSelectionBar && rowSelection && selectedKeys.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-black/10 bg-black/[0.03] px-3 py-2 dark:border-white/10 dark:bg-white/[0.06]">
+              <Typography.Text type="secondary">
+                {t("selectedCount", { count: selectedKeys.length })}
+              </Typography.Text>
+              <Space size="small" separator={<Divider vertical />}>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => rowSelection.onChange?.([], [])}
+                >
+                  {t("clearSelection")}
+                </Button>
+                {typeof onBulkDelete === "function" ? (
+                  <Button
+                    type="link"
+                    danger
+                    size="small"
+                    loading={bulkDeleteLoading}
+                    onClick={() => onBulkDelete(selectedKeys)}
+                    aria-label={t("bulkDeleteAria")}
+                  >
+                    {t("bulkDelete")}
+                  </Button>
+                ) : null}
+                {selectionBarExtra}
+                {typeof onBulkDelete !== "function" && !selectionBarExtra ? (
+                  <Tooltip title={t("bulkSoon")}>
+                    <Button type="link" size="small" disabled>
+                      {t("bulkActions")}
+                    </Button>
+                  </Tooltip>
+                ) : null}
+              </Space>
+            </div>
+          ) : null}
+
+          <div className="app-data-table min-w-0 overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
+            {renderedTable}
+            {showFooter ? (
+              <div className="app-data-table-footer grid grid-cols-1 items-center gap-3 border-t border-black/10 bg-[var(--ant-color-bg-container)] px-3 py-2 sm:grid-cols-[1fr_auto_1fr] dark:border-white/10">
+                <Typography.Text type="secondary" className="min-w-0 justify-self-start">
+                  {paginationSummaryText}
+                </Typography.Text>
+                <div className="flex w-full justify-center justify-self-center sm:w-auto">
+                  <Pagination
+                    current={pagerCurrent}
+                    pageSize={pagerPageSize}
+                    total={pagerTotal}
+                    showSizeChanger={false}
+                    showTotal={false}
+                    disabled={pagerDisabled}
+                    hideOnSinglePage={false}
+                    onChange={handlePagerChange}
+                  />
+                </div>
+                <Select
+                  className="min-w-[7rem] justify-self-end"
+                  value={pagerPageSize}
+                  disabled={pagerDisabled}
+                  options={pageSizeOptions.map((n) => ({
+                    value: n,
+                    label: t("paginationPerPage", { size: n }),
+                  }))}
+                  aria-label={t("paginationPageSizeAria")}
+                  onChange={handlePageSizeSelect}
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );

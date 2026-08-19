@@ -1,11 +1,14 @@
 import tenantApiService from "@/API/TenantApiService";
+import { fetchPaginatedResource, fetchResourceNames } from "@/lib/tables/paginatedList";
 
-/**
- * @returns {Promise<unknown[]>}
- */
-export async function fetchSuppliers() {
-  const data = await tenantApiService("GET", "suppliers");
-  return Array.isArray(data) ? data : [];
+/** @param {Record<string, string | number | undefined>} [params] */
+export function fetchSuppliers(params = {}) {
+  return fetchPaginatedResource("suppliers", params);
+}
+
+/** @returns {Promise<unknown[]>} */
+export function fetchSupplierNames() {
+  return fetchResourceNames("suppliers");
 }
 
 /**

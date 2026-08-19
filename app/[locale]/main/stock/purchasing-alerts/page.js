@@ -5,9 +5,9 @@ import { PURCHASE_ORDERS_QUERY_KEY } from "@/components/stock/stockQueryCache";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
-import { App, Button, Checkbox, Form, Select } from "antd";
+import { App, Button, Checkbox, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { stockFilterFieldRowClassName, useStockTableFilters } from "../shared/StockTableFilters";
 import PurchaseOrderDrawer from "../purchase-orders/drawer/PurchaseOrderDrawer";
 import { getPurchasingAlertTableColumns } from "./getPurchasingAlertTableColumns";
@@ -17,7 +17,7 @@ import {
 } from "./purchaseOrderFromAlertUtils";
 import PurchasingAlertViewDrawer from "./PurchasingAlertViewDrawer";
 import { usePurchasingAlertsTableQuery } from "./usePurchasingAlertsTableQuery";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const ALERT_STATUS_OPTIONS = ["out_of_stock", "below_safety", "below_reorder", "ok"];
@@ -26,16 +26,15 @@ const ALERT_STATUS_OPTIONS = ["out_of_stock", "below_safety", "below_reorder", "
  * @typedef {{ header: Record<string, unknown>; lines: Array<Record<string, unknown>> }} PurchaseOrderSeed
  *
  * @typedef {{
- *   open: boolean;
  *   key: number;
  *   seed: PurchaseOrderSeed | null;
  *   queue: PurchaseOrderSeed[];
  *   bulkFlow: boolean;
- * }} PurchaseOrderDrawerState
+ * }} PurchaseOrderCreateState
  */
 
-/** @type {PurchaseOrderDrawerState} */
-const CLOSED_PO_DRAWER_STATE = { open: false, key: 0, seed: null, queue: [], bulkFlow: false };
+/** @type {PurchaseOrderCreateState} */
+const EMPTY_PO_CREATE_STATE = { key: 0, seed: null, queue: [], bulkFlow: false };
 
 function PurchasingAlertsTable() {
   const t = useTranslations("Stock");
@@ -48,22 +47,26 @@ function PurchasingAlertsTable() {
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [onlyAlerts, setOnlyAlerts] = useState(true);
   const [selectedRowKeys, setSelectedRowKeys] = useState(/** @type {import("react").Key[]} */ ([]));
-
-  const [poDrawer, setPoDrawer] = useState(CLOSED_PO_DRAWER_STATE);
+  const [poCreate, setPoCreate] = useState(EMPTY_PO_CREATE_STATE);
 
   const {
-    open: alertViewOpen,
+    open: drawerOpen,
+    mode: drawerMode,
     recordId: alertViewId,
     tableSeed: alertViewSeed,
     openViewDrawer,
-    closeDrawer: closeAlertViewDrawer,
+    openCreateDrawer,
+    closeDrawer,
   } = useResourceDrawerUrl({
-    allowCreateInUrl: false,
+    allowCreateInUrl: true,
     defaultMode: "view",
     parseId: parseNumericEntityId,
   });
 
-  const { tableData: rawTableData, isPending, isFetching, refetch } = usePurchasingAlertsTableQuery({
+  const poCreateOpen = drawerOpen && drawerMode === "create";
+  const alertViewOpen = drawerOpen && drawerMode !== "create";
+
+  const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = usePurchasingAlertsTableQuery({
     t,
     tApiErrors,
     notification,
@@ -74,7 +77,7 @@ function PurchasingAlertsTable() {
 
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     staleTime: 5 * 60_000,
   });
 
@@ -151,16 +154,21 @@ function PurchasingAlertsTable() {
   }, [onlyAlerts, statusLabel, t, warehouseLabel]);
 
   /**
-   * Bumping the drawer key remounts it, so each queued seed starts from a clean draft form.
+   * Stay on purchasing alerts and open the same PO drawer via `?drawer=new&mode=create`.
+   * Prefill stays in React state — not the URL.
    * @type {(seeds: PurchaseOrderSeed[], options?: { bulkFlow?: boolean }) => void}
    */
-  const openDrawerWithSeeds = useCallback((seeds, options = {}) => {
-    const { bulkFlow = false } = options;
-    const [first, ...rest] = seeds;
-    if (!first) return;
+  const openDrawerWithSeeds = useCallback(
+    (seeds, options = {}) => {
+      const { bulkFlow = false } = options;
+      const [first, ...rest] = seeds;
+      if (!first) return;
 
-    setPoDrawer((prev) => ({ open: true, key: prev.key + 1, seed: first, queue: rest, bulkFlow }));
-  }, []);
+      setPoCreate((prev) => ({ key: prev.key + 1, seed: first, queue: rest, bulkFlow }));
+      openCreateDrawer();
+    },
+    [openCreateDrawer],
+  );
 
   const handleViewAlert = useCallback(
     (record) => {
@@ -182,12 +190,9 @@ function PurchasingAlertsTable() {
         return;
       }
 
-      if (alertViewOpen) {
-        closeAlertViewDrawer();
-      }
       openDrawerWithSeeds([seed]);
     },
-    [alertViewOpen, closeAlertViewDrawer, message, openDrawerWithSeeds, t],
+    [message, openDrawerWithSeeds, t],
   );
 
   const columns = useMemo(
@@ -221,38 +226,28 @@ function PurchasingAlertsTable() {
       message.info(t("poFromAlertsDrawerQueue", { count: seeds.length }));
     }
 
-    if (alertViewOpen) {
-      closeAlertViewDrawer();
-    }
     openDrawerWithSeeds(seeds, { bulkFlow: seeds.length > 1 });
-  }, [
-    alertViewOpen,
-    closeAlertViewDrawer,
-    message,
-    openDrawerWithSeeds,
-    selectedRowKeys,
-    t,
-    tableDataByKey,
-  ]);
+  }, [message, openDrawerWithSeeds, selectedRowKeys, t, tableDataByKey]);
 
   const handlePoDrawerClose = useCallback(() => {
-    setPoDrawer((prev) => ({ ...CLOSED_PO_DRAWER_STATE, key: prev.key }));
-  }, []);
+    setPoCreate((prev) => ({ ...EMPTY_PO_CREATE_STATE, key: prev.key }));
+    closeDrawer();
+  }, [closeDrawer]);
 
   const handlePoCreated = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
 
-    const [nextSeed, ...restQueue] = poDrawer.queue;
+    const [nextSeed, ...restQueue] = poCreate.queue;
     if (nextSeed) {
-      setPoDrawer((prev) => ({ ...prev, open: true, key: prev.key + 1, seed: nextSeed, queue: restQueue }));
+      setPoCreate((prev) => ({ ...prev, key: prev.key + 1, seed: nextSeed, queue: restQueue }));
       return;
     }
 
-    if (poDrawer.bulkFlow) {
+    if (poCreate.bulkFlow) {
       setSelectedRowKeys([]);
       handlePoDrawerClose();
     }
-  }, [handlePoDrawerClose, poDrawer.bulkFlow, poDrawer.queue, queryClient]);
+  }, [handlePoDrawerClose, poCreate.bulkFlow, poCreate.queue, queryClient]);
 
   const rowSelection = useMemo(
     () => ({
@@ -313,8 +308,8 @@ function PurchasingAlertsTable() {
         selectionBarExtra={access.canAdd ? selectionBarExtra : undefined}
         toolbar={{
           showSearch: true,
-          searchKeys: ["item_code", "item_name", "warehouse_name"],
-          enableClientSearch: true,
+          enableClientSearch: false,
+          onSearchChange,
           showRefresh: true,
           onRefresh: () => refetch(),
           extra: filterToggle,
@@ -322,28 +317,24 @@ function PurchasingAlertsTable() {
         }}
         stickyHeader
         scrollX={1360}
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50, 100],
-        }}
+        pagination={pagination}
       />
 
       <PurchasingAlertViewDrawer
-        open={alertViewOpen && !poDrawer.open}
+        open={alertViewOpen}
         replenishmentId={alertViewOpen ? alertViewId : null}
         tableSeedRecord={alertViewSeed}
-        onClose={closeAlertViewDrawer}
+        onClose={closeDrawer}
         canCreatePo={access.canAdd}
         onCreatePo={access.canAdd ? handleCreatePoFromAlert : undefined}
       />
 
       <PurchaseOrderDrawer
-        key={poDrawer.key}
-        open={poDrawer.open}
+        key={poCreate.key}
+        open={poCreateOpen}
         mode="create"
         orderId={null}
-        createSeed={poDrawer.seed}
+        createSeed={poCreate.seed}
         onClose={handlePoDrawerClose}
         onCreated={handlePoCreated}
       />
@@ -354,7 +345,15 @@ function PurchasingAlertsTable() {
 export default function PurchasingAlertsPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <PurchasingAlertsTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <PurchasingAlertsTable />
+      </Suspense>
     </div>
   );
 }

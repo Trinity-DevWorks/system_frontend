@@ -6,6 +6,7 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteBranch, fetchBranches } from "@/services/branchesApi";
 import BranchDrawer from "./drawer/BranchDrawer";
 import {
@@ -13,10 +14,10 @@ import {
   getBranchStatusLabel,
   getBranchTableColumns,
 } from "./getBranchTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function BranchesTable() {
   const t = useTranslations("Branches");
@@ -27,36 +28,29 @@ function BranchesTable() {
   const access = useResourceAccess("branches");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "branches"],
     queryFn: fetchBranches,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    tableId: "branches",
+    t,
+    tApiErrors,
+    notification,
   });
-
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
-      data.map((row) => ({
+      rows.map((row) => ({
         ...row,
         is_active_label: getBranchStatusLabel(row?.is_active, t),
         is_default_label: getBranchDefaultLabel(row?.is_default, t),
       })),
-    [data, t],
+    [rows, t],
   );
 
   const {
@@ -74,17 +68,7 @@ function BranchesTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteBranch(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "branches"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) => (Array.isArray(old) ? old.filter((row) => row.id !== id) : old));
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "branches"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -180,16 +164,8 @@ function BranchesTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: [
-            "id",
-            "name",
-            "shortcut_name",
-            "email",
-            "phone",
-            "manager_name",
-            "is_active_label",
-            "is_default_label",
-          ],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
@@ -202,11 +178,7 @@ function BranchesTable() {
         stickyHeader
         scrollX={1480}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <BranchDrawer
         open={drawerOpen}

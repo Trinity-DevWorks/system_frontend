@@ -1,12 +1,11 @@
 /**
- * Purchase orders list query with server-side filters.
+ * Purchase orders list query with server-side filters and pagination.
  */
 
-import { purchaseOrdersQueryKey } from "@/components/stock/stockQueryCache";
-import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { PURCHASE_ORDERS_QUERY_KEY } from "@/components/stock/stockQueryCache";
 import { fetchPurchaseOrders } from "@/services/purchaseOrdersApi";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
+import { useMemo } from "react";
 
 /**
  * @param {{
@@ -30,39 +29,36 @@ export function usePurchaseOrdersTableQuery({
   from,
   to,
 }) {
-  const filters = useMemo(
+  const extraParams = useMemo(
     () => ({
       ...(status ? { status } : {}),
       ...(supplierId ? { supplier_id: supplierId } : {}),
       ...(warehouseId != null ? { warehouse_id: warehouseId } : {}),
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
-      limit: 500,
     }),
     [status, supplierId, warehouseId, from, to],
   );
 
-  const queryKey = purchaseOrdersQueryKey(filters);
-
-  const { data = [], isPending, isFetching, isError, error, refetch } = useQuery({
-    queryKey,
-    queryFn: () => fetchPurchaseOrders(filters),
+  const table = useTenantPaginatedTable({
+    queryKey: PURCHASE_ORDERS_QUERY_KEY,
+    queryFn: fetchPurchaseOrders,
+    extraParams,
+    defaultPageSize: 50,
+    pageSizeOptions: [20, 50, 100],
     staleTime: 30_000,
-    refetchOnMount: true,
+    tableId: "purchase-orders",
+    t,
+    tApiErrors,
+    notification,
   });
 
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
-
   return {
-    tableData: data,
-    isPending,
-    isFetching,
-    refetch,
+    tableData: table.rows,
+    isPending: table.isPending,
+    isFetching: table.isFetching,
+    refetch: table.refetch,
+    pagination: table.pagination,
+    onSearchChange: table.onSearchChange,
   };
 }

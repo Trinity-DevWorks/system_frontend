@@ -4,9 +4,9 @@
 
 import { formatUomLabel } from "../../shared/formatStockQuantity";
 import { STOCK_TRANSFER_BASE_UOM } from "./stockTransferDrawerUtils";
-import { fetchItems } from "@/services/itemsApi";
+import { fetchItemNames } from "@/services/itemsApi";
 import { fetchItemUoms } from "@/services/itemUomsApi";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -19,14 +19,14 @@ import { useMemo } from "react";
 export function useStockTransferDrawerData({ open, t }) {
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const itemsQuery = useQuery({
     queryKey: ["tenant", "items"],
-    queryFn: fetchItems,
+    queryFn: fetchItemNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });

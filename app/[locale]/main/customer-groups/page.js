@@ -6,13 +6,14 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteCustomerGroup, fetchCustomerGroups } from "@/services/customerGroupsApi";
 import CustomerGroupDrawer from "./drawer/CustomerGroupDrawer";
 import { getCustomerGroupStatusLabel, getCustomerGroupTableColumns } from "./getCustomerGroupTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function CustomerGroupsTable() {
   const t = useTranslations("CustomerGroups");
@@ -23,35 +24,28 @@ function CustomerGroupsTable() {
   const access = useResourceAccess("customer_groups");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "customer-groups"],
     queryFn: fetchCustomerGroups,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    tableId: "customer-groups",
+    t,
+    tApiErrors,
+    notification,
   });
-
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
-      data.map((row) => ({
+      rows.map((row) => ({
         ...row,
         is_active_label: getCustomerGroupStatusLabel(row?.is_active, t),
       })),
-    [data, t],
+    [rows, t],
   );
 
   const {
@@ -69,19 +63,7 @@ function CustomerGroupsTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteCustomerGroup(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "customer-groups"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) =>
-        Array.isArray(old) ? old.filter((row) => row.id !== id) : old,
-      );
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "customer-groups"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -167,7 +149,8 @@ function CustomerGroupsTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["id", "code", "name", "is_active_label"],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
@@ -180,11 +163,7 @@ function CustomerGroupsTable() {
         stickyHeader
         scrollX={1080}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <CustomerGroupDrawer
         open={drawerOpen}

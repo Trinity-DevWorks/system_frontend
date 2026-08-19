@@ -19,7 +19,7 @@ function ItemsTable() {
   const access = useResourceAccess("items");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
-  const { tableData, isPending, refetch, handleRefresh, refreshFetching } = useItemsTableQuery({
+  const { tableData, isPending, refetch, handleRefresh, refreshFetching, pagination, onSearchChange } = useItemsTableQuery({
     t,
     tApiErrors,
     notification,
@@ -64,7 +64,8 @@ function ItemsTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["sku", "item_code", "name", "item_type_label", "category.name", "brand.name", "is_active_label"],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: drawer.openCreateDrawer,
           showRefresh: true,
@@ -81,7 +82,7 @@ function ItemsTable() {
         stickyHeader
         scrollX={1000}
         enableColumnDrag
-        pagination={{ mode: "client", pageSize: 20, pageSizeOptions: [10, 20, 50] }}
+        pagination={pagination}
       />
       <ItemDrawer
         open={drawer.drawerOpen}

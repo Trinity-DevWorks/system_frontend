@@ -1,15 +1,14 @@
 /**
- * Purchasing alerts list query with server-side filters.
+ * Purchasing alerts list query with server-side filters and pagination.
  *
  * Used by:
  * - app/[locale]/main/stock/purchasing-alerts/page.js
  */
 
-import { purchasingAlertsQueryKey } from "@/components/stock/stockQueryCache";
-import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { PURCHASING_ALERTS_QUERY_KEY } from "@/components/stock/stockQueryCache";
 import { fetchPurchasingAlerts } from "@/services/purchasingAlertsApi";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
+import { useMemo } from "react";
 
 /**
  * @param {{
@@ -29,7 +28,7 @@ export function usePurchasingAlertsTableQuery({
   status,
   onlyAlerts,
 }) {
-  const filters = useMemo(
+  const extraParams = useMemo(
     () => ({
       ...(warehouseId != null ? { warehouse_id: warehouseId } : {}),
       ...(status ? { status } : {}),
@@ -38,28 +37,24 @@ export function usePurchasingAlertsTableQuery({
     [warehouseId, status, onlyAlerts],
   );
 
-  const queryKey = purchasingAlertsQueryKey(filters);
-
-  const { data = [], isPending, isFetching, isError, error, refetch } = useQuery({
-    queryKey,
-    queryFn: () => fetchPurchasingAlerts(filters),
+  const table = useTenantPaginatedTable({
+    queryKey: PURCHASING_ALERTS_QUERY_KEY,
+    queryFn: fetchPurchasingAlerts,
+    extraParams,
     staleTime: 60_000,
-    refetchOnMount: true,
+    tableId: "purchasing-alerts",
+    t,
+    tApiErrors,
+    notification,
   });
 
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
-
   return {
-    tableData: data,
-    isPending,
-    isFetching,
-    refetch,
-    queryKey,
+    tableData: table.rows,
+    isPending: table.isPending,
+    isFetching: table.isFetching,
+    refetch: table.refetch,
+    queryKey: [...PURCHASING_ALERTS_QUERY_KEY, extraParams],
+    pagination: table.pagination,
+    onSearchChange: table.onSearchChange,
   };
 }

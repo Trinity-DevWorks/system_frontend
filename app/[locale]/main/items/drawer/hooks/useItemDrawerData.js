@@ -7,13 +7,13 @@
 
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { buildCategoryTreeData } from "@/lib/categories/categoryTree";
-import { fetchBrands } from "@/services/brandsApi";
-import { fetchCategories } from "@/services/categoriesApi";
+import { fetchBrandNames } from "@/services/brandsApi";
+import { fetchCategoryNames } from "@/services/categoriesApi";
 import { fetchItem } from "@/services/itemsApi";
 import { fetchItemTypes } from "@/services/itemTypesApi";
 import { fetchItemUoms } from "@/services/itemUomsApi";
-import { fetchUnitGroups } from "@/services/unitGroupsApi";
-import { fetchVatGroups } from "@/services/vatGroupsApi";
+import { fetchUnitGroupNames } from "@/services/unitGroupsApi";
+import { fetchVatGroupNames } from "@/services/vatGroupsApi";
 import { useQuery } from "@tanstack/react-query";
 import { Form } from "antd";
 import { useCallback, useMemo } from "react";
@@ -75,28 +75,28 @@ export function useItemDrawerData({
 
   const categoriesQuery = useQuery({
     queryKey: ["tenant", "categories"],
-    queryFn: fetchCategories,
+    queryFn: fetchCategoryNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const brandsQuery = useQuery({
     queryKey: ["tenant", "brands"],
-    queryFn: () => fetchBrands(),
+    queryFn: () => fetchBrandNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const unitGroupsQuery = useQuery({
     queryKey: ["tenant", "unit-groups"],
-    queryFn: fetchUnitGroups,
+    queryFn: fetchUnitGroupNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const vatGroupsQuery = useQuery({
     queryKey: ["tenant", "vat-groups"],
-    queryFn: () => fetchVatGroups(),
+    queryFn: () => fetchVatGroupNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });

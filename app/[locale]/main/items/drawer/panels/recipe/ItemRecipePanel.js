@@ -9,9 +9,9 @@
  */
 
 import ResourceDrawerPanelHeader from "@/components/resource-drawer/ResourceDrawerPanelHeader";
-import { fetchItems } from "@/services/itemsApi";
+import { fetchItemNames } from "@/services/itemsApi";
 import { fetchRecipe, fetchRecipeItems } from "@/services/recipesApi";
-import { fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
+import { fetchUnitOfMeasurementNames } from "@/services/unitOfMeasurementsApi";
 import { itemRecipeItemsQueryKey, itemRecipeQueryKey } from "@/components/items/itemRecipeQueryCache";
 import { useQuery } from "@tanstack/react-query";
 import { Table, Typography } from "antd";
@@ -33,14 +33,14 @@ import { RecipeLineEditor } from "./RecipeLineEditor";
 export function ItemRecipePanel({ itemId, readOnly, t, tApiErrors, active, baseUomId }) {
   const itemsQuery = useQuery({
     queryKey: ["tenant", "items"],
-    queryFn: fetchItems,
+    queryFn: fetchItemNames,
     enabled: active,
     staleTime: 5 * 60_000,
   });
 
   const uomsQuery = useQuery({
     queryKey: ["tenant", "unit-of-measurements"],
-    queryFn: fetchUnitOfMeasurements,
+    queryFn: fetchUnitOfMeasurementNames,
     enabled: active,
     staleTime: 5 * 60_000,
   });

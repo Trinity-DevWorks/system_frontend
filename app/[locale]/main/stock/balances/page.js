@@ -9,7 +9,7 @@ import StockAdjustmentDrawer from "../adjustment/StockAdjustmentDrawer";
 import { stockFilterFieldRowClassName, useStockTableFilters } from "../shared/StockTableFilters";
 import { getStockBalanceTableColumns } from "./getStockBalanceTableColumns";
 import { useStockBalancesTableQuery } from "./useStockBalancesTableQuery";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
 
 function StockBalancesTable() {
@@ -25,7 +25,7 @@ function StockBalancesTable() {
     /** @type {{ warehouseId?: number; itemId?: string }} */ ({}),
   );
 
-  const { tableData: rawTableData, isPending, isFetching, refetch } = useStockBalancesTableQuery({
+  const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = useStockBalancesTableQuery({
     t,
     tApiErrors,
     notification,
@@ -35,7 +35,7 @@ function StockBalancesTable() {
 
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     staleTime: 5 * 60_000,
   });
 
@@ -138,8 +138,8 @@ function StockBalancesTable() {
         emptyText={t("balancesEmpty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["item_code", "item_name", "warehouse_name", "quantity"],
-          enableClientSearch: true,
+          enableClientSearch: false,
+          onSearchChange,
           showRefresh: true,
           onRefresh: () => refetch(),
           showAdd: access.canAdd,
@@ -150,11 +150,7 @@ function StockBalancesTable() {
         }}
         stickyHeader
         scrollX={960}
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50, 100],
-        }}
+        pagination={pagination}
       />
       <StockAdjustmentDrawer
         open={adjustmentOpen}

@@ -1,7 +1,7 @@
 "use client";
 
-import { fetchBranches } from "@/services/branchesApi";
-import { fetchRoles } from "@/services/rolesApi";
+import { fetchBranchNames } from "@/services/branchesApi";
+import { fetchRoleNames } from "@/services/rolesApi";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Form, Input, Select, Space, Switch } from "antd";
@@ -30,14 +30,14 @@ export default function UserDrawerForm({
 }) {
   const rolesQuery = useQuery({
     queryKey: ["tenant", "roles"],
-    queryFn: fetchRoles,
+    queryFn: fetchRoleNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const branchesQuery = useQuery({
     queryKey: ["tenant", "branches"],
-    queryFn: fetchBranches,
+    queryFn: fetchBranchNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });

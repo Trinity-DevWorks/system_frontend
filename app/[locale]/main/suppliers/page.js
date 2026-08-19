@@ -6,13 +6,14 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteSupplier, fetchSuppliers } from "@/services/suppliersApi";
 import SupplierDrawer from "./drawer/SupplierDrawer";
 import { getSupplierStatusLabel, getSupplierTableColumns } from "./getSupplierTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function SuppliersTable() {
   const t = useTranslations("Suppliers");
@@ -23,35 +24,28 @@ function SuppliersTable() {
   const access = useResourceAccess("suppliers");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "suppliers"],
     queryFn: fetchSuppliers,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    tableId: "suppliers",
+    t,
+    tApiErrors,
+    notification,
   });
-
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
-      data.map((row) => ({
+      rows.map((row) => ({
         ...row,
         is_active_label: getSupplierStatusLabel(row?.is_active, t),
       })),
-    [data, t],
+    [rows, t],
   );
 
   const {
@@ -69,17 +63,7 @@ function SuppliersTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteSupplier(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "suppliers"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) => (Array.isArray(old) ? old.filter((row) => row.id !== id) : old));
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "suppliers"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -165,16 +149,8 @@ function SuppliersTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: [
-            "supplier_code",
-            "name",
-            "supplier_group.name",
-            "phone",
-            "email",
-            "credit_limit",
-            "balance",
-            "is_active_label",
-          ],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
@@ -187,11 +163,7 @@ function SuppliersTable() {
         stickyHeader
         scrollX={1560}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <SupplierDrawer
         open={drawerOpen}

@@ -1,11 +1,14 @@
 import tenantApiService from "@/API/TenantApiService";
+import { fetchPaginatedResource, fetchResourceNames } from "@/lib/tables/paginatedList";
 
-/**
- * @returns {Promise<unknown[]>}
- */
-export async function fetchVatGroups() {
-  const data = await tenantApiService("GET", "vat-groups");
-  return Array.isArray(data) ? data : [];
+/** @param {Record<string, string | number | undefined>} [params] */
+export function fetchVatGroups(params = {}) {
+  return fetchPaginatedResource("vat-groups", params);
+}
+
+/** @returns {Promise<unknown[]>} */
+export function fetchVatGroupNames() {
+  return fetchResourceNames("vat-groups");
 }
 
 /**

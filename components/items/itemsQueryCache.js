@@ -1,3 +1,5 @@
+import { patchTenantListCache } from "@/lib/tables/tenantListCache";
+
 /** @type {readonly ["tenant", "items"]} */
 export const ITEMS_LIST_QUERY_KEY = /** @type {const} */ (["tenant", "items"]);
 
@@ -37,10 +39,9 @@ export function derivePrimaryImageFromAttachments(attachments) {
  * @param {{ id: string; file_name: string; mime_type: string } | null} primaryImage
  */
 export function patchItemPrimaryImageInCache(queryClient, itemId, primaryImage) {
-  queryClient.setQueryData(ITEMS_LIST_QUERY_KEY, (old) => {
-    if (!Array.isArray(old)) return old;
-    return old.map((row) => (row?.id === itemId ? { ...row, primary_image: primaryImage } : row));
-  });
+  patchTenantListCache(queryClient, ITEMS_LIST_QUERY_KEY, (rows) =>
+    rows.map((row) => (row?.id === itemId ? { ...row, primary_image: primaryImage } : row)),
+  );
 
   queryClient.setQueryData(["tenant", "items", itemId], (old) => {
     if (!old || typeof old !== "object") return old;
@@ -67,10 +68,10 @@ export function invalidateItemAttachmentThumb(queryClient, itemId, attachmentId)
 export function removeItemsFromListCache(queryClient, itemIds) {
   if (!itemIds.length) return;
   const idSet = new Set(itemIds.map((id) => String(id)));
-  queryClient.setQueryData(ITEMS_LIST_QUERY_KEY, (old) => {
-    if (!Array.isArray(old)) return old;
-    return old.filter((row) => !idSet.has(String(/** @type {{ id?: unknown }} */ (row)?.id ?? "")));
-  });
+  patchTenantListCache(queryClient, ITEMS_LIST_QUERY_KEY, (rows) =>
+    rows.filter((row) => !idSet.has(String(/** @type {{ id?: unknown }} */ (row)?.id ?? ""))),
+  );
+  void queryClient.invalidateQueries({ queryKey: ITEMS_LIST_QUERY_KEY });
 }
 
 /**

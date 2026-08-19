@@ -7,8 +7,9 @@ import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreate
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { fetchCategories, fetchCategory } from "@/services/categoriesApi";
+import { fetchCategory, fetchCategoryNames } from "@/services/categoriesApi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DEFAULT_CATEGORY_COLOR } from "@/lib/app-theme";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
@@ -82,7 +83,7 @@ export default function CategoryDrawer({
       parent_id: defaultParentId ?? undefined,
       code: "",
       name: "",
-      color: "#6366F1",
+      color: DEFAULT_CATEGORY_COLOR,
       description: "",
       is_active: true,
     }),
@@ -117,7 +118,7 @@ export default function CategoryDrawer({
 
   const categoriesQuery = useQuery({
     queryKey: ["tenant", "categories"],
-    queryFn: () => fetchCategories(),
+    queryFn: () => fetchCategoryNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });

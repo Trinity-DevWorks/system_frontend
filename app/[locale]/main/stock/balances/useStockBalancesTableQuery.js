@@ -1,15 +1,14 @@
 /**
- * Stock balances list query with server-side filters.
+ * Stock balances list query with server-side filters and pagination.
  *
  * Used by:
  * - app/[locale]/main/stock/balances/page.js
  */
 
-import { stockBalancesQueryKey } from "@/components/stock/stockQueryCache";
-import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { STOCK_BALANCES_QUERY_KEY } from "@/components/stock/stockQueryCache";
 import { fetchStockBalances } from "@/services/stockApi";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
+import { useMemo } from "react";
 
 /**
  * @param {{
@@ -27,7 +26,7 @@ export function useStockBalancesTableQuery({
   warehouseId,
   onlyWithStock,
 }) {
-  const filters = useMemo(
+  const extraParams = useMemo(
     () => ({
       ...(warehouseId != null ? { warehouse_id: warehouseId } : {}),
       ...(onlyWithStock ? { only_with_stock: true } : {}),
@@ -35,28 +34,24 @@ export function useStockBalancesTableQuery({
     [warehouseId, onlyWithStock],
   );
 
-  const queryKey = stockBalancesQueryKey(filters);
-
-  const { data = [], isPending, isFetching, isError, error, refetch } = useQuery({
-    queryKey,
-    queryFn: () => fetchStockBalances(filters),
+  const table = useTenantPaginatedTable({
+    queryKey: STOCK_BALANCES_QUERY_KEY,
+    queryFn: fetchStockBalances,
+    extraParams,
     staleTime: 60_000,
-    refetchOnMount: true,
+    tableId: "stock-balances",
+    t,
+    tApiErrors,
+    notification,
   });
 
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
-
   return {
-    tableData: data,
-    isPending,
-    isFetching,
-    refetch,
-    queryKey,
+    tableData: table.rows,
+    isPending: table.isPending,
+    isFetching: table.isFetching,
+    refetch: table.refetch,
+    queryKey: [...STOCK_BALANCES_QUERY_KEY, extraParams],
+    pagination: table.pagination,
+    onSearchChange: table.onSearchChange,
   };
 }

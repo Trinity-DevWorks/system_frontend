@@ -6,8 +6,8 @@ import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreate
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { fetchBranches } from "@/services/branchesApi";
-import { fetchTenantUsers } from "@/services/tenantUsersApi";
+import { fetchBranchNames } from "@/services/branchesApi";
+import { fetchTenantUserNames } from "@/services/tenantUsersApi";
 import { fetchWarehouse } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -56,14 +56,14 @@ export default function WarehouseDrawer({
 
   const branchesQuery = useQuery({
     queryKey: ["tenant", "branches"],
-    queryFn: fetchBranches,
+    queryFn: fetchBranchNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const usersQuery = useQuery({
     queryKey: ["tenant", "users"],
-    queryFn: fetchTenantUsers,
+    queryFn: fetchTenantUserNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });

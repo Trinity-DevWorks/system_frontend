@@ -6,14 +6,15 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteRole, fetchRoles } from "@/services/rolesApi";
 import RoleDrawer from "./drawer/RoleDrawer";
 import { isOwnerRoleName, isSystemRoleName } from "./drawer/roleDrawerUtils";
 import { getRoleStatusLabel, getRoleTableColumns } from "./getRoleTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function RolesTable() {
   const t = useTranslations("Roles");
@@ -23,37 +24,29 @@ function RolesTable() {
   const queryClient = useQueryClient();
   const access = useResourceAccess("roles");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [manualRefreshing, setManualRefreshing] = useState(false);
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "roles"],
     queryFn: fetchRoles,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    tableId: "roles",
+    t,
+    tApiErrors,
+    notification,
   });
-
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
-      data.map((row) => ({
+      rows.map((row) => ({
         ...row,
         active_label: getRoleStatusLabel(row?.is_active, t),
       })),
-    [data, t],
+    [rows, t],
   );
 
   const rowSelection = {
@@ -89,19 +82,7 @@ function RolesTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteRole(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "roles"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) =>
-        Array.isArray(old) ? old.filter((row) => row.id !== id) : old,
-      );
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "roles"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -180,22 +161,6 @@ function RolesTable() {
     [t, access.canEdit, access.canView, access.canDelete, openEditDrawer, openViewDrawer, requestDeleteRole],
   );
 
-  const handleRefresh = async () => {
-    setManualRefreshing(true);
-    try {
-      const freshData = await fetchRoles();
-      queryClient.setQueryData(["tenant", "roles"], freshData);
-    } catch (err) {
-      notification.error({
-        title: t("loadError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-      return { isError: true };
-    } finally {
-      setManualRefreshing(false);
-    }
-  };
-
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppDataTable
@@ -204,16 +169,17 @@ function RolesTable() {
         dataSource={tableData}
         rowKey="id"
         loading={isPending}
-        refreshFetching={isFetching || manualRefreshing}
+        refreshFetching={isFetching}
         onRetry={() => refetch()}
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["name", "description", "id", "active_label"],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
-          onRefresh: handleRefresh,
+          onRefresh: () => refetch(),
         }}
         rowSelection={access.canDelete ? rowSelection : false}
         showSelectionBar={access.canDelete}
@@ -222,11 +188,7 @@ function RolesTable() {
         stickyHeader
         scrollX={1100}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <RoleDrawer
         open={drawerOpen}

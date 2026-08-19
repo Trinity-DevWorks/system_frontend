@@ -6,8 +6,8 @@
  */
 
 import { fetchItemUoms } from "@/services/itemUomsApi";
-import { fetchItems } from "@/services/itemsApi";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchItemNames } from "@/services/itemsApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { formatUomLabel } from "../shared/formatStockQuantity";
@@ -24,14 +24,14 @@ import { STOCK_ADJUSTMENT_BASE_UOM } from "./stockAdjustmentDrawerUtils";
 export function useStockAdjustmentDrawerData({ open, itemId, t }) {
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const itemsQuery = useQuery({
     queryKey: ["tenant", "items"],
-    queryFn: fetchItems,
+    queryFn: fetchItemNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });

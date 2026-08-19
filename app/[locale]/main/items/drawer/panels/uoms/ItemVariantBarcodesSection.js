@@ -14,7 +14,7 @@ import { App, Button, Input } from "antd";
 import { useCallback, useState } from "react";
 
 const starClass = "text-base text-[var(--ant-color-text-quaternary)]";
-const starActiveClass = "text-base text-[#f5a623]";
+const starActiveClass = "text-base text-[var(--ant-color-warning)]";
 
 const pillActionsClass =
   "inline-flex max-w-0 items-center gap-1.5 overflow-hidden opacity-0 transition-all duration-150 group-hover:ms-1.5 group-hover:max-w-[120px] group-hover:opacity-100 group-focus-within:ms-1.5 group-focus-within:max-w-[120px] group-focus-within:opacity-100 [@media(hover:none)]:ms-1.5 [@media(hover:none)]:max-w-[120px] [@media(hover:none)]:opacity-100";

@@ -18,7 +18,7 @@ import {
   dispatchStockTransfer,
   receiveStockTransfer,
 } from "@/services/stockTransfersApi";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -55,7 +55,7 @@ function StockTransfersTable() {
   const fromIso = dateRange?.[0]?.startOf("day").toISOString();
   const toIso = dateRange?.[1]?.endOf("day").toISOString();
 
-  const { tableData: rawTableData, isPending, isFetching, refetch } = useStockTransfersTableQuery({
+  const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = useStockTransfersTableQuery({
     t,
     tApiErrors,
     notification,
@@ -68,7 +68,7 @@ function StockTransfersTable() {
 
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     staleTime: 5 * 60_000,
   });
 
@@ -373,8 +373,8 @@ function StockTransfersTable() {
         emptyText={t("transfersEmpty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["transfer_number", "from_warehouse_name", "to_warehouse_name", "status_label"],
-          enableClientSearch: true,
+          enableClientSearch: false,
+          onSearchChange,
           showRefresh: true,
           onRefresh: () => refetch(),
           showAdd: access.canAdd,
@@ -385,11 +385,7 @@ function StockTransfersTable() {
         }}
         stickyHeader
         scrollX={1200}
-        pagination={{
-          mode: "client",
-          pageSize: 50,
-          pageSizeOptions: [20, 50, 100, 200],
-        }}
+        pagination={pagination}
       />
       <StockTransferDrawer
         open={drawerOpen}

@@ -75,8 +75,8 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
         const color =
           value === "confirmed"
             ? "success"
-            : value === "sent"
-              ? "cyan"
+              : value === "sent"
+                ? "blue"
               : value === "cancelled"
                 ? "default"
                 : "processing";

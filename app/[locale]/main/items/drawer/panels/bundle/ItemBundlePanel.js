@@ -10,7 +10,7 @@
 
 import ResourceDrawerPanelHeader from "@/components/resource-drawer/ResourceDrawerPanelHeader";
 import { fetchBundleItems } from "@/services/bundleItemsApi";
-import { fetchItems } from "@/services/itemsApi";
+import { fetchItemNames } from "@/services/itemsApi";
 import { itemBundleItemsQueryKey } from "@/components/items/itemBundleQueryCache";
 import { getItemTypeCode } from "../../utils/itemFormMappers";
 import { useQuery } from "@tanstack/react-query";
@@ -26,7 +26,7 @@ import { BundleLineEditor } from "./BundleLineEditor";
 export function ItemBundlePanel({ itemId, readOnly, t, tApiErrors, active }) {
   const itemsQuery = useQuery({
     queryKey: ["tenant", "items"],
-    queryFn: fetchItems,
+    queryFn: fetchItemNames,
     enabled: active,
     staleTime: 5 * 60_000,
   });

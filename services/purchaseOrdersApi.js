@@ -1,5 +1,6 @@
 import { tenantApiClient } from "@/lib/axios";
 import tenantApiService from "@/API/TenantApiService";
+import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
 
 /**
  * @param {{
@@ -9,24 +10,14 @@ import tenantApiService from "@/API/TenantApiService";
  *   search?: string;
  *   from?: string;
  *   to?: string;
- *   limit?: number;
+ *   page?: number;
+ *   per_page?: number;
  * }} [params]
- * @returns {Promise<unknown[]>}
  */
 export async function fetchPurchaseOrders(params = {}) {
-  const query = new URLSearchParams();
-  if (params.status) query.set("status", params.status);
-  if (params.supplier_id) query.set("supplier_id", params.supplier_id);
-  if (params.warehouse_id != null) query.set("warehouse_id", String(params.warehouse_id));
-  if (params.search) query.set("search", params.search);
-  if (params.from) query.set("from", params.from);
-  if (params.to) query.set("to", params.to);
-  if (params.limit != null) query.set("limit", String(params.limit));
-
-  const qs = query.toString();
-  const endpoint = qs ? `stock/purchase-orders?${qs}` : "stock/purchase-orders";
-  const data = await tenantApiService("GET", endpoint);
-  return Array.isArray(data) ? data : [];
+  const qs = toListQuery(params).toString();
+  const payload = await tenantApiService("GET", qs ? `stock/purchase-orders?${qs}` : "stock/purchase-orders");
+  return parsePaginatedList(payload, params);
 }
 
 /**

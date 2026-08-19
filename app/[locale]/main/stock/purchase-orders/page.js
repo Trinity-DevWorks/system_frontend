@@ -8,8 +8,8 @@ import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { cancelPurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, markPurchaseOrderAsSent } from "@/services/purchaseOrdersApi";
-import { fetchSuppliers } from "@/services/suppliersApi";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchSupplierNames } from "@/services/suppliersApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -43,7 +43,7 @@ function PurchaseOrdersTable() {
   const fromIso = dateRange?.[0]?.format("YYYY-MM-DD");
   const toIso = dateRange?.[1]?.format("YYYY-MM-DD");
 
-  const { tableData: rawTableData, isPending, isFetching, refetch } = usePurchaseOrdersTableQuery({
+  const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = usePurchaseOrdersTableQuery({
     t,
     tApiErrors,
     notification,
@@ -56,13 +56,13 @@ function PurchaseOrdersTable() {
 
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     staleTime: 5 * 60_000,
   });
 
   const suppliersQuery = useQuery({
     queryKey: ["tenant", "suppliers"],
-    queryFn: fetchSuppliers,
+    queryFn: fetchSupplierNames,
     staleTime: 5 * 60_000,
   });
 
@@ -359,8 +359,8 @@ function PurchaseOrdersTable() {
         emptyText={t("purchaseOrdersEmpty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["po_number", "supplier_name", "warehouse_name", "status_label"],
-          enableClientSearch: true,
+          enableClientSearch: false,
+          onSearchChange,
           showRefresh: true,
           onRefresh: () => refetch(),
           showAdd: access.canAdd,
@@ -371,11 +371,7 @@ function PurchaseOrdersTable() {
         }}
         stickyHeader
         scrollX={1460}
-        pagination={{
-          mode: "client",
-          pageSize: 50,
-          pageSizeOptions: [20, 50, 100, 200],
-        }}
+        pagination={pagination}
       />
       <PurchaseOrderDrawer
         open={drawerOpen}

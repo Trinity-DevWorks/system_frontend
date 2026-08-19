@@ -21,7 +21,7 @@ import {
   fetchItemWarehouseReplenishments,
   updateItemWarehouseReplenishment,
 } from "@/services/itemWarehouseReplenishmentsApi";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 import { useCallback, useMemo, useState } from "react";
@@ -80,7 +80,7 @@ export function useItemReplenishmentPanel({
 
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     enabled: active && !readOnly && replenishmentAllowed,
     staleTime: 5 * 60_000,
   });

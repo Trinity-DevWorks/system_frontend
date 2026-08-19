@@ -6,7 +6,7 @@ import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreate
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { fetchCurrencies } from "@/services/currenciesApi";
+import { fetchCurrencyNames } from "@/services/currenciesApi";
 import { fetchPaymentMethod } from "@/services/paymentMethodsApi";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -73,7 +73,7 @@ export default function PaymentMethodDrawer({
 
   const { data: currencies = [], isPending: currenciesLoading } = useQuery({
     queryKey: ["tenant", "currencies"],
-    queryFn: fetchCurrencies,
+    queryFn: fetchCurrencyNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });

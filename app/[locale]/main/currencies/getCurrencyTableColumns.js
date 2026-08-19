@@ -71,7 +71,7 @@ export function getCurrencyTableColumns(t, actions = {}) {
       width: 110,
       sorter: (a, b) => Number(b.is_primary) - Number(a.is_primary),
       render: (value) =>
-        value ? <Tag color="blue">{t("primaryYes")}</Tag> : <span className="text-slate-400">{t("primaryNo")}</span>,
+        value ? <Tag className="app-tag-brand">{t("primaryYes")}</Tag> : <span className="text-slate-400">{t("primaryNo")}</span>,
     },
     {
       title: t("colActive"),

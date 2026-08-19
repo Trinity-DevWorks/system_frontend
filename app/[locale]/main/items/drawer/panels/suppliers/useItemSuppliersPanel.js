@@ -9,14 +9,14 @@
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { isPersistedEntityId, normalizeEntityId } from "@/lib/entityId";
-import { fetchCurrencies } from "@/services/currenciesApi";
+import { fetchCurrencyNames } from "@/services/currenciesApi";
 import {
   createSupplierItem,
   deleteSupplierItem,
   fetchItemSuppliers,
   updateSupplierItem,
 } from "@/services/supplierItemsApi";
-import { fetchSuppliers } from "@/services/suppliersApi";
+import { fetchSupplierNames } from "@/services/suppliersApi";
 import {
   isSupplierItemRow,
   itemSupplierItemsQueryKey,
@@ -75,14 +75,14 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
 
   const suppliersQuery = useQuery({
     queryKey: ["tenant", "suppliers"],
-    queryFn: fetchSuppliers,
+    queryFn: fetchSupplierNames,
     enabled: active && !readOnly,
     staleTime: 5 * 60_000,
   });
 
   const currenciesQuery = useQuery({
     queryKey: ["tenant", "currencies"],
-    queryFn: fetchCurrencies,
+    queryFn: fetchCurrencyNames,
     enabled: active && !readOnly,
     staleTime: 5 * 60_000,
   });

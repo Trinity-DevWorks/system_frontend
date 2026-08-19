@@ -6,16 +6,17 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteCurrency, fetchCurrencies } from "@/services/currenciesApi";
 import { SwapOutlined } from "@ant-design/icons";
 import CurrencyRateHistoryModal from "./CurrencyRateHistoryModal";
 import CurrencyExchangeRatesModal from "./CurrencyExchangeRatesModal";
 import CurrencyDrawer from "./drawer/CurrencyDrawer";
 import { getCurrencyTableColumns } from "./getCurrencyTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function CurrenciesTable() {
   const t = useTranslations("Currencies");
@@ -26,27 +27,20 @@ function CurrenciesTable() {
   const access = useResourceAccess("currencies");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "currencies"],
     queryFn: fetchCurrencies,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    tableId: "currencies",
+    t,
+    tApiErrors,
+    notification,
   });
-
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
 
   const [historyRecord, setHistoryRecord] = useState(/** @type {Record<string, unknown> | null} */ (null));
   const [exchangeOpen, setExchangeOpen] = useState(false);
@@ -66,19 +60,7 @@ function CurrenciesTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteCurrency(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "currencies"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) =>
-        Array.isArray(old) ? old.filter((row) => row.id !== id) : old,
-      );
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "currencies"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -170,7 +152,7 @@ function CurrenciesTable() {
       <AppDataTable
         tableId="currencies"
         columns={columns}
-        dataSource={data}
+        dataSource={rows}
         rowKey="id"
         loading={isPending}
         refreshFetching={isFetching}
@@ -178,7 +160,8 @@ function CurrenciesTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["id", "code", "iso_code", "name", "symbol"],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
@@ -196,11 +179,7 @@ function CurrenciesTable() {
         stickyHeader
         scrollX={1280}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <CurrencyDrawer
         open={drawerOpen}
@@ -217,7 +196,6 @@ function CurrenciesTable() {
       />
       <CurrencyExchangeRatesModal
         open={exchangeOpen}
-        currencies={Array.isArray(data) ? data : []}
         onClose={() => setExchangeOpen(false)}
       />
     </div>

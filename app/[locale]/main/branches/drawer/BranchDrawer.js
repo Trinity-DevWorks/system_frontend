@@ -9,7 +9,7 @@ import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { BRANCH_CONTEXT_QUERY_KEY } from "@/lib/active-branch";
 import { fetchBranch } from "@/services/branchesApi";
 import { fetchBranchContext } from "@/services/branchContextApi";
-import { fetchTenantUsers } from "@/services/tenantUsersApi";
+import { fetchTenantUserNames } from "@/services/tenantUsersApi";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
@@ -58,7 +58,7 @@ export default function BranchDrawer({
 
   const usersQuery = useQuery({
     queryKey: ["tenant", "users"],
-    queryFn: fetchTenantUsers,
+    queryFn: fetchTenantUserNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });

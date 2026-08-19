@@ -8,11 +8,11 @@ import { useCreateDiscardBaseline } from "@/components/resource-drawer/useCreate
 import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { fetchCurrencies } from "@/services/currenciesApi";
-import { fetchPaymentMethods } from "@/services/paymentMethodsApi";
-import { fetchPaymentTerms } from "@/services/paymentTermsApi";
-import { fetchSupplierGroups } from "@/services/supplierGroupsApi";
-import { fetchVatGroups } from "@/services/vatGroupsApi";
+import { fetchCurrencyNames } from "@/services/currenciesApi";
+import { fetchPaymentMethodNames } from "@/services/paymentMethodsApi";
+import { fetchPaymentTermNames } from "@/services/paymentTermsApi";
+import { fetchSupplierGroupNames } from "@/services/supplierGroupsApi";
+import { fetchVatGroupNames } from "@/services/vatGroupsApi";
 import { fetchSupplier } from "@/services/suppliersApi";
 import PaymentMethodDrawer from "@/app/[locale]/main/payment-methods/drawer/PaymentMethodDrawer";
 import PaymentTermDrawer from "@/app/[locale]/main/payment-terms/drawer/PaymentTermDrawer";
@@ -175,35 +175,35 @@ export default function SupplierDrawer({
 
   const supplierGroupsQuery = useQuery({
     queryKey: ["tenant", "supplier-groups"],
-    queryFn: () => fetchSupplierGroups(),
+    queryFn: () => fetchSupplierGroupNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const currenciesQuery = useQuery({
     queryKey: ["tenant", "currencies"],
-    queryFn: () => fetchCurrencies(),
+    queryFn: () => fetchCurrencyNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const paymentMethodsQuery = useQuery({
     queryKey: ["tenant", "payment-methods"],
-    queryFn: () => fetchPaymentMethods(),
+    queryFn: () => fetchPaymentMethodNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const paymentTermsQuery = useQuery({
     queryKey: ["tenant", "payment-terms"],
-    queryFn: () => fetchPaymentTerms(),
+    queryFn: () => fetchPaymentTermNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const vatGroupsQuery = useQuery({
     queryKey: ["tenant", "vat-groups"],
-    queryFn: () => fetchVatGroups(),
+    queryFn: () => fetchVatGroupNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });

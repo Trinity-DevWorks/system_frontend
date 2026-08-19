@@ -2,6 +2,7 @@
 
 import LookupSelectWithCreate from "@/components/resource-drawer/LookupSelectWithCreate";
 import { buildParentCategoryOptions } from "@/lib/categories/categoryTree";
+import { DEFAULT_CATEGORY_COLOR } from "@/lib/app-theme";
 import { ColorPicker, Form, Input, Switch } from "antd";
 import { CATEGORY_LOOKUP_ADD_PARENT, CODE_PATTERN, COLOR_PATTERN } from "./categoryDrawerUtils";
 
@@ -84,7 +85,7 @@ export default function CategoryDrawerForm({
           if (typeof cssString === "string" && cssString.startsWith("#")) return cssString;
           if (typeof color === "string" && color.startsWith("#")) return color;
           if (color && typeof color.toHexString === "function") return color.toHexString();
-          return "#6366F1";
+          return DEFAULT_CATEGORY_COLOR;
         }}
       >
         <ColorPicker format="hex" showText className="w-full" />

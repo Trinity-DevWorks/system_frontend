@@ -10,6 +10,7 @@ import {
   getAttachmentUploadErrorMessage,
   getLocalizedApiErrorMessage,
 } from "@/lib/api-error-notify";
+import { patchTenantListCache } from "@/lib/tables/tenantListCache";
 import { useBlobObjectUrl } from "@/lib/use-blob-object-url";
 import { DeleteOutlined, UploadOutlined, UserOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -118,14 +119,13 @@ export default function UserAvatarSection({
           if (!old || typeof old !== "object") return old;
           return { ...old, avatar: brief };
         });
-        queryClient.setQueryData(["tenant", "users"], (old) => {
-          if (!Array.isArray(old)) return old;
-          return old.map((row) =>
+        patchTenantListCache(queryClient, ["tenant", "users"], (rows) =>
+          rows.map((row) =>
             row && typeof row === "object" && String(row.id) === String(userId)
               ? { ...row, avatar: brief }
               : row,
-          );
-        });
+          ),
+        );
         queryClient.setQueryData(["tenant", "auth-me"], (old) => {
           if (!old || typeof old !== "object") return old;
           if (String(/** @type {{ id?: unknown }} */ (old).id) !== String(userId)) {
@@ -163,14 +163,13 @@ export default function UserAvatarSection({
           if (!old || typeof old !== "object") return old;
           return { ...old, avatar: null };
         });
-        queryClient.setQueryData(["tenant", "users"], (old) => {
-          if (!Array.isArray(old)) return old;
-          return old.map((row) =>
+        patchTenantListCache(queryClient, ["tenant", "users"], (rows) =>
+          rows.map((row) =>
             row && typeof row === "object" && String(row.id) === String(userId)
               ? { ...row, avatar: null }
               : row,
-          );
-        });
+          ),
+        );
         queryClient.setQueryData(["tenant", "auth-me"], (old) => {
           if (!old || typeof old !== "object") return old;
           if (String(/** @type {{ id?: unknown }} */ (old).id) !== String(userId)) {

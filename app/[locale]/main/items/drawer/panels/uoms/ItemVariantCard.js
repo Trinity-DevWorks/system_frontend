@@ -164,7 +164,7 @@ export default function ItemVariantCard({
           {!isEditing ? (
             <div className="flex flex-wrap items-center gap-1.5">
               {row.is_base ? (
-                <span className="inline-flex items-center rounded-full bg-[#ecfdf3] px-2.5 py-0.5 text-xs font-medium leading-5 text-[#027a48]">
+                <span className="inline-flex items-center rounded-full bg-[var(--ant-color-success-bg)] px-2.5 py-0.5 text-xs font-medium leading-5 text-[var(--ant-color-success)]">
                   {t("uomFlagBase")}
                 </span>
               ) : null}

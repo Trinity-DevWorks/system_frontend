@@ -104,6 +104,7 @@ Rules:
 - Prefer `router.replace` when syncing params (avoid Back-stack spam).
 - Clear params only through the page `closeDrawer` path (after dirty discard confirm).
 - Keep table-row seed in React state only — never put payloads in the URL.
+- Opening a resource drawer from another list (e.g. create PO from purchasing alerts) stays on the current page. Sync `?drawer=new&mode=create` on that path and mount the same drawer component in place — do not navigate to the resource list.
 - Notification `action_path` values should include `drawer` + `mode=view` for supported lists (purchase orders, transfers).
 - Wrap the list table that calls `useSearchParams` in `<Suspense>`.
 

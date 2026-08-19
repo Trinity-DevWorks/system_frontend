@@ -1,4 +1,5 @@
 import tenantApiService from "@/API/TenantApiService";
+import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
 
 /**
  * @param {{
@@ -8,24 +9,14 @@ import tenantApiService from "@/API/TenantApiService";
  *   search?: string;
  *   from?: string;
  *   to?: string;
- *   limit?: number;
+ *   page?: number;
+ *   per_page?: number;
  * }} [params]
- * @returns {Promise<unknown[]>}
  */
 export async function fetchStockTransfers(params = {}) {
-  const query = new URLSearchParams();
-  if (params.status) query.set("status", params.status);
-  if (params.from_warehouse_id != null) query.set("from_warehouse_id", String(params.from_warehouse_id));
-  if (params.to_warehouse_id != null) query.set("to_warehouse_id", String(params.to_warehouse_id));
-  if (params.search) query.set("search", params.search);
-  if (params.from) query.set("from", params.from);
-  if (params.to) query.set("to", params.to);
-  if (params.limit != null) query.set("limit", String(params.limit));
-
-  const qs = query.toString();
-  const endpoint = qs ? `stock/transfers?${qs}` : "stock/transfers";
-  const data = await tenantApiService("GET", endpoint);
-  return Array.isArray(data) ? data : [];
+  const qs = toListQuery(params).toString();
+  const payload = await tenantApiService("GET", qs ? `stock/transfers?${qs}` : "stock/transfers");
+  return parsePaginatedList(payload, params);
 }
 
 /**

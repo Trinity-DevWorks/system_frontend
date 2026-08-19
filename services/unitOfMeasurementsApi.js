@@ -1,11 +1,14 @@
 import tenantApiService from "@/API/TenantApiService";
+import { fetchPaginatedResource, fetchResourceNames } from "@/lib/tables/paginatedList";
 
-/**
- * @returns {Promise<unknown[]>}
- */
-export async function fetchUnitOfMeasurements() {
-  const data = await tenantApiService("GET", "unit-of-measurements");
-  return Array.isArray(data) ? data : [];
+/** @param {Record<string, string | number | undefined>} [params] */
+export function fetchUnitOfMeasurements(params = {}) {
+  return fetchPaginatedResource("unit-of-measurements", params);
+}
+
+/** @returns {Promise<unknown[]>} */
+export function fetchUnitOfMeasurementNames() {
+  return fetchResourceNames("unit-of-measurements");
 }
 
 /**

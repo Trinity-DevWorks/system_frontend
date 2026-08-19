@@ -1,20 +1,13 @@
 import tenantApiService from "@/API/TenantApiService";
+import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
 
 /**
- * @param {{ warehouse_id?: number; item_id?: number; search?: string; only_with_stock?: boolean }} [params]
- * @returns {Promise<unknown[]>}
+ * @param {{ warehouse_id?: number; item_id?: number; search?: string; only_with_stock?: boolean; page?: number; per_page?: number }} [params]
  */
 export async function fetchStockBalances(params = {}) {
-  const query = new URLSearchParams();
-  if (params.warehouse_id != null) query.set("warehouse_id", String(params.warehouse_id));
-  if (params.item_id != null) query.set("item_id", String(params.item_id));
-  if (params.search) query.set("search", params.search);
-  if (params.only_with_stock) query.set("only_with_stock", "1");
-
-  const qs = query.toString();
-  const endpoint = qs ? `stock/balances?${qs}` : "stock/balances";
-  const data = await tenantApiService("GET", endpoint);
-  return Array.isArray(data) ? data : [];
+  const qs = toListQuery(params).toString();
+  const payload = await tenantApiService("GET", qs ? `stock/balances?${qs}` : "stock/balances");
+  return parsePaginatedList(payload, params);
 }
 
 /**
@@ -37,23 +30,15 @@ export function fetchStockBalance(itemId, warehouseId) {
  *   type?: string;
  *   from?: string;
  *   to?: string;
- *   limit?: number;
+ *   search?: string;
+ *   page?: number;
+ *   per_page?: number;
  * }} [params]
- * @returns {Promise<unknown[]>}
  */
 export async function fetchStockMovements(params = {}) {
-  const query = new URLSearchParams();
-  if (params.warehouse_id != null) query.set("warehouse_id", String(params.warehouse_id));
-  if (params.item_id != null) query.set("item_id", String(params.item_id));
-  if (params.type) query.set("type", params.type);
-  if (params.from) query.set("from", params.from);
-  if (params.to) query.set("to", params.to);
-  if (params.limit != null) query.set("limit", String(params.limit));
-
-  const qs = query.toString();
-  const endpoint = qs ? `stock/movements?${qs}` : "stock/movements";
-  const data = await tenantApiService("GET", endpoint);
-  return Array.isArray(data) ? data : [];
+  const qs = toListQuery(params).toString();
+  const payload = await tenantApiService("GET", qs ? `stock/movements?${qs}` : "stock/movements");
+  return parsePaginatedList(payload, params);
 }
 
 /**

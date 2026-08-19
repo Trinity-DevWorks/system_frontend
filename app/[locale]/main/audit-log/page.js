@@ -8,7 +8,8 @@ import { downloadAuditsCsv } from "@/services/auditsApi";
 import { DownloadOutlined } from "@ant-design/icons";
 import { App, Button, DatePicker, Form, Input, Select, Space } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { loadPageSize, savePageSize } from "@/lib/table-prefs-storage";
 import AuditLogDetailDrawer from "./AuditLogDetailDrawer";
 import {
   AUDIT_AUDITABLE_TYPE_VALUES,
@@ -41,6 +42,13 @@ function AuditLogTable() {
   );
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(25);
+
+  useEffect(() => {
+    const saved = loadPageSize("audit-log", [10, 25, 50, 100], 25);
+    if (saved !== 25) setPerPage(saved);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once after mount
+  }, []);
+  const [search, setSearch] = useState("");
   const [detailRecord, setDetailRecord] = useState(/** @type {Record<string, unknown> | null} */ (null));
   const [exporting, setExporting] = useState(false);
 
@@ -59,6 +67,7 @@ function AuditLogTable() {
     tags,
     from: fromIso,
     to: toIso,
+    search,
     page,
     perPage,
   });
@@ -211,8 +220,9 @@ function AuditLogTable() {
       ...(tags ? { tags } : {}),
       ...(fromIso ? { from: fromIso } : {}),
       ...(toIso ? { to: toIso } : {}),
+      ...(search ? { search } : {}),
     }),
-    [auditableId, auditableTypeFilter, eventFilter, fromIso, tags, toIso],
+    [auditableId, auditableTypeFilter, eventFilter, fromIso, search, tags, toIso],
   );
 
   const handleExportCsv = useCallback(async () => {
@@ -243,15 +253,11 @@ function AuditLogTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: [
-            "event_label",
-            "user_label",
-            "auditable_type_label",
-            "auditable_id_label",
-            "ip_address",
-            "tags",
-          ],
-          enableClientSearch: true,
+          enableClientSearch: false,
+          onSearchChange: (next) => {
+            setSearch(next);
+            setPage(1);
+          },
           showRefresh: true,
           onRefresh: () => refetch(),
           showAdd: false,
@@ -284,7 +290,10 @@ function AuditLogTable() {
           pageSizeOptions: [10, 25, 50, 100],
           onPageChange: (nextPage, nextSize) => {
             setPage(nextPage);
-            setPerPage(nextSize);
+            if (nextSize !== perPage) {
+              setPerPage(nextSize);
+              savePageSize("audit-log", nextSize);
+            }
           },
           summaryRange:
             from != null && to != null

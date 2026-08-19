@@ -6,13 +6,14 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteBrand, fetchBrands } from "@/services/brandsApi";
 import BrandDrawer from "./drawer/BrandDrawer";
 import { getBrandStatusLabel, getBrandTableColumns } from "./getBrandTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function BrandsTable() {
   const t = useTranslations("Brands");
@@ -22,37 +23,29 @@ function BrandsTable() {
   const queryClient = useQueryClient();
   const access = useResourceAccess("brands");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [manualRefreshing, setManualRefreshing] = useState(false);
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "brands"],
     queryFn: fetchBrands,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    tableId: "brands",
+    t,
+    tApiErrors,
+    notification,
   });
-
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
-      data.map((row) => ({
+      rows.map((row) => ({
         ...row,
         is_active_label: getBrandStatusLabel(row?.is_active, t),
       })),
-    [data, t],
+    [rows, t],
   );
 
   const rowSelection = {
@@ -76,19 +69,7 @@ function BrandsTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteBrand(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "brands"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) =>
-        Array.isArray(old) ? old.filter((row) => row.id !== id) : old,
-      );
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "brands"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -155,22 +136,6 @@ function BrandsTable() {
     [t, access.canEdit, access.canView, access.canDelete, openEditDrawer, openViewDrawer, requestDeleteBrand],
   );
 
-  const handleRefresh = async () => {
-    setManualRefreshing(true);
-    try {
-      const freshData = await fetchBrands({ refresh: true });
-      queryClient.setQueryData(["tenant", "brands"], freshData);
-    } catch (err) {
-      notification.error({
-        title: t("loadError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-      return { isError: true };
-    } finally {
-      setManualRefreshing(false);
-    }
-  };
-
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppDataTable
@@ -179,16 +144,17 @@ function BrandsTable() {
         dataSource={tableData}
         rowKey="id"
         loading={isPending}
-        refreshFetching={isFetching || manualRefreshing}
+        refreshFetching={isFetching}
         onRetry={() => refetch()}
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["code", "name", "id", "is_active_label"],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
-          onRefresh: handleRefresh,
+          onRefresh: () => refetch(),
         }}
         rowSelection={access.canDelete ? rowSelection : false}
         showSelectionBar={access.canDelete}
@@ -197,11 +163,7 @@ function BrandsTable() {
         stickyHeader
         scrollX={1200}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <BrandDrawer
         open={drawerOpen}

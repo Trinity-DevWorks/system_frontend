@@ -4,10 +4,10 @@
 
 import { formatUomLabel } from "../../shared/formatStockQuantity";
 import { PO_BASE_UOM } from "./purchaseOrderDrawerUtils";
-import { fetchItems } from "@/services/itemsApi";
+import { fetchItemNames } from "@/services/itemsApi";
 import { fetchItemUoms } from "@/services/itemUomsApi";
-import { fetchSuppliers } from "@/services/suppliersApi";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchSupplierNames } from "@/services/suppliersApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -20,21 +20,21 @@ import { useMemo } from "react";
 export function usePurchaseOrderDrawerData({ open, t }) {
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const suppliersQuery = useQuery({
     queryKey: ["tenant", "suppliers"],
-    queryFn: fetchSuppliers,
+    queryFn: fetchSupplierNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });
 
   const itemsQuery = useQuery({
     queryKey: ["tenant", "items"],
-    queryFn: fetchItems,
+    queryFn: fetchItemNames,
     enabled: open,
     staleTime: 5 * 60_000,
   });
@@ -42,7 +42,7 @@ export function usePurchaseOrderDrawerData({ open, t }) {
   const purchasableItems = useMemo(
     () =>
       (itemsQuery.data ?? []).filter(
-        (row) => row?.allow_purchase === true && row?.is_active !== false,
+        (row) => row?.allow_purchase !== false && row?.is_active !== false,
       ),
     [itemsQuery.data],
   );

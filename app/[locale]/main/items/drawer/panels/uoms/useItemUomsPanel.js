@@ -10,9 +10,9 @@
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { fetchItemBarcodes } from "@/services/itemBarcodesApi";
-import { fetchCurrencies } from "@/services/currenciesApi";
+import { fetchCurrencyNames } from "@/services/currenciesApi";
 import { createItemUom, deleteItemUom, fetchItemUoms, updateItemUom } from "@/services/itemUomsApi";
-import { fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
+import { fetchUnitOfMeasurementNames } from "@/services/unitOfMeasurementsApi";
 import { itemBarcodesQueryKey } from "@/components/items/itemBarcodesQueryCache";
 import {
   isItemUomRow,
@@ -68,14 +68,14 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
 
   const currenciesQuery = useQuery({
     queryKey: ["tenant", "currencies"],
-    queryFn: fetchCurrencies,
+    queryFn: fetchCurrencyNames,
     enabled: active && isPersistedEntityId(itemId),
     staleTime: 5 * 60_000,
   });
 
   const uomsQuery = useQuery({
     queryKey: ["tenant", "unit-of-measurements"],
-    queryFn: fetchUnitOfMeasurements,
+    queryFn: fetchUnitOfMeasurementNames,
     enabled: active && isPersistedEntityId(itemId),
     staleTime: 5 * 60_000,
   });

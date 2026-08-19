@@ -8,7 +8,7 @@
 import { ITEMS_LIST_QUERY_KEY, mergeItemListRow } from "@/components/items/itemsQueryCache";
 import { refreshItemUomsAfterGeneralSave } from "@/components/items/itemUomsQueryCache";
 import { normalizeEntityId } from "@/lib/entityId";
-import { sortItemsByName } from "./itemFormMappers";
+import { patchTenantListCache } from "@/lib/tables/tenantListCache";
 
 /**
  * @param {import("@tanstack/react-query").QueryClient} queryClient
@@ -17,11 +17,13 @@ import { sortItemsByName } from "./itemFormMappers";
  */
 export function applyCreatedItemToCache(queryClient, data, record) {
   const id = record?.id;
-  queryClient.setQueryData(ITEMS_LIST_QUERY_KEY, (old) => {
-    const base = Array.isArray(old) ? old : [];
-    if (id == null) return base;
-    return sortItemsByName([...base.filter((r) => r.id !== id), data]);
-  });
+  if (id != null) {
+    patchTenantListCache(queryClient, ITEMS_LIST_QUERY_KEY, (rows) => {
+      const next = rows.filter((r) => r?.id !== id);
+      return [...next, data];
+    });
+  }
+  void queryClient.invalidateQueries({ queryKey: ITEMS_LIST_QUERY_KEY });
   const normalizedId = normalizeEntityId(id);
   if (normalizedId != null) {
     queryClient.setQueryData(["tenant", "items", normalizedId], data);
@@ -36,10 +38,9 @@ export function applyCreatedItemToCache(queryClient, data, record) {
  * @param {Record<string, unknown> | null} record
  */
 export function applyUpdatedItemToCache(queryClient, id, data, record) {
-  queryClient.setQueryData(ITEMS_LIST_QUERY_KEY, (old) => {
-    if (!Array.isArray(old)) return old;
-    return sortItemsByName(old.map((row) => (row.id === id ? mergeItemListRow(row, data) : row)));
-  });
+  patchTenantListCache(queryClient, ITEMS_LIST_QUERY_KEY, (rows) =>
+    rows.map((row) => (row?.id === id ? mergeItemListRow(row, data) : row)),
+  );
   queryClient.setQueryData(["tenant", "items", id], (old) => mergeItemListRow(old, data));
   void refreshItemUomsAfterGeneralSave(queryClient, id, record);
 }

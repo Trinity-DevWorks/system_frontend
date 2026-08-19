@@ -23,6 +23,7 @@ function toAuditQuery(params = {}) {
  *   tags?: string;
  *   from?: string;
  *   to?: string;
+ *   search?: string;
  *   page?: number;
  *   per_page?: number;
  * }} [params]

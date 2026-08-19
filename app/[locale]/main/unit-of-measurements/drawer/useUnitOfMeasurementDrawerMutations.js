@@ -4,6 +4,11 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { createUnitOfMeasurement, updateUnitOfMeasurement } from "@/services/unitOfMeasurementsApi";
+import {
+  patchTenantListCache,
+  snapshotTenantListCache,
+  restoreTenantListCache,
+} from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
@@ -48,7 +53,7 @@ export function useUnitOfMeasurementDrawerMutations({
     onMutate: async ({ payload }) => {
       const listKey = ["tenant", "unit-of-measurements"];
       await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
+      const previous = snapshotTenantListCache(queryClient, listKey);
       const optimisticId = -Date.now();
       const now = new Date().toISOString();
       const groupRow = Array.isArray(unitGroupsData) ? unitGroupsData.find((g) => g.id === payload.unit_group_id) : null;
@@ -66,16 +71,11 @@ export function useUnitOfMeasurementDrawerMutations({
         created_at: now,
         updated_at: now,
       };
-      queryClient.setQueryData(listKey, (old) => {
-        const base = Array.isArray(old) ? old : [];
-        return sortUnitOfMeasurementsByName([...base, optimisticRow]);
-      });
+      patchTenantListCache(queryClient, listKey, (rows) => sortUnitOfMeasurementsByName([...rows, optimisticRow]));
       return { previous, optimisticId };
     },
     onError: (err, _variables, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "unit-of-measurements"], context.previous);
-      }
+      restoreTenantListCache(queryClient, context.previous);
       if (!applyApiFieldErrors(form, err)) {
         message.error(getLocalizedApiErrorMessage(tApiErrors, err));
       }
@@ -96,9 +96,8 @@ export function useUnitOfMeasurementDrawerMutations({
 
       const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
       const id = record?.id;
-      queryClient.setQueryData(listKey, (old) => {
-        if (!Array.isArray(old)) return old;
-        const withoutTemp = optimisticId != null ? old.filter((r) => r.id !== optimisticId) : old;
+      patchTenantListCache(queryClient, listKey, (rows) => {
+        const withoutTemp = optimisticId != null ? rows.filter((r) => r.id !== optimisticId) : rows;
         if (id == null) return withoutTemp;
         return sortUnitOfMeasurementsByName([...withoutTemp.filter((r) => r.id !== id), data]);
       });
@@ -142,7 +141,7 @@ export function useUnitOfMeasurementDrawerMutations({
       const detailKey = ["tenant", "unit-of-measurements", id];
       await queryClient.cancelQueries({ queryKey: listKey });
       await queryClient.cancelQueries({ queryKey: detailKey });
-      const previousList = queryClient.getQueryData(listKey);
+      const previousList = snapshotTenantListCache(queryClient, listKey);
       const previousDetail = queryClient.getQueryData(detailKey);
       const now = new Date().toISOString();
       const groupRow = Array.isArray(unitGroupsData) ? unitGroupsData.find((g) => g.id === values.unit_group_id) : null;
@@ -154,9 +153,8 @@ export function useUnitOfMeasurementDrawerMutations({
             dimension_type: groupRow.dimension_type,
           }
         : null;
-      queryClient.setQueryData(listKey, (old) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((row) =>
+      patchTenantListCache(queryClient, listKey, (rows) =>
+        rows.map((row) =>
           row.id === id
             ? {
                 ...row,
@@ -165,8 +163,8 @@ export function useUnitOfMeasurementDrawerMutations({
                 updated_at: now,
               }
             : row,
-        );
-      });
+        ),
+      );
       queryClient.setQueryData(detailKey, (old) => {
         if (!old || typeof old !== "object") {
           return { id, ...values, unit_group: groupPatch, updated_at: now };
@@ -176,9 +174,7 @@ export function useUnitOfMeasurementDrawerMutations({
       return { previousList, previousDetail, id };
     },
     onError: (err, _variables, context) => {
-      if (context?.previousList !== undefined) {
-        queryClient.setQueryData(["tenant", "unit-of-measurements"], context.previousList);
-      }
+      restoreTenantListCache(queryClient, context.previousList);
       if (context?.previousDetail !== undefined) {
         queryClient.setQueryData(["tenant", "unit-of-measurements", context.id], context.previousDetail);
       }
@@ -189,10 +185,7 @@ export function useUnitOfMeasurementDrawerMutations({
     onSuccess: (data, { id }) => {
       const listKey = ["tenant", "unit-of-measurements"];
       const detailKey = ["tenant", "unit-of-measurements", id];
-      queryClient.setQueryData(listKey, (old) => {
-        if (!Array.isArray(old)) return old;
-        return sortUnitOfMeasurementsByName(old.map((row) => (row.id === id ? data : row)));
-      });
+      patchTenantListCache(queryClient, listKey, (rows) => sortUnitOfMeasurementsByName(rows.map((row) => (row.id === id ? data : row))));
       queryClient.setQueryData(detailKey, data);
       message.success(t("drawerUpdateSuccess"));
       onClose();

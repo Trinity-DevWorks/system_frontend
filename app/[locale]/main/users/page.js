@@ -6,13 +6,14 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteTenantUser, fetchTenantUsers } from "@/services/tenantUsersApi";
 import UserDrawer from "./drawer/UserDrawer";
 import { getUserStatusLabel, getUserTableColumns } from "./getUserTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function UsersTable() {
   const t = useTranslations("Users");
@@ -22,33 +23,25 @@ function UsersTable() {
   const queryClient = useQueryClient();
   const access = useResourceAccess("users");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [manualRefreshing, setManualRefreshing] = useState(false);
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "users"],
     queryFn: fetchTenantUsers,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    tableId: "users",
+    t,
+    tApiErrors,
+    notification,
   });
-
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
-      data.map((row) => {
+      rows.map((row) => {
         const branches = Array.isArray(row?.branches) ? row.branches : [];
         const roleNames = [
           ...new Set(
@@ -80,7 +73,7 @@ function UsersTable() {
           active_label: getUserStatusLabel(row?.is_active, t),
         };
       }),
-    [data, t],
+    [rows, t],
   );
 
   const rowSelection = {
@@ -104,19 +97,7 @@ function UsersTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteTenantUser(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "users"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) =>
-        Array.isArray(old) ? old.filter((row) => row.id !== id) : old,
-      );
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "users"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -183,22 +164,6 @@ function UsersTable() {
     [t, access.canEdit, access.canView, access.canDelete, openEditDrawer, openViewDrawer, requestDeleteUser],
   );
 
-  const handleRefresh = async () => {
-    setManualRefreshing(true);
-    try {
-      const freshData = await fetchTenantUsers();
-      queryClient.setQueryData(["tenant", "users"], freshData);
-    } catch (err) {
-      notification.error({
-        title: t("loadError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-      return { isError: true };
-    } finally {
-      setManualRefreshing(false);
-    }
-  };
-
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppDataTable
@@ -207,16 +172,17 @@ function UsersTable() {
         dataSource={tableData}
         rowKey="id"
         loading={isPending}
-        refreshFetching={isFetching || manualRefreshing}
+        refreshFetching={isFetching}
         onRetry={() => refetch()}
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["name", "email", "role_name", "branches_label", "active_label"],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
-          onRefresh: handleRefresh,
+          onRefresh: () => refetch(),
         }}
         rowSelection={access.canDelete ? rowSelection : false}
         showSelectionBar={access.canDelete}
@@ -225,11 +191,7 @@ function UsersTable() {
         stickyHeader
         scrollX={1360}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <UserDrawer
         open={drawerOpen}

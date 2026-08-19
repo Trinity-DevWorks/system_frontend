@@ -1,12 +1,11 @@
 /**
- * Stock transfers list query with server-side filters.
+ * Stock transfers list query with server-side filters and pagination.
  */
 
-import { stockTransfersQueryKey } from "@/components/stock/stockQueryCache";
-import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { STOCK_TRANSFERS_QUERY_KEY } from "@/components/stock/stockQueryCache";
 import { fetchStockTransfers } from "@/services/stockTransfersApi";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
+import { useMemo } from "react";
 
 /**
  * @param {{
@@ -30,39 +29,36 @@ export function useStockTransfersTableQuery({
   from,
   to,
 }) {
-  const filters = useMemo(
+  const extraParams = useMemo(
     () => ({
       ...(status ? { status } : {}),
       ...(fromWarehouseId != null ? { from_warehouse_id: fromWarehouseId } : {}),
       ...(toWarehouseId != null ? { to_warehouse_id: toWarehouseId } : {}),
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
-      limit: 500,
     }),
     [status, fromWarehouseId, toWarehouseId, from, to],
   );
 
-  const queryKey = stockTransfersQueryKey(filters);
-
-  const { data = [], isPending, isFetching, isError, error, refetch } = useQuery({
-    queryKey,
-    queryFn: () => fetchStockTransfers(filters),
+  const table = useTenantPaginatedTable({
+    queryKey: STOCK_TRANSFERS_QUERY_KEY,
+    queryFn: fetchStockTransfers,
+    extraParams,
+    defaultPageSize: 50,
+    pageSizeOptions: [20, 50, 100],
     staleTime: 30_000,
-    refetchOnMount: true,
+    tableId: "stock-transfers",
+    t,
+    tApiErrors,
+    notification,
   });
 
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
-
   return {
-    tableData: data,
-    isPending,
-    isFetching,
-    refetch,
+    tableData: table.rows,
+    isPending: table.isPending,
+    isFetching: table.isFetching,
+    refetch: table.refetch,
+    pagination: table.pagination,
+    onSearchChange: table.onSearchChange,
   };
 }

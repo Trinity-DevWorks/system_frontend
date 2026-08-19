@@ -1,6 +1,6 @@
 "use client";
 
-import { fetchCurrencyPairRates, fetchOnlineExchangeRates, updateCurrency } from "@/services/currenciesApi";
+import { fetchCurrencyNames, fetchCurrencyPairRates, fetchOnlineExchangeRates, updateCurrency } from "@/services/currenciesApi";
 import { SwapOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, InputNumber, Modal, Select, Space, Spin, Typography } from "antd";
@@ -12,7 +12,7 @@ const CURRENCY_PAIR_RATES_QUERY_KEY = /** @type {const} */ (["tenant", "currenci
 /**
  * @param {{
  *   open: boolean;
- *   currencies: Record<string, unknown>[];
+ *   currencies?: Record<string, unknown>[];
  *   onClose: () => void;
  * }} props
  */
@@ -27,13 +27,26 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
   const [editRate, setEditRate] = useState(undefined);
   const [fetchingOnline, setFetchingOnline] = useState(false);
 
+  const { data: currencyNames = [] } = useQuery({
+    queryKey: ["tenant", "currencies"],
+    queryFn: fetchCurrencyNames,
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
   const currencyOptions = useMemo(
-    () =>
-      (Array.isArray(currencies) ? currencies : []).map((c) => ({
+    () => {
+      const rows = Array.isArray(currencyNames) && currencyNames.length > 0
+        ? currencyNames
+        : Array.isArray(currencies)
+          ? currencies
+          : [];
+      return rows.map((c) => ({
         value: Number(c.id),
         label: String(c.code ?? c.name ?? c.id),
-      })),
-    [currencies],
+      }));
+    },
+    [currencyNames, currencies],
   );
 
   const { data: pairsRaw = [], isPending: pairsLoading } = useQuery({

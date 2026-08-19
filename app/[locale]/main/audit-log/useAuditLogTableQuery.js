@@ -18,6 +18,7 @@ import { useEffect, useMemo } from "react";
  *   tags?: string;
  *   from?: string;
  *   to?: string;
+ *   search?: string;
  *   page: number;
  *   perPage: number;
  * }} args
@@ -32,6 +33,7 @@ export function useAuditLogTableQuery({
   tags,
   from,
   to,
+  search,
   page,
   perPage,
 }) {
@@ -43,10 +45,11 @@ export function useAuditLogTableQuery({
       ...(tags ? { tags } : {}),
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
+      ...(search ? { search } : {}),
       page,
       per_page: perPage,
     }),
-    [event, auditableType, auditableId, tags, from, to, page, perPage],
+    [event, auditableType, auditableId, tags, from, to, search, page, perPage],
   );
 
   const queryKey = useMemo(() => ["tenant", "audits", filters], [filters]);

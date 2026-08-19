@@ -274,7 +274,7 @@ export function getUnitOfMeasurementTableColumns(t, options = {}) {
           aria-hidden
           className={`inline-flex size-6 items-center justify-center rounded-md border transition-colors ${
             filtered
-              ? "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-300"
+              ? "app-filter-icon-active"
               : "border-transparent text-black/45 hover:border-black/10 hover:bg-black/[0.03] dark:text-white/45 dark:hover:border-white/10 dark:hover:bg-white/[0.06]"
           }`}
         >

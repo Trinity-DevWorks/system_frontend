@@ -5,7 +5,7 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { normalizeEntityId, parseNumericEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select } from "antd";
 import { useTranslations } from "next-intl";
@@ -41,7 +41,7 @@ function StockMovementsTable() {
   const fromIso = dateRange?.[0]?.startOf("day").toISOString();
   const toIso = dateRange?.[1]?.endOf("day").toISOString();
 
-  const { tableData: rawTableData, isPending, isFetching, refetch } = useStockMovementsTableQuery({
+  const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = useStockMovementsTableQuery({
     t,
     tApiErrors,
     notification,
@@ -68,7 +68,7 @@ function StockMovementsTable() {
 
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     staleTime: 5 * 60_000,
   });
 
@@ -217,8 +217,8 @@ function StockMovementsTable() {
         emptyText={t("movementsEmpty")}
         toolbar={{
           showSearch: true,
-          searchKeys: ["item_code", "item_name", "type_label", "notes"],
-          enableClientSearch: true,
+          enableClientSearch: false,
+          onSearchChange,
           showRefresh: true,
           onRefresh: () => refetch(),
           showAdd: access.canAdd,
@@ -229,11 +229,7 @@ function StockMovementsTable() {
         }}
         stickyHeader
         scrollX={1360}
-        pagination={{
-          mode: "client",
-          pageSize: 50,
-          pageSizeOptions: [20, 50, 100, 200],
-        }}
+        pagination={pagination}
       />
       <StockAdjustmentDrawer open={adjustmentOpen} onClose={() => setAdjustmentOpen(false)} />
       <StockMovementViewDrawer

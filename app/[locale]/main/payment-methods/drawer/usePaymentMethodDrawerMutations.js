@@ -4,6 +4,11 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { createPaymentMethod, updatePaymentMethod } from "@/services/paymentMethodsApi";
+import {
+  patchTenantListCache,
+  snapshotTenantListCache,
+  restoreTenantListCache,
+} from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
@@ -46,7 +51,7 @@ export function usePaymentMethodDrawerMutations({
     onMutate: async ({ payload }) => {
       const listKey = ["tenant", "payment-methods"];
       await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
+      const previous = snapshotTenantListCache(queryClient, listKey);
       const optimisticId = -Date.now();
       const now = new Date().toISOString();
       const optimisticRow = {
@@ -57,16 +62,11 @@ export function usePaymentMethodDrawerMutations({
         created_at: now,
         updated_at: now,
       };
-      queryClient.setQueryData(listKey, (old) => {
-        const base = Array.isArray(old) ? old : [];
-        return sortPaymentMethodsByName([...base, optimisticRow]);
-      });
+      patchTenantListCache(queryClient, listKey, (rows) => sortPaymentMethodsByName([...rows, optimisticRow]));
       return { previous, optimisticId };
     },
     onError: (err, _variables, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "payment-methods"], context.previous);
-      }
+      restoreTenantListCache(queryClient, context.previous);
       if (!applyApiFieldErrors(form, err)) {
         message.error(getLocalizedApiErrorMessage(tApiErrors, err));
       }
@@ -87,9 +87,8 @@ export function usePaymentMethodDrawerMutations({
 
       const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
       const id = record?.id;
-      queryClient.setQueryData(listKey, (old) => {
-        if (!Array.isArray(old)) return old;
-        const withoutTemp = optimisticId != null ? old.filter((r) => r.id !== optimisticId) : old;
+      patchTenantListCache(queryClient, listKey, (rows) => {
+        const withoutTemp = optimisticId != null ? rows.filter((r) => r.id !== optimisticId) : rows;
         if (id == null) return withoutTemp;
         return sortPaymentMethodsByName([...withoutTemp.filter((r) => r.id !== id), data]);
       });
@@ -133,13 +132,12 @@ export function usePaymentMethodDrawerMutations({
       const detailKey = ["tenant", "payment-methods", id];
       await queryClient.cancelQueries({ queryKey: listKey });
       await queryClient.cancelQueries({ queryKey: detailKey });
-      const previousList = queryClient.getQueryData(listKey);
+      const previousList = snapshotTenantListCache(queryClient, listKey);
       const previousDetail = queryClient.getQueryData(detailKey);
       const now = new Date().toISOString();
-      queryClient.setQueryData(listKey, (old) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((row) => (row.id === id ? { ...row, ...values, updated_at: now } : row));
-      });
+      patchTenantListCache(queryClient, listKey, (rows) =>
+        rows.map((row) => (row.id === id ? { ...row, ...values, updated_at: now } : row)),
+      );
       queryClient.setQueryData(detailKey, (old) => {
         if (!old || typeof old !== "object") {
           return { id, ...values, updated_at: now };
@@ -149,9 +147,7 @@ export function usePaymentMethodDrawerMutations({
       return { previousList, previousDetail, id };
     },
     onError: (err, _variables, context) => {
-      if (context?.previousList !== undefined) {
-        queryClient.setQueryData(["tenant", "payment-methods"], context.previousList);
-      }
+      restoreTenantListCache(queryClient, context.previousList);
       if (context?.previousDetail !== undefined) {
         queryClient.setQueryData(["tenant", "payment-methods", context.id], context.previousDetail);
       }
@@ -162,10 +158,7 @@ export function usePaymentMethodDrawerMutations({
     onSuccess: (data, { id }) => {
       const listKey = ["tenant", "payment-methods"];
       const detailKey = ["tenant", "payment-methods", id];
-      queryClient.setQueryData(listKey, (old) => {
-        if (!Array.isArray(old)) return old;
-        return sortPaymentMethodsByName(old.map((row) => (row.id === id ? data : row)));
-      });
+      patchTenantListCache(queryClient, listKey, (rows) => sortPaymentMethodsByName(rows.map((row) => (row.id === id ? data : row))));
       queryClient.setQueryData(detailKey, data);
       message.success(t("drawerUpdateSuccess"));
       onClose();

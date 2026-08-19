@@ -7,7 +7,7 @@ import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useReso
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import UnitGroupDrawer from "@/app/[locale]/main/unit-groups/drawer/UnitGroupDrawer";
-import { fetchUnitGroups } from "@/services/unitGroupsApi";
+import { fetchUnitGroupNames } from "@/services/unitGroupsApi";
 import { fetchUnitOfMeasurement } from "@/services/unitOfMeasurementsApi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -116,7 +116,7 @@ export default function UnitOfMeasurementDrawer({
 
   const unitGroupsQuery = useQuery({
     queryKey: ["tenant", "unit-groups"],
-    queryFn: () => fetchUnitGroups(),
+    queryFn: () => fetchUnitGroupNames(),
     enabled: open,
     staleTime: 5 * 60_000,
   });

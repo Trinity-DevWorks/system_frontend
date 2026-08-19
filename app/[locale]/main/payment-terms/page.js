@@ -6,6 +6,7 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deletePaymentTerm, fetchPaymentTerms } from "@/services/paymentTermsApi";
 import PaymentTermDrawer from "./drawer/PaymentTermDrawer";
 import {
@@ -13,10 +14,10 @@ import {
   getPaymentTermStatusLabel,
   getPaymentTermTableColumns,
 } from "./getPaymentTermTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function PaymentTermsTable() {
   const t = useTranslations("PaymentTerms");
@@ -27,36 +28,29 @@ function PaymentTermsTable() {
   const access = useResourceAccess("payment_terms");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "payment-terms"],
     queryFn: fetchPaymentTerms,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    tableId: "payment-terms",
+    t,
+    tApiErrors,
+    notification,
   });
-
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
 
   const tableData = useMemo(
     () =>
-      data.map((row) => ({
+      rows.map((row) => ({
         ...row,
         is_active_label: getPaymentTermStatusLabel(row?.is_active, t),
         is_default_label: getPaymentTermDefaultLabel(row?.is_default, t),
       })),
-    [data, t],
+    [rows, t],
   );
 
   const {
@@ -74,17 +68,7 @@ function PaymentTermsTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deletePaymentTerm(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "payment-terms"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) => (Array.isArray(old) ? old.filter((row) => row.id !== id) : old));
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "payment-terms"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -170,15 +154,8 @@ function PaymentTermsTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: [
-            "id",
-            "code",
-            "name",
-            "due_days",
-            "description",
-            "is_active_label",
-            "is_default_label",
-          ],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
@@ -191,11 +168,7 @@ function PaymentTermsTable() {
         stickyHeader
         scrollX={1280}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <PaymentTermDrawer
         open={drawerOpen}

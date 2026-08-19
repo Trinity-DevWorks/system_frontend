@@ -6,7 +6,9 @@ import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteUnitOfMeasurement, fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
+import { fetchUnitGroupNames } from "@/services/unitGroupsApi";
 import UnitOfMeasurementDrawer from "./drawer/UnitOfMeasurementDrawer";
 import {
   getUnitOfMeasurementDimensionTypeLabel,
@@ -16,7 +18,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 
 function getUnitGroupName(row) {
   const name = row?.unit_group?.name;
@@ -33,7 +35,6 @@ function getUnitGroupDimensionType(row) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-const hasValue = (value) => value !== null && typeof value !== "undefined";
 const normalizeText = (value) =>
   typeof value === "string"
     ? value.trim().replace(/\s+/g, " ").toLocaleLowerCase()
@@ -48,32 +49,36 @@ function UnitOfMeasurementsTable() {
   const access = useResourceAccess("unit_of_measurements");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [selectedUnitGroupId, setSelectedUnitGroupId] = useState();
+  const extraParams = useMemo(
+    () => (selectedUnitGroupId ? { unit_group_id: Number(selectedUnitGroupId) } : {}),
+    [selectedUnitGroupId],
+  );
   const {
-    data = [],
+    rows,
     isPending,
     isFetching,
-    isError,
-    error,
     refetch,
-  } = useQuery({
+    pagination,
+    onSearchChange,
+  } = useTenantPaginatedTable({
     queryKey: ["tenant", "unit-of-measurements"],
     queryFn: fetchUnitOfMeasurements,
-    staleTime: 5 * 60_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    extraParams,
+    tableId: "unit-of-measurements",
+    t,
+    tApiErrors,
+    notification,
   });
 
-  useEffect(() => {
-    if (!isError || !error) return;
-    notification.error({
-      title: t("loadError"),
-      description: getLocalizedApiErrorMessage(tApiErrors, error),
-    });
-  }, [isError, error, notification, t, tApiErrors]);
+  const unitGroupsQuery = useQuery({
+    queryKey: ["tenant", "unit-groups"],
+    queryFn: fetchUnitGroupNames,
+    staleTime: 5 * 60_000,
+  });
 
   const tableData = useMemo(
     () =>
-      data.map((row) => {
+      rows.map((row) => {
         const unitGroupDimensionType = getUnitGroupDimensionType(row);
 
         return {
@@ -89,54 +94,31 @@ function UnitOfMeasurementsTable() {
           is_active_label: getUnitOfMeasurementStatusLabel(row?.is_active, t),
         };
       }),
-    [data, t],
+    [rows, t],
   );
 
   const unitGroupOptions = useMemo(() => {
-    const optionsById = new Map();
-
-    for (const row of tableData) {
-      const unitGroupId = row?.unit_group_id;
-      if (!hasValue(unitGroupId)) continue;
-
-      const value = String(unitGroupId);
-      if (optionsById.has(value)) continue;
-
-      const name = row.unit_group_name;
-      const code = row.unit_group_code;
-      const dimensionTypeLabel = row.unit_group_dimension_type_label;
-      optionsById.set(value, {
-        value,
-        id: unitGroupId,
-        name,
-        code,
-        dimensionTypeLabel,
-        normalizedText: normalizeText(
-          [name, code, row.unit_group_dimension_type, dimensionTypeLabel].join(" "),
-        ),
+    const options = (unitGroupsQuery.data ?? [])
+      .filter((group) => group && group.id != null)
+      .map((group) => {
+        const name = typeof group.name === "string" ? group.name.trim() : "";
+        const code = typeof group.code === "string" ? group.code.trim() : "";
+        const dimensionType = typeof group.dimension_type === "string" ? group.dimension_type.trim() : "";
+        const dimensionTypeLabel = getUnitOfMeasurementDimensionTypeLabel(dimensionType, t);
+        return {
+          value: String(group.id),
+          id: group.id,
+          name,
+          code,
+          dimensionTypeLabel,
+          normalizedText: normalizeText([name, code, dimensionType, dimensionTypeLabel].join(" ")),
+        };
       });
-    }
 
-    return [...optionsById.values()].sort((a, b) =>
-      (a.name || a.code || String(a.id)).localeCompare(
-        b.name || b.code || String(b.id),
-      ),
+    return options.sort((a, b) =>
+      (a.name || a.code || String(a.id)).localeCompare(b.name || b.code || String(b.id)),
     );
-  }, [tableData]);
-
-  const activeUnitGroupId = useMemo(() => {
-    if (!selectedUnitGroupId) return undefined;
-    return unitGroupOptions.some((option) => option.value === selectedUnitGroupId)
-      ? selectedUnitGroupId
-      : undefined;
-  }, [selectedUnitGroupId, unitGroupOptions]);
-
-  const filteredTableData = useMemo(() => {
-    if (!activeUnitGroupId) return tableData;
-    return tableData.filter(
-      (row) => String(row?.unit_group_id) === activeUnitGroupId,
-    );
-  }, [activeUnitGroupId, tableData]);
+  }, [t, unitGroupsQuery.data]);
 
   const handleUnitGroupFilterChange = useCallback((value) => {
     setSelectedUnitGroupId(value);
@@ -158,17 +140,7 @@ function UnitOfMeasurementsTable() {
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {number} */ id) => deleteUnitOfMeasurement(id),
-    onMutate: async (id) => {
-      const listKey = ["tenant", "unit-of-measurements"];
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const previous = queryClient.getQueryData(listKey);
-      queryClient.setQueryData(listKey, (old) => (Array.isArray(old) ? old.filter((row) => row.id !== id) : old));
-      return { previous };
-    },
-    onError: (err, _id, context) => {
-      if (context?.previous !== undefined) {
-        queryClient.setQueryData(["tenant", "unit-of-measurements"], context.previous);
-      }
+    onError: (err) => {
       notification.error({
         title: t("deleteError"),
         description: getLocalizedApiErrorMessage(tApiErrors, err),
@@ -233,12 +205,12 @@ function UnitOfMeasurementsTable() {
         onDelete: access.canDelete ? requestDeleteUnitOfMeasurement : undefined,
         unitGroupFilter: {
           options: unitGroupOptions,
-          value: activeUnitGroupId,
+          value: selectedUnitGroupId,
           onChange: handleUnitGroupFilterChange,
         },
       }),
     [
-      activeUnitGroupId,
+      selectedUnitGroupId,
       access.canView,
       access.canEdit,
       access.canDelete,
@@ -262,7 +234,7 @@ function UnitOfMeasurementsTable() {
       <AppDataTable
         tableId="unit-of-measurements"
         columns={columns}
-        dataSource={filteredTableData}
+        dataSource={tableData}
         rowKey="id"
         loading={isPending}
         refreshFetching={isFetching}
@@ -270,19 +242,8 @@ function UnitOfMeasurementsTable() {
         emptyText={t("empty")}
         toolbar={{
           showSearch: true,
-          searchKeys: [
-            "id",
-            "code",
-            "name",
-            "symbol",
-            "decimal_places",
-            "unit_group_id",
-            "unit_group_name",
-            "unit_group_code",
-            "unit_group_dimension_type",
-            "unit_group_dimension_type_label",
-            "is_active_label",
-          ],
+          enableClientSearch: false,
+          onSearchChange,
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           showRefresh: true,
@@ -295,11 +256,7 @@ function UnitOfMeasurementsTable() {
         stickyHeader
         scrollX={1660}
         enableColumnDrag
-        pagination={{
-          mode: "client",
-          pageSize: 20,
-          pageSizeOptions: [10, 20, 50],
-        }}
+        pagination={pagination}
       />
       <UnitOfMeasurementDrawer
         open={drawerOpen}

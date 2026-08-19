@@ -7,10 +7,10 @@ import { useResourceDrawerCloseFlow } from "@/components/resource-drawer/useReso
 import { useResourceDrawerDetailSync } from "@/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import WarehouseDrawer from "@/app/[locale]/main/warehouses/drawer/WarehouseDrawer";
-import { fetchBranches } from "@/services/branchesApi";
+import { fetchBranchNames } from "@/services/branchesApi";
 import { fetchSalesman } from "@/services/salesmenApi";
-import { fetchTenantUsers } from "@/services/tenantUsersApi";
-import { fetchWarehouses } from "@/services/warehousesApi";
+import { fetchTenantUserNames } from "@/services/tenantUsersApi";
+import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { getActiveBranchId } from "@/lib/active-branch";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -86,21 +86,21 @@ export default function SalesmanDrawer({
 
   const branchesQuery = useQuery({
     queryKey: ["tenant", "branches"],
-    queryFn: fetchBranches,
+    queryFn: fetchBranchNames,
     enabled: open,
     staleTime: 60_000,
   });
 
   const warehousesQuery = useQuery({
     queryKey: ["tenant", "warehouses"],
-    queryFn: fetchWarehouses,
+    queryFn: fetchWarehouseNames,
     enabled: open,
     staleTime: 60_000,
   });
 
   const usersQuery = useQuery({
     queryKey: ["tenant", "users"],
-    queryFn: fetchTenantUsers,
+    queryFn: fetchTenantUserNames,
     enabled: open,
     staleTime: 60_000,
   });
