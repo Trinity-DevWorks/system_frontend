@@ -7,9 +7,9 @@ import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { fetchWarehouseNames } from "@/services/warehousesApi";
 import { useQuery } from "@tanstack/react-query";
-import { App, DatePicker, Form, Select } from "antd";
+import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import StockAdjustmentDrawer from "../adjustment/StockAdjustmentDrawer";
 import {
   formatStockFilterDateRange,
@@ -254,7 +254,15 @@ function StockMovementsTable() {
 export default function StockMovementsPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <StockMovementsTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <StockMovementsTable />
+      </Suspense>
     </div>
   );
 }

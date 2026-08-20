@@ -15,18 +15,21 @@ import {
   STOCK_MOVEMENTS_QUERY_KEY,
   STOCK_TRANSFERS_QUERY_KEY,
 } from "@/components/stock/stockQueryCache";
-import { ApartmentOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, DownOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Dropdown, Select, Tooltip } from "antd";
+import { App, Dropdown } from "antd";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 /**
- * Active branch switcher (sidebar).
+ * Active company + branch context, shown as a header chip.
  *
- * @param {{ collapsed?: boolean }} [props]
+ * Which branch you are posting against is global operating context, so it sits in the
+ * top bar next to the other workspace-wide controls rather than inside the sidebar.
+ *
+ * @param {{ companyName?: string }} [props]
  */
-export default function BranchSwitcher({ collapsed = false }) {
+export default function BranchSwitcher({ companyName = "" }) {
   const t = useTranslations("Shell");
   const tApiErrors = useTranslations("ApiErrors");
   const { message } = App.useApp();
@@ -69,6 +72,7 @@ export default function BranchSwitcher({ collapsed = false }) {
     const inactive = b.is_active === false;
     return {
       value: Number(b.id),
+      name: String(b.name ?? b.id),
       label: inactive ? `${base} — ${t("branchInactive")}` : base,
       disabled: inactive,
     };
@@ -118,55 +122,62 @@ export default function BranchSwitcher({ collapsed = false }) {
     switchMutation.mutate(id);
   };
 
-  if (options.length === 0 && !contextQuery.isPending) {
-    return null;
-  }
-
+  const activeBranchName =
+    options.find((o) => o.value === activeId)?.name ?? t("branchSwitcherPlaceholder");
   const loading = contextQuery.isPending || switchMutation.isPending;
-  const currentLabel =
-    options.find((o) => o.value === activeId)?.label ?? t("branchSwitcherPlaceholder");
 
-  if (collapsed) {
+  const chipBody = (
+    <>
+      <ApartmentOutlined className="shell-context-chip-icon" aria-hidden />
+      <span className="shell-context-chip-text">
+        {companyName ? (
+          <>
+            <span className="shell-context-chip-org">{companyName}</span>
+            <span className="shell-context-chip-sep" aria-hidden>
+              ·
+            </span>
+          </>
+        ) : null}
+        <span className="shell-context-chip-branch">{activeBranchName}</span>
+      </span>
+    </>
+  );
+
+  // No branch to choose from: keep the workspace label, drop the affordance.
+  if (options.length === 0) {
+    if (!companyName && contextQuery.isPending) return null;
     return (
-      <Dropdown
-        menu={{
-          items: options.map((o) => ({
-            key: String(o.value),
-            label: o.label,
-            disabled: o.disabled,
-          })),
-          selectable: true,
-          selectedKeys: Number.isFinite(activeId) ? [String(activeId)] : [],
-          onClick: ({ key }) => selectBranch(key),
-        }}
-        trigger={["click"]}
-        placement="rightTop"
-      >
-        <Tooltip title={currentLabel} placement="right">
-          <Button
-            type="text"
-            icon={<ApartmentOutlined />}
-            loading={loading}
-            aria-label={t("branchSwitcherAria")}
-            className="h-9 w-full !justify-center rounded-lg font-medium"
-          />
-        </Tooltip>
-      </Dropdown>
+      <span className="shell-context-chip is-static" title={companyName}>
+        {chipBody}
+      </span>
     );
   }
 
   return (
-    <Select
-      className="w-full"
-      size="middle"
-      loading={loading}
-      options={options}
-      value={Number.isFinite(activeId) ? activeId : undefined}
-      placeholder={t("branchSwitcherPlaceholder")}
-      aria-label={t("branchSwitcherAria")}
-      onChange={selectBranch}
-      optionFilterProp="label"
-      showSearch={options.length > 5}
-    />
+    <Dropdown
+      menu={{
+        items: options.map((o) => ({
+          key: String(o.value),
+          label: o.label,
+          disabled: o.disabled,
+        })),
+        selectable: true,
+        selectedKeys: Number.isFinite(activeId) ? [String(activeId)] : [],
+        onClick: ({ key }) => selectBranch(key),
+      }}
+      trigger={["click"]}
+      placement="bottomRight"
+      disabled={loading}
+    >
+      <button
+        type="button"
+        className="shell-context-chip"
+        aria-label={t("branchSwitcherAria")}
+        title={`${companyName ? `${companyName} · ` : ""}${activeBranchName}`}
+      >
+        {chipBody}
+        <DownOutlined className="shell-context-chip-caret" aria-hidden />
+      </button>
+    </Dropdown>
   );
 }

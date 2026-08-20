@@ -1,343 +1,246 @@
 "use client";
 
-import WorkspaceBrandMark from "@/components/brand/WorkspaceBrandMark";
-import {
-  BookOutlined,
-  LeftOutlined,
-  SearchOutlined,
-  SettingOutlined,
-  StarFilled,
-} from "@ant-design/icons";
-import { Button, Input, Layout, Menu, Tooltip, theme } from "antd";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSidebarCollapse } from "../SidebarCollapseContext";
-import { findNavIconForPath } from "./main-nav";
-import BranchSwitcher from "../header/BranchSwitcher";
+import { SHELL_PANEL_WIDTH_PX, SHELL_RAIL_WIDTH_PX } from "../shell-metrics";
+import { buildPanelSections } from "./build-panel-sections";
+import SidebarModuleRail from "./SidebarModuleRail";
+import SidebarPagePanel from "./SidebarPagePanel";
 
-const { Sider } = Layout;
-const SHELL_CHROME_HEIGHT_PX = 56;
-const BOOKMARKS_SUBMENU_KEY = "__shell_bookmarks__";
+const PEEK_CLOSE_DELAY_MS = 140;
 
+/**
+ * Dual-rail sidebar: a persistent module rail plus the page panel for the active module.
+ *
+ * When collapsed only the rail occupies layout space; the panel becomes an overlay that
+ * appears on hover or keyboard focus, so opening it never reflows the content tables.
+ */
 export default function AppSidebar({
-  colorBgContainer,
-  colorSplit,
-  menuMounted,
-  selectedKeys,
-  menuItems,
-  /** Full nav (unfiltered); used so bookmark rows use the same icons as `buildMainNavItems`. */
-  mainNavItems,
-  onMenuClick,
-  brand,
-  /** @type {{ id: string, file_name?: string, mime_type?: string } | null | undefined} */
-  brandLogo = null,
-  expandLabel,
-  collapseLabel,
-  onSettings,
-  settingsLabel,
-  settingsActive,
-  searchPlaceholder,
+  navItems,
+  activeModuleKey,
+  onSelectModule,
+  selectedPath,
   searchQuery,
   onSearchChange,
   bookmarks,
-  bookmarksTitle,
-  removeBookmarkAria,
-  onRemoveBookmark,
-  onClearAllBookmarks,
-  clearAllBookmarksLabel,
-  onBookmarkNavigate,
-  currentPath,
+  bookmarkedPaths,
+  onToggleBookmark,
+  onClearBookmarks,
+  onNavigate,
+  brand,
+  brandLogo,
+  onBrandClick,
+  isRtl,
+  labels,
 }) {
   const { collapsed, setCollapsed } = useSidebarCollapse();
-  const { token } = theme.useToken();
-  const [bookmarkOpenKeys, setBookmarkOpenKeys] = useState(() => [BOOKMARKS_SUBMENU_KEY]);
+  const [peeking, setPeeking] = useState(false);
+  /**
+   * Module whose pages the panel is showing on hover/focus without committing.
+   * Cleared when the pointer leaves the whole nav — not when it leaves the rail —
+   * so you can move across into the panel and click what you just previewed.
+   */
+  const [previewModuleKey, setPreviewModuleKey] = useState(null);
+  const closeTimerRef = useRef(null);
+  const navRef = useRef(null);
+  const pointerInsideRef = useRef(false);
+  const suppressPeekRef = useRef(false);
 
-  const bookmarkSelectedKeys = useMemo(() => {
-    if (!currentPath) return [];
-    let best = "";
-    for (const b of bookmarks) {
-      const k = b.path;
-      if (currentPath === k || currentPath.startsWith(`${k}/`)) {
-        if (k.length > best.length) best = k;
-      }
+  const hasFocusInside = useCallback(
+    () => Boolean(navRef.current?.contains(document.activeElement)),
+    [],
+  );
+
+  const cancelClose = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
     }
-    return best ? [best] : [];
-  }, [bookmarks, currentPath]);
+  }, []);
 
-  const bookmarkMenuItems = useMemo(
+  const openPeek = useCallback(() => {
+    cancelClose();
+    setPeeking(true);
+  }, [cancelClose]);
+
+  const closePeek = useCallback(() => {
+    cancelClose();
+    closeTimerRef.current = setTimeout(() => setPeeking(false), PEEK_CLOSE_DELAY_MS);
+  }, [cancelClose]);
+
+  useEffect(() => cancelClose, [cancelClose]);
+
+  /**
+   * Drop a stale peek when the sidebar expands, otherwise re-collapsing would
+   * pop the panel open again without the pointer ever entering the nav.
+   */
+  const [wasCollapsed, setWasCollapsed] = useState(collapsed);
+  if (wasCollapsed !== collapsed) {
+    setWasCollapsed(collapsed);
+    if (peeking) setPeeking(false);
+  }
+
+  const { primaryModules, footerModules } = useMemo(() => {
+    const primary = [];
+    const footer = [];
+    for (const item of navItems ?? []) {
+      if (!item) continue;
+      (item.placement === "footer" ? footer : primary).push(item);
+    }
+    return { primaryModules: primary, footerModules: footer };
+  }, [navItems]);
+
+  /** Preview wins for what the panel renders; the rail keeps highlighting the real module. */
+  const panelModuleKey = previewModuleKey ?? activeModuleKey;
+
+  const panelModule = useMemo(
+    () => (navItems ?? []).find((item) => item?.key === panelModuleKey) ?? null,
+    [navItems, panelModuleKey],
+  );
+
+  const { title, sections } = useMemo(
     () =>
-      bookmarks.map((b) => ({
-        key: b.path,
-        icon: findNavIconForPath(mainNavItems, b.path) ?? <BookOutlined />,
-        label: b.label,
-        title: b.label,
-        extra: (
-          <Button
-            type="text"
-            size="small"
-            icon={<StarFilled className="text-sm" />}
-            className="shell-bookmark-row-star !h-7 !min-w-7 shrink-0 !px-0 opacity-80 hover:!opacity-100"
-            aria-label={removeBookmarkAria}
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemoveBookmark(b.path);
-            }}
-          />
-        ),
-      })),
-    [bookmarks, mainNavItems, onRemoveBookmark, removeBookmarkAria],
+      buildPanelSections({
+        navItems,
+        panelModule,
+        searchQuery,
+        bookmarks,
+        bookmarkedPaths,
+        onClearBookmarks,
+        labels,
+      }),
+    [navItems, panelModule, searchQuery, bookmarks, bookmarkedPaths, onClearBookmarks, labels],
   );
 
-  const bookmarkNavItems = useMemo(
-    () => [
-      {
-        key: BOOKMARKS_SUBMENU_KEY,
-        className: "shell-bookmarks-submenu",
-        icon: <BookOutlined />,
-        label: (
-          <span className="shell-bookmarks-submenu-label flex min-w-0 flex-1 items-center gap-1">
-            <span className="min-w-0 flex-1 truncate">{bookmarksTitle}</span>
-            <Button
-              type="text"
-              size="small"
-              className="shell-bookmarks-clear !h-5 min-h-0 shrink-0 px-0.5 py-0 leading-none"
-              aria-label={clearAllBookmarksLabel}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onClearAllBookmarks?.();
-              }}
-            >
-              {clearAllBookmarksLabel}
-            </Button>
-          </span>
-        ),
-        children: bookmarkMenuItems,
-      },
-    ],
-    [
-      bookmarkMenuItems,
-      bookmarksTitle,
-      clearAllBookmarksLabel,
-      onClearAllBookmarks,
-    ],
+  const handleNavigate = useCallback(
+    (path) => {
+      setPreviewModuleKey(null);
+      onNavigate(path);
+      setPeeking(false);
+    },
+    [onNavigate],
   );
 
-  const shellBorder = `1px solid ${colorSplit}`;
+  const handleSelectModule = useCallback(
+    (navModule) => {
+      setPreviewModuleKey(null);
+      onSelectModule(navModule);
+      if (collapsed) openPeek();
+    },
+    [collapsed, onSelectModule, openPeek],
+  );
 
-  const handleCollapsedBodyClick = (event) => {
-    if (!collapsed) return;
-    const el = event.target;
-    if (!(el instanceof Element)) return;
-    if (
-      el.closest(
-        "button, a, .ant-menu-item, .ant-menu-submenu-title, .ant-select, .ant-dropdown-trigger, input, textarea",
-      )
-    ) {
-      return;
-    }
-    setCollapsed(false);
-  };
+  /** Searching already replaces the panel with cross-module results. */
+  const handlePreviewModule = useCallback(
+    (navModule) => {
+      if (searchQuery.trim()) return;
+      setPreviewModuleKey(navModule.key);
+    },
+    [searchQuery],
+  );
+
+  const handleMouseEnter = useCallback(() => {
+    pointerInsideRef.current = true;
+    if (collapsed) openPeek();
+  }, [collapsed, openPeek]);
+
+  /**
+   * Keyboard focus outranks the pointer: the panel hides with `visibility: hidden`,
+   * so closing it while the search field is focused would strip the field the user
+   * is still typing into out of the a11y tree.
+   */
+  const handleMouseLeave = useCallback(() => {
+    pointerInsideRef.current = false;
+    if (hasFocusInside()) return;
+    setPreviewModuleKey(null);
+    if (collapsed) closePeek();
+  }, [collapsed, closePeek, hasFocusInside]);
+
+  const handleFocusCapture = useCallback(() => {
+    if (suppressPeekRef.current) return;
+    openPeek();
+  }, [openPeek]);
+
+  const handleBlurCapture = useCallback(
+    (event) => {
+      if (event.currentTarget.contains(event.relatedTarget)) return;
+      setPreviewModuleKey(null);
+      if (collapsed && !pointerInsideRef.current) closePeek();
+    },
+    [collapsed, closePeek],
+  );
+
+  const className = [
+    "shell-nav",
+    collapsed ? "is-collapsed" : "",
+    collapsed && peeking ? "is-peeking" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <Sider
-      collapsible
-      collapsed={collapsed}
-      onCollapse={setCollapsed}
-      trigger={null}
-      width={230}
-      collapsedWidth={72}
-      className={`shell-app-sider${collapsed ? " cursor-pointer" : ""}`}
-      onClick={handleCollapsedBodyClick}
+    <div
+      ref={navRef}
+      className={className}
       style={{
-        background: colorBgContainer,
-        borderInlineEnd: shellBorder,
+        "--shell-rail-w": `${SHELL_RAIL_WIDTH_PX}px`,
+        "--shell-panel-w": `${SHELL_PANEL_WIDTH_PX}px`,
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onFocusCapture={collapsed ? handleFocusCapture : undefined}
+      onBlurCapture={handleBlurCapture}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") return;
+        setPreviewModuleKey(null);
+        if (!peeking) return;
+        cancelClose();
+        setPeeking(false);
+        // Park focus on the rail; the panel holding it is about to hide. The guard
+        // stops the refocus from tripping onFocusCapture and reopening the peek.
+        if (hasFocusInside()) {
+          suppressPeekRef.current = true;
+          navRef.current
+            ?.querySelector(".shell-rail-btn.is-active, .shell-rail-btn")
+            ?.focus();
+          suppressPeekRef.current = false;
+        }
       }}
     >
-      <div
-        className={`flex items-center ${collapsed ? "justify-center px-0" : "gap-2 px-3"}`}
-        style={{
-          height: SHELL_CHROME_HEIGHT_PX,
-          minHeight: SHELL_CHROME_HEIGHT_PX,
-          borderBottom: shellBorder,
+      <SidebarModuleRail
+        modules={primaryModules}
+        footerModules={footerModules}
+        activeModuleKey={activeModuleKey}
+        previewModuleKey={previewModuleKey}
+        onSelectModule={handleSelectModule}
+        onPreviewModule={handlePreviewModule}
+        brand={brand}
+        brandLogo={brandLogo}
+        onBrandClick={() => {
+          if (collapsed) {
+            setCollapsed(false);
+            return;
+          }
+          onBrandClick();
         }}
-      >
-        <Tooltip title={collapsed ? brand : undefined} placement="right">
-          <button
-            type="button"
-            onClick={() => {
-              if (collapsed) setCollapsed(false);
-            }}
-            aria-label={collapsed ? expandLabel : brand}
-            disabled={!collapsed}
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent p-0 ${
-              collapsed ? "" : "cursor-default"
-            }`}
-            style={{ color: token.colorTextSecondary }}
-          >
-            <WorkspaceBrandMark
-              logo={brandLogo}
-              alt={brand}
-              size={28}
-              className="shrink-0"
-            />
-          </button>
-        </Tooltip>
-        {!collapsed ? (
-          <>
-            <div
-              className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight"
-              style={{ color: token.colorText }}
-            >
-              {brand}
-            </div>
-            <Button
-              type="default"
-              icon={<LeftOutlined />}
-              onClick={() => setCollapsed((c) => !c)}
-              aria-label={collapseLabel}
-              className="ms-auto h-9 w-9 shrink-0 rounded-xl"
-              style={{ color: token.colorTextSecondary }}
-            />
-          </>
-        ) : null}
-      </div>
-      <div
-        className="flex flex-col"
-        style={{ height: `calc(100dvh - ${SHELL_CHROME_HEIGHT_PX}px)` }}
-      >
-        {!collapsed ? (
-          <div className="shrink-0 px-1.5 pb-1.5 pt-1.5" style={{ borderBottom: shellBorder }}>
-            <Input
-              allowClear
-              size="middle"
-              prefix={<SearchOutlined style={{ color: token.colorTextDescription }} />}
-              placeholder={searchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="[&_.ant-input]:rounded-lg [&_.ant-input-affix-wrapper]:rounded-lg"
-            />
-            {bookmarks.length > 0 ? (
-              <div
-                className="mt-2.5 border-t pt-2"
-                style={{ borderColor: token.colorBorderSecondary }}
-              >
-                <div className="app-hide-scrollbar max-h-48 overflow-y-auto">
-                  <Menu
-                    mode="inline"
-                    inlineIndent={12}
-                    openKeys={bookmarkOpenKeys}
-                    onOpenChange={setBookmarkOpenKeys}
-                    selectedKeys={bookmarkSelectedKeys}
-                    items={bookmarkNavItems}
-                    triggerSubMenuAction="click"
-                    className="shell-main-nav border-none bg-transparent"
-                    style={{ background: "transparent", borderInlineEnd: "none" }}
-                    onClick={({ key, domEvent }) => {
-                      if (key === BOOKMARKS_SUBMENU_KEY) return;
-                      const el = domEvent?.target;
-                      if (el instanceof Element && el.closest(".shell-bookmark-row-star")) {
-                        return;
-                      }
-                      onBookmarkNavigate(String(key));
-                    }}
-                  />
-                </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="app-hide-scrollbar min-h-0 flex-1 overflow-y-auto px-1.5 pb-2 pt-1">
-          {menuMounted ? (
-            <Menu
-              mode="inline"
-              inlineCollapsed={collapsed}
-              inlineIndent={12}
-              selectedKeys={selectedKeys}
-              items={menuItems}
-              className="shell-main-nav border-none bg-transparent"
-              classNames={{ popup: { root: "shell-main-nav-popup" } }}
-              getPopupContainer={() => document.body}
-              style={{ background: "transparent", borderInlineEnd: "none" }}
-              onClick={(info) => {
-                if (collapsed) {
-                  info.domEvent?.stopPropagation?.();
-                  setCollapsed(false);
-                  return;
-                }
-                onMenuClick(info);
-              }}
-            />
-          ) : (
-            <div className="px-3 py-2" aria-hidden>
-              {!collapsed ? (
-                <>
-                  <div className="mb-2 h-7 rounded bg-black/5 dark:bg-white/10" />
-                  <div className="mb-2 h-12 rounded bg-black/5 dark:bg-white/10" />
-                </>
-              ) : null}
-              <div className="mb-2 h-8 rounded bg-black/5 dark:bg-white/10" />
-              <div className="h-8 rounded bg-black/5 dark:bg-white/10" />
-            </div>
-          )}
-        </div>
-        <div className="shrink-0 space-y-2 p-2.5" style={{ borderTop: shellBorder }}>
-          <div
-            className="rounded-xl p-1.5"
-            style={{
-              background: token.colorFillQuaternary,
-              border: `1px solid ${token.colorBorderSecondary}`,
-            }}
-          >
-            <BranchSwitcher collapsed={collapsed} />
-          </div>
-          <div
-            className="rounded-xl p-1.5"
-            style={{
-              background: token.colorFillQuaternary,
-              border: `1px solid ${token.colorBorderSecondary}`,
-            }}
-          >
-            {collapsed ? (
-              <Tooltip title={settingsLabel} placement="right">
-                <Button
-                  type="text"
-                  icon={<SettingOutlined />}
-                  onClick={onSettings}
-                  aria-label={settingsLabel}
-                  aria-current={settingsActive ? "page" : undefined}
-                  className="h-9 w-full !justify-center rounded-lg font-medium"
-                  style={
-                    settingsActive
-                      ? {
-                          color: token.colorPrimary,
-                          background: token.colorPrimaryBg,
-                        }
-                      : { color: token.colorText }
-                  }
-                />
-              </Tooltip>
-            ) : (
-              <Button
-                type="text"
-                icon={<SettingOutlined />}
-                onClick={onSettings}
-                aria-current={settingsActive ? "page" : undefined}
-                className="h-9 w-full justify-start rounded-lg font-medium"
-                style={
-                  settingsActive
-                    ? {
-                        color: token.colorPrimary,
-                        background: token.colorPrimaryBg,
-                      }
-                    : { color: token.colorText }
-                }
-              >
-                {settingsLabel}
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    </Sider>
+        tooltipPlacement={isRtl ? "left" : "right"}
+        ariaLabel={labels.modulesNav}
+      />
+      <SidebarPagePanel
+        title={title}
+        searchValue={searchQuery}
+        onSearchChange={onSearchChange}
+        searchPlaceholder={labels.searchPlaceholder}
+        searchAria={labels.searchAria}
+        sections={sections}
+        emptyLabel={labels.noResults}
+        selectedPath={selectedPath}
+        onNavigate={handleNavigate}
+        onToggleBookmark={onToggleBookmark}
+        addBookmarkAria={labels.addBookmark}
+        removeBookmarkAria={labels.removeBookmark}
+        ariaLabel={labels.pagesNav}
+      />
+    </div>
   );
 }

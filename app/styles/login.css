@@ -1,0 +1,451 @@
+/* Login page: entrance animations, branding, form chrome. */
+
+/* Login page — card entrance (respect reduced motion). */
+@keyframes login-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-card-enter {
+  animation: login-card-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card-enter {
+    animation: none;
+  }
+}
+
+/* Login page — staggered entrances & polish (respect reduced motion). */
+@keyframes login-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-orb-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.04) translate(4px, -2px);
+  }
+}
+
+@keyframes login-shimmer-line {
+  0% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+.login-anim-in {
+  animation: login-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.login-anim-delay-1 {
+  animation-delay: 0.08s;
+}
+.login-anim-delay-2 {
+  animation-delay: 0.16s;
+}
+.login-anim-delay-3 {
+  animation-delay: 0.24s;
+}
+.login-anim-delay-4 {
+  animation-delay: 0.32s;
+}
+.login-anim-delay-5 {
+  animation-delay: 0.4s;
+}
+.login-anim-delay-6 {
+  animation-delay: 0.48s;
+}
+.login-anim-delay-7 {
+  animation-delay: 0.56s;
+}
+
+.login-orb-breathe {
+  animation: login-orb-breathe 10s ease-in-out infinite;
+}
+
+.login-orb-breathe-slow {
+  animation: login-orb-breathe 14s ease-in-out infinite reverse;
+}
+
+.login-edge-shimmer {
+  animation: login-shimmer-line 5s ease-in-out infinite;
+}
+
+@keyframes login-main-glow-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+.login-main-glow {
+  animation: login-main-glow-pulse 14s ease-in-out infinite;
+}
+
+@keyframes login-top-accent-glow {
+  0%,
+  100% {
+    opacity: 0.88;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.12);
+  }
+}
+
+.login-top-accent-glow {
+  animation: login-top-accent-glow 4.5s ease-in-out infinite;
+}
+
+.login-page {
+  --login-accent: #4f46e5;
+  --login-accent-hover: #4338ca;
+  --login-accent-sky: #60a5fa;
+}
+
+.login-hero-name {
+  color: var(--login-accent);
+}
+
+.login-hero-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--login-accent);
+}
+
+.login-brand-wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.login-brand-wordmark-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.login-brand-mark {
+  position: relative;
+  display: inline-block;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+}
+
+.login-brand-mark span {
+  position: absolute;
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 0.18rem;
+  transform: rotate(12deg);
+}
+
+.login-brand-mark span:first-child {
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  background: linear-gradient(135deg, var(--login-accent), var(--login-accent-sky));
+}
+
+.login-brand-mark span:last-child {
+  inset-block-end: 0;
+  inset-inline-end: 0;
+  border: 1.5px solid var(--login-accent);
+  background: color-mix(in srgb, var(--login-accent-sky) 18%, transparent);
+}
+
+.login-brand-mena {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  background: linear-gradient(90deg, var(--login-accent), var(--login-accent-sky));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.login-brand-solutions {
+  padding-block-start: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--login-accent) 72%, #64748b);
+}
+
+html.dark .login-brand-solutions {
+  color: color-mix(in srgb, var(--login-accent-sky) 80%, #e2e8f0);
+}
+
+.login-brand-wordmark-rule {
+  display: block;
+  width: 8.5rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--login-accent),
+    var(--login-accent-sky),
+    transparent
+  );
+}
+
+.login-inline-link {
+  color: var(--login-accent);
+}
+
+.login-inline-link:hover {
+  color: var(--login-accent-hover);
+}
+
+.login-form-card .ant-form-item-label .login-inline-link {
+  font-weight: 500 !important;
+}
+
+.login-submit-btn.ant-btn-primary {
+  height: 48px !important;
+  border: none !important;
+  border-radius: 0.75rem !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  background: linear-gradient(
+    to right,
+    var(--login-accent),
+    var(--login-accent-sky)
+  ) !important;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--login-accent) 35%, transparent);
+}
+
+.login-submit-btn.ant-btn-primary:not(:disabled):hover {
+  background: linear-gradient(
+    to right,
+    var(--login-accent-hover),
+    var(--login-accent)
+  ) !important;
+}
+
+.login-form-card {
+  box-shadow: 0 20px 40px -16px rgb(15 23 42 / 0.14);
+}
+
+.login-form-card:hover {
+  transform: none;
+}
+
+/* Login card — Form labels */
+.login-form-card .ant-form-item .ant-form-item-label {
+  display: block !important;
+  padding-bottom: 8px !important;
+}
+
+.login-form-card .ant-form-item .ant-form-item-label > label {
+  display: inline-flex !important;
+  align-items: center;
+  min-height: 1.25rem;
+  width: 100%;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.5 !important;
+  color: var(--app-page-fg) !important;
+}
+
+/* Login card — inputs: ~h-10, text-base, focus ring (shadcn-like) */
+.login-form-card .ant-input-affix-wrapper {
+  min-height: 44px !important;
+  padding-block: 0 !important;
+  padding-inline-start: 12px !important;
+  padding-inline-end: 12px !important;
+  border-radius: 0.75rem !important;
+  background: #f3f4f6 !important;
+  box-shadow: none !important;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+html.dark .login-form-card .ant-input-affix-wrapper {
+  background: rgb(31 41 55) !important;
+}
+
+.login-form-card .ant-input-affix-wrapper .ant-input {
+  font-size: 1rem !important;
+  line-height: 1.5rem !important;
+  background: transparent !important;
+}
+
+.login-form-card
+  .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover {
+  border-color: var(--login-accent) !important;
+}
+
+.login-form-card .ant-input-affix-wrapper-focused,
+.login-form-card .ant-input-affix-wrapper:focus-within {
+  border-color: var(--login-accent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--login-accent) 20%, transparent) !important;
+}
+
+.login-form-card .ant-input-affix-wrapper .anticon {
+  color: var(--ant-color-text-secondary);
+}
+
+.login-form-card .ant-input-affix-wrapper-focused .anticon,
+.login-form-card .ant-input-affix-wrapper:focus-within .anticon {
+  color: var(--login-accent);
+}
+
+.login-feature-card {
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.login-feature-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.18);
+  background-color: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.35);
+}
+
+.login-brand-tile {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.login-brand-tile:hover {
+  transform: scale(1.04) rotate(-2deg);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.45);
+}
+
+/* Login — left rail: rotating gradient (navy → brand). */
+.login-aside-bg {
+  background-color: var(--app-navy-deep);
+}
+
+.login-aside-bg::before {
+  content: "";
+  position: absolute;
+  inset: -48%;
+  z-index: 0;
+  background: linear-gradient(
+    135deg,
+    var(--app-navy-deep) 0%,
+    var(--app-navy) 32%,
+    var(--app-brand) 62%,
+    var(--app-navy-deep) 100%
+  );
+  animation: login-aside-bg-rotate 20s linear infinite;
+  will-change: transform;
+}
+
+@keyframes login-aside-bg-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.login-success-check {
+  animation: login-success-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
+}
+
+.login-success-bar {
+  width: 0;
+  background: linear-gradient(
+    to right,
+    var(--login-accent),
+    var(--login-accent-sky)
+  );
+  animation: login-success-fill 1.6s ease-in-out both;
+}
+
+@keyframes login-success-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes login-success-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-anim-in,
+  .login-success-check {
+    animation: none;
+  }
+
+  .login-success-bar {
+    animation: none;
+    width: 100%;
+  }
+
+  .login-orb-breathe,
+  .login-orb-breathe-slow,
+  .login-edge-shimmer,
+  .login-main-glow,
+  .login-top-accent-glow {
+    animation: none;
+  }
+
+  .login-aside-bg::before {
+    animation: none;
+    inset: 0;
+    transform: none;
+  }
+
+  .login-feature-card:hover,
+  .login-brand-tile:hover,
+  .login-form-card:hover {
+    transform: none;
+  }
+}

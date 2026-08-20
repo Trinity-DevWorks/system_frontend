@@ -1,0 +1,64 @@
+/* Page chrome, color scheme, and shared scroll helpers. */
+
+/* Page chrome — fallbacks match APP_PALETTE in lib/app-theme.js (JS overwrites after hydrate). */
+:root {
+  --app-page-bg: #f8fafc;
+  --app-page-fg: #0f172a;
+  --app-brand: #1d4e89;
+  --app-brand-accent: #2563eb;
+  --app-navy: #0f172a;
+  --app-navy-deep: #0a1628;
+  --app-sky: #38bdf8;
+  --app-success: #059669;
+  --app-warning: #d97706;
+  --app-error: #dc2626;
+  --app-rail-bg: #0f172a;
+  --app-rail-fg: rgba(255, 255, 255, 0.62);
+  --app-rail-fg-strong: #ffffff;
+  --app-rail-hover-bg: rgba(255, 255, 255, 0.08);
+  --app-rail-active-bg: #2563eb;
+  --app-rail-active-fg: #ffffff;
+  --app-rail-border: rgba(255, 255, 255, 0.08);
+  --app-elevation-1: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --app-elevation-2: 0 6px 16px rgba(15, 23, 42, 0.1);
+  --app-elevation-3: 0 16px 40px rgba(15, 23, 42, 0.16);
+}
+
+html.dark {
+  --app-page-bg: #0b0f19;
+  --app-page-fg: #f1f5f9;
+  --app-brand: #3b82f6;
+  --app-brand-accent: #60a5fa;
+  --app-rail-bg: #0a1628;
+  --app-rail-active-bg: #3b82f6;
+  --app-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --app-elevation-2: 0 6px 16px rgba(0, 0, 0, 0.55);
+  --app-elevation-3: 0 16px 40px rgba(0, 0, 0, 0.62);
+}
+
+html {
+  background-color: var(--app-page-bg);
+  color: var(--app-page-fg);
+  color-scheme: light;
+}
+
+/* Scroll still works (wheel / touch / keys); bars hidden in Chromium, Firefox, legacy Edge. */
+.app-hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Main content pane: isolate layout work while the sidebar width animates. */
+.app-shell-main-scroll {
+  contain: layout style;
+}
+
+html.dark {
+  color-scheme: dark;
+}

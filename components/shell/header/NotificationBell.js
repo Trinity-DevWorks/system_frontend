@@ -20,7 +20,7 @@ import {
 } from "@/services/notificationsApi";
 import { ArrowRightOutlined, BellOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge, Button, Empty, Popover, Skeleton, theme } from "antd";
+import { Badge, Empty, Popover, Skeleton, theme } from "antd";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
@@ -28,21 +28,18 @@ import { Suspense, useState } from "react";
 const POLL_MS = 5 * 60_000;
 const PANEL_WIDTH = 400;
 const LIST_MAX_HEIGHT = 360;
-const shellIconBtnClass =
-  "inline-flex h-9 w-9 items-center justify-center rounded-lg shadow-sm";
 
 function NotificationBellFallback() {
   const tShell = useTranslations("Shell");
-  const { token } = theme.useToken();
   return (
-    <Button
-      type="default"
-      className={shellIconBtnClass}
+    <button
+      type="button"
+      className="shell-header-icon-btn"
       aria-label={tShell("notifications")}
       title={tShell("notifications")}
     >
-      <BellOutlined style={{ color: token.colorTextSecondary, fontSize: 16 }} />
-    </Button>
+      <BellOutlined />
+    </button>
   );
 }
 
@@ -264,16 +261,14 @@ function NotificationBellInner() {
         color={token.colorError}
         className="shell-notification-badge"
       >
-        <Button
-          type="default"
-          className={shellIconBtnClass}
+        <button
+          type="button"
+          className="shell-header-icon-btn"
           aria-label={tShell("notifications")}
           title={tShell("notifications")}
         >
-          <BellOutlined
-            style={{ color: token.colorTextSecondary, fontSize: 16 }}
-          />
-        </Button>
+          <BellOutlined />
+        </button>
       </Badge>
     </Popover>
   );

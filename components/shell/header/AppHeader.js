@@ -6,31 +6,36 @@ import { routing } from "@/i18n/routing";
 import {
   GlobalOutlined,
   LogoutOutlined,
+  MenuOutlined,
   MoonOutlined,
-  SearchOutlined,
   SettingOutlined,
   SunOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Dropdown, Input, Layout, Space, theme } from "antd";
+import { Dropdown, Layout, Tooltip } from "antd";
 import { useLocale, useTranslations } from "next-intl";
 import { cloneElement, isValidElement, useMemo } from "react";
 import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import { ROUTES, selectedKeysForPath } from "@/components/shell/sidebar/main-nav";
+import { SHELL_CHROME_HEIGHT_PX } from "../shell-metrics";
+import { useSidebarCollapse } from "../SidebarCollapseContext";
 import AppBreadcrumb from "./AppBreadcrumb";
-import NotificationBell from "./NotificationBell";
+import BranchSwitcher from "./BranchSwitcher";
+import HeaderProfileAvatar from "./HeaderProfileAvatar";
 import HeaderProfileMenuIdentity from "./HeaderProfileMenuIdentity";
+import HeaderQuickCreate from "./HeaderQuickCreate";
+import NotificationBell from "./NotificationBell";
 
 const { Header } = Layout;
-const SHELL_CHROME_HEIGHT_PX = 56;
-const shellIconBtnClass =
-  "inline-flex h-9 w-9 items-center justify-center rounded-lg shadow-sm";
 const PROFILE_MENU_LOGOUT_KEY = "logout";
+const LANGUAGE_SUBMENU_KEY = "__language__";
+const THEME_SUBMENU_KEY = "__theme__";
 
 export default function AppHeader({
   colorBgContainer,
   colorSplit,
   menuItems,
+  companyName,
   onLogout,
   logoutLabel,
 }) {
@@ -39,8 +44,8 @@ export default function AppHeader({
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
+  const { collapsed, setCollapsed } = useSidebarCollapse();
   const { setColorMode, colorMode, resolvedColorMode } = useThemeMode();
-  const { token } = theme.useToken();
 
   const languageMenuItems = useMemo(
     () =>
@@ -51,11 +56,6 @@ export default function AppHeader({
       })),
     [locale, tLogin],
   );
-
-  const onLanguageMenuClick = ({ key }) => {
-    markUiLocaleOverride();
-    router.replace(pathname, { locale: key });
-  };
 
   const themeMenuItems = useMemo(
     () => [
@@ -81,23 +81,15 @@ export default function AppHeader({
     [colorMode, tLogin, tShell],
   );
 
-  const currentThemeLabel = useMemo(() => {
-    if (colorMode === "system") {
-      return tShell("themeSystem");
-    }
-    return colorMode === "dark"
-      ? tLogin("switchToDarkTheme")
-      : tLogin("switchToLightTheme");
-  }, [colorMode, tLogin, tShell]);
-
   const themeIcon = resolvedColorMode === "dark" ? <MoonOutlined /> : <SunOutlined />;
 
-  const onThemeMenuClick = ({ key }) => {
-    setColorMode(key);
-  };
-
-  // Navigable items use route paths as `key` (same as the sidebar). Selection is
-  // longest path-prefix match, so extra profile pages highlight without per-item `if`s.
+  /**
+   * Language and theme are set-once preferences, so they live in the profile menu
+   * rather than holding permanent slots in the top bar.
+   *
+   * Navigable entries use route paths as `key` (same as the sidebar); selection is a
+   * longest path-prefix match so extra profile pages highlight without per-item `if`s.
+   */
   const profileMenuItems = useMemo(
     () => [
       {
@@ -105,6 +97,20 @@ export default function AppHeader({
         label: tShell("profile"),
         icon: <UserOutlined />,
       },
+      { type: "divider" },
+      {
+        key: LANGUAGE_SUBMENU_KEY,
+        label: tLogin("changeLanguage"),
+        icon: <GlobalOutlined />,
+        children: languageMenuItems,
+      },
+      {
+        key: THEME_SUBMENU_KEY,
+        label: tShell("appearance"),
+        icon: themeIcon,
+        children: themeMenuItems,
+      },
+      { type: "divider" },
       {
         key: PROFILE_MENU_LOGOUT_KEY,
         label: logoutLabel,
@@ -112,17 +118,28 @@ export default function AppHeader({
         icon: <LogoutOutlined />,
       },
     ],
-    [logoutLabel, tShell],
+    [languageMenuItems, logoutLabel, tLogin, tShell, themeIcon, themeMenuItems],
   );
 
   const profileSelectedKeys = useMemo(
-    () => selectedKeysForPath(pathname, profileMenuItems),
-    [pathname, profileMenuItems],
+    () => selectedKeysForPath(pathname, [{ key: ROUTES.profile }]),
+    [pathname],
   );
+
+  const localeKeys = useMemo(() => new Set(routing.locales), []);
 
   const onProfileMenuClick = ({ key }) => {
     if (key === PROFILE_MENU_LOGOUT_KEY) {
       onLogout?.();
+      return;
+    }
+    if (localeKeys.has(key)) {
+      markUiLocaleOverride();
+      router.replace(pathname, { locale: key });
+      return;
+    }
+    if (key === "system" || key === "light" || key === "dark") {
+      setColorMode(key);
       return;
     }
     if (typeof key === "string" && key.startsWith("/")) {
@@ -130,121 +147,76 @@ export default function AppHeader({
     }
   };
 
+  const toggleLabel = collapsed
+    ? tShell("expandSidebar")
+    : tShell("collapseSidebar");
+
   return (
     <Header
-      className="flex shrink-0 items-center gap-3 px-4 py-0 lg:gap-4 lg:px-6"
+      className="shell-header"
       style={{
         height: SHELL_CHROME_HEIGHT_PX,
         minHeight: SHELL_CHROME_HEIGHT_PX,
-        paddingBlock: 0,
-        paddingInline: 20,
         lineHeight: `${SHELL_CHROME_HEIGHT_PX}px`,
         background: colorBgContainer,
         borderBottom: `1px solid ${colorSplit}`,
       }}
     >
+      <Tooltip title={toggleLabel}>
+        <button
+          type="button"
+          className="shell-header-icon-btn"
+          onClick={() => setCollapsed((prev) => !prev)}
+          aria-label={toggleLabel}
+          aria-expanded={!collapsed}
+        >
+          <MenuOutlined />
+        </button>
+      </Tooltip>
+
       {menuItems?.length ? (
-        <div className="flex min-w-0 w-fit max-w-[min(52vw,42rem)] items-center pe-3 lg:pe-4">
+        <div className="shell-header-breadcrumb">
           <AppBreadcrumb menuItems={menuItems} />
         </div>
-      ) : (
-        <div className="min-w-0 w-fit" />
-      )}
-      <div
-        className="hidden h-6 w-px shrink-0 lg:block"
-        style={{ backgroundColor: colorSplit }}
-        aria-hidden
-      />
-      <div className="mx-3 hidden flex-1 justify-center lg:flex">
-        <div className="w-full max-w-xs xl:max-w-sm">
-          <Input
-            readOnly
-            allowClear={false}
-            prefix={<SearchOutlined style={{ color: token.colorTextDescription }} />}
-            placeholder={tShell("globalSearchPlaceholder")}
-            aria-label={tShell("globalSearchAria")}
-            className="h-9"
-          />
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center">
-        <div
-          className="me-3 hidden h-6 w-px shrink-0 lg:block"
-          style={{ backgroundColor: colorSplit }}
-          aria-hidden
-        />
-        <Space size={8} wrap={false} className="shrink-0 items-center">
-        <Dropdown
-          menu={{ items: languageMenuItems, onClick: onLanguageMenuClick }}
-          placement="bottomRight"
-          trigger={["click"]}
+      ) : null}
+
+      <div className="shell-header-spacer" />
+
+      <BranchSwitcher companyName={companyName} />
+      <HeaderQuickCreate navItems={menuItems} />
+      <NotificationBell />
+
+      <Dropdown
+        menu={{
+          items: profileMenuItems,
+          selectable: true,
+          selectedKeys: profileSelectedKeys,
+          onClick: onProfileMenuClick,
+          style: { boxShadow: "none" },
+        }}
+        popupRender={(menu) => (
+          <div className="shell-profile-popup">
+            <HeaderProfileMenuIdentity />
+            <div className="shell-profile-popup-divider" aria-hidden />
+            {isValidElement(menu)
+              ? cloneElement(menu, {
+                  style: { boxShadow: "none", background: "transparent" },
+                })
+              : menu}
+          </div>
+        )}
+        placement="bottomRight"
+        trigger={["click"]}
+      >
+        <button
+          type="button"
+          className="shell-header-avatar-btn"
+          aria-label={tShell("profileMenu")}
+          title={tShell("profile")}
         >
-          <Button
-            type="default"
-            className={shellIconBtnClass}
-            aria-label={tLogin("changeLanguage")}
-            title={tLogin("changeLanguage")}
-          >
-            <GlobalOutlined style={{ color: token.colorTextSecondary }} />
-          </Button>
-        </Dropdown>
-        <Dropdown
-          menu={{ items: themeMenuItems, onClick: onThemeMenuClick }}
-          placement="bottomRight"
-          trigger={["click"]}
-        >
-          <Button
-            type="default"
-            className={shellIconBtnClass}
-            aria-label={currentThemeLabel}
-            title={currentThemeLabel}
-          >
-            <span style={{ color: token.colorWarning }}>{themeIcon}</span>
-          </Button>
-        </Dropdown>
-        <NotificationBell />
-        <Dropdown
-          menu={{
-            items: profileMenuItems,
-            selectable: true,
-            selectedKeys: profileSelectedKeys,
-            onClick: onProfileMenuClick,
-            style: { boxShadow: "none" },
-          }}
-          popupRender={(menu) => (
-            <div
-              className="w-56 overflow-hidden rounded-lg"
-              style={{
-                backgroundColor: token.colorBgElevated,
-                boxShadow: token.boxShadowSecondary,
-              }}
-            >
-              <HeaderProfileMenuIdentity />
-              <div
-                style={{ borderTop: `1px solid ${token.colorSplit}` }}
-                aria-hidden
-              />
-              {isValidElement(menu)
-                ? cloneElement(menu, {
-                    style: { boxShadow: "none", background: "transparent" },
-                  })
-                : menu}
-            </div>
-          )}
-          placement="bottomRight"
-          trigger={["click"]}
-        >
-          <Button
-            type="default"
-            className={shellIconBtnClass}
-            aria-label={tShell("profileMenu")}
-            title={tShell("profile")}
-          >
-            <UserOutlined style={{ color: token.colorTextSecondary }} />
-          </Button>
-        </Dropdown>
-        </Space>
-      </div>
+          <HeaderProfileAvatar size={28} />
+        </button>
+      </Dropdown>
     </Header>
   );
 }

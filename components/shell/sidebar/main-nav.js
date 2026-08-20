@@ -1,40 +1,59 @@
 import {
+  AlertOutlined,
   ApartmentOutlined,
   AppstoreOutlined,
+  BankOutlined,
+  BellOutlined,
+  CalculatorOutlined,
+  ClusterOutlined,
+  ControlOutlined,
   CreditCardOutlined,
   DashboardOutlined,
+  DatabaseOutlined,
   DeploymentUnitOutlined,
+  DollarOutlined,
   DropboxOutlined,
   FieldTimeOutlined,
-  FileSearchOutlined,
-  GoldOutlined,
+  FileTextOutlined,
   HistoryOutlined,
   IdcardOutlined,
+  InboxOutlined,
+  KeyOutlined,
+  LockOutlined,
+  PercentageOutlined,
+  RetweetOutlined,
   SafetyCertificateOutlined,
+  SettingOutlined,
   ShopOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
+  SolutionOutlined,
+  SwapOutlined,
   TagsOutlined,
   TrademarkOutlined,
   TeamOutlined,
+  UsergroupAddOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-
-const SECTION_DIVIDER_CLASS =
-  "mt-2 pt-2 border-t border-black/10 dark:border-white/10";
 
 /**
  * Single place for main-app routes shown in the sidebar.
  *
+ * Shape: top-level entries are the modules shown in the icon rail; their `children`
+ * are the pages listed in the panel beside it. Each icon must be unique — in a 56px
+ * rail and a flat page list the icon is the only thing distinguishing two rows.
+ *
  * Adding items:
  * - Add a route constant here (and matching `app/[locale]/...` page).
- * - Push an entry from `buildMainNavItems` (flat item), or use `children` for a collapsible submenu:
+ * - Push an entry from `buildMainNavItems` (flat item), or use `children` for a module:
  *   { key: "group-key", icon: <Icon />, label: t("navX"), children: [{ key: "/main/foo", label: t("navFoo") }] }
  * - `key` for navigation must be the path you pass to `router.push` (e.g. "/main/overview").
  *   Selection uses longest prefix match on those path keys (see `selectedKeysForPath`).
  * - Set `module` on leaves (and optionally groups) to gate by tenant entitlements.
  * - Set `permission` on leaves to gate by RBAC view (`resource_key` from config/rbac.php).
  *   Import/export (and any extra action) must also be listed for that resource in rbac.php.
+ * - Set `group` on leaves to sub-head them inside the panel (see Settings).
+ * - Set `placement: "footer"` on a module to pin it to the bottom of the rail.
  * - Filtering is applied in `buildMainNavItems` (modules then permissions).
  */
 export const ROUTES = {
@@ -155,9 +174,8 @@ export function buildMainNavItems(t, options = {}) {
     },
     {
       key: "master-data",
-      icon: <AppstoreOutlined />,
+      icon: <DatabaseOutlined />,
       label: t("navMasterData"),
-      className: SECTION_DIVIDER_CLASS,
       children: [
         {
           key: ROUTES.brands,
@@ -175,7 +193,7 @@ export function buildMainNavItems(t, options = {}) {
         },
         {
           key: ROUTES.vatGroups,
-          icon: <GoldOutlined />,
+          icon: <PercentageOutlined />,
           label: t("navVatGroups"),
           module: "master_data",
           permission: "vat_groups",
@@ -189,7 +207,7 @@ export function buildMainNavItems(t, options = {}) {
         },
         {
           key: ROUTES.unitOfMeasurements,
-          icon: <DeploymentUnitOutlined />,
+          icon: <CalculatorOutlined />,
           label: t("navUnitOfMeasurements"),
           module: "inventory",
           permission: "unit_of_measurements",
@@ -203,7 +221,7 @@ export function buildMainNavItems(t, options = {}) {
         },
         {
           key: ROUTES.currencies,
-          icon: <GoldOutlined />,
+          icon: <DollarOutlined />,
           label: t("navCurrencies"),
           module: "master_data",
           permission: "currencies",
@@ -235,19 +253,54 @@ export function buildMainNavItems(t, options = {}) {
       key: "inventory",
       icon: <DropboxOutlined />,
       label: t("navInventory"),
-      className: SECTION_DIVIDER_CLASS,
+      /** `/main/stock` only redirects to balances, so it is not a leaf to match on. */
+      matchPath: ROUTES.stock,
       children: [
         {
           key: ROUTES.items,
-          icon: <DropboxOutlined />,
+          icon: <AppstoreOutlined />,
           label: t("navItems"),
+          group: t("navGroupCatalog"),
           module: "inventory",
           permission: "items",
         },
         {
-          key: ROUTES.stock,
-          icon: <ShopOutlined />,
-          label: t("navStock"),
+          key: ROUTES.stockBalances,
+          icon: <InboxOutlined />,
+          label: t("navStockBalances"),
+          group: t("navGroupStockLevels"),
+          module: "inventory",
+          permission: "stock",
+        },
+        {
+          key: ROUTES.stockPurchasingAlerts,
+          icon: <AlertOutlined />,
+          label: t("navPurchasingAlerts"),
+          group: t("navGroupStockLevels"),
+          module: "inventory",
+          permission: "stock",
+        },
+        {
+          key: ROUTES.stockMovements,
+          icon: <SwapOutlined />,
+          label: t("navStockMovements"),
+          group: t("navGroupStockLevels"),
+          module: "inventory",
+          permission: "stock",
+        },
+        {
+          key: ROUTES.stockPurchaseOrders,
+          icon: <FileTextOutlined />,
+          label: t("navPurchaseOrders"),
+          group: t("navGroupDocuments"),
+          module: "inventory",
+          permission: "stock",
+        },
+        {
+          key: ROUTES.stockTransfers,
+          icon: <RetweetOutlined />,
+          label: t("navStockTransfers"),
+          group: t("navGroupDocuments"),
           module: "inventory",
           permission: "stock",
         },
@@ -257,11 +310,10 @@ export function buildMainNavItems(t, options = {}) {
       key: "sales",
       icon: <ShoppingCartOutlined />,
       label: t("navSales"),
-      className: SECTION_DIVIDER_CLASS,
       children: [
         {
           key: ROUTES.customerGroups,
-          icon: <TeamOutlined />,
+          icon: <UsergroupAddOutlined />,
           label: t("navCustomerGroups"),
           module: "sales",
           permission: "customer_groups",
@@ -279,18 +331,17 @@ export function buildMainNavItems(t, options = {}) {
       key: "purchasing",
       icon: <ShoppingOutlined />,
       label: t("navPurchasing"),
-      className: SECTION_DIVIDER_CLASS,
       children: [
         {
           key: ROUTES.supplierGroups,
-          icon: <TeamOutlined />,
+          icon: <ClusterOutlined />,
           label: t("navSupplierGroups"),
           module: "purchasing",
           permission: "supplier_groups",
         },
         {
           key: ROUTES.suppliers,
-          icon: <UserOutlined />,
+          icon: <SolutionOutlined />,
           label: t("navSuppliers"),
           module: "purchasing",
           permission: "suppliers",
@@ -301,7 +352,6 @@ export function buildMainNavItems(t, options = {}) {
       key: "administration",
       icon: <SafetyCertificateOutlined />,
       label: t("navAdministration"),
-      className: SECTION_DIVIDER_CLASS,
       children: [
         {
           key: ROUTES.branches,
@@ -312,21 +362,21 @@ export function buildMainNavItems(t, options = {}) {
         },
         {
           key: ROUTES.users,
-          icon: <UserOutlined />,
+          icon: <TeamOutlined />,
           label: t("navUsers"),
           module: "core",
           permission: "users",
         },
         {
           key: ROUTES.roles,
-          icon: <SafetyCertificateOutlined />,
+          icon: <KeyOutlined />,
           label: t("navRoles"),
           module: "core",
           permission: "roles",
         },
         {
           key: ROUTES.permissions,
-          icon: <FileSearchOutlined />,
+          icon: <LockOutlined />,
           label: t("navPermissions"),
           module: "core",
           permission: "permissions",
@@ -337,6 +387,37 @@ export function buildMainNavItems(t, options = {}) {
           label: t("navAuditLog"),
           module: "core",
           permission: "audits",
+        },
+      ],
+    },
+    {
+      key: "settings",
+      icon: <SettingOutlined />,
+      label: t("navSettings"),
+      placement: "footer",
+      /** `/main/settings` only redirects, so it is not a leaf the rail can match on. */
+      matchPath: ROUTES.settings,
+      children: [
+        {
+          key: ROUTES.settingsCompanyProfile,
+          icon: <BankOutlined />,
+          label: t("navCompanyProfile"),
+          group: t("settingsCompanyGroup"),
+          module: "core",
+        },
+        {
+          key: ROUTES.settingsCompanySettings,
+          icon: <ControlOutlined />,
+          label: t("navCompanySettings"),
+          group: t("settingsCompanyGroup"),
+          module: "core",
+        },
+        {
+          key: ROUTES.settingsPreferences,
+          icon: <BellOutlined />,
+          label: t("navPreferences"),
+          group: t("settingsUserGroup"),
+          module: "core",
         },
       ],
     },
@@ -386,6 +467,49 @@ export function selectedKeysForPath(pathname, items) {
     }
   }
   return best ? [best] : [pathname];
+}
+
+/**
+ * Which top-level module (rail entry) owns `pathname`.
+ * Longest path-prefix match across each module's subtree, so `/main/stock/movements`
+ * resolves to Inventory without listing every sub-route in the rail.
+ *
+ * @param {string} pathname
+ * @param {import("antd").MenuProps["items"]} items
+ * @returns {string | null} Module `key`, or null when nothing matches.
+ */
+export function findModuleKeyForPath(pathname, items) {
+  let bestModuleKey = null;
+  let bestLength = -1;
+
+  for (const item of items ?? []) {
+    if (!item) continue;
+    const candidates = collectNavPathKeys([item]);
+    if (typeof item.matchPath === "string") {
+      candidates.push(item.matchPath);
+    }
+    for (const key of candidates) {
+      if (pathname !== key && !pathname.startsWith(`${key}/`)) continue;
+      if (key.length > bestLength) {
+        bestLength = key.length;
+        bestModuleKey = item.key;
+      }
+    }
+  }
+
+  return bestModuleKey;
+}
+
+/**
+ * Landing page for a module — the first navigable path in its subtree.
+ * Used when the rail icon is clicked.
+ *
+ * @param {import("antd").MenuProps["items"][number]} item
+ * @returns {string | null}
+ */
+export function firstNavPathIn(item) {
+  const [first] = collectNavPathKeys([item]);
+  return first ?? null;
 }
 
 /**

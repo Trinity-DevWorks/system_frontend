@@ -2,11 +2,11 @@
 
 import { centralApi } from "@/API/CentralApiService";
 import tenantApiService from "@/API/TenantApiService";
+import { isRtlLocale } from "@/i18n/constants";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import {
   clearAllSidebarBookmarks,
   loadSidebarBookmarks,
-  removeSidebarBookmark,
   saveSidebarBookmarks,
 } from "@/lib/sidebar-bookmarks";
 import { resolveHostMode } from "@/lib/runtime-mode";
@@ -18,9 +18,7 @@ import { clearQueryCacheOnAuthChange } from "@/lib/clear-query-cache-on-auth";
 import { useTenantModules } from "@/lib/tenant-modules";
 import { usePermissions } from "@/lib/permissions";
 import { useTenantSettings } from "@/lib/tenant-settings";
-import {
-  hasUiLocaleOverride,
-} from "@/lib/ui-locale-preference";
+import { hasUiLocaleOverride } from "@/lib/ui-locale-preference";
 import { useQueryClient } from "@tanstack/react-query";
 import { App, Layout, theme as antdTheme } from "antd";
 import AppHeader from "./header/AppHeader";
@@ -28,12 +26,12 @@ import AppShellMainContent from "./AppShellMainContent";
 import NotificationRealtimeProvider from "./NotificationRealtimeProvider";
 import { SidebarCollapseProvider } from "./SidebarCollapseContext";
 import AppSidebar from "./sidebar/AppSidebar";
-import { decorateMenuItemsWithBookmarkStars } from "./sidebar/decorate-menu-bookmark-stars";
-import { filterMenuItemsByQuery } from "./sidebar/filter-nav-items";
 import {
   ROUTES,
   buildMainNavItems,
+  findModuleKeyForPath,
   findNavLabelForPath,
+  firstNavPathIn,
   selectedKeysForPath,
 } from "./sidebar/main-nav";
 import { useLocale, useTranslations } from "next-intl";
@@ -49,14 +47,8 @@ export default function AppShell({ children }) {
   const queryClient = useQueryClient();
   const { message } = App.useApp();
   const {
-    token: { colorBgContainer, colorBgLayout, borderRadiusLG, colorSplit },
+    token: { colorBgContainer, colorBgLayout, colorSplit },
   } = antdTheme.useToken();
-
-  /** rc-menu generates non-stable IDs during SSR; render Menu only after mount. */
-  const [menuMounted, setMenuMounted] = useState(false);
-  useEffect(() => {
-    queueMicrotask(() => setMenuMounted(true));
-  }, []);
 
   const { moduleSet, isError } = useTenantModules();
   const { can: canPermission } = usePermissions();
@@ -97,10 +89,6 @@ export default function AppShell({ children }) {
   );
 
   const [searchQuery, setSearchQuery] = useState("");
-  const displayMenuItems = useMemo(
-    () => filterMenuItemsByQuery(menuItems, searchQuery),
-    [menuItems, searchQuery],
-  );
 
   /** Empty until mount so SSR + first client paint match (localStorage differs from server). */
   const [bookmarks, setBookmarks] = useState([]);
@@ -110,7 +98,7 @@ export default function AppShell({ children }) {
     });
   }, []);
 
-  const bookmarkedPathsSet = useMemo(
+  const bookmarkedPaths = useMemo(
     () => new Set(bookmarks.map((b) => b.path)),
     [bookmarks],
   );
@@ -122,12 +110,9 @@ export default function AppShell({ children }) {
         path.split("/").filter(Boolean).pop() ||
         path;
       setBookmarks((prev) => {
-        if (prev.some((b) => b.path === path)) {
-          const next = prev.filter((b) => b.path !== path);
-          saveSidebarBookmarks(next);
-          return next;
-        }
-        const next = [...prev, { path, label }];
+        const next = prev.some((b) => b.path === path)
+          ? prev.filter((b) => b.path !== path)
+          : [...prev, { path, label }];
         saveSidebarBookmarks(next);
         return next;
       });
@@ -135,57 +120,66 @@ export default function AppShell({ children }) {
     [menuItems],
   );
 
-  const menuItemsWithBookmarkStars = useMemo(
-    () =>
-      decorateMenuItemsWithBookmarkStars(displayMenuItems, {
-        labelSourceItems: menuItems,
-        bookmarkedPathsSet,
-        onToggleBookmark: handleToggleBookmark,
-        addBookmarkAria: t("bookmarkAriaAdd"),
-        removeBookmarkAria: t("bookmarkAriaRemove"),
-      }),
-    [
-      displayMenuItems,
-      menuItems,
-      bookmarkedPathsSet,
-      handleToggleBookmark,
-      t,
-    ],
-  );
-
-  const onMenuClick = ({ key, domEvent }) => {
-    const el = domEvent?.target;
-    if (el instanceof Element && el.closest(".shell-nav-bookmark-star")) {
-      return;
-    }
-    router.push(key);
-  };
+  const handleClearBookmarks = useCallback(() => {
+    setBookmarks(clearAllSidebarBookmarks());
+  }, []);
 
   const selectedKeys = useMemo(
     () => selectedKeysForPath(pathname, menuItems),
     [menuItems, pathname],
   );
 
-  const handleRemoveBookmark = useCallback((path) => {
-    setBookmarks(removeSidebarBookmark(path));
-  }, []);
+  const routeModuleKey = useMemo(
+    () => findModuleKeyForPath(pathname, menuItems),
+    [menuItems, pathname],
+  );
 
-  const handleClearAllBookmarks = useCallback(() => {
-    setBookmarks(clearAllSidebarBookmarks());
-  }, []);
+  /** Rail clicks swap the panel immediately; the route catches up a tick later. */
+  const [pendingModuleKey, setPendingModuleKey] = useState(null);
+  useEffect(() => {
+    setPendingModuleKey(null);
+  }, [pathname]);
 
-  const handleBookmarkNavigate = useCallback(
+  const activeModuleKey =
+    pendingModuleKey ?? routeModuleKey ?? menuItems?.[0]?.key ?? null;
+
+  const handleSelectModule = useCallback(
+    (navModule) => {
+      setPendingModuleKey(navModule.key);
+      if (navModule.key === routeModuleKey) return;
+      const target = firstNavPathIn(navModule);
+      if (target) router.push(target);
+    },
+    [routeModuleKey, router],
+  );
+
+  const handleNavigate = useCallback(
     (path) => {
       router.push(path);
     },
     [router],
   );
 
-  const settingsActive = pathname === ROUTES.settings || pathname.startsWith(`${ROUTES.settings}/`);
-
-  const handleSettings = useCallback(() => {
-    router.push(ROUTES.settings);
+  const handleBrandClick = useCallback(() => {
+    router.push(ROUTES.overview);
   }, [router]);
+
+  const sidebarLabels = useMemo(
+    () => ({
+      pinned: t("bookmarks"),
+      pages: t("navPages"),
+      clearAll: t("clearAllBookmarks"),
+      searchResults: t("searchResults"),
+      searchPlaceholder: t("searchNavPlaceholder"),
+      searchAria: t("searchNavAria"),
+      noResults: t("searchNoResults"),
+      addBookmark: t("bookmarkAriaAdd"),
+      removeBookmark: t("bookmarkAriaRemove"),
+      modulesNav: t("modulesNavAria"),
+      pagesNav: t("pagesNavAria"),
+    }),
+    [t],
+  );
 
   const handleLogout = async () => {
     const host =
@@ -217,48 +211,37 @@ export default function AppShell({ children }) {
     <App>
       <NotificationRealtimeProvider>
         <SidebarCollapseProvider>
-          <Layout className="h-dvh overflow-hidden">
+          <Layout hasSider className="h-dvh overflow-hidden">
             <AppSidebar
-              colorBgContainer={colorBgContainer}
-              colorSplit={colorSplit}
-              menuMounted={menuMounted}
-              selectedKeys={selectedKeys}
-              menuItems={menuItemsWithBookmarkStars}
-              mainNavItems={menuItems}
-              onMenuClick={onMenuClick}
-              brand={workspaceBrand}
-              brandLogo={profile.logo}
-              expandLabel={t("expandSidebar")}
-              collapseLabel={t("collapseSidebar")}
-              onSettings={handleSettings}
-              settingsLabel={t("navSettings")}
-              settingsActive={settingsActive}
-              searchPlaceholder={t("searchNavPlaceholder")}
+              navItems={menuItems}
+              activeModuleKey={activeModuleKey}
+              onSelectModule={handleSelectModule}
+              selectedPath={selectedKeys[0] ?? null}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
               bookmarks={bookmarks}
-              bookmarksTitle={t("bookmarks")}
-              removeBookmarkAria={t("removeBookmark")}
-              onRemoveBookmark={handleRemoveBookmark}
-              onClearAllBookmarks={handleClearAllBookmarks}
-              clearAllBookmarksLabel={t("clearAllBookmarks")}
-              onBookmarkNavigate={handleBookmarkNavigate}
-              currentPath={pathname}
+              bookmarkedPaths={bookmarkedPaths}
+              onToggleBookmark={handleToggleBookmark}
+              onClearBookmarks={handleClearBookmarks}
+              onNavigate={handleNavigate}
+              brand={workspaceBrand}
+              brandLogo={profile.logo}
+              onBrandClick={handleBrandClick}
+              isRtl={isRtlLocale(locale)}
+              labels={sidebarLabels}
             />
             <Layout className="min-h-0 min-w-0 flex-1 overflow-hidden">
               <AppHeader
                 colorBgContainer={colorBgContainer}
                 colorSplit={colorSplit}
                 menuItems={menuItems}
+                companyName={workspaceBrand}
                 onLogout={handleLogout}
                 logoutLabel={t("logout")}
               />
               <Content
                 className="m-0 flex min-h-0 flex-1 flex-col overflow-hidden p-3"
-                style={{
-                  background: colorBgLayout,
-                  // borderRadius: borderRadiusLG,
-                }}
+                style={{ background: colorBgLayout }}
               >
                 <AppShellMainContent>{children}</AppShellMainContent>
               </Content>
