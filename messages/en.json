@@ -2698,7 +2698,7 @@
     "auditable_role": "Role",
     "auditable_permission": "Permission",
     "auditable_company_profile": "Company profile",
-    "auditable_tenant_setting": "Tenant settings",
+    "auditable_company_setting": "Company settings",
     "auditable_attachment": "Attachment",
     "auditable_brand": "Brand",
     "auditable_category": "Category",

@@ -2698,7 +2698,7 @@
     "auditable_role": "دور",
     "auditable_permission": "صلاحية",
     "auditable_company_profile": "ملف الشركة",
-    "auditable_tenant_setting": "إعدادات المستأجر",
+    "auditable_company_setting": "إعدادات الشركة",
     "auditable_attachment": "مرفق",
     "auditable_brand": "علامة تجارية",
     "auditable_category": "فئة",

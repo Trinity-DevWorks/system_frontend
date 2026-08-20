@@ -3,14 +3,14 @@ import tenantApiService from "@/API/TenantApiService";
 /**
  * @returns {Promise<Record<string, unknown>>}
  */
-export function fetchTenantSettings() {
-  return tenantApiService("GET", "tenant-settings");
+export function fetchCompanySettings() {
+  return tenantApiService("GET", "company-settings");
 }
 
 /**
  * @param {Record<string, unknown>} body
  * @returns {Promise<Record<string, unknown>>}
  */
-export function updateTenantSettings(body) {
-  return tenantApiService("PUT", "tenant-settings", body);
+export function updateCompanySettings(body) {
+  return tenantApiService("PUT", "company-settings", body);
 }

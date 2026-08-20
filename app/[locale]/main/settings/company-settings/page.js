@@ -5,10 +5,10 @@ import { areSettingsFormValuesDirty } from "../settingsFormDirty";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import {
-  tenantSettingsQueryKey,
-  useTenantSettings,
-} from "@/lib/tenant-settings";
-import { updateTenantSettings } from "@/services/tenantSettingsApi";
+  companySettingsQueryKey,
+  useCompanySettings,
+} from "@/lib/company-settings";
+import { updateCompanySettings } from "@/services/companySettingsApi";
 import { EditOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Form, Space, Spin } from "antd";
@@ -54,11 +54,11 @@ export default function CompanySettingsPage() {
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
-  const { settings, raw, isLoading, isError, isReady } = useTenantSettings();
+  const { settings, raw, isLoading, isError, isReady } = useCompanySettings();
 
   const hostname =
     typeof window !== "undefined" ? window.location.hostname : "";
-  const queryKey = tenantSettingsQueryKey(hostname);
+  const queryKey = companySettingsQueryKey(hostname);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editBaseline, setEditBaseline] = useState(
@@ -100,7 +100,7 @@ export default function CompanySettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: (values) =>
-      updateTenantSettings({
+      updateCompanySettings({
         country: emptyToNull(values.country),
         preferred_language: values.preferred_language,
         timezone: values.timezone,

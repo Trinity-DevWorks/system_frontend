@@ -23,7 +23,7 @@ export const AUDIT_AUDITABLE_TYPE_VALUES = Object.freeze([
   "role",
   "permission",
   "company_profile",
-  "tenant_setting",
+  "company_setting",
   "attachment",
   "brand",
   "category",
