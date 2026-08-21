@@ -11,13 +11,12 @@
 import NotificationListItem from "@/components/shell/header/NotificationListItem";
 import { navigateNotificationActionPath } from "@/lib/drawer/navigateNotificationActionPath";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useNotificationReadMutations } from "@/lib/notifications/useNotificationReadMutations";
 import {
   clearAllNotifications,
   clearReadNotifications,
   fetchNotifications,
   fetchUnreadNotificationCount,
-  markAllNotificationsRead,
-  markNotificationRead,
 } from "@/services/notificationsApi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -50,6 +49,8 @@ function NotificationsPageInner() {
   const [filter, setFilter] = useState(/** @type {"all" | "unread"} */ ("all"));
   const [page, setPage] = useState(1);
 
+  const { markReadMutation, markAllMutation } = useNotificationReadMutations();
+
   const unreadQuery = useQuery({
     queryKey: ["tenant", "notifications", "unread-count"],
     queryFn: fetchUnreadNotificationCount,
@@ -77,16 +78,6 @@ function NotificationsPageInner() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["tenant", "notifications"] });
   };
-
-  const markReadMutation = useMutation({
-    mutationFn: markNotificationRead,
-    onSuccess: invalidate,
-  });
-
-  const markAllMutation = useMutation({
-    mutationFn: markAllNotificationsRead,
-    onSuccess: invalidate,
-  });
 
   const clearReadMutation = useMutation({
     mutationFn: clearReadNotifications,
@@ -140,14 +131,10 @@ function NotificationsPageInner() {
     [t, token.colorPrimary, unreadCount],
   );
 
-  const handleItemClick = async (row) => {
+  const handleItemClick = (row) => {
     if (!row?.id) return;
     if (!row.read) {
-      try {
-        await markReadMutation.mutateAsync(String(row.id));
-      } catch {
-        // continue
-      }
+      markReadMutation.mutate(String(row.id));
     }
     navigateNotificationActionPath({
       actionPath: typeof row.action_path === "string" ? row.action_path : null,

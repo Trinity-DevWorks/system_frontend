@@ -12,14 +12,13 @@ import NotificationListItem from "@/components/shell/header/NotificationListItem
 import { ROUTES } from "@/components/shell/sidebar/main-nav";
 import { navigateNotificationActionPath } from "@/lib/drawer/navigateNotificationActionPath";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { useNotificationReadMutations } from "@/lib/notifications/useNotificationReadMutations";
 import {
   fetchNotifications,
   fetchUnreadNotificationCount,
-  markAllNotificationsRead,
-  markNotificationRead,
 } from "@/services/notificationsApi";
 import { ArrowRightOutlined, BellOutlined } from "@ant-design/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Badge, Empty, Popover, Skeleton, theme } from "antd";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -49,9 +48,9 @@ function NotificationBellInner() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const { token } = theme.useToken();
   const [open, setOpen] = useState(false);
+  const { markReadMutation, markAllMutation } = useNotificationReadMutations();
 
   const unreadQuery = useQuery({
     queryKey: ["tenant", "notifications", "unread-count"],
@@ -72,20 +71,6 @@ function NotificationBellInner() {
     enabled: open,
   });
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["tenant", "notifications"] });
-  };
-
-  const markReadMutation = useMutation({
-    mutationFn: markNotificationRead,
-    onSuccess: invalidate,
-  });
-
-  const markAllMutation = useMutation({
-    mutationFn: markAllNotificationsRead,
-    onSuccess: invalidate,
-  });
-
   const unreadCount = unreadQuery.data ?? 0;
   const items = listQuery.data?.items ?? [];
   const loading = open && listQuery.isFetching && items.length === 0;
@@ -98,15 +83,11 @@ function NotificationBellInner() {
     }
   };
 
-  const handleItemClick = async (row) => {
+  const handleItemClick = (row) => {
     if (!row?.id) return;
 
     if (!row.read) {
-      try {
-        await markReadMutation.mutateAsync(String(row.id));
-      } catch {
-        // Navigate anyway; badge refreshes on next poll.
-      }
+      markReadMutation.mutate(String(row.id));
     }
 
     setOpen(false);

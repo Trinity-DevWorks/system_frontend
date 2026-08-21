@@ -1,26 +1,24 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
-import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantListRowDelete } from "@/lib/tables/useTenantListRowDelete";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteVatGroup, fetchVatGroups } from "@/services/vatGroupsApi";
 import VatGroupDrawer from "./drawer/VatGroupDrawer";
 import { getVatGroupStatusLabel, getVatGroupTableColumns } from "./getVatGroupTableColumns";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 
 function VatGroupsTable() {
   const t = useTranslations("VatGroups");
   const tApiErrors = useTranslations("ApiErrors");
   const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const access = useResourceAccess("vat_groups");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
@@ -61,25 +59,16 @@ function VatGroupsTable() {
     sessionRef: drawerSessionRef,
   } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
-  const deleteMutation = useMutation({
-    mutationFn: (/** @type {number} */ id) => deleteVatGroup(id),
-    onError: (err) => {
-      notification.error({
-        title: t("deleteError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-    },
-    onSuccess: (_data, deletedId) => {
-      message.success(t("deleteSuccess"));
-      queryClient.removeQueries({ queryKey: ["tenant", "vat-groups", deletedId] });
-      const { open, recordId } = drawerSessionRef.current;
-      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
-        closeDrawer();
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenant", "vat-groups"] });
-    },
+  const { requestDelete: requestDeleteVatGroup } = useTenantListRowDelete({
+    listQueryKey: ["tenant", "vat-groups"],
+    deleteOne: deleteVatGroup,
+    t,
+    tApiErrors,
+    notification,
+    message,
+    modal,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
+    closeDrawer,
   });
 
   const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
@@ -96,29 +85,6 @@ function VatGroupsTable() {
     getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
-
-  const requestDeleteVatGroup = useCallback(
-    (record) => {
-      const id = record?.id;
-      if (id == null) return;
-      const name = typeof record?.name === "string" ? record.name : String(id);
-      modal.confirm({
-        title: t("deleteConfirmTitle"),
-        content: t("deleteConfirmContent", { name }),
-        okText: t("deleteConfirmOk"),
-        okButtonProps: { danger: true },
-        cancelText: t("deleteConfirmCancel"),
-        onOk: async () => {
-          try {
-            await deleteMutation.mutateAsync(Number(id));
-          } catch {
-            // onError on mutation already shows feedback; resolve so confirm closes.
-          }
-        },
-      });
-    },
-    [deleteMutation, modal, t],
-  );
 
   const columns = useMemo(
     () =>

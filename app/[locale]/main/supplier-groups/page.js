@@ -1,26 +1,24 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
-import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantListRowDelete } from "@/lib/tables/useTenantListRowDelete";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteSupplierGroup, fetchSupplierGroups } from "@/services/supplierGroupsApi";
 import SupplierGroupDrawer from "./drawer/SupplierGroupDrawer";
 import { getSupplierGroupStatusLabel, getSupplierGroupTableColumns } from "./getSupplierGroupTableColumns";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 
 function SupplierGroupsTable() {
   const t = useTranslations("SupplierGroups");
   const tApiErrors = useTranslations("ApiErrors");
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
-  const queryClient = useQueryClient();
   const access = useResourceAccess("supplier_groups");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
@@ -61,25 +59,16 @@ function SupplierGroupsTable() {
     sessionRef: drawerSessionRef,
   } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
-  const deleteMutation = useMutation({
-    mutationFn: (/** @type {number} */ id) => deleteSupplierGroup(id),
-    onError: (err) => {
-      notification.error({
-        title: t("deleteError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-    },
-    onSuccess: (_data, deletedId) => {
-      message.success(t("deleteSuccess"));
-      queryClient.removeQueries({ queryKey: ["tenant", "supplier-groups", deletedId] });
-      const { open, recordId } = drawerSessionRef.current;
-      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
-        closeDrawer();
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenant", "supplier-groups"] });
-    },
+  const { requestDelete: requestDeleteSupplierGroup } = useTenantListRowDelete({
+    listQueryKey: ["tenant", "supplier-groups"],
+    deleteOne: deleteSupplierGroup,
+    t,
+    tApiErrors,
+    notification,
+    message,
+    modal,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
+    closeDrawer,
   });
 
   const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
@@ -96,29 +85,6 @@ function SupplierGroupsTable() {
     getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
-
-  const requestDeleteSupplierGroup = useCallback(
-    (record) => {
-      const id = record?.id;
-      if (id == null) return;
-      const name = typeof record?.name === "string" ? record.name : String(id);
-      modal.confirm({
-        title: t("deleteConfirmTitle"),
-        content: t("deleteConfirmContent", { name }),
-        okText: t("deleteConfirmOk"),
-        okButtonProps: { danger: true },
-        cancelText: t("deleteConfirmCancel"),
-        onOk: async () => {
-          try {
-            await deleteMutation.mutateAsync(Number(id));
-          } catch {
-            // onError on mutation already shows feedback; resolve so confirm closes.
-          }
-        },
-      });
-    },
-    [deleteMutation, modal, t],
-  );
 
   const columns = useMemo(
     () =>

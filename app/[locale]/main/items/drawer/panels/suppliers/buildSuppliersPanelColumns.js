@@ -18,7 +18,6 @@ export function buildSuppliersPanelColumns(ctx) {
     getInlineValues,
     patchDraft,
     patchPreferred,
-    patchMutationPending,
     saveMutationPending,
     saveInline,
     cancelInline,
@@ -164,7 +163,7 @@ export function buildSuppliersPanelColumns(ctx) {
         return (
           <Radio
             checked={Boolean(r.is_preferred)}
-            disabled={readOnly || patchMutationPending || Boolean(inlineEdit)}
+            disabled={readOnly || Boolean(inlineEdit)}
             onChange={() => patchPreferred(r)}
           />
         );

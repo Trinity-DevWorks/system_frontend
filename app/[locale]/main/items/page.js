@@ -37,7 +37,6 @@ function ItemsTable() {
     selectedRowKeys,
     setSelectedRowKeys,
     getOpenDrawerItemId: drawer.getOpenDrawerItemId,
-    isDrawerViewingItem: drawer.isDrawerViewingItem,
     closeDrawer: drawer.closeDrawer,
   });
 

@@ -20,7 +20,6 @@ export function buildUomsPanelColumns(ctx) {
     getInlineValues,
     patchDraft,
     patchFlag,
-    patchMutationPending,
     saveMutationPending,
     saveInline,
     cancelInline,
@@ -209,7 +208,7 @@ export function buildUomsPanelColumns(ctx) {
         return (
           <Radio
             checked={Boolean(r.is_base)}
-            disabled={readOnly || patchMutationPending || Boolean(inlineEdit)}
+            disabled={readOnly || Boolean(inlineEdit)}
             onChange={() => patchFlag(Number(r.id), { is_base: true })}
           />
         );
@@ -233,7 +232,7 @@ export function buildUomsPanelColumns(ctx) {
         return (
           <Checkbox
             checked={Boolean(r.is_default_sale)}
-            disabled={readOnly || patchMutationPending || Boolean(inlineEdit)}
+            disabled={readOnly || Boolean(inlineEdit)}
             onChange={(e) => patchFlag(Number(r.id), { is_default_sale: e.target.checked })}
           />
         );
@@ -257,7 +256,7 @@ export function buildUomsPanelColumns(ctx) {
         return (
           <Checkbox
             checked={Boolean(r.is_default_purchase)}
-            disabled={readOnly || patchMutationPending || Boolean(inlineEdit)}
+            disabled={readOnly || Boolean(inlineEdit)}
             onChange={(e) => patchFlag(Number(r.id), { is_default_purchase: e.target.checked })}
           />
         );

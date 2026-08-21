@@ -365,19 +365,21 @@
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  border: 0;
+  border: 1px solid var(--ant-color-border-secondary);
   border-radius: 8px;
-  background: transparent;
+  background: var(--ant-color-fill-quaternary);
   padding: 0;
   font-size: 15px;
   color: var(--ant-color-text-secondary);
   transition:
     background-color 0.14s ease,
+    border-color 0.14s ease,
     color 0.14s ease;
 }
 
 .shell-header-icon-btn:hover {
-  background: color-mix(in srgb, var(--ant-color-text) 6%, transparent);
+  border-color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
   color: var(--ant-color-text);
 }
 

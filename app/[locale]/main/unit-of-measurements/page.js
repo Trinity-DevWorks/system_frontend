@@ -1,11 +1,11 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
-import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantListRowDelete } from "@/lib/tables/useTenantListRowDelete";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteUnitOfMeasurement, fetchUnitOfMeasurements } from "@/services/unitOfMeasurementsApi";
 import { fetchUnitGroupNames } from "@/services/unitGroupsApi";
@@ -15,7 +15,7 @@ import {
   getUnitOfMeasurementStatusLabel,
   getUnitOfMeasurementTableColumns,
 } from "./getUnitOfMeasurementTableColumns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
@@ -45,7 +45,6 @@ function UnitOfMeasurementsTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
-  const queryClient = useQueryClient();
   const access = useResourceAccess("unit_of_measurements");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [selectedUnitGroupId, setSelectedUnitGroupId] = useState();
@@ -138,25 +137,16 @@ function UnitOfMeasurementsTable() {
     sessionRef: drawerSessionRef,
   } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
 
-  const deleteMutation = useMutation({
-    mutationFn: (/** @type {number} */ id) => deleteUnitOfMeasurement(id),
-    onError: (err) => {
-      notification.error({
-        title: t("deleteError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-    },
-    onSuccess: (_data, deletedId) => {
-      message.success(t("deleteSuccess"));
-      queryClient.removeQueries({ queryKey: ["tenant", "unit-of-measurements", deletedId] });
-      const { open, recordId } = drawerSessionRef.current;
-      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
-        closeDrawer();
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenant", "unit-of-measurements"] });
-    },
+  const { requestDelete: requestDeleteUnitOfMeasurement } = useTenantListRowDelete({
+    listQueryKey: ["tenant", "unit-of-measurements"],
+    deleteOne: deleteUnitOfMeasurement,
+    t,
+    tApiErrors,
+    notification,
+    message,
+    modal,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
+    closeDrawer,
   });
 
   const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
@@ -173,29 +163,6 @@ function UnitOfMeasurementsTable() {
     getOpenRecordId: () => drawerSessionRef.current.recordId,
     closeDrawer,
   });
-
-  const requestDeleteUnitOfMeasurement = useCallback(
-    (record) => {
-      const id = record?.id;
-      if (id == null) return;
-      const name = typeof record?.name === "string" ? record.name : String(id);
-      modal.confirm({
-        title: t("deleteConfirmTitle"),
-        content: t("deleteConfirmContent", { name }),
-        okText: t("deleteConfirmOk"),
-        okButtonProps: { danger: true },
-        cancelText: t("deleteConfirmCancel"),
-        onOk: async () => {
-          try {
-            await deleteMutation.mutateAsync(Number(id));
-          } catch {
-            // onError on mutation already shows feedback; resolve so confirm closes.
-          }
-        },
-      });
-    },
-    [deleteMutation, modal, t],
-  );
 
   const columns = useMemo(
     () =>

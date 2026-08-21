@@ -145,14 +145,27 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
       id,
       body,
     }) => updateSupplierItem(supplierId, id, body),
+    onMutate: async ({ id, body }) => {
+      await queryClient.cancelQueries({ queryKey: supplierItemsQueryKeyValue });
+      const previous = queryClient.getQueryData(supplierItemsQueryKeyValue);
+      const list = Array.isArray(previous) ? previous : [];
+      const source = list.find((row) => row?.id === id);
+      if (source && typeof source === "object") {
+        setSupplierItemInCache(queryClient, itemId, { ...source, ...body });
+      }
+      return { previous };
+    },
     onSuccess: (saved) => {
       if (isSupplierItemRow(saved)) {
         setSupplierItemInCache(queryClient, itemId, saved);
-      } else {
-        void queryClient.invalidateQueries({ queryKey: supplierItemsQueryKeyValue });
       }
     },
-    onError: (err) => message.error(getLocalizedApiErrorMessage(tApiErrors, err)),
+    onError: (err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(supplierItemsQueryKeyValue, context.previous);
+      }
+      message.error(getLocalizedApiErrorMessage(tApiErrors, err));
+    },
   });
 
   const deleteMutation = useMutation({
