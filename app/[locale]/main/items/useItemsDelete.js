@@ -5,13 +5,11 @@
  * - app/[locale]/main/items/page.js
  */
 
-import { ITEMS_LIST_QUERY_KEY, removeItemsFromListCache } from "@/components/items/itemsQueryCache";
-import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { ITEMS_LIST_QUERY_KEY } from "@/components/items/itemsQueryCache";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantListRowDelete } from "@/lib/tables/useTenantListRowDelete";
 import { deleteItem } from "@/services/itemsApi";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
 
 /**
  * @param {{
@@ -24,7 +22,6 @@ import { useCallback } from "react";
  *   selectedRowKeys: import("react").Key[];
  *   setSelectedRowKeys: (keys: import("react").Key[]) => void;
  *   getOpenDrawerItemId: () => string | null;
- *   isDrawerViewingItem: (id: string) => boolean;
  *   closeDrawer: () => void;
  * }} args
  */
@@ -38,25 +35,19 @@ export function useItemsDelete({
   selectedRowKeys,
   setSelectedRowKeys,
   getOpenDrawerItemId,
-  isDrawerViewingItem,
   closeDrawer,
 }) {
-  const queryClient = useQueryClient();
-
-  const deleteMutation = useMutation({
-    mutationFn: (/** @type {string} */ id) => deleteItem(id),
-    onError: (err) => {
-      notification.error({
-        title: t("deleteError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-    },
-    onSuccess: (_data, deletedId) => {
-      message.success(t("deleteSuccess"));
-      removeItemsFromListCache(queryClient, [deletedId]);
-      queryClient.removeQueries({ queryKey: ["tenant", "items", deletedId] });
-      if (isDrawerViewingItem(deletedId)) closeDrawer();
-    },
+  const { requestDelete: requestDeleteItem } = useTenantListRowDelete({
+    listQueryKey: ITEMS_LIST_QUERY_KEY,
+    deleteOne: deleteItem,
+    t,
+    tApiErrors,
+    notification,
+    message,
+    modal,
+    getOpenRecordId: getOpenDrawerItemId,
+    closeDrawer,
+    toId: (record) => normalizeEntityId(record?.id),
   });
 
   const { openBulkDeleteConfirm, bulkDeletePending } = useTenantListBulkDelete({
@@ -73,23 +64,6 @@ export function useItemsDelete({
     getOpenRecordId: getOpenDrawerItemId,
     closeDrawer,
   });
-
-  const requestDeleteItem = useCallback(
-    (record) => {
-      const id = normalizeEntityId(record?.id);
-      if (id == null) return;
-      const name = typeof record?.name === "string" ? record.name : id;
-      modal.confirm({
-        title: t("deleteConfirmTitle"),
-        content: t("deleteConfirmContent", { name }),
-        okText: t("deleteConfirmOk"),
-        okButtonProps: { danger: true },
-        cancelText: t("deleteConfirmCancel"),
-        onOk: () => deleteMutation.mutateAsync(id),
-      });
-    },
-    [deleteMutation, modal, t],
-  );
 
   return {
     requestDeleteItem,

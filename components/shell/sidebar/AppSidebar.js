@@ -18,7 +18,6 @@ const PEEK_CLOSE_DELAY_MS = 140;
 export default function AppSidebar({
   navItems,
   activeModuleKey,
-  onSelectModule,
   selectedPath,
   searchQuery,
   onSearchChange,
@@ -121,13 +120,17 @@ export default function AppSidebar({
     [onNavigate],
   );
 
+  /**
+   * Rail click = hover: open that module's pages in the panel, never navigate.
+   * Navigation only happens when the user picks a page row.
+   */
   const handleSelectModule = useCallback(
     (navModule) => {
-      setPreviewModuleKey(null);
-      onSelectModule(navModule);
+      if (searchQuery.trim()) onSearchChange("");
+      setPreviewModuleKey(navModule.key);
       if (collapsed) openPeek();
     },
-    [collapsed, onSelectModule, openPeek],
+    [collapsed, onSearchChange, openPeek, searchQuery],
   );
 
   /** Searching already replaces the panel with cross-module results. */

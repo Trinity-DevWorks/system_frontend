@@ -110,14 +110,27 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
   const patchMutation = useMutation({
     mutationFn: (/** @type {{ id: number; body: Record<string, unknown> }} */ { id, body }) =>
       updateItemUom(itemId, id, body),
+    onMutate: async ({ id, body }) => {
+      await queryClient.cancelQueries({ queryKey: itemUomsQueryKeyValue });
+      const previous = queryClient.getQueryData(itemUomsQueryKeyValue);
+      const list = Array.isArray(previous) ? previous : [];
+      const source = list.find((row) => row?.id === id);
+      if (source && typeof source === "object") {
+        setItemUomInCache(queryClient, itemId, { ...source, ...body });
+      }
+      return { previous };
+    },
     onSuccess: (saved) => {
       if (isItemUomRow(saved)) {
         setItemUomInCache(queryClient, itemId, saved);
-      } else {
-        void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
       }
     },
-    onError: (err) => message.error(getLocalizedApiErrorMessage(tApiErrors, err)),
+    onError: (err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(itemUomsQueryKeyValue, context.previous);
+      }
+      message.error(getLocalizedApiErrorMessage(tApiErrors, err));
+    },
   });
 
   const rows = useMemo(() => {

@@ -31,7 +31,6 @@ export function buildBarcodesPanelColumns(ctx) {
     getInlineValues,
     patchDraft,
     patchPrimary,
-    patchMutationPending,
     saveMutationPending,
     saveInline,
     cancelInline,
@@ -106,7 +105,7 @@ export function buildBarcodesPanelColumns(ctx) {
         return (
           <Radio
             checked={Boolean(r.is_primary)}
-            disabled={readOnly || patchMutationPending || Boolean(inlineEdit)}
+            disabled={readOnly || Boolean(inlineEdit)}
             onChange={() => patchPrimary(Number(r.id))}
           />
         );

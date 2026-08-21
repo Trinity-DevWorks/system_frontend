@@ -1,17 +1,16 @@
 "use client";
 
 import AppDataTable from "@/components/tables/AppDataTable";
-import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useTenantListBulkDelete } from "@/lib/tables/useTenantListBulkDelete";
+import { useTenantListRowDelete } from "@/lib/tables/useTenantListRowDelete";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { deleteRole, fetchRoles } from "@/services/rolesApi";
 import RoleDrawer from "./drawer/RoleDrawer";
 import { isOwnerRoleName, isSystemRoleName } from "./drawer/roleDrawerUtils";
 import { getRoleStatusLabel, getRoleTableColumns } from "./getRoleTableColumns";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
@@ -21,7 +20,6 @@ function RolesTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const tDataTable = useTranslations("DataTable");
   const { notification, modal, message } = App.useApp();
-  const queryClient = useQueryClient();
   const access = useResourceAccess("roles");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const {
@@ -80,25 +78,16 @@ function RolesTable() {
     [openRoleEditDrawer, openViewDrawer],
   );
 
-  const deleteMutation = useMutation({
-    mutationFn: (/** @type {number} */ id) => deleteRole(id),
-    onError: (err) => {
-      notification.error({
-        title: t("deleteError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-    },
-    onSuccess: (_data, deletedId) => {
-      message.success(t("deleteSuccess"));
-      queryClient.removeQueries({ queryKey: ["tenant", "roles", deletedId] });
-      const { open, recordId } = drawerSessionRef.current;
-      if (open && recordId != null && Number(recordId) === Number(deletedId)) {
-        closeDrawer();
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenant", "roles"] });
-    },
+  const { requestDelete: requestDeleteRole } = useTenantListRowDelete({
+    listQueryKey: ["tenant", "roles"],
+    deleteOne: deleteRole,
+    t,
+    tApiErrors,
+    notification,
+    message,
+    modal,
+    getOpenRecordId: () => drawerSessionRef.current.recordId,
+    closeDrawer,
   });
 
   const { openBulkDeleteConfirm: openBulkDeleteConfirmBase, bulkDeletePending } = useTenantListBulkDelete({
@@ -127,29 +116,6 @@ function RolesTable() {
     }
     openBulkDeleteConfirmBase();
   }, [selectedRowKeys, tableData, message, t, openBulkDeleteConfirmBase]);
-
-  const requestDeleteRole = useCallback(
-    (record) => {
-      const id = record?.id;
-      if (id == null || isSystemRoleName(record?.name)) return;
-      const name = typeof record?.name === "string" ? record.name : String(id);
-      modal.confirm({
-        title: t("deleteConfirmTitle"),
-        content: t("deleteConfirmContent", { name }),
-        okText: t("deleteConfirmOk"),
-        okButtonProps: { danger: true },
-        cancelText: t("deleteConfirmCancel"),
-        onOk: async () => {
-          try {
-            await deleteMutation.mutateAsync(Number(id));
-          } catch {
-            /* onError handles feedback */
-          }
-        },
-      });
-    },
-    [deleteMutation, modal, t],
-  );
 
   const columns = useMemo(
     () =>

@@ -1,4 +1,4 @@
-import { patchTenantListCache } from "@/lib/tables/tenantListCache";
+import { patchTenantListCache, removeIdsFromTenantListCache } from "@/lib/tables/tenantListCache";
 
 /** @type {readonly ["tenant", "items"]} */
 export const ITEMS_LIST_QUERY_KEY = /** @type {const} */ (["tenant", "items"]);
@@ -67,11 +67,7 @@ export function invalidateItemAttachmentThumb(queryClient, itemId, attachmentId)
  */
 export function removeItemsFromListCache(queryClient, itemIds) {
   if (!itemIds.length) return;
-  const idSet = new Set(itemIds.map((id) => String(id)));
-  patchTenantListCache(queryClient, ITEMS_LIST_QUERY_KEY, (rows) =>
-    rows.filter((row) => !idSet.has(String(/** @type {{ id?: unknown }} */ (row)?.id ?? ""))),
-  );
-  void queryClient.invalidateQueries({ queryKey: ITEMS_LIST_QUERY_KEY });
+  removeIdsFromTenantListCache(queryClient, ITEMS_LIST_QUERY_KEY, itemIds);
 }
 
 /**

@@ -81,14 +81,27 @@ export function useItemBarcodesPanel({ itemId, readOnly, t, tApiErrors, active, 
   const patchMutation = useMutation({
     mutationFn: (/** @type {{ id: number; body: Record<string, unknown> }} */ { id, body }) =>
       updateItemBarcode(itemId, id, body),
+    onMutate: async ({ id, body }) => {
+      await queryClient.cancelQueries({ queryKey: barcodesQueryKeyValue });
+      const previous = queryClient.getQueryData(barcodesQueryKeyValue);
+      const list = Array.isArray(previous) ? previous : [];
+      const source = list.find((row) => row?.id === id);
+      if (source && typeof source === "object") {
+        setItemBarcodeInCache(queryClient, itemId, { ...source, ...body });
+      }
+      return { previous };
+    },
     onSuccess: (saved) => {
       if (isItemBarcodeRow(saved)) {
         setItemBarcodeInCache(queryClient, itemId, saved);
-      } else {
-        void queryClient.invalidateQueries({ queryKey: barcodesQueryKeyValue });
       }
     },
-    onError: (err) => message.error(getLocalizedApiErrorMessage(tApiErrors, err)),
+    onError: (err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(barcodesQueryKeyValue, context.previous);
+      }
+      message.error(getLocalizedApiErrorMessage(tApiErrors, err));
+    },
   });
 
   const deleteMutation = useMutation({

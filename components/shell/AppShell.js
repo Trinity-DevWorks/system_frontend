@@ -31,7 +31,6 @@ import {
   buildMainNavItems,
   findModuleKeyForPath,
   findNavLabelForPath,
-  firstNavPathIn,
   selectedKeysForPath,
 } from "./sidebar/main-nav";
 import { useLocale, useTranslations } from "next-intl";
@@ -134,24 +133,7 @@ export default function AppShell({ children }) {
     [menuItems, pathname],
   );
 
-  /** Rail clicks swap the panel immediately; the route catches up a tick later. */
-  const [pendingModuleKey, setPendingModuleKey] = useState(null);
-  useEffect(() => {
-    setPendingModuleKey(null);
-  }, [pathname]);
-
-  const activeModuleKey =
-    pendingModuleKey ?? routeModuleKey ?? menuItems?.[0]?.key ?? null;
-
-  const handleSelectModule = useCallback(
-    (navModule) => {
-      setPendingModuleKey(navModule.key);
-      if (navModule.key === routeModuleKey) return;
-      const target = firstNavPathIn(navModule);
-      if (target) router.push(target);
-    },
-    [routeModuleKey, router],
-  );
+  const activeModuleKey = routeModuleKey ?? menuItems?.[0]?.key ?? null;
 
   const handleNavigate = useCallback(
     (path) => {
@@ -215,7 +197,6 @@ export default function AppShell({ children }) {
             <AppSidebar
               navItems={menuItems}
               activeModuleKey={activeModuleKey}
-              onSelectModule={handleSelectModule}
               selectedPath={selectedKeys[0] ?? null}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}

@@ -119,7 +119,7 @@ export default function ItemVariantCard({
   const currencyLabel = currency?.code ?? currency?.name ?? "—";
   const rowId = Number(row.id);
   const isPersisted = !isNew && rowId > 0 && row.id !== UOM_DRAFT_ROW_ID;
-  const flagsDisabled = readOnly || inlineBlocked || isEditing || patchPending;
+  const flagsDisabled = readOnly || inlineBlocked || isEditing;
   const canDelete = isPersisted && !row.is_base;
 
   const deleteButton = (
