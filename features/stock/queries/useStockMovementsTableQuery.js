@@ -5,6 +5,7 @@
  * - app/[locale]/main/stock/movements/page.js
  */
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { STOCK_MOVEMENTS_QUERY_KEY } from "./stockQueryKeys";
 import { fetchStockMovements } from "../api/stock.api";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
@@ -46,7 +47,7 @@ export function useStockMovementsTableQuery({
     extraParams,
     defaultPageSize: 50,
     pageSizeOptions: [20, 50, 100],
-    staleTime: 30_000,
+    staleTime: QUERY_STALE_TIME.ledger,
     tableId: "stock-movements",
     t,
     tApiErrors,

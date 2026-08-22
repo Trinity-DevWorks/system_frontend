@@ -6,8 +6,11 @@ import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { createVatGroup, updateVatGroup } from "../api/vatGroups.api";
 import {
   patchTenantListCache,
+  patchTenantListCacheForCreate,
   snapshotTenantListCache,
   restoreTenantListCache,
+  cancelTenantListQueries,
+  invalidateTenantListQueries,
 } from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -51,7 +54,7 @@ export function useVatGroupDrawerMutations({
     mutationFn: ({ payload }) => createVatGroup(payload),
     onMutate: async ({ payload }) => {
       const listKey = VAT_GROUPS_LIST_QUERY_KEY;
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       const previous = snapshotTenantListCache(queryClient, listKey);
       const optimisticId = -Date.now();
       const now = new Date().toISOString();
@@ -61,7 +64,7 @@ export function useVatGroupDrawerMutations({
         created_at: now,
         updated_at: now,
       };
-      patchTenantListCache(queryClient, listKey, (rows) => sortVatGroupsByName([...rows, optimisticRow]));
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => sortVatGroupsByName([...rows, optimisticRow]));
       return { previous, optimisticId };
     },
     onError: (err, _variables, context) => {
@@ -86,7 +89,7 @@ export function useVatGroupDrawerMutations({
 
       const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
       const id = record?.id;
-      patchTenantListCache(queryClient, listKey, (rows) => {
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => {
         const withoutTemp = optimisticId != null ? rows.filter((r) => r.id !== optimisticId) : rows;
         if (id == null) return withoutTemp;
         return sortVatGroupsByName([...withoutTemp.filter((r) => r.id !== id), data]);
@@ -120,7 +123,7 @@ export function useVatGroupDrawerMutations({
       onClose();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: VAT_GROUPS_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, VAT_GROUPS_LIST_QUERY_KEY);
     },
   });
 
@@ -129,7 +132,7 @@ export function useVatGroupDrawerMutations({
     onMutate: async ({ id, values }) => {
       const listKey = VAT_GROUPS_LIST_QUERY_KEY;
       const detailKey = vatGroupDetailQueryKey(id);
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       await queryClient.cancelQueries({ queryKey: detailKey });
       const previousList = snapshotTenantListCache(queryClient, listKey);
       const previousDetail = queryClient.getQueryData(detailKey);
@@ -164,7 +167,7 @@ export function useVatGroupDrawerMutations({
     },
     onSettled: (_data, _error, variables) => {
       const id = variables?.id;
-      queryClient.invalidateQueries({ queryKey: VAT_GROUPS_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, VAT_GROUPS_LIST_QUERY_KEY);
       if (id != null) {
         queryClient.invalidateQueries({ queryKey: vatGroupDetailQueryKey(id) });
       }

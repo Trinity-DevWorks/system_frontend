@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { PURCHASE_ORDER_DETAIL_QUERY_PREFIX, PURCHASE_ORDERS_QUERY_KEY } from "../../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
@@ -80,7 +82,7 @@ export default function PurchaseOrderDrawer({
     queryKey: [...PURCHASE_ORDER_DETAIL_QUERY_PREFIX, orderId],
     queryFn: () => fetchPurchaseOrder(/** @type {string} */ (orderId)),
     enabled: detailEnabled,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const syncBaselinesFromRecord = useCallback(

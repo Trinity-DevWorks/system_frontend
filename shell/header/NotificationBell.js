@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Header notification inbox popover.
  *
@@ -58,7 +60,7 @@ function NotificationBellInner() {
     queryKey: NOTIFICATIONS_UNREAD_COUNT_QUERY_KEY,
     queryFn: fetchUnreadNotificationCount,
     refetchInterval: POLL_MS,
-    staleTime: 15_000,
+    staleTime: QUERY_STALE_TIME.inbox,
   });
 
   const listQuery = useQuery({
@@ -69,7 +71,7 @@ function NotificationBellInner() {
         unread: true,
       }),
     refetchInterval: POLL_MS,
-    staleTime: 15_000,
+    staleTime: QUERY_STALE_TIME.inbox,
     enabled: open,
   });
 

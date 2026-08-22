@@ -4,6 +4,7 @@
  */
 
 import { fetchCompanyProfile } from "../api/companyProfile.api";
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -44,7 +45,20 @@ export const DEFAULT_COMPANY_PROFILE = {
 };
 
 export function companyProfileQueryKey(hostname) {
-  return ["company-profile", hostname];
+  return ["tenant", "company-profile", hostname];
+}
+
+export const COMPANY_PROFILE_LOGO_PREVIEW_QUERY_KEY = /** @type {const} */ ([
+  "tenant",
+  "company-profile",
+  "logo-preview",
+]);
+
+/**
+ * @param {string | null | undefined} logoId
+ */
+export function companyLogoPreviewQueryKey(logoId) {
+  return [...COMPANY_PROFILE_LOGO_PREVIEW_QUERY_KEY, logoId ?? null];
 }
 
 /**
@@ -110,7 +124,7 @@ export function useCompanyProfile() {
     queryKey: companyProfileQueryKey(hostname),
     queryFn: fetchCompanyProfile,
     enabled: Boolean(hostname),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_STALE_TIME.infinite,
     refetchOnWindowFocus: false,
     retry: 1,
   });

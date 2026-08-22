@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import { useAuthMe } from "@/lib/auth-me";
 import { useBlobObjectUrl } from "@/lib/use-blob-object-url";
 import {
@@ -37,7 +39,7 @@ export default function HeaderProfileAvatar({ size = 36 }) {
         /** @type {string} */ (avatarId),
       ),
     enabled: Boolean(userId && avatarId),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_STALE_TIME.infinite,
     refetchOnWindowFocus: false,
   });
 

@@ -6,8 +6,11 @@ import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { createUnitGroup, updateUnitGroup } from "../api/unitGroups.api";
 import {
   patchTenantListCache,
+  patchTenantListCacheForCreate,
   snapshotTenantListCache,
   restoreTenantListCache,
+  cancelTenantListQueries,
+  invalidateTenantListQueries,
 } from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -51,7 +54,7 @@ export function useUnitGroupDrawerMutations({
     mutationFn: ({ payload }) => createUnitGroup(payload),
     onMutate: async ({ payload }) => {
       const listKey = UNIT_GROUPS_LIST_QUERY_KEY;
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       const previous = snapshotTenantListCache(queryClient, listKey);
       const optimisticId = -Date.now();
       const now = new Date().toISOString();
@@ -61,7 +64,7 @@ export function useUnitGroupDrawerMutations({
         created_at: now,
         updated_at: now,
       };
-      patchTenantListCache(queryClient, listKey, (rows) => sortUnitGroupsByName([...rows, optimisticRow]));
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => sortUnitGroupsByName([...rows, optimisticRow]));
       return { previous, optimisticId };
     },
     onError: (err, _variables, context) => {
@@ -86,7 +89,7 @@ export function useUnitGroupDrawerMutations({
 
       const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
       const id = record?.id;
-      patchTenantListCache(queryClient, listKey, (rows) => {
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => {
         const withoutTemp = optimisticId != null ? rows.filter((r) => r.id !== optimisticId) : rows;
         if (id == null) return withoutTemp;
         return sortUnitGroupsByName([...withoutTemp.filter((r) => r.id !== id), data]);
@@ -120,7 +123,7 @@ export function useUnitGroupDrawerMutations({
       onClose();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: UNIT_GROUPS_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, UNIT_GROUPS_LIST_QUERY_KEY);
     },
   });
 
@@ -129,7 +132,7 @@ export function useUnitGroupDrawerMutations({
     onMutate: async ({ id, values }) => {
       const listKey = UNIT_GROUPS_LIST_QUERY_KEY;
       const detailKey = unitGroupDetailQueryKey(id);
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       await queryClient.cancelQueries({ queryKey: detailKey });
       const previousList = snapshotTenantListCache(queryClient, listKey);
       const previousDetail = queryClient.getQueryData(detailKey);
@@ -164,7 +167,7 @@ export function useUnitGroupDrawerMutations({
     },
     onSettled: (_data, _error, variables) => {
       const id = variables?.id;
-      queryClient.invalidateQueries({ queryKey: UNIT_GROUPS_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, UNIT_GROUPS_LIST_QUERY_KEY);
       if (id != null) {
         queryClient.invalidateQueries({ queryKey: unitGroupDetailQueryKey(id) });
       }

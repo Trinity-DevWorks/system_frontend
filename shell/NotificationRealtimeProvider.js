@@ -14,7 +14,7 @@ import { resolveHostMode } from "@/lib/runtime-mode";
 import { getSessionToken } from "@/lib/session";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { NOTIFICATIONS_QUERY_KEY } from "@/features/notifications";
+import { invalidateNotificationInboxQueries } from "@/features/notifications/queries/notificationQueryCache";
 
 /**
  * @param {{ children?: import("react").ReactNode }} props
@@ -40,12 +40,12 @@ export default function NotificationRealtimeProvider({ children = null }) {
     const retryTimers = new Set();
 
     const invalidate = () => {
-      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+      invalidateNotificationInboxQueries(queryClient);
       // Database and broadcast channels are queued independently. Recheck once
       // in case the realtime ping wins the small race with inbox persistence.
       const timer = window.setTimeout(() => {
         retryTimers.delete(timer);
-        queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+        invalidateNotificationInboxQueries(queryClient);
       }, 750);
       retryTimers.add(timer);
     };

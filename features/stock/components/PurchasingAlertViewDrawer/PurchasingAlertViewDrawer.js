@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Read-only purchasing alert detail drawer (URL: ?drawer=<replenishment_id>&mode=view).
  *
@@ -65,8 +67,8 @@ export default function PurchasingAlertViewDrawer({
     queryKey: [...PURCHASING_ALERT_DETAIL_QUERY_PREFIX, replenishmentId],
     queryFn: () => fetchPurchasingAlert(/** @type {number | string} */ (replenishmentId)),
     enabled: detailEnabled,
-    staleTime: 60_000,
-    initialData: seedMatches ? tableSeedRecord ?? undefined : undefined,
+    staleTime: QUERY_STALE_TIME.default,
+    placeholderData: seedMatches ? tableSeedRecord ?? undefined : undefined,
   });
 
   const record = detailQuery.data ?? null;

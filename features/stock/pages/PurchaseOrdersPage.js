@@ -1,7 +1,9 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { purchaseOrdersQueryKey } from "../queries/stockQueryKeys";
+import { PURCHASE_ORDERS_QUERY_KEY } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { normalizeEntityId } from "@/lib/entityId";
@@ -59,13 +61,13 @@ function PurchaseOrdersTable() {
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const suppliersQuery = useQuery({
     queryKey: SUPPLIERS_LIST_QUERY_KEY,
     queryFn: fetchSupplierNames,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const warehouseFilterOptions = useMemo(
@@ -128,7 +130,7 @@ function PurchaseOrdersTable() {
     mutationFn: (/** @type {string} */ id) => deletePurchaseOrder(id),
     onSuccess: () => {
       message.success(t("poDeleteSuccess"));
-      queryClient.invalidateQueries({ queryKey: purchaseOrdersQueryKey() });
+      queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
     },
     onError: (err) => {
       notification.error({
@@ -142,7 +144,7 @@ function PurchaseOrdersTable() {
     mutationFn: (/** @type {string} */ id) => cancelPurchaseOrder(id),
     onSuccess: () => {
       message.success(t("poCancelSuccess"));
-      queryClient.invalidateQueries({ queryKey: purchaseOrdersQueryKey() });
+      queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
     },
     onError: (err) => {
       notification.error({
@@ -207,7 +209,7 @@ function PurchaseOrdersTable() {
     mutationFn: (/** @type {string} */ id) => markPurchaseOrderAsSent(id),
     onSuccess: () => {
       message.success(t("poMarkSentSuccess"));
-      queryClient.invalidateQueries({ queryKey: purchaseOrdersQueryKey() });
+      queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
     },
     onError: (err) => {
       notification.error({

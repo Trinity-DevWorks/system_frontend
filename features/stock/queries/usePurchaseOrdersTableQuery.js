@@ -2,6 +2,7 @@
  * Purchase orders list query with server-side filters and pagination.
  */
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { PURCHASE_ORDERS_QUERY_KEY } from "./stockQueryKeys";
 import { fetchPurchaseOrders } from "../api/purchaseOrders.api";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
@@ -46,7 +47,7 @@ export function usePurchaseOrdersTableQuery({
     extraParams,
     defaultPageSize: 50,
     pageSizeOptions: [20, 50, 100],
-    staleTime: 30_000,
+    staleTime: QUERY_STALE_TIME.ledger,
     tableId: "purchase-orders",
     t,
     tApiErrors,

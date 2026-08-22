@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Suppliers tab — queries, mutations, inline edit state, and table column config.
  *
@@ -79,14 +81,14 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
     queryKey: SUPPLIERS_LIST_QUERY_KEY,
     queryFn: fetchSupplierNames,
     enabled: active && !readOnly,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const currenciesQuery = useQuery({
     queryKey: CURRENCIES_LIST_QUERY_KEY,
     queryFn: fetchCurrencyNames,
     enabled: active && !readOnly,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const supplierOptions = useMemo(

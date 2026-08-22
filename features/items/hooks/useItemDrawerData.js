@@ -5,6 +5,7 @@
  * - drawer/ItemDrawer.js
  */
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { fetchBrandNames } from "@/features/brands/index";
 import { buildCategoryTreeData, fetchCategoryNames } from "@/features/categories";
@@ -74,42 +75,42 @@ export function useItemDrawerData({
     queryKey: ITEM_TYPES_QUERY_KEY,
     queryFn: fetchItemTypes,
     enabled: open,
-    staleTime: 10 * 60_000,
+    staleTime: QUERY_STALE_TIME.lookup,
   });
 
   const categoriesQuery = useQuery({
     queryKey: CATEGORIES_LIST_QUERY_KEY,
     queryFn: fetchCategoryNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const brandsQuery = useQuery({
     queryKey: BRANDS_LIST_QUERY_KEY,
     queryFn: () => fetchBrandNames(),
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const unitGroupsQuery = useQuery({
     queryKey: UNIT_GROUPS_LIST_QUERY_KEY,
     queryFn: fetchUnitGroupNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const vatGroupsQuery = useQuery({
     queryKey: VAT_GROUPS_LIST_QUERY_KEY,
     queryFn: () => fetchVatGroupNames(),
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const itemUomsQuery = useQuery({
     queryKey: itemUomsQueryKey(/** @type {number} */ (persistedItemId)),
     queryFn: () => fetchItemUoms(/** @type {number} */ (persistedItemId)),
     enabled: open && tabsEnabled,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const itemTypeIdWatch = Form.useWatch("item_type_id", form);

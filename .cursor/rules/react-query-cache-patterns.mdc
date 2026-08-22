@@ -37,11 +37,15 @@ Inspect comparable features before defining a new key structure.
 
 ## Stale time
 
-Follow the closest existing feature.
+Use `QUERY_STALE_TIME` from `lib/queryStaleTime.js` instead of raw milliseconds.
 
-Simple reference catalogs often use longer stale times.
-
-Workflow data often uses shorter stale times and more frequent invalidation.
+- `inbox` (15s) — notifications
+- `ledger` (30s) — stock tables, audit log, preferences
+- `default` (60s) — QueryClient default, details, auth/me
+- `items` (2 min) — items table
+- `catalog` (5 min) — names lookups and catalog tables
+- `lookup` (10 min) — almost-static lists such as item types
+- `infinite` — host config until an explicit invalidate
 
 Do not apply one stale-time value globally.
 
@@ -75,6 +79,23 @@ For workflows:
 Reuse existing cache-update utilities when the domain already provides them —
 `lib/tables/tenantListCache.js` for paginated list rows, and the feature's own
 `queries/*QueryCache.js` for domain-specific patching.
+
+List keys are prefixes of detail keys (`["tenant", "brands"]` vs
+`["tenant", "brands", id]`). Cancel and invalidate lists with
+`cancelTenantListQueries` / `invalidateTenantListQueries` so nested panels
+and open details are not marked stale. Keep a separate
+`invalidateQueries({ queryKey: brandDetailQueryKey(id) })` when that one
+record should refetch.
+
+Optimistic create must use `patchTenantListCacheForCreate` (names list and
+page 1 only). Mapping an appended row with `patchTenantListCache` duplicates
+it onto every cached page. Updates still use `patchTenantListCache`.
+
+Notification inbox invalidation must use `invalidateNotificationInboxQueries`
+so `["tenant", "notifications", "preferences"]` is left alone.
+
+`usePermissions` reads the matrix from `AUTH_ME_QUERY_KEY`. Do not
+`setQueryData` a raw matrix onto `PERMISSIONS_QUERY_KEY` (it is an alias).
 
 Do not create duplicate query-key logic inside multiple components.
 

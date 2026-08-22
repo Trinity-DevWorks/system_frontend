@@ -2,6 +2,7 @@
  * Lookup queries and select options for the stock transfer drawer.
  */
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { formatUomLabel } from "../utils/formatStockQuantity";
 import { STOCK_TRANSFER_BASE_UOM } from "../utils/stockTransferDrawerUtils";
 import { fetchItemNames } from "@/features/items/index";
@@ -24,14 +25,14 @@ export function useStockTransferDrawerData({ open, t }) {
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const itemsQuery = useQuery({
     queryKey: ITEMS_LIST_QUERY_KEY,
     queryFn: fetchItemNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const stockableItems = useMemo(
@@ -81,7 +82,7 @@ export function useTransferLineUomOptions({ itemId, t, enabled = true }) {
     queryKey: [...ITEMS_LIST_QUERY_KEY, itemId, "item-uoms"],
     queryFn: () => fetchItemUoms(itemId),
     enabled: enabled && itemId != null && itemId !== "",
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const options = useMemo(() => {

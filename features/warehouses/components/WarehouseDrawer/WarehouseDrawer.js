@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -59,14 +61,14 @@ export default function WarehouseDrawer({
     queryKey: BRANCHES_LIST_QUERY_KEY,
     queryFn: fetchBranchNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const usersQuery = useQuery({
     queryKey: USERS_LIST_QUERY_KEY,
     queryFn: fetchTenantUserNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const branchOptions = useMemo(() => {

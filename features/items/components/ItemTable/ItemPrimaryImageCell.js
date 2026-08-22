@@ -1,6 +1,8 @@
 "use client";
 
 import { fetchAttachmentBlob } from "@/lib/attachments/attachmentBlob";
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { useBlobObjectUrl } from "@/lib/use-blob-object-url";
 import { FileImageOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Image, Spin } from "antd";
@@ -14,13 +16,12 @@ export default function ItemPrimaryImageCell({ itemId, primaryImage }) {
 
   const imageQuery = useQuery({
     queryKey: [...ITEMS_LIST_QUERY_KEY, itemId, "attachments", attachmentId, "thumb"],
-    queryFn: async () => {
-      const blob = await fetchAttachmentBlob(`items/${itemId}/attachments/${attachmentId}`, "view");
-      return URL.createObjectURL(blob);
-    },
+    queryFn: () => fetchAttachmentBlob(`items/${itemId}/attachments/${attachmentId}`, "view"),
     enabled: attachmentId != null,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
+
+  const objectUrl = useBlobObjectUrl(imageQuery.data);
 
   if (!attachmentId) {
     return (
@@ -30,7 +31,7 @@ export default function ItemPrimaryImageCell({ itemId, primaryImage }) {
     );
   }
 
-  if (imageQuery.isPending) {
+  if (imageQuery.isPending && !objectUrl) {
     return (
       <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-md border border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800">
         <Spin size="small" />
@@ -38,7 +39,7 @@ export default function ItemPrimaryImageCell({ itemId, primaryImage }) {
     );
   }
 
-  if (imageQuery.isError || !imageQuery.data) {
+  if (imageQuery.isError || !objectUrl) {
     return (
       <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-md border border-neutral-200 bg-neutral-50 text-neutral-400 dark:border-neutral-700 dark:bg-neutral-800">
         <FileImageOutlined />
@@ -48,7 +49,7 @@ export default function ItemPrimaryImageCell({ itemId, primaryImage }) {
 
   return (
     <Image
-      src={imageQuery.data}
+      src={objectUrl}
       alt=""
       width={40}
       height={40}

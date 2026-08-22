@@ -24,6 +24,7 @@ import {
   saveHiddenColumnKeys,
   saveTableDensity,
 } from "@/lib/table-prefs-storage";
+import { useLocalPreferenceUserId } from "@/lib/local-preference-user";
 import {
   App,
   Button,
@@ -120,6 +121,7 @@ function AppDataTable({
 }) {
   const t = useTranslations("DataTable");
   const { message } = App.useApp();
+  const prefsUserId = useLocalPreferenceUserId();
   const {
     showSearch = true,
     searchKeys = ["name"],
@@ -160,7 +162,7 @@ function AppDataTable({
   const [columnDndReady, setColumnDndReady] = useState(false);
 
   /** `null` on first mount so we treat as table change and load `columnOrder` from localStorage. */
-  const lastTableIdRef = useRef(null);
+  const lastPrefsScopeRef = useRef(null);
 
   const columnKeysSignature = useMemo(
     () =>
@@ -184,13 +186,14 @@ function AppDataTable({
       setDensity(loadTableDensity(tableId));
       setPrefsReady(true);
     });
-  }, [tableId]);
+  }, [tableId, prefsUserId]);
 
   useEffect(() => {
     if (!prefsReady) return;
-    const tableChanged = lastTableIdRef.current !== tableId;
+    const prefsScope = `${prefsUserId}:${tableId}`;
+    const tableChanged = lastPrefsScopeRef.current !== prefsScope;
     if (tableChanged) {
-      lastTableIdRef.current = tableId;
+      lastPrefsScopeRef.current = prefsScope;
     }
 
     const cols = columns ?? [];
@@ -204,7 +207,7 @@ function AppDataTable({
       setColumnOrder([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `columns` is represented by columnKeysSignature
-  }, [tableId, columnKeysSignature, prefsReady, enableColumnDrag]);
+  }, [tableId, prefsUserId, columnKeysSignature, prefsReady, enableColumnDrag]);
 
   /** Defer @dnd-kit mount (hydration) and avoid sync setState in effect (react-compiler / eslint). */
   useEffect(() => {

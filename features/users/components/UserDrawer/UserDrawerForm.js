@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import { BRANCHES_LIST_QUERY_KEY, fetchBranchNames } from "@/features/branches";
 import { ROLES_LIST_QUERY_KEY, fetchRoleNames } from "@/features/roles";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
@@ -32,14 +34,14 @@ export default function UserDrawerForm({
     queryKey: ROLES_LIST_QUERY_KEY,
     queryFn: fetchRoleNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const branchesQuery = useQuery({
     queryKey: BRANCHES_LIST_QUERY_KEY,
     queryFn: fetchBranchNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const roleOptions = useMemo(() => {

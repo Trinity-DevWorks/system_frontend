@@ -5,6 +5,7 @@
  * - app/[locale]/main/stock/adjustment/StockAdjustmentDrawer.js
  */
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { fetchItemUoms } from "@/features/items/index";
 import { fetchItemNames } from "@/features/items/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
@@ -29,21 +30,21 @@ export function useStockAdjustmentDrawerData({ open, itemId, t }) {
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const itemsQuery = useQuery({
     queryKey: ITEMS_LIST_QUERY_KEY,
     queryFn: fetchItemNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const itemUomsQuery = useQuery({
     queryKey: [...ITEMS_LIST_QUERY_KEY, itemId, "item-uoms"],
     queryFn: () => fetchItemUoms(itemId),
     enabled: open && isPersistedEntityId(itemId),
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const stockableItems = useMemo(

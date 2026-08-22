@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Read-only stock movement / adjustment detail drawer.
  *
@@ -48,8 +50,8 @@ export default function StockMovementViewDrawer({
     queryKey: [...STOCK_MOVEMENT_DETAIL_QUERY_PREFIX, movementId],
     queryFn: () => fetchStockMovement(/** @type {number | string} */ (movementId)),
     enabled: detailEnabled,
-    staleTime: 60_000,
-    initialData: seedMatches ? tableSeedRecord : undefined,
+    staleTime: QUERY_STALE_TIME.default,
+    placeholderData: seedMatches ? tableSeedRecord : undefined,
   });
 
   const record = detailQuery.data ?? null;

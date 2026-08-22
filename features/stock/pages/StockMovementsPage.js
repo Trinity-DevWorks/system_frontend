@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { normalizeEntityId, parseNumericEntityId } from "@/lib/entityId";
@@ -70,7 +72,7 @@ function StockMovementsTable() {
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const tableData = useMemo(

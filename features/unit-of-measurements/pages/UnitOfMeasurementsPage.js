@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { useResourceAccess } from "@/lib/permissions";
@@ -58,7 +60,7 @@ function UnitOfMeasurementsTable() {
   const unitGroupsQuery = useQuery({
     queryKey: UNIT_GROUPS_LIST_QUERY_KEY,
     queryFn: fetchUnitGroupNames,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const unitGroupOptions = useMemo(() => {

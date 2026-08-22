@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import AttachmentListItem from "@/shared/components/attachments/AttachmentListItem";
 import AttachmentMediaPreviewModal from "@/shared/components/attachments/AttachmentMediaPreviewModal";
 import AttachmentPendingListItem from "@/shared/components/attachments/AttachmentPendingListItem";
@@ -115,7 +117,7 @@ export default function ResourceAttachmentsPanel({
     queryKey,
     queryFn: () => api.fetchList(/** @type {string} */ (persistedRecordId)),
     enabled,
-    staleTime: 30_000,
+    staleTime: QUERY_STALE_TIME.ledger,
     refetchInterval: (query) => {
       const list = query.state.data;
       if (!Array.isArray(list)) return false;

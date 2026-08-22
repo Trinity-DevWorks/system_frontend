@@ -5,8 +5,8 @@
  * this barrel. Route entries under `app/[locale]/main/stock/` import their page
  * from `pages/` directly.
  *
- * The query keys are re-exported because the branch switcher invalidates stock
- * caches when the active branch changes. The quantity formatters are re-exported
+ * The query keys are re-exported because other features invalidate stock
+ * caches after mutations. The quantity formatters are re-exported
  * because the item drawer renders stock figures.
  */
 

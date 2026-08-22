@@ -1,7 +1,10 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { useResourceAccess, PERMISSIONS_QUERY_KEY } from "@/lib/permissions";
+import { useResourceAccess } from "@/lib/permissions";
+import { AUTH_ME_QUERY_KEY } from "@/lib/auth-me";
 import { isOwnerRoleName } from "@/features/roles/index";
 import { fetchPermissions } from "../api/permissions.api";
 import {
@@ -36,6 +39,7 @@ import {
   permissionsRoleQueryKey,
 } from "../queries/permissionsQueryKeys";
 import { ROLES_LIST_QUERY_KEY } from "@/features/roles";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 
 export default function PermissionsPage() {
   const t = useTranslations("PermissionsPage");
@@ -55,13 +59,13 @@ export default function PermissionsPage() {
   const rolesQuery = useQuery({
     queryKey: PERMISSIONS_ROLES_QUERY_KEY,
     queryFn: fetchPermissionRoles,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const catalogQuery = useQuery({
     queryKey: PERMISSIONS_CATALOG_QUERY_KEY,
     queryFn: fetchPermissions,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const roles = useMemo(
@@ -83,7 +87,7 @@ export default function PermissionsPage() {
     queryKey: permissionsRoleQueryKey(activeRoleId),
     queryFn: () => fetchRolePermissions(/** @type {number} */ (activeRoleId)),
     enabled: activeRoleId != null,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
     refetchOnWindowFocus: true,
   });
 
@@ -118,8 +122,8 @@ export default function PermissionsPage() {
       ),
     onSuccess: (data) => {
       queryClient.setQueryData(permissionsRoleQueryKey(activeRoleId), data);
-      queryClient.invalidateQueries({ queryKey: ROLES_LIST_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: PERMISSIONS_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, ROLES_LIST_QUERY_KEY);
+      queryClient.invalidateQueries({ queryKey: AUTH_ME_QUERY_KEY });
       setDraftRows(null);
       message.success(t("saveSuccess"));
     },

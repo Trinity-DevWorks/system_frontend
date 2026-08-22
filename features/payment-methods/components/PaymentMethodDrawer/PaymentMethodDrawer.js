@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -76,7 +78,7 @@ export default function PaymentMethodDrawer({
     queryKey: CURRENCIES_LIST_QUERY_KEY,
     queryFn: fetchCurrencyNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const currencyOptions = useMemo(

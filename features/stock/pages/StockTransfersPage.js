@@ -1,11 +1,13 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import {
   invalidatePurchasingAlertsQueries,
   STOCK_BALANCES_QUERY_KEY,
   STOCK_MOVEMENTS_QUERY_KEY,
-  stockTransfersQueryKey,
+  STOCK_TRANSFERS_QUERY_KEY,
 } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
@@ -70,7 +72,7 @@ function StockTransfersTable() {
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const warehouseFilterOptions = useMemo(
@@ -121,7 +123,7 @@ function StockTransfersTable() {
   const invalidateStockLedger = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
-    queryClient.invalidateQueries({ queryKey: stockTransfersQueryKey() });
+    queryClient.invalidateQueries({ queryKey: STOCK_TRANSFERS_QUERY_KEY });
     invalidatePurchasingAlertsQueries(queryClient);
   }, [queryClient]);
 

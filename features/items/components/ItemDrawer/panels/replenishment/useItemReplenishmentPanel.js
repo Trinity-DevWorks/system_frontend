@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Replenishment tab — per-warehouse min/max and reorder rules.
  *
@@ -83,7 +85,7 @@ export function useItemReplenishmentPanel({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
     enabled: active && !readOnly && replenishmentAllowed,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const warehouseOptions = useMemo(

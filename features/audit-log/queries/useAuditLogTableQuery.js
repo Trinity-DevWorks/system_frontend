@@ -2,6 +2,7 @@
  * Audit log list query with server-side filters and pagination.
  */
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { fetchAudits } from "../api/audits.api";
 import { getAuditableTypeLabel, getAuditEventLabel } from "../utils/auditLogLabels";
@@ -59,7 +60,7 @@ export function useAuditLogTableQuery({
   const { data, isPending, isFetching, isError, error, refetch } = useQuery({
     queryKey,
     queryFn: () => fetchAudits(filters),
-    staleTime: 30_000,
+    staleTime: QUERY_STALE_TIME.ledger,
     refetchOnMount: true,
     placeholderData: (previous) => previous,
   });

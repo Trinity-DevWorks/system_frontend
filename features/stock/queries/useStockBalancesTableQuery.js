@@ -5,6 +5,7 @@
  * - app/[locale]/main/stock/balances/page.js
  */
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { STOCK_BALANCES_QUERY_KEY } from "./stockQueryKeys";
 import { fetchStockBalances } from "../api/stock.api";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
@@ -38,7 +39,7 @@ export function useStockBalancesTableQuery({
     queryKey: STOCK_BALANCES_QUERY_KEY,
     queryFn: fetchStockBalances,
     extraParams,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
     tableId: "stock-balances",
     t,
     tApiErrors,

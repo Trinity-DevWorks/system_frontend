@@ -1,6 +1,8 @@
 "use client";
 
-import { companyLogoPreviewQueryKey } from "./WorkspaceBrandMark";
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
+import { companyLogoPreviewQueryKey, COMPANY_PROFILE_LOGO_PREVIEW_QUERY_KEY } from "../queries/companyProfile";
 import {
   deleteCompanyProfileAttachment,
   uploadCompanyProfileAttachment,
@@ -45,7 +47,7 @@ export default function CompanyProfileLogoSection({
     queryKey: companyLogoPreviewQueryKey(logoId),
     queryFn: () => viewCompanyProfileAttachmentBlob(/** @type {string} */ (logoId)),
     enabled: Boolean(logoId),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_STALE_TIME.infinite,
     refetchOnWindowFocus: false,
   });
 
@@ -75,7 +77,7 @@ export default function CompanyProfileLogoSection({
         });
       }
       queryClient.invalidateQueries({
-        queryKey: ["company-profile", "logo-preview"],
+        queryKey: COMPANY_PROFILE_LOGO_PREVIEW_QUERY_KEY,
       });
     },
     onError: (err) => {

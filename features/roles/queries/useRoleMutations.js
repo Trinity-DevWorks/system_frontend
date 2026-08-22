@@ -6,8 +6,11 @@ import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { createRole, updateRole } from "../api/roles.api";
 import {
   patchTenantListCache,
+  patchTenantListCacheForCreate,
   snapshotTenantListCache,
   restoreTenantListCache,
+  cancelTenantListQueries,
+  invalidateTenantListQueries,
 } from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -17,6 +20,7 @@ import {
   roleFormValuesToPayload,
   sortRolesByName,
 } from "../utils/roleDrawerUtils";
+import { AUTH_ME_QUERY_KEY } from "@/lib/auth-me";
 import { ROLES_LIST_QUERY_KEY, roleDetailQueryKey } from "./rolesQueryKeys";
 
 /**
@@ -51,7 +55,7 @@ export function useRoleDrawerMutations({
     mutationFn: ({ payload }) => createRole(payload),
     onMutate: async ({ payload }) => {
       const listKey = ROLES_LIST_QUERY_KEY;
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       const previous = snapshotTenantListCache(queryClient, listKey);
       const optimisticId = -Date.now();
       const now = new Date().toISOString();
@@ -62,7 +66,7 @@ export function useRoleDrawerMutations({
         created_at: now,
         updated_at: now,
       };
-      patchTenantListCache(queryClient, listKey, (rows) => sortRolesByName([...rows, optimisticRow]));
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => sortRolesByName([...rows, optimisticRow]));
       return { previous, optimisticId };
     },
     onError: (err, _variables, context) => {
@@ -87,7 +91,7 @@ export function useRoleDrawerMutations({
 
       const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
       const id = record?.id;
-      patchTenantListCache(queryClient, listKey, (rows) => {
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => {
         const withoutTemp = optimisticId != null ? rows.filter((r) => r.id !== optimisticId) : rows;
         if (id == null) return withoutTemp;
         return sortRolesByName([...withoutTemp.filter((r) => r.id !== id), data]);
@@ -122,7 +126,7 @@ export function useRoleDrawerMutations({
       onClose();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ROLES_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, ROLES_LIST_QUERY_KEY);
     },
   });
 
@@ -131,7 +135,7 @@ export function useRoleDrawerMutations({
     onMutate: async ({ id, values }) => {
       const listKey = ROLES_LIST_QUERY_KEY;
       const detailKey = roleDetailQueryKey(id);
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       await queryClient.cancelQueries({ queryKey: detailKey });
       const previousList = snapshotTenantListCache(queryClient, listKey);
       const previousDetail = queryClient.getQueryData(detailKey);
@@ -166,7 +170,8 @@ export function useRoleDrawerMutations({
     },
     onSettled: (_data, _error, variables) => {
       const id = variables?.id;
-      queryClient.invalidateQueries({ queryKey: ROLES_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, ROLES_LIST_QUERY_KEY);
+      queryClient.invalidateQueries({ queryKey: AUTH_ME_QUERY_KEY });
       if (id != null) {
         queryClient.invalidateQueries({ queryKey: roleDetailQueryKey(id) });
       }

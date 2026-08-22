@@ -5,6 +5,7 @@
  * - app/[locale]/main/stock/purchasing-alerts/page.js
  */
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { PURCHASING_ALERTS_QUERY_KEY } from "./stockQueryKeys";
 import { fetchPurchasingAlerts } from "../api/purchasingAlerts.api";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
@@ -41,7 +42,7 @@ export function usePurchasingAlertsTableQuery({
     queryKey: PURCHASING_ALERTS_QUERY_KEY,
     queryFn: fetchPurchasingAlerts,
     extraParams,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
     tableId: "purchasing-alerts",
     t,
     tApiErrors,

@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -12,6 +14,7 @@ import { fetchSalesman } from "../../api/salesmen.api";
 import { fetchTenantUserNames } from "@/features/users/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { getActiveBranchId } from "@/lib/active-branch";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import dayjs from "dayjs";
@@ -92,21 +95,21 @@ export default function SalesmanDrawer({
     queryKey: BRANCHES_LIST_QUERY_KEY,
     queryFn: fetchBranchNames,
     enabled: open,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
     enabled: open,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const usersQuery = useQuery({
     queryKey: USERS_LIST_QUERY_KEY,
     queryFn: fetchTenantUserNames,
     enabled: open,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const branchOptions = useMemo(() => {
@@ -184,7 +187,7 @@ export default function SalesmanDrawer({
       const id = record?.id;
       if (id == null || Number.isNaN(Number(id))) return;
       form.setFieldValue("warehouse_id", Number(id));
-      queryClient.invalidateQueries({ queryKey: WAREHOUSES_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, WAREHOUSES_LIST_QUERY_KEY);
     },
     [form, queryClient],
   );

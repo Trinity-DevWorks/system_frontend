@@ -28,6 +28,7 @@ import { USERS_LIST_QUERY_KEY } from "../../queries/tenantUsersQueryKeys";
 import { BRANCHES_LIST_QUERY_KEY } from "@/features/branches";
 import { ROLES_LIST_QUERY_KEY } from "@/features/roles";
 import { AUTH_ME_QUERY_KEY } from "@/lib/auth-me";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 
 const USER_DETAIL_QUERY_PREFIX = /** @type {const} */ (USERS_LIST_QUERY_KEY);
 
@@ -204,7 +205,7 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
       const rowIndex = nestedCreate?.type === "branch" ? nestedCreate.rowIndex : null;
       if (id == null || Number.isNaN(Number(id)) || rowIndex == null) return;
       form.setFieldValue(["branch_assignments", rowIndex, "branch_id"], Number(id));
-      queryClient.invalidateQueries({ queryKey: BRANCHES_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, BRANCHES_LIST_QUERY_KEY);
       setNestedCreate(null);
     },
     [form, nestedCreate, queryClient],
@@ -217,7 +218,7 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
       const rowIndex = nestedCreate?.type === "role" ? nestedCreate.rowIndex : null;
       if (id == null || Number.isNaN(Number(id)) || rowIndex == null) return;
       form.setFieldValue(["branch_assignments", rowIndex, "role_id"], Number(id));
-      queryClient.invalidateQueries({ queryKey: ROLES_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, ROLES_LIST_QUERY_KEY);
       setNestedCreate(null);
     },
     [form, nestedCreate, queryClient],

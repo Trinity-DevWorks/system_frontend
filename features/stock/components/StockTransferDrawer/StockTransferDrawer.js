@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Stock transfer drawer — draft header/lines, save, dispatch, receive, cancel, delete.
  */
@@ -76,7 +78,7 @@ export default function StockTransferDrawer({
     queryKey: [...STOCK_TRANSFER_DETAIL_QUERY_PREFIX, transferId],
     queryFn: () => fetchStockTransfer(/** @type {string} */ (transferId)),
     enabled: detailEnabled,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const syncBaselinesFromRecord = useCallback(

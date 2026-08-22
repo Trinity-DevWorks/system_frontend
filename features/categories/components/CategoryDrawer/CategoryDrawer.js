@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { useResourceDrawerHeaderFields } from "@/shared/components/resource-drawer/useResourceDrawerHeaderFields";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
@@ -7,6 +9,7 @@ import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/us
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { fetchCategory, fetchCategoryNames } from "../../api/categories.api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DEFAULT_CATEGORY_COLOR } from "@/lib/app-theme";
@@ -74,7 +77,7 @@ export default function CategoryDrawer({
       const id = record?.id;
       if (id == null || Number.isNaN(Number(id))) return;
       form.setFieldValue("parent_id", Number(id));
-      queryClient.invalidateQueries({ queryKey: CATEGORIES_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, CATEGORIES_LIST_QUERY_KEY);
     },
     [form, queryClient],
   );
@@ -121,7 +124,7 @@ export default function CategoryDrawer({
     queryKey: CATEGORIES_LIST_QUERY_KEY,
     queryFn: () => fetchCategoryNames(),
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const codeWatch = Form.useWatch("code", form);

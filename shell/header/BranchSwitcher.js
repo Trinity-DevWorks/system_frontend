@@ -1,28 +1,17 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { BRANCH_CONTEXT_QUERY_KEY, setActiveBranchId } from "@/lib/active-branch";
-import {
-  normalizePermissionMatrix,
-  PERMISSIONS_QUERY_KEY,
-} from "@/lib/permissions";
+import { applyAuthMePermissions } from "@/lib/auth-me";
 import { fetchBranchContext, switchBranch } from "@/lib/api/branchContext";
-import {
-  PURCHASE_ORDERS_QUERY_KEY,
-  PURCHASING_ALERTS_QUERY_KEY,
-  PURCHASING_ALERTS_SUMMARY_QUERY_KEY,
-  STOCK_BALANCES_QUERY_KEY,
-  STOCK_MOVEMENTS_QUERY_KEY,
-  STOCK_TRANSFERS_QUERY_KEY,
-} from "@/features/stock/index";
+import { resetTenantQueryCacheOnBranchSwitch } from "@/lib/reset-tenant-cache-on-branch-switch";
 import { ApartmentOutlined, DownOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Dropdown } from "antd";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
-import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
-import { SALESMEN_LIST_QUERY_KEY } from "@/features/salesmen";
-import { PURCHASE_ORDER_DETAIL_QUERY_PREFIX, STOCK_TRANSFER_DETAIL_QUERY_PREFIX } from "@/features/stock";
 
 /**
  * Active company + branch context, shown as a header chip.
@@ -41,7 +30,7 @@ export default function BranchSwitcher({ companyName = "" }) {
   const contextQuery = useQuery({
     queryKey: BRANCH_CONTEXT_QUERY_KEY,
     queryFn: fetchBranchContext,
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
     refetchOnWindowFocus: true,
   });
 
@@ -53,14 +42,11 @@ export default function BranchSwitcher({ companyName = "" }) {
     }
   }, [contextQuery.data?.active_branch_id]);
 
-  // Keep client RBAC matrix aligned when branch context is loaded/refetched.
+  // Keep auth/me permissions aligned when branch context is loaded/refetched.
   useEffect(() => {
     const permissions = contextQuery.data?.permissions;
     if (permissions != null) {
-      queryClient.setQueryData(
-        PERMISSIONS_QUERY_KEY,
-        normalizePermissionMatrix(permissions),
-      );
+      applyAuthMePermissions(queryClient, permissions);
     }
   }, [contextQuery.data?.permissions, queryClient]);
 
@@ -90,26 +76,10 @@ export default function BranchSwitcher({ companyName = "" }) {
     mutationFn: (branchId) => switchBranch(branchId),
     onSuccess: (data, branchId) => {
       setActiveBranchId(branchId);
-      const permissions = data?.permissions;
-      queryClient.setQueryData(BRANCH_CONTEXT_QUERY_KEY, data);
-      if (permissions != null) {
-        queryClient.setQueryData(
-          PERMISSIONS_QUERY_KEY,
-          normalizePermissionMatrix(permissions),
-        );
-      } else {
-        queryClient.invalidateQueries({ queryKey: PERMISSIONS_QUERY_KEY });
-      }
-      queryClient.invalidateQueries({ queryKey: WAREHOUSES_LIST_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: SALESMEN_LIST_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: STOCK_TRANSFERS_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: STOCK_TRANSFER_DETAIL_QUERY_PREFIX });
-      queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: PURCHASE_ORDER_DETAIL_QUERY_PREFIX });
-      queryClient.invalidateQueries({ queryKey: PURCHASING_ALERTS_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: PURCHASING_ALERTS_SUMMARY_QUERY_KEY });
+      resetTenantQueryCacheOnBranchSwitch(queryClient, {
+        branchContext: data,
+        permissions: data?.permissions,
+      });
       message.success(t("branchSwitchSuccess"));
     },
     onError: (err) => {

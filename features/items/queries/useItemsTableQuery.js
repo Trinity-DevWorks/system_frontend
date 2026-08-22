@@ -6,6 +6,7 @@
  */
 
 import { ITEMS_LIST_QUERY_KEY } from "./itemsQueryKeys";
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { getItemTypeLabel } from "../api/itemTypes.api";
 import { fetchItems } from "../api/items.api";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
@@ -23,7 +24,7 @@ export function useItemsTableQuery({ t, tApiErrors, notification }) {
   const table = useTenantPaginatedTable({
     queryKey: ITEMS_LIST_QUERY_KEY,
     queryFn: fetchItems,
-    staleTime: 2 * 60_000,
+    staleTime: QUERY_STALE_TIME.items,
     tableId: "items",
     t,
     tApiErrors,

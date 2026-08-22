@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Recipe tab — read-only table or editable recipe line editor.
  *
@@ -38,14 +40,14 @@ export function ItemRecipePanel({ itemId, readOnly, t, tApiErrors, active, baseU
     queryKey: ITEMS_LIST_QUERY_KEY,
     queryFn: fetchItemNames,
     enabled: active,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const uomsQuery = useQuery({
     queryKey: UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY,
     queryFn: fetchUnitOfMeasurementNames,
     enabled: active,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const recipeQuery = useQuery({

@@ -1,11 +1,17 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import { entityIdsEqual } from "@/lib/entityId";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 /**
- * Load one record for edit/view (or seed from table row), reset form for create.
+ * Load one record for edit/view (or paint from a table-row placeholder), reset form for create.
+ *
+ * The table row is `placeholderData` only — it is never written into the detail cache.
+ * The detail query stays enabled so a full record still loads in the background.
+ *
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
@@ -31,8 +37,6 @@ export function useResourceDrawerDetailSync({
   mapSeedToCacheRow,
   mapRecordToFormValues,
 }) {
-  const queryClient = useQueryClient();
-
   const detailEnabled = open && (mode === "edit" || mode === "view") && recordId != null;
 
   const tableSeedMatches = useMemo(
@@ -44,38 +48,57 @@ export function useResourceDrawerDetailSync({
     [mode, tableSeedRecord, recordId],
   );
 
+  const seedPlaceholder = useMemo(() => {
+    if (!tableSeedMatches || tableSeedRecord == null) return undefined;
+    return mapSeedToCacheRow(tableSeedRecord);
+  }, [tableSeedMatches, tableSeedRecord, mapSeedToCacheRow]);
+
+  /** True when this open has no table seed — callers use it for a blocking spinner. */
   const fetchRemoteDetail = detailEnabled && !tableSeedMatches;
 
   const detailQuery = useQuery({
     queryKey: [...queryKeyPrefix, recordId],
     queryFn: () => fetchDetail(/** @type {string} */ (recordId)),
-    enabled: fetchRemoteDetail,
-    staleTime: 60_000,
+    enabled: detailEnabled,
+    staleTime: QUERY_STALE_TIME.default,
+    placeholderData: seedPlaceholder,
   });
 
-  useLayoutEffect(() => {
-    if (!open || !(mode === "edit" || mode === "view") || !tableSeedMatches || recordId == null || !tableSeedRecord)
-      return;
-    const cacheRow = mapSeedToCacheRow(tableSeedRecord);
-    queryClient.setQueryData([...queryKeyPrefix, recordId], cacheRow);
-    form.resetFields();
-    form.setFieldsValue(mapRecordToFormValues(/** @type {Record<string, unknown>} */ (cacheRow)));
-  }, [open, mode, recordId, tableSeedMatches, tableSeedRecord, form, queryClient, queryKeyPrefix, mapSeedToCacheRow, mapRecordToFormValues]);
+  const lastAppliedRef = useRef({ mode: /** @type {string | null} */ (null), recordId: /** @type {unknown} */ (null), data: /** @type {unknown} */ (null) });
 
-  useEffect(() => {
-    if (!open) return;
+  useLayoutEffect(() => {
+    if (!open) {
+      lastAppliedRef.current = { mode: null, recordId: null, data: null };
+      return;
+    }
+
     if (mode === "create") {
+      if (lastAppliedRef.current.mode === "create") return;
+      lastAppliedRef.current = { mode: "create", recordId: null, data: null };
       form.resetFields();
       form.setFieldsValue(defaults);
       return;
     }
-    if (tableSeedMatches) return;
-    if (detailQuery.isSuccess && detailQuery.data && typeof detailQuery.data === "object") {
-      const row = /** @type {Record<string, unknown>} */ (detailQuery.data);
+
+    if (mode !== "edit" && mode !== "view") return;
+    const row = detailQuery.data;
+    if (!row || typeof row !== "object") return;
+
+    const isNewRecord =
+      lastAppliedRef.current.mode !== mode || lastAppliedRef.current.recordId !== recordId;
+    if (isNewRecord) {
+      lastAppliedRef.current = { mode, recordId, data: row };
       form.resetFields();
-      form.setFieldsValue(mapRecordToFormValues(row));
+      form.setFieldsValue(mapRecordToFormValues(/** @type {Record<string, unknown>} */ (row)));
+      return;
     }
-  }, [open, mode, form, defaults, tableSeedMatches, detailQuery.isSuccess, detailQuery.data, mapRecordToFormValues]);
+
+    if (lastAppliedRef.current.data === row) return;
+    if (form.isFieldsTouched()) return;
+    lastAppliedRef.current = { mode, recordId, data: row };
+    form.resetFields();
+    form.setFieldsValue(mapRecordToFormValues(/** @type {Record<string, unknown>} */ (row)));
+  }, [open, mode, recordId, defaults, form, mapRecordToFormValues, detailQuery.data]);
 
   return {
     detailEnabled,

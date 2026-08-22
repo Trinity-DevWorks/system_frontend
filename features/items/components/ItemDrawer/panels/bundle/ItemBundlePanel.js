@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Bundle tab — read-only table or editable bundle line editor.
  *
@@ -30,7 +32,7 @@ export function ItemBundlePanel({ itemId, readOnly, t, tApiErrors, active }) {
     queryKey: ITEMS_LIST_QUERY_KEY,
     queryFn: fetchItemNames,
     enabled: active,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const bundleQuery = useQuery({

@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import { useQuery } from "@tanstack/react-query";
 import { fetchBrandNames } from "../api/brands.api";
 import { BRANDS_LIST_QUERY_KEY } from "./brandsQueryKeys";
@@ -13,6 +15,6 @@ export function useBrandNamesQuery({ enabled = true } = {}) {
     queryKey: BRANDS_LIST_QUERY_KEY,
     queryFn: () => fetchBrandNames(),
     enabled,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 }

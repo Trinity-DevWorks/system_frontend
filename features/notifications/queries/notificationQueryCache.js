@@ -8,7 +8,7 @@ import { NOTIFICATIONS_QUERY_KEY } from "./notificationsQueryKeys";
 /**
  * @param {readonly unknown[]} queryKey
  */
-function isNotificationInboxKey(queryKey) {
+export function isNotificationInboxKey(queryKey) {
   if (!Array.isArray(queryKey) || queryKey.length < 2) return false;
   if (queryKey[0] !== "tenant" || queryKey[1] !== "notifications") return false;
   return queryKey[2] !== "preferences";
@@ -40,6 +40,26 @@ export function restoreNotificationInboxCache(queryClient, snapshot) {
   for (const [key, data] of snapshot) {
     queryClient.setQueryData(key, data);
   }
+}
+
+/**
+ * @param {import("@tanstack/react-query").QueryClient} queryClient
+ */
+export function invalidateNotificationInboxQueries(queryClient) {
+  return queryClient.invalidateQueries({
+    queryKey: NOTIFICATIONS_QUERY_KEY,
+    predicate: (query) => isNotificationInboxKey(query.queryKey),
+  });
+}
+
+/**
+ * @param {import("@tanstack/react-query").QueryClient} queryClient
+ */
+export function cancelNotificationInboxQueries(queryClient) {
+  return queryClient.cancelQueries({
+    queryKey: NOTIFICATIONS_QUERY_KEY,
+    predicate: (query) => isNotificationInboxKey(query.queryKey),
+  });
 }
 
 /**

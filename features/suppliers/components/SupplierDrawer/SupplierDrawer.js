@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { useResourceDrawerHeaderFields } from "@/shared/components/resource-drawer/useResourceDrawerHeaderFields";
 import ResourceAttachmentsPanel from "@/shared/components/resource-drawer/ResourceAttachmentsPanel";
@@ -8,6 +10,7 @@ import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/us
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { fetchCurrencyNames } from "@/features/currencies/index";
 import { fetchPaymentMethodNames } from "@/features/payment-methods/index";
 import { fetchPaymentTermNames } from "@/features/payment-terms/index";
@@ -91,7 +94,7 @@ export default function SupplierDrawer({
         const id = record?.id;
         if (id == null || Number.isNaN(Number(id))) return;
         form.setFieldValue(fieldName, Number(id));
-        queryClient.invalidateQueries({ queryKey });
+        invalidateTenantListQueries(queryClient, queryKey);
       },
     [form, queryClient],
   );
@@ -183,35 +186,35 @@ export default function SupplierDrawer({
     queryKey: SUPPLIER_GROUPS_LIST_QUERY_KEY,
     queryFn: () => fetchSupplierGroupNames(),
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const currenciesQuery = useQuery({
     queryKey: CURRENCIES_LIST_QUERY_KEY,
     queryFn: () => fetchCurrencyNames(),
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const paymentMethodsQuery = useQuery({
     queryKey: PAYMENT_METHODS_LIST_QUERY_KEY,
     queryFn: () => fetchPaymentMethodNames(),
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const paymentTermsQuery = useQuery({
     queryKey: PAYMENT_TERMS_LIST_QUERY_KEY,
     queryFn: () => fetchPaymentTermNames(),
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const vatGroupsQuery = useQuery({
     queryKey: VAT_GROUPS_LIST_QUERY_KEY,
     queryFn: () => fetchVatGroupNames(),
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const supplierGroupOptions = useMemo(() => {

@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import {
   deleteUserAttachment,
   uploadUserAttachment,
@@ -68,7 +70,7 @@ export default function UserAvatarSection({
         /** @type {string} */ (avatarId),
       ),
     enabled: Boolean(userId && avatarId),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_STALE_TIME.infinite,
     refetchOnWindowFocus: false,
   });
 

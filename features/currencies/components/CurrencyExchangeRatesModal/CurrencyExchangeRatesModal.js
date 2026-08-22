@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import { fetchCurrencyNames, fetchCurrencyPairRates, fetchOnlineExchangeRates, updateCurrency } from "../../api/currencies.api";
 import { SwapOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -7,6 +9,7 @@ import { App, Button, InputNumber, Modal, Select, Space, Spin, Typography } from
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { CURRENCIES_LIST_QUERY_KEY } from "../../queries/currenciesQueryKeys";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 
 const CURRENCY_PAIR_RATES_QUERY_KEY = /** @type {const} */ ([...CURRENCIES_LIST_QUERY_KEY, "pair-rates"]);
 
@@ -32,7 +35,7 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
     queryKey: CURRENCIES_LIST_QUERY_KEY,
     queryFn: fetchCurrencyNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const currencyOptions = useMemo(
@@ -122,7 +125,7 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
           });
         });
       }
-      queryClient.invalidateQueries({ queryKey: CURRENCIES_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, CURRENCIES_LIST_QUERY_KEY);
       message.success(t("exchangeRateSaved"));
     },
     onError: (err) => {

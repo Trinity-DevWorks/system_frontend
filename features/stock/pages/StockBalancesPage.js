@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { useResourceAccess } from "@/lib/permissions";
 import { App, Checkbox, Form, Select } from "antd";
@@ -37,7 +39,7 @@ function StockBalancesTable() {
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const warehouseFilterOptions = useMemo(

@@ -2,6 +2,7 @@
  * Lookup queries and select options for the purchase order drawer.
  */
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { formatUomLabel } from "../utils/formatStockQuantity";
 import { PO_BASE_UOM } from "../utils/purchaseOrderDrawerUtils";
 import { fetchItemNames } from "@/features/items/index";
@@ -26,21 +27,21 @@ export function usePurchaseOrderDrawerData({ open, t }) {
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const suppliersQuery = useQuery({
     queryKey: SUPPLIERS_LIST_QUERY_KEY,
     queryFn: fetchSupplierNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const itemsQuery = useQuery({
     queryKey: ITEMS_LIST_QUERY_KEY,
     queryFn: fetchItemNames,
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const purchasableItems = useMemo(
@@ -107,7 +108,7 @@ export function usePurchaseOrderLineUomOptions({ itemId, t, enabled = true }) {
     queryKey: [...ITEMS_LIST_QUERY_KEY, itemId, "item-uoms"],
     queryFn: () => fetchItemUoms(itemId),
     enabled: enabled && itemId != null && itemId !== "",
-    staleTime: 60_000,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const options = useMemo(() => {

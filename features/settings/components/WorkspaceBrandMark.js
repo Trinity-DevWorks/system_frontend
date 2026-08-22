@@ -2,17 +2,11 @@
 
 import BrandLogo from "@/shared/components/brand/BrandLogo";
 import { viewCompanyProfileAttachmentBlob } from "../api/companyProfileAttachments.api";
+import { companyLogoPreviewQueryKey } from "../queries/companyProfile";
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { useBlobObjectUrl } from "@/lib/use-blob-object-url";
 import { useQuery } from "@tanstack/react-query";
 import { Spin } from "antd";
-
-/**
- * @param {string | null | undefined} logoId
- * @returns {unknown[]}
- */
-export function companyLogoPreviewQueryKey(logoId) {
-  return ["company-profile", "logo-preview", logoId ?? null];
-}
 
 /**
  * Tenant workspace mark: company logo when set, otherwise ERP product logo.
@@ -36,7 +30,7 @@ export default function WorkspaceBrandMark({
     queryKey: companyLogoPreviewQueryKey(logoId),
     queryFn: () => viewCompanyProfileAttachmentBlob(/** @type {string} */ (logoId)),
     enabled: Boolean(logoId),
-    staleTime: Number.POSITIVE_INFINITY,
+    staleTime: QUERY_STALE_TIME.infinite,
     refetchOnWindowFocus: false,
   });
 

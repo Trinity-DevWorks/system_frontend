@@ -10,6 +10,7 @@ import { CATEGORIES_LIST_QUERY_KEY } from "@/features/categories";
 import { BRANDS_LIST_QUERY_KEY } from "@/features/brands";
 import { UNIT_GROUPS_LIST_QUERY_KEY } from "@/features/unit-groups";
 import { VAT_GROUPS_LIST_QUERY_KEY } from "@/features/vat-groups";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 
 /**
  * @param {{ form: import("antd").FormInstance; queryClient: import("@tanstack/react-query").QueryClient; open: boolean }} args
@@ -31,7 +32,7 @@ export function useItemDrawerNestedCreate({ form, queryClient, open }) {
         const id = record?.id;
         if (id == null || Number.isNaN(Number(id))) return;
         form.setFieldValue(fieldName, Number(id));
-        queryClient.invalidateQueries({ queryKey });
+        invalidateTenantListQueries(queryClient, queryKey);
       },
     [form, queryClient],
   );

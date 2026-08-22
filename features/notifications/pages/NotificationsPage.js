@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Full notifications inbox page.
  *
@@ -35,6 +37,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 import { NOTIFICATIONS_QUERY_KEY, NOTIFICATIONS_UNREAD_COUNT_QUERY_KEY } from "../queries/notificationsQueryKeys";
+import { invalidateNotificationInboxQueries } from "../queries/notificationQueryCache";
 
 const PAGE_SIZE = 20;
 
@@ -55,7 +58,7 @@ function NotificationsPageInner() {
   const unreadQuery = useQuery({
     queryKey: NOTIFICATIONS_UNREAD_COUNT_QUERY_KEY,
     queryFn: fetchUnreadNotificationCount,
-    staleTime: 15_000,
+    staleTime: QUERY_STALE_TIME.inbox,
   });
 
   const listQuery = useQuery({
@@ -66,18 +69,18 @@ function NotificationsPageInner() {
         per_page: PAGE_SIZE,
         unread: filter === "unread",
       }),
-    staleTime: 15_000,
+    staleTime: QUERY_STALE_TIME.inbox,
   });
 
   // Separate from the filtered list so Clear buttons stay accurate on the Unread tab.
   const allCountQuery = useQuery({
     queryKey: [...NOTIFICATIONS_QUERY_KEY, "all-count"],
     queryFn: () => fetchNotifications({ page: 1, per_page: 1 }),
-    staleTime: 15_000,
+    staleTime: QUERY_STALE_TIME.inbox,
   });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+    invalidateNotificationInboxQueries(queryClient);
   };
 
   const clearReadMutation = useMutation({

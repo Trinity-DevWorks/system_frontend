@@ -9,6 +9,7 @@ import { normalizeEntityId } from "@/lib/entityId";
 import { useCallback, useMemo, useState } from "react";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
 import { ITEMS_LIST_QUERY_KEY } from "@/features/items";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 
 /**
  * @param {{
@@ -40,7 +41,7 @@ export function useStockAdjustmentNestedCreate({ form, queryClient, open }) {
             : Number(rawId);
         if (value == null || (options.valueType !== "string" && !Number.isFinite(value))) return;
         form.setFieldValue(fieldName, value);
-        queryClient.invalidateQueries({ queryKey });
+        invalidateTenantListQueries(queryClient, queryKey);
         closeNestedCreate();
       },
     [form, queryClient, closeNestedCreate],

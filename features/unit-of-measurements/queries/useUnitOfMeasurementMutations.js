@@ -6,8 +6,11 @@ import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { createUnitOfMeasurement, updateUnitOfMeasurement } from "../api/unitOfMeasurements.api";
 import {
   patchTenantListCache,
+  patchTenantListCacheForCreate,
   snapshotTenantListCache,
   restoreTenantListCache,
+  cancelTenantListQueries,
+  invalidateTenantListQueries,
 } from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -53,7 +56,7 @@ export function useUnitOfMeasurementDrawerMutations({
     mutationFn: ({ payload }) => createUnitOfMeasurement(payload),
     onMutate: async ({ payload }) => {
       const listKey = UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY;
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       const previous = snapshotTenantListCache(queryClient, listKey);
       const optimisticId = -Date.now();
       const now = new Date().toISOString();
@@ -72,7 +75,7 @@ export function useUnitOfMeasurementDrawerMutations({
         created_at: now,
         updated_at: now,
       };
-      patchTenantListCache(queryClient, listKey, (rows) => sortUnitOfMeasurementsByName([...rows, optimisticRow]));
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => sortUnitOfMeasurementsByName([...rows, optimisticRow]));
       return { previous, optimisticId };
     },
     onError: (err, _variables, context) => {
@@ -97,7 +100,7 @@ export function useUnitOfMeasurementDrawerMutations({
 
       const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
       const id = record?.id;
-      patchTenantListCache(queryClient, listKey, (rows) => {
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => {
         const withoutTemp = optimisticId != null ? rows.filter((r) => r.id !== optimisticId) : rows;
         if (id == null) return withoutTemp;
         return sortUnitOfMeasurementsByName([...withoutTemp.filter((r) => r.id !== id), data]);
@@ -131,7 +134,7 @@ export function useUnitOfMeasurementDrawerMutations({
       onClose();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY);
     },
   });
 
@@ -140,7 +143,7 @@ export function useUnitOfMeasurementDrawerMutations({
     onMutate: async ({ id, values }) => {
       const listKey = UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY;
       const detailKey = unitOfMeasurementDetailQueryKey(id);
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       await queryClient.cancelQueries({ queryKey: detailKey });
       const previousList = snapshotTenantListCache(queryClient, listKey);
       const previousDetail = queryClient.getQueryData(detailKey);
@@ -193,7 +196,7 @@ export function useUnitOfMeasurementDrawerMutations({
     },
     onSettled: (_data, _error, variables) => {
       const id = variables?.id;
-      queryClient.invalidateQueries({ queryKey: UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY);
       if (id != null) {
         queryClient.invalidateQueries({ queryKey: unitOfMeasurementDetailQueryKey(id) });
       }

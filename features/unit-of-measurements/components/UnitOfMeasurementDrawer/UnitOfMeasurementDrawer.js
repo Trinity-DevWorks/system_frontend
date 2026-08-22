@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -8,6 +10,7 @@ import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import UnitGroupDrawer from "@/features/unit-groups/components/UnitGroupDrawer/UnitGroupDrawer";
 import { UNIT_GROUPS_LIST_QUERY_KEY, fetchUnitGroupNames } from "@/features/unit-groups";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { fetchUnitOfMeasurement } from "../../api/unitOfMeasurements.api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -72,7 +75,7 @@ export default function UnitOfMeasurementDrawer({
       const id = record?.id;
       if (id == null || Number.isNaN(Number(id))) return;
       form.setFieldValue("unit_group_id", Number(id));
-      queryClient.invalidateQueries({ queryKey: UNIT_GROUPS_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, UNIT_GROUPS_LIST_QUERY_KEY);
     },
     [form, queryClient],
   );
@@ -119,7 +122,7 @@ export default function UnitOfMeasurementDrawer({
     queryKey: UNIT_GROUPS_LIST_QUERY_KEY,
     queryFn: () => fetchUnitGroupNames(),
     enabled: open,
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const unitGroupOptions = useMemo(() => {

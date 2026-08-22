@@ -8,6 +8,7 @@ import {
   loadSidebarBookmarks,
   saveSidebarBookmarks,
 } from "@/lib/sidebar-bookmarks";
+import { useLocalPreferenceUserId } from "@/lib/local-preference-user";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { useCompanyProfile } from "@/features/settings/queries/companyProfile";
 import { clearAllSessionTokens } from "@/lib/session";
@@ -86,13 +87,15 @@ export default function AppShell({ children }) {
 
   const [searchQuery, setSearchQuery] = useState("");
 
+  const prefsUserId = useLocalPreferenceUserId();
+
   /** Empty until mount so SSR + first client paint match (localStorage differs from server). */
   const [bookmarks, setBookmarks] = useState([]);
   useEffect(() => {
     queueMicrotask(() => {
       setBookmarks(loadSidebarBookmarks());
     });
-  }, []);
+  }, [prefsUserId]);
 
   const bookmarkedPaths = useMemo(
     () => new Set(bookmarks.map((b) => b.path)),

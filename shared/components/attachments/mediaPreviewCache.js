@@ -24,7 +24,12 @@ export function getCachedMediaBlobUrl(recordId, attachmentId) {
  * @param {string} blobUrl
  */
 export function setCachedMediaBlobUrl(recordId, attachmentId, blobUrl) {
-  blobUrlCache.set(mediaPreviewCacheKey(recordId, attachmentId), blobUrl);
+  const key = mediaPreviewCacheKey(recordId, attachmentId);
+  const previous = blobUrlCache.get(key);
+  if (previous && previous !== blobUrl) {
+    URL.revokeObjectURL(previous);
+  }
+  blobUrlCache.set(key, blobUrl);
 }
 
 /**
@@ -39,3 +44,12 @@ export function invalidateMediaPreviewCacheForRecord(recordId) {
     }
   }
 }
+
+/** Revoke every object URL. Call on auth change so a soft logout cannot reuse blobs. */
+export function clearMediaPreviewCache() {
+  for (const url of blobUrlCache.values()) {
+    URL.revokeObjectURL(url);
+  }
+  blobUrlCache.clear();
+}
+

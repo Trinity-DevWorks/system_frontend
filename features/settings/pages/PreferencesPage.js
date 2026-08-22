@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * User notification preferences page (Settings → User → Preferences).
  *
@@ -106,7 +108,7 @@ export default function PreferencesPage() {
   const prefsQuery = useQuery({
     queryKey,
     queryFn: fetchNotificationPreferences,
-    staleTime: 30_000,
+    staleTime: QUERY_STALE_TIME.ledger,
   });
 
   const [draft, setDraft] = useState(/** @type {Map<string, boolean> | null} */ (null));

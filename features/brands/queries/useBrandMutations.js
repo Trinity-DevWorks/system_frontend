@@ -5,8 +5,11 @@ import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import {
   patchTenantListCache,
+  patchTenantListCacheForCreate,
   snapshotTenantListCache,
   restoreTenantListCache,
+  cancelTenantListQueries,
+  invalidateTenantListQueries,
 } from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -51,7 +54,7 @@ export function useBrandMutations({
     mutationFn: ({ payload }) => createBrand(payload),
     onMutate: async ({ payload }) => {
       const listKey = BRANDS_LIST_QUERY_KEY;
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       const previous = snapshotTenantListCache(queryClient, listKey);
       const optimisticId = -Date.now();
       const now = new Date().toISOString();
@@ -62,7 +65,7 @@ export function useBrandMutations({
         created_at: now,
         updated_at: now,
       };
-      patchTenantListCache(queryClient, listKey, (rows) => sortBrandsByName([...rows, optimisticRow]));
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => sortBrandsByName([...rows, optimisticRow]));
       return { previous, optimisticId };
     },
     onError: (err, _variables, context) => {
@@ -87,7 +90,7 @@ export function useBrandMutations({
 
       const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
       const id = record?.id;
-      patchTenantListCache(queryClient, listKey, (rows) => {
+      patchTenantListCacheForCreate(queryClient, listKey, (rows) => {
         const withoutTemp = optimisticId != null ? rows.filter((r) => r.id !== optimisticId) : rows;
         if (id == null) return withoutTemp;
         return sortBrandsByName([...withoutTemp.filter((r) => r.id !== id), data]);
@@ -122,7 +125,7 @@ export function useBrandMutations({
       onClose();
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: BRANDS_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, BRANDS_LIST_QUERY_KEY);
     },
   });
 
@@ -131,7 +134,7 @@ export function useBrandMutations({
     onMutate: async ({ id, values }) => {
       const listKey = BRANDS_LIST_QUERY_KEY;
       const detailKey = brandDetailQueryKey(id);
-      await queryClient.cancelQueries({ queryKey: listKey });
+      await cancelTenantListQueries(queryClient, listKey);
       await queryClient.cancelQueries({ queryKey: detailKey });
       const previousList = snapshotTenantListCache(queryClient, listKey);
       const previousDetail = queryClient.getQueryData(detailKey);
@@ -166,7 +169,7 @@ export function useBrandMutations({
     },
     onSettled: (_data, _error, variables) => {
       const id = variables?.id;
-      queryClient.invalidateQueries({ queryKey: BRANDS_LIST_QUERY_KEY });
+      invalidateTenantListQueries(queryClient, BRANDS_LIST_QUERY_KEY);
       if (id != null) {
         queryClient.invalidateQueries({ queryKey: brandDetailQueryKey(id) });
       }

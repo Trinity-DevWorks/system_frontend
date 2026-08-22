@@ -5,12 +5,10 @@ import AuthSplitShell from "../components/AuthSplitShell";
 import { useRouter, Link } from "@/i18n/navigation";
 import { BRANCH_CONTEXT_QUERY_KEY, setActiveBranchId } from "@/lib/active-branch";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { AUTH_ME_QUERY_KEY } from "@/lib/auth-me";
 import { clearQueryCacheOnAuthChange } from "@/lib/clear-query-cache-on-auth";
+import { syncLocalPreferenceUserId } from "@/lib/local-preference-scope";
 import { consumePendingAuthErrorCode } from "@/lib/pending-auth-error";
-import {
-  normalizePermissionMatrix,
-  PERMISSIONS_QUERY_KEY,
-} from "@/lib/permissions";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
 import { tenantModulesQueryKey } from "@/lib/tenant-modules";
@@ -85,10 +83,18 @@ function LoginFormInner({ initialHost }) {
             queryClient.setQueryData(BRANCH_CONTEXT_QUERY_KEY, branchContext);
           }
 
-          queryClient.setQueryData(
-            PERMISSIONS_QUERY_KEY,
-            normalizePermissionMatrix(response?.permissions),
-          );
+          const me = response?.user ?? response?.me;
+          if (me && typeof me === "object") {
+            queryClient.setQueryData(AUTH_ME_QUERY_KEY, {
+              ...me,
+              permissions: response?.permissions ?? me.permissions,
+            });
+            syncLocalPreferenceUserId(me);
+          } else if (response?.permissions != null) {
+            queryClient.setQueryData(AUTH_ME_QUERY_KEY, {
+              permissions: response.permissions,
+            });
+          }
 
           try {
             const assigned = await tenantRequest(

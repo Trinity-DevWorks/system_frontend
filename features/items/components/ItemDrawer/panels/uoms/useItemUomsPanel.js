@@ -1,5 +1,7 @@
 "use client";
 
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+
 /**
  * Units & pricing tab — UOM cards, UOM CRUD, and embedded barcodes per UOM.
  *
@@ -32,6 +34,7 @@ import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
 import { CURRENCIES_LIST_QUERY_KEY } from "@/features/currencies";
 import { UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY } from "@/features/unit-of-measurements";
 import { ITEMS_LIST_QUERY_KEY, itemDetailQueryKey } from "../../../../queries/itemsQueryKeys";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 
 /** @typedef {import("../itemDrawerPanelsState").UomInlineValues} UomInlineValues */
 
@@ -73,14 +76,14 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     queryKey: CURRENCIES_LIST_QUERY_KEY,
     queryFn: fetchCurrencyNames,
     enabled: active && isPersistedEntityId(itemId),
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const uomsQuery = useQuery({
     queryKey: UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY,
     queryFn: fetchUnitOfMeasurementNames,
     enabled: active && isPersistedEntityId(itemId),
-    staleTime: 5 * 60_000,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const saveMutation = useMutation({
@@ -93,7 +96,7 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
         void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
       }
       void queryClient.invalidateQueries({ queryKey: itemDetailQueryKey(itemId) });
-      void queryClient.invalidateQueries({ queryKey: ITEMS_LIST_QUERY_KEY });
+      void invalidateTenantListQueries(queryClient, ITEMS_LIST_QUERY_KEY);
       message.success(t("panelSaveSuccess"));
       setInlineEdit(null);
     },
