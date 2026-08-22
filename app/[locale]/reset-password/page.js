@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { Suspense } from "react";
-import ResetPasswordClient from "./ResetPasswordClient";
+import ResetPasswordClient from "@/features/auth/pages/ResetPasswordPage";
 
 function forwardedHost(headerValue) {
   if (!headerValue) return "";

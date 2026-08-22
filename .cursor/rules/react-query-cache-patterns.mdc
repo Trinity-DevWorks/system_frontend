@@ -9,13 +9,29 @@ TanStack React Query is the project’s server-state system.
 
 Do not introduce Redux, Zustand, SWR, or another server-state library unless explicitly requested.
 
-## Queries
+## Where query code lives
 
-For simple tenant catalogs, use stable query keys similar to:
+Query hooks, mutation hooks, query keys, and cache helpers all belong in
+`features/<feature>/queries/`. Pages should call a hook, not assemble a query.
 
-`["tenant", "<resource>"]`
+The established split is `use<Feature>TableQuery.js` for the list,
+`use<Feature>Delete.js` for row and bulk delete, and `use<Feature>Mutations.js`
+for create and update.
 
-For filtered or workflow features, include relevant filters in the query key or reuse existing query-key helpers.
+## Query keys
+
+Each feature declares its keys once in `features/<feature>/queries/<feature>QueryKeys.js`:
+
+```js
+export const BRANDS_LIST_QUERY_KEY = /** @type {const} */ (["tenant", "brands"]);
+export function brandDetailQueryKey(id) { return [...BRANDS_LIST_QUERY_KEY, id]; }
+```
+
+Import those constants rather than writing `["tenant", "brands"]` inline. Query
+keys are re-exported through the feature barrel, so other features and the shell
+can invalidate correctly.
+
+For filtered or workflow features, include the relevant filters in the key.
 
 Inspect comparable features before defining a new key structure.
 
@@ -56,9 +72,15 @@ For workflows:
 
 ## Cache helpers
 
-Reuse existing cache-key or cache-update utilities when the domain already provides them.
+Reuse existing cache-update utilities when the domain already provides them —
+`lib/tables/tenantListCache.js` for paginated list rows, and the feature's own
+`queries/*QueryCache.js` for domain-specific patching.
 
 Do not create duplicate query-key logic inside multiple components.
+
+A shared component must not import a feature's cache module. If it needs to sync
+domain cache, take an adapter prop instead; `ResourceAttachmentsPanel` and
+`itemPrimaryImageSync` are the reference for this.
 
 ## Local state
 

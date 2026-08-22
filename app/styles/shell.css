@@ -76,7 +76,7 @@
   height: 40px;
   width: 40px;
   flex: 0 0 auto;
-  cursor: pointer;
+  cursor: default;
   align-items: center;
   justify-content: center;
   border: 0;

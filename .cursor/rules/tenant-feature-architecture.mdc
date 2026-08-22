@@ -1,65 +1,88 @@
 ---
-description: Follow the established App Router architecture for tenant frontend features.
+description: Follow the established feature-based architecture for tenant frontend features.
 alwaysApply: true
 ---
 
 # Tenant Feature Architecture
 
-Tenant application features belong under:
-
-`app/[locale]/main/<feature>/`
-
-Inventory and workflow features may belong under:
-
-`app/[locale]/main/stock/<feature>/`
+Everything belonging to a business domain lives together under `features/<feature>/`.
+Routes stay in the App Router, but they hold no logic.
 
 Do not create Pages Router routes or introduce a second routing architecture.
 
-## Default simple-feature structure
+## Layers
 
-A simple catalog commonly contains:
+```
+app/        route entries only — a stub, a layout, or a server wrapper
+features/   business domains
+shell/      application chrome: sidebar, header, breadcrumbs, route guard
+shared/     generic UI with no business logic
+lib/        infrastructure: axios, session, permissions matrix, formatting
+```
 
-- `page.js`
-- `get<Feature>TableColumns.js`
-- `drawer/<Feature>Drawer.js`
-- `drawer/<Feature>DrawerForm.js`
-- `drawer/<feature>DrawerUtils.js`
-- `drawer/use<Feature>DrawerMutations.js`
+Dependency direction is one-way:
 
-This is a default for simple CRUD features, not a mandatory structure for aggregates or workflows.
+- `lib/` and `shared/` must not import from `features/`, `shell/`, or `app/`.
+- `features/` may import `lib/`, `shared/`, and other features.
+- `shell/` may import anything; it is the composition layer.
 
-## Complex features
+A feature reaching into another feature is fine and expected (the item drawer
+opens the brand drawer). A shared or infrastructure module reaching into a
+feature is a layering bug — invert it with an adapter prop instead, the way
+`ResourceAttachmentsPanel` takes `primaryImageSync`.
 
-Aggregate and workflow features may use additional folders such as:
+## Feature structure
 
-- `drawer/hooks/`
-- `drawer/components/`
-- `drawer/panels/`
-- `drawer/utils/`
-- shared filter components
-- shared cache-key helpers
-- line editors
-- attachment panels
+```
+features/<feature>/
+  api/          HTTP calls, one named function per endpoint
+  queries/      React Query hooks, query keys, cache helpers
+  components/   feature-specific UI, grouped per component
+  pages/        page-level components rendered by the route
+  hooks/        feature-specific non-query hooks
+  utils/        pure helpers
+  validation/   schemas, when the feature needs them
+  index.js      public API
+```
 
-Follow the closest feature of matching complexity.
+Use only the folders the feature actually needs. `overview` is two files.
 
-## Shared code
+## Routes
 
-Use existing shared components and utilities from:
+Each route re-exports its page component in one line:
 
-- `components/`
-- `lib/`
-- `services/`
-- `API/`
+```js
+// app/[locale]/main/brands/page.js
+export { default } from "@/features/brands/pages/BrandsPage";
+```
 
-Do not duplicate shared table, drawer, error, API, or shell behavior inside individual features.
+A route file may hold server-side work that must run there — reading `headers()`,
+redirecting — but never business logic or data fetching.
+
+## The barrel
+
+`index.js` exposes API functions, query keys, and non-component utilities:
+
+```js
+export * from "./api/brands.api";
+export * from "./queries/brandsQueryKeys";
+```
+
+Do not export components through the barrel. Cross-feature component imports use
+the deep path (`@/features/brands/components/BrandDrawer/BrandDrawer`), which
+keeps default exports intact and prevents import cycles.
+
+Inside a feature, import siblings by relative path, never through your own barrel.
+
+## Registering a feature
+
+Add one entry to `FEATURES` in `features/registry.js`. The sidebar, the route
+guard's module and permission checks, and the quick-create menu all derive from
+it. Verify with `npm run check:registry`.
 
 ## Language and imports
 
-The project uses JavaScript with JSDoc.
+The project uses JavaScript with JSDoc. Do not introduce TypeScript files unless
+explicitly requested as a coordinated migration.
 
-Do not introduce TypeScript files unless explicitly requested as a coordinated migration.
-
-Use the `@/` path alias where consistent with nearby files.
-
-Use `JavaScript` with JSDoc where nearby files already use it. Do not introduce TypeScript unless explicitly requested as a coordinated migration.
+Use the `@/` path alias for cross-layer imports, relative paths within a feature.
