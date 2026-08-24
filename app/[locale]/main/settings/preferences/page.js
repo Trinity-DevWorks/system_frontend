@@ -169,9 +169,15 @@ export default function PreferencesPage() {
   };
 
   /**
+   * Preference rows need a static type name. Inbox titles may interpolate
+   * instance fields (e.g. warehouse_name), so prefer `label` when present.
    * @param {string} type
    */
   const typeTitle = (type) => {
+    const labelKey = `types.${type}.label`;
+    if (typeof tNotifications.has === "function" && tNotifications.has(labelKey)) {
+      return tNotifications(labelKey);
+    }
     const key = `types.${type}.title`;
     if (typeof tNotifications.has === "function" && !tNotifications.has(key)) {
       return type;

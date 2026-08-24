@@ -203,6 +203,7 @@
           "body": "هناك {alert_count} تنبيه(ات) بحاجة للمتابعة ({critical_count} نفاد مخزون)."
         },
         "low_stock_item": {
+          "label": "انخفاض مخزون صنف",
           "title": "انخفاض المخزون في {warehouse_name}",
           "body": "المخزون المتاح للصنف {item_code} — {item_name} هو {on_hand_qty}."
         }

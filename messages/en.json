@@ -203,6 +203,7 @@
           "body": "{alert_count} alert(s) need attention ({critical_count} out of stock)."
         },
         "low_stock_item": {
+          "label": "Item low stock",
           "title": "Low stock in {warehouse_name}",
           "body": "{item_code} — {item_name} has {on_hand_qty} on hand."
         }
