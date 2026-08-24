@@ -9,15 +9,14 @@ The frontend has separate tenant and central application surfaces.
 
 ## Tenant application
 
-Tenant UI lives under:
+Tenant routes live under `app/[locale]/main/` and re-export their page from
+`features/<feature>/pages/`.
 
-`app/[locale]/main/`
+The tenant surface uses:
 
-It uses:
-
-- `AppShell`
+- `AppShell` (in `shell/`)
 - tenant token
-- tenant API client
+- `tenantRequest` from `lib/axios.js`
 - module route guard
 - tenant-host URLs
 
@@ -30,6 +29,12 @@ Central UI lives under:
 It does not use the tenant `main` layout or `AppShell`.
 
 Do not place central pages under `/main/central`.
+
+## Auth screens
+
+Login, forgot-password, and reset-password live in `features/auth/pages/`. Their
+route files stay thin server components because they read the forwarded host from
+`headers()` and pass it down.
 
 ## Route protection
 

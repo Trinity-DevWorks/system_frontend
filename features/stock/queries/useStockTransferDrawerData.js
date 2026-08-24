@@ -1,0 +1,104 @@
+/**
+ * Lookup queries and select options for the stock transfer drawer.
+ */
+
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { formatUomLabel } from "../utils/formatStockQuantity";
+import { STOCK_TRANSFER_BASE_UOM } from "../utils/stockTransferDrawerUtils";
+import { fetchItemNames } from "@/features/items/index";
+import { fetchItemUoms } from "@/features/items/index";
+import { fetchWarehouseNames } from "@/features/warehouses/index";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+import { formatItemOptionLabel } from "@/features/items/utils/formatItemLabel";
+import { ITEMS_LIST_QUERY_KEY } from "@/features/items";
+
+/**
+ * @param {{
+ *   open: boolean;
+ *   t: (key: string) => string;
+ * }} args
+ */
+export function useStockTransferDrawerData({ open, t }) {
+  const warehousesQuery = useQuery({
+    queryKey: WAREHOUSES_LIST_QUERY_KEY,
+    queryFn: fetchWarehouseNames,
+    enabled: open,
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+
+  const itemsQuery = useQuery({
+    queryKey: ITEMS_LIST_QUERY_KEY,
+    queryFn: fetchItemNames,
+    enabled: open,
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+
+  const stockableItems = useMemo(
+    () =>
+      (itemsQuery.data ?? []).filter(
+        (row) => row?.track_inventory === true && row?.is_active !== false,
+      ),
+    [itemsQuery.data],
+  );
+
+  const warehouseOptions = useMemo(
+    () =>
+      (warehousesQuery.data ?? [])
+        .filter((w) => w?.is_active !== false)
+        .map((w) => ({
+          value: w.id,
+          label:
+            typeof w.shortcut_name === "string" && w.shortcut_name.trim()
+              ? `${w.shortcut_name} — ${w.name}`
+              : String(w.name ?? w.id),
+        })),
+    [warehousesQuery.data],
+  );
+
+  const itemOptions = useMemo(
+    () =>
+      stockableItems.map((item) => ({
+        value: item.id,
+        label: formatItemOptionLabel(item),
+      })),
+    [stockableItems],
+  );
+
+  return {
+    warehouseOptions,
+    itemOptions,
+    warehousesPending: warehousesQuery.isPending,
+    itemsPending: itemsQuery.isPending,
+  };
+}
+
+/**
+ * @param {{ itemId?: string; t: (key: string) => string; enabled?: boolean }} args
+ */
+export function useTransferLineUomOptions({ itemId, t, enabled = true }) {
+  const itemUomsQuery = useQuery({
+    queryKey: [...ITEMS_LIST_QUERY_KEY, itemId, "item-uoms"],
+    queryFn: () => fetchItemUoms(itemId),
+    enabled: enabled && itemId != null && itemId !== "",
+    staleTime: QUERY_STALE_TIME.default,
+  });
+
+  const options = useMemo(() => {
+    const rows = itemUomsQuery.data ?? [];
+    const result = [
+      { value: STOCK_TRANSFER_BASE_UOM, label: t("transferBaseUomOption") },
+    ];
+    for (const row of rows) {
+      const label = formatUomLabel(row?.uom) || `UOM #${row?.uom_id ?? row?.id}`;
+      result.push({ value: row.id, label });
+    }
+    return result;
+  }, [itemUomsQuery.data, t]);
+
+  return {
+    options,
+    pending: itemUomsQuery.isPending,
+  };
+}

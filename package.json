@@ -7,7 +7,10 @@
     "dev:webpack": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next dev",
     "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:i18n": "node scripts/check-i18n-keys.mjs",
+    "check:registry": "node scripts/check-registry.mjs",
+    "check": "npm run check:i18n && npm run check:registry && npm run lint"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.1",

@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import ForgotPasswordClient from "./ForgotPasswordClient";
+import ForgotPasswordClient from "@/features/auth/pages/ForgotPasswordPage";
 
 function forwardedHost(headerValue) {
   if (!headerValue) return "";

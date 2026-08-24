@@ -1,5 +1,5 @@
-import AntdAppProvider from "@/components/AntdAppProvider";
-import LocaleHtmlLang from "@/components/LocaleHtmlLang";
+import AntdAppProvider from "@/shared/components/AntdAppProvider";
+import LocaleHtmlLang from "@/shared/components/LocaleHtmlLang";
 import { routing } from "@/i18n/routing";
 import { hasLocale } from "next-intl";
 import { NextIntlClientProvider } from "next-intl";
