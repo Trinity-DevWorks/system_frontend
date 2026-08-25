@@ -164,9 +164,17 @@ export default function PreferencesPage() {
   };
 
   /**
+   * Preference row label. Prefer `types.{type}.label` when present so
+   * interpolated inbox titles (e.g. "Low stock in {warehouse_name}") are
+   * not rendered without params.
+   *
    * @param {string} type
    */
   const typeTitle = (type) => {
+    const labelKey = `types.${type}.label`;
+    if (typeof tNotifications.has === "function" && tNotifications.has(labelKey)) {
+      return tNotifications(labelKey);
+    }
     const key = `types.${type}.title`;
     if (typeof tNotifications.has === "function" && !tNotifications.has(key)) {
       return type;
