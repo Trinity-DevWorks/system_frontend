@@ -32,7 +32,6 @@ function timezoneOptions() {
  *   form: import("antd").FormInstance;
  *   t: (key: string) => string;
  *   onFinish: (values: Record<string, unknown>) => void;
- *   primaryCurrencyLabel?: string | null;
  *   disabled?: boolean;
  *   onValuesChange?: () => void;
  * }} props
@@ -41,7 +40,6 @@ export default function CompanySettingsForm({
   form,
   t,
   onFinish,
-  primaryCurrencyLabel,
   disabled = false,
   onValuesChange,
 }) {
@@ -52,19 +50,10 @@ export default function CompanySettingsForm({
       form={form}
       layout="vertical"
       requiredMark={disabled ? false : "optional"}
-      className="max-w-2xl"
       disabled={disabled}
       onFinish={onFinish}
       onValuesChange={onValuesChange}
     >
-      {primaryCurrencyLabel ? (
-        <div className="mb-4 text-sm opacity-80">
-          {t("primaryCurrencyReadonly", { currency: primaryCurrencyLabel })}
-        </div>
-      ) : (
-        <div className="mb-4 text-sm opacity-80">{t("primaryCurrencyEmpty")}</div>
-      )}
-
       <div className="grid gap-x-4 sm:grid-cols-2">
         <Form.Item
           name="country"

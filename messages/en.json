@@ -307,6 +307,7 @@
     "avatarRemoveConfirmCancel": "Cancel"
   },
   "CompanyProfile": {
+    "companyDetails": "Company details",
     "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save changes",
@@ -349,6 +350,8 @@
     "attachmentsUploadError": "Could not upload file."
   },
   "CompanySettings": {
+    "title": "Company settings",
+    "regionalSettings": "Regional settings",
     "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save changes",

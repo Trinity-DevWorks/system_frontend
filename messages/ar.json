@@ -307,6 +307,7 @@
     "avatarRemoveConfirmCancel": "إلغاء"
   },
   "CompanyProfile": {
+    "companyDetails": "تفاصيل الشركة",
     "edit": "تعديل",
     "cancel": "إلغاء",
     "save": "حفظ التغييرات",
@@ -349,6 +350,8 @@
     "attachmentsUploadError": "تعذر رفع الملف."
   },
   "CompanySettings": {
+    "title": "إعدادات الشركة",
+    "regionalSettings": "الإعدادات الإقليمية",
     "edit": "تعديل",
     "cancel": "إلغاء",
     "save": "حفظ التغييرات",
