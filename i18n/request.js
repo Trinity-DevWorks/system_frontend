@@ -10,6 +10,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
 
   return {
     locale,
+    // Load full locale catalogs (includes Notifications.clearRead / clearAll, etc.).
     messages: (await import(`../messages/${locale}.json`)).default,
   };
 });

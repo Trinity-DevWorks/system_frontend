@@ -1,0 +1,165 @@
+import { formatTenantDate } from "@/lib/tenant-format";
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
+import { Button, Dropdown, Space, Typography } from "antd";
+
+const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
+
+/** @param {unknown} status */
+export function getCustomerStatusLabel(status, t) {
+  const s = typeof status === "string" ? status : "active";
+  if (s === "suspended") return t("statusSuspended");
+  if (s === "blacklisted") return t("statusBlacklisted");
+  return t("statusActive");
+}
+
+/**
+ * @param {(key: string) => string} t `useTranslations("Customers")`
+ * @param {{
+ *   onView?: (record: Record<string, unknown>) => void;
+ *   onEdit?: (record: Record<string, unknown>) => void;
+ *   onDelete?: (record: Record<string, unknown>) => void;
+ * }} [actions]
+ * @returns {import("antd").TableProps["columns"]}
+ */
+export function getCustomerTableColumns(t, actions = {}) {
+  const { onView, onEdit, onDelete } = actions;
+
+  return [
+    {
+      title: t("colCode"),
+      dataIndex: "customer_code",
+      key: "customer_code",
+      width: 170,
+      ellipsis: true,
+      render: (value) => {
+        const v = typeof value === "string" ? value.trim() : "";
+        return v ? (
+          <Typography.Text code className="text-xs">
+            {v}
+          </Typography.Text>
+        ) : (
+          "—"
+        );
+      },
+    },
+    {
+      title: t("colName"),
+      dataIndex: "name",
+      key: "name",
+      width: 240,
+      ellipsis: true,
+      render: (value, record) => (
+        <Space size={6} wrap>
+          <span>{value || "—"}</span>
+          {record?.is_system ? (
+            <Typography.Text type="secondary" className="text-xs">
+              {t("systemWalkInBadge")}
+            </Typography.Text>
+          ) : null}
+        </Space>
+      ),
+    },
+    {
+      title: t("colGroup"),
+      dataIndex: "customer_group",
+      key: "customer_group",
+      width: 180,
+      ellipsis: true,
+      render: (value) => value?.name || "—",
+      sorter: (a, b) =>
+        String(a?.customer_group?.name ?? "").localeCompare(String(b?.customer_group?.name ?? "")),
+    },
+    {
+      title: t("colPhone"),
+      dataIndex: "phone",
+      key: "phone",
+      width: 170,
+      ellipsis: true,
+      render: (value) => value || "—",
+    },
+    {
+      title: t("colEmail"),
+      dataIndex: "email",
+      key: "email",
+      width: 220,
+      ellipsis: true,
+      render: (value) => value || "—",
+    },
+    {
+      title: t("colStatus"),
+      dataIndex: "status",
+      key: "status",
+      width: 130,
+      sorter: (a, b) => String(a?.status ?? "").localeCompare(String(b?.status ?? "")),
+      render: (_, record) => {
+        const s = record?.status;
+        const label = getCustomerStatusLabel(s, t);
+        if (s === "blacklisted") {
+          return <Typography.Text type="danger">{label}</Typography.Text>;
+        }
+        if (s === "suspended") {
+          return <Typography.Text type="warning">{label}</Typography.Text>;
+        }
+        return <Typography.Text type="success">{label}</Typography.Text>;
+      },
+    },
+    {
+      title: t("colCreatedAt"),
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 168,
+      sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
+      render: (value) => formatTenantDate(value) || "—",
+    },
+    {
+      title: t("colUpdatedAt"),
+      dataIndex: "updated_at",
+      key: "updated_at",
+      width: 168,
+      sorter: (a, b) => toTime(a.updated_at) - toTime(b.updated_at),
+      render: (value) => formatTenantDate(value) || "—",
+    },
+    {
+      title: t("colActions"),
+      key: "actions",
+      fixed: "end",
+      width: 72,
+      align: "center",
+      render: (_, record) => (
+        <Dropdown
+          trigger={["click"]}
+          menu={{
+            items: [
+              {
+                key: "view",
+                label: t("actionView"),
+                icon: <EyeOutlined />,
+                disabled: !onView,
+                onClick: () => onView?.(record),
+              },
+              {
+                key: "edit",
+                label: t("actionEdit"),
+                icon: <EditOutlined />,
+                disabled: !onEdit,
+                onClick: () => onEdit?.(record),
+              },
+              { type: "divider" },
+              {
+                key: "delete",
+                label: t("actionDelete"),
+                icon: <DeleteOutlined />,
+                danger: true,
+                disabled: !onDelete || Boolean(record?.is_system),
+                onClick: () => onDelete?.(record),
+              },
+            ],
+          }}
+        >
+          <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t("actionMenu")} />
+        </Dropdown>
+      ),
+    },
+  ];
+}

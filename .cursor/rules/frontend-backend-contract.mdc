@@ -69,8 +69,8 @@ Do not introduce a one-off error format.
 
 Before changing an existing endpoint:
 
-1. Search `services/` for all consumers.
-2. Search feature pages and hooks for all call sites.
+1. Search `features/*/api/` and `lib/api/` for all consumers.
+2. Search feature pages, queries, and hooks for all call sites.
 3. Confirm payload and response dependencies.
 4. Update both frontend and backend when required.
 5. Document breaking changes explicitly.

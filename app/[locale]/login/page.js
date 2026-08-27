@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import LoginClient from "./LoginClient";
+import LoginClient from "@/features/auth/pages/LoginPage";
 
 function forwardedHost(headerValue) {
   if (!headerValue) return "";

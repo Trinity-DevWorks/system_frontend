@@ -1,0 +1,97 @@
+/* AppDataTable / rc-table scroll and sticky-column fixes. */
+
+/*
+ * Vertical scroll lives on `.app-data-table-scroll` (toolbar, rows, footer).
+ * Horizontal scroll lives on the table itself (`scroll.x`) so extra columns
+ * get a visible X scrollbar instead of being clipped.
+ */
+.app-data-table-scroll {
+  scrollbar-width: thin;
+}
+
+.app-data-table-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.app-data-table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.app-data-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-data-table .ant-table-content {
+  scrollbar-width: thin;
+}
+
+.app-data-table .ant-table-content::-webkit-scrollbar {
+  width: 6px;
+  height: 8px;
+}
+
+.app-data-table .ant-table-content::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, currentColor 32%, transparent);
+}
+
+.app-data-table .ant-table-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-data-table th.items-table-image-cell,
+.app-data-table td.items-table-image-cell {
+  padding: 4px 6px !important;
+}
+
+/* Keep fixed-end action column flush with table edge (no right gap). */
+.app-data-table .ant-table-thead .ant-table-cell-fix-end.ant-table-cell-fix-sticky,
+.app-data-table .ant-table-tbody .ant-table-cell-fix-end.ant-table-cell-fix-sticky {
+  inset-inline-end: 0 !important;
+}
+
+/* Remove rc-table scrollbar spacer column that can leave a visible end gap. */
+.app-data-table .ant-table-thead .ant-table-cell-scrollbar,
+.app-data-table .ant-table-tbody .ant-table-cell-scrollbar {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+.role-permissions-matrix .ant-table-wrapper,
+.role-permissions-matrix .ant-spin-nested-loading,
+.role-permissions-matrix .ant-spin-container,
+.role-permissions-matrix .ant-table {
+  height: 100%;
+}
+
+.role-permissions-matrix .ant-table-body {
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+}
+
+.role-permissions-matrix .ant-table-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.role-permissions-matrix .ant-table-body::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.role-permissions-matrix .ant-table-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.role-permissions-matrix .ant-table-thead .ant-table-cell-scrollbar,
+.role-permissions-matrix .ant-table-tbody .ant-table-cell-scrollbar {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}

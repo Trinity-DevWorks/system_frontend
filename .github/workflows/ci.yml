@@ -26,6 +26,10 @@ jobs:
       NEXT_PUBLIC_TENANT_ROOT_DOMAIN: localhost
       NEXT_PUBLIC_CENTRAL_API_PORT: "8000"
       NEXT_PUBLIC_TENANT_API_PORT: "8000"
+      NEXT_PUBLIC_REVERB_APP_KEY: local-reverb-key
+      NEXT_PUBLIC_REVERB_HOST: localhost
+      NEXT_PUBLIC_REVERB_PORT: "8080"
+      NEXT_PUBLIC_REVERB_SCHEME: http
     steps:
       - name: Checkout
         uses: actions/checkout@v4

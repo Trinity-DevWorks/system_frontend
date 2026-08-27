@@ -1,70 +1,68 @@
 ---
-description: Keep frontend module route guards and sidebar module metadata aligned with backend entitlements.
+description: Keep navigation, module entitlements, and permission gating driven by the feature registry.
 alwaysApply: false
 ---
 
-# Module Entitlement UX
+# Module Entitlement and Navigation
 
-Frontend module checks are for navigation and user experience.
+Frontend module and permission checks are for navigation and user experience.
 
-Backend middleware remains the security authority.
+Backend middleware and RBAC remain the security authority. Do not treat frontend
+gating as sufficient authorization.
 
-Do not treat frontend module gating as sufficient authorization.
+## Single registration
 
-## Dual registration
+`features/registry.js` is the only place a feature declares itself. One entry
+supplies the route, the sidebar placement, the tenant module, and the RBAC
+resource:
 
-When adding a tenant feature that belongs to a sellable module, update both:
+```js
+{ id: "brands", path: "/main/brands", section: "master-data",
+  labelKey: "navBrands", icon: TrademarkOutlined,
+  module: "master_data", permission: "brands", quickCreate: true },
+```
 
-1. `lib/tenant-modules.js`
-   - path-to-module rules
-   - used by `ModuleRouteGuard`
+Everything derives from it:
 
-2. `components/shell/sidebar/main-nav.js`
-   - navigation item module metadata
-   - used by sidebar filtering
+- the sidebar tree, via `buildMainNavItems` in `shell/sidebar/main-nav.js`
+- `moduleForPath` and `permissionResourceForPath`, used by `ModuleRouteGuard`
+- `ROUTES`
+- the header quick-create menu
 
-These two mappings must remain aligned.
+Do not add path-to-module or path-to-permission tables anywhere else. They used to
+live in `lib/tenant-modules.js` and `lib/permissions.js` and drifted out of sync
+with the sidebar; that is the failure mode this registry exists to prevent.
 
-Updating only one creates inconsistent navigation or route behavior.
+`lib/permissions.js` still owns the matrix itself — `usePermissions`, `can`,
+`matrixAllows`. Only the path mapping moved.
 
-When adding a navigable feature, also add:
+## Registry fields worth knowing
 
-- The route constant under ROUTES in components/shell/sidebar/main-nav.js.
-- The actual sidebar navigation item in buildMainNavItems().
-- The correct module metadata on that navigation item.
+- `nav: false` — routable but absent from the sidebar (profile, notifications).
+- `gateNav: false` — the route guard enforces `permission`, the sidebar does not.
+  Do not use this for settings: those leaves are gated in both places.
+- `groupKey` — sub-heading inside the section panel.
+- `leaf: true` on a section — the rail row navigates directly instead of opening a panel.
+
+Every rail row and page row is distinguished only by its icon, so icons must be unique.
+
+## Verification
+
+`npm run check:registry` diffs the derived navigation and gating against a snapshot
+of the reviewed behaviour. Run it after touching the registry.
+
+When you intentionally change navigation or access, update the snapshot in
+`scripts/check-registry.mjs` in the same commit — that diff is the review record
+for a permissions change.
 
 ## Module codes
 
-Use backend module codes exactly.
+Use backend module codes exactly: `core`, `master_data`, `inventory`, `sales`,
+`purchasing`. Do not invent frontend-only module names.
 
-Examples include:
+## Denied-access behaviour
 
-- `core`
-- `master_data`
-- `inventory`
-- `sales`
-- `purchasing`
+`ModuleRouteGuard` notifies the user and redirects to the overview page. It fails
+closed: a fetch error or empty matrix denies access.
 
-Do not invent frontend-only module names.
-
-## Missing-module behavior
-
-Follow the existing UX:
-
-- notify the user
-- redirect to the overview page
-- do not display inaccessible module pages
-
-The missing-module experience is currently handled primarily by `ModuleRouteGuard` and shell messaging.
-
-Do not rely on a localized `MODULE_NOT_ENTITLED` API error key unless it is actually added to the translation catalog.
-
-## Permissions
-
-Action-level frontend permission gating is not currently implemented.
-
-Do not invent a `can()` architecture as part of an unrelated feature.
-
-Backend RBAC remains authoritative.
-
-Any future frontend permission system should be introduced as a coordinated feature.
+Follow that existing behaviour rather than adding per-page checks.

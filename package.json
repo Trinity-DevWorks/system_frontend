@@ -7,7 +7,10 @@
     "dev:webpack": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next dev",
     "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:i18n": "node scripts/check-i18n-keys.mjs",
+    "check:registry": "node scripts/check-registry.mjs",
+    "check": "npm run check:i18n && npm run check:registry && npm run lint"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.1",
@@ -22,8 +25,10 @@
     "axios": "^1.14.0",
     "dayjs": "^1.11.20",
     "js-cookie": "^3.0.5",
+    "laravel-echo": "^2.4.0",
     "next": "^16.2.4",
     "next-intl": "^4.9.0",
+    "pusher-js": "^8.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "yet-another-react-lightbox": "^3.32.0",

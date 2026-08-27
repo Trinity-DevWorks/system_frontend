@@ -1,0 +1,40 @@
+/* Body defaults and small shared status/link utilities. */
+
+body {
+  min-height: 100%;
+  background-color: var(--app-page-bg);
+  color: var(--app-page-fg);
+  font-family: var(--font-locale), sans-serif;
+}
+
+.app-auth-link {
+  color: var(--app-brand);
+}
+
+.app-auth-link:hover {
+  color: var(--app-brand-accent);
+}
+
+.app-status-on {
+  border-color: color-mix(in srgb, var(--app-success) 32%, transparent);
+  background-color: color-mix(in srgb, var(--app-success) 10%, transparent);
+  color: var(--app-success);
+}
+
+.app-status-off {
+  border-color: color-mix(in srgb, var(--app-error) 32%, transparent);
+  background-color: color-mix(in srgb, var(--app-error) 10%, transparent);
+  color: var(--app-error);
+}
+
+.app-filter-icon-active {
+  border-color: color-mix(in srgb, var(--app-brand) 30%, transparent);
+  background-color: color-mix(in srgb, var(--app-brand) 10%, transparent);
+  color: var(--app-brand);
+}
+
+.app-tag-brand.ant-tag {
+  color: var(--app-brand);
+  background: color-mix(in srgb, var(--app-brand) 12%, transparent);
+  border-color: color-mix(in srgb, var(--app-brand) 28%, transparent);
+}

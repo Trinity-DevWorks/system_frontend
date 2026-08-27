@@ -1,20 +1,23 @@
 ---
-description: Preserve the established services, API facades, Axios clients, and response-envelope pipeline.
+description: Preserve the established feature API modules, Axios clients, and response-envelope pipeline.
 alwaysApply: true
 ---
 
-# API Services and HTTP Layer
+# API Modules and HTTP Layer
 
-Resource pages and feature hooks should use the established API layering:
+Each feature owns its HTTP calls:
 
 Feature page or hook  
-→ `services/<resource>Api.js`  
-→ `API/TenantApiService.js` or `API/CentralApiService.js`  
-→ `lib/axios.js`
+→ `features/<feature>/api/<resource>.api.js`  
+→ `tenantRequest` / `centralRequest` from `lib/axios.js`
 
-Do not call Axios directly from normal resource pages or drawer components when a resource service is the established pattern.
+There is no intermediate facade. The old `services/` and `API/` folders were pass-through
+layers and have been removed; do not reintroduce them.
 
-## Resource services
+Do not call Axios directly from pages or drawer components — go through the feature's
+`api/` module.
+
+## Resource API modules
 
 Create thin named functions such as:
 
@@ -24,17 +27,22 @@ Create thin named functions such as:
 - `update<Resource>`
 - `delete<Resource>`
 
-Keep URL construction and request configuration in the service layer.
+Keep URL construction and request configuration in the `api/` module.
 
 ## Tenant and central clients
 
-Use the tenant API client for tenant product features.
+Use `tenantRequest` for tenant product features.
 
-Use the central API client only for central-platform flows.
+Use `centralRequest` only for central-platform flows.
 
-Cross-cutting authentication or module-loading utilities may call the API facade directly when matching existing code.
+## Cross-cutting API modules
 
-Do not use that exception for ordinary resource CRUD.
+A few API modules are consumed by `lib/` itself — session identity, branch context,
+tenant settings, attachment blobs. Those live in `lib/api/` rather than a feature,
+because infrastructure must not depend on a domain.
+
+Place a new API module in `lib/api/` only when something inside `lib/` consumes it.
+Otherwise it belongs to the feature.
 
 ## Response handling
 
