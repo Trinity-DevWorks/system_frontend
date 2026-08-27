@@ -1,4 +1,4 @@
-import { formatTenantDateTime } from "@/lib/tenant-format";
+import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import { formatStockQuantity, formatUomLabel } from "../../utils/formatStockQuantity";
 import { EditOutlined } from "@ant-design/icons";
 import { Button, Typography } from "antd";
@@ -52,15 +52,84 @@ export function getStockBalanceTableColumns(t, actions = {}) {
       },
     },
     {
+      title: t("colLot"),
+      key: "lot",
+      width: 140,
+      ellipsis: true,
+      render: (_v, record) => record?.lot?.lot_number ?? "—",
+    },
+    {
+      title: t("colExpiry"),
+      key: "expiry",
+      width: 140,
+      render: (_v, record) => {
+        const expiry = record?.lot?.expiry_date;
+        if (!expiry) return "—";
+        const label = formatTenantDate(expiry) || expiry;
+        if (record?.lot?.is_expired) {
+          return <Typography.Text type="danger">{label} · {t("lotExpired")}</Typography.Text>;
+        }
+        return label;
+      },
+    },
+    {
       title: t("colQuantity"),
       dataIndex: "quantity",
       key: "quantity",
-      width: 120,
+      width: 110,
       align: "right",
       sorter: (a, b) => Number(a.quantity) - Number(b.quantity),
       render: (value) => (
         <Typography.Text strong>{formatStockQuantity(value)}</Typography.Text>
       ),
+    },
+    {
+      title: t("colOnOrder"),
+      dataIndex: "on_order_qty",
+      key: "on_order_qty",
+      width: 110,
+      align: "right",
+      render: (value) => formatStockQuantity(value),
+    },
+    {
+      title: t("colInTransitIn"),
+      dataIndex: "in_transit_in_qty",
+      key: "in_transit_in_qty",
+      width: 120,
+      align: "right",
+      render: (value) => formatStockQuantity(value),
+    },
+    {
+      title: t("colInTransitOut"),
+      dataIndex: "in_transit_out_qty",
+      key: "in_transit_out_qty",
+      width: 130,
+      align: "right",
+      render: (value) => formatStockQuantity(value),
+    },
+    {
+      title: t("colProjected"),
+      dataIndex: "projected_qty",
+      key: "projected_qty",
+      width: 110,
+      align: "right",
+      render: (value) => formatStockQuantity(value),
+    },
+    {
+      title: t("colUnitCost"),
+      dataIndex: "unit_cost",
+      key: "unit_cost",
+      width: 120,
+      align: "right",
+      render: (value) => formatTenantMoney(value) || "—",
+    },
+    {
+      title: t("colInventoryValue"),
+      dataIndex: "inventory_value",
+      key: "inventory_value",
+      width: 140,
+      align: "right",
+      render: (value) => formatTenantMoney(value) || "—",
     },
     {
       title: t("colBaseUom"),

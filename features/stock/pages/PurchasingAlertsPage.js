@@ -319,7 +319,7 @@ function PurchasingAlertsTable() {
           filterBar,
         }}
         stickyHeader
-        scrollX={1360}
+        scrollX={1680}
         pagination={pagination}
       />
 

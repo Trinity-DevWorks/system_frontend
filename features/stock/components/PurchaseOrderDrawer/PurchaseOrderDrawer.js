@@ -5,8 +5,11 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { PURCHASE_ORDER_DETAIL_QUERY_PREFIX, PURCHASE_ORDERS_QUERY_KEY } from "../../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { normalizeEntityId } from "@/lib/entityId";
+import { useResourceAccess } from "@/lib/permissions";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { buildReceiveGoodsHref } from "../../utils/goodsReceiptFromPurchaseOrder";
 import {
   downloadPurchaseOrderPdf,
   fetchPurchaseOrder,
@@ -14,6 +17,7 @@ import {
 } from "../../api/purchaseOrders.api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
+import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -35,6 +39,12 @@ import {
   mapPurchaseOrderLinesFromApi,
   mapPurchaseOrderRecordToForm,
 } from "../../utils/purchaseOrderDrawerUtils";
+import { applySuggestedPurchaseOrderUnitPrices } from "../../utils/purchaseOrderLastPurchasePrice";
+import {
+  expectedDateKey,
+  maxLeadTimeDaysForLines,
+  suggestedExpectedDate,
+} from "../../utils/purchaseOrderExpectedDate";
 import { usePurchaseOrderDrawerData } from "../../queries/usePurchaseOrderDrawerData";
 import { usePurchaseOrderDrawerMutations } from "../../queries/usePurchaseOrderDrawerMutations";
 
@@ -61,6 +71,8 @@ export default function PurchaseOrderDrawer({
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal, notification } = App.useApp();
+  const router = useRouter();
+  const access = useResourceAccess("stock");
   const [form] = Form.useForm();
 
   const [lines, setLines] = useState(() => [getEmptyPurchaseOrderLine()]);
@@ -69,10 +81,17 @@ export default function PurchaseOrderDrawer({
   const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
   const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
   const [loadedSentAt, setLoadedSentAt] = useState(/** @type {string | null} */ (null));
+  const [canReceive, setCanReceive] = useState(false);
 
   const queryClient = useQueryClient();
+  const hydrateSupplierPricesRef = useRef(true);
+  const pendingSupplierPriceOverwriteRef = useRef(false);
+  const prevSupplierIdRef = useRef(/** @type {unknown} */ (undefined));
+  const skipNextExpectedDateSyncRef = useRef(false);
+  const applyingExpectedDateRef = useRef(false);
+  const expectedDateAutoRef = useRef(true);
 
-  const defaults = useMemo(() => getPurchaseOrderDefaults(), []);
+  const defaults = useMemo(() => getPurchaseOrderDefaults(), [open]);
   const loadedDetailVersionRef = useRef(0);
 
   const detailEnabled = open && (mode === "edit" || mode === "view") && orderId != null;
@@ -98,7 +117,13 @@ export default function PurchaseOrderDrawer({
       setLoadedStatus(typeof record.status === "string" ? record.status : null);
       setLoadedNumber(typeof record.po_number === "string" ? record.po_number : null);
       setLoadedSentAt(typeof record.sent_at === "string" ? record.sent_at : null);
+      setCanReceive(Boolean(record.can_receive));
       form.setFieldsValue(mapPurchaseOrderRecordToForm(record));
+      prevSupplierIdRef.current = record.supplier_id;
+      hydrateSupplierPricesRef.current = false;
+      pendingSupplierPriceOverwriteRef.current = false;
+      skipNextExpectedDateSyncRef.current = true;
+      expectedDateAutoRef.current = false;
     },
     [form],
   );
@@ -113,11 +138,16 @@ export default function PurchaseOrderDrawer({
     setLoadedStatus("draft");
     setLoadedNumber(null);
     setLoadedSentAt(null);
+    setCanReceive(false);
     loadedDetailVersionRef.current = 0;
   }, [form, defaults]);
 
   useLayoutEffect(() => {
     if (!open) return;
+    hydrateSupplierPricesRef.current = true;
+    pendingSupplierPriceOverwriteRef.current = false;
+    skipNextExpectedDateSyncRef.current = mode !== "create";
+    expectedDateAutoRef.current = mode === "create";
     if (mode === "create") {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       resetCreateDraftState();
@@ -131,6 +161,8 @@ export default function PurchaseOrderDrawer({
         setLines(seededLines);
         setLinesBaseline([getEmptyPurchaseOrderLine()]);
         setHeaderBaseline(defaults);
+        prevSupplierIdRef.current = header.supplier_id;
+        hydrateSupplierPricesRef.current = false;
       }
       return;
     }
@@ -155,8 +187,64 @@ export default function PurchaseOrderDrawer({
   const readOnly = mode === "view" || !isPurchaseOrderDraft(effectiveStatus);
 
   const formValuesWatch = Form.useWatch([], form);
+  const supplierId = formValuesWatch?.supplier_id ?? null;
 
-  const drawerData = usePurchaseOrderDrawerData({ open, t });
+  const drawerData = usePurchaseOrderDrawerData({
+    open,
+    t,
+    supplierId,
+    loadSupplierPrices: !readOnly,
+  });
+
+  useEffect(() => {
+    if (hydrateSupplierPricesRef.current) {
+      hydrateSupplierPricesRef.current = false;
+      prevSupplierIdRef.current = supplierId;
+      return;
+    }
+    if (prevSupplierIdRef.current === supplierId) return;
+    prevSupplierIdRef.current = supplierId;
+    if (readOnly || supplierId == null) return;
+    pendingSupplierPriceOverwriteRef.current = true;
+  }, [supplierId, readOnly]);
+
+  useEffect(() => {
+    if (readOnly || drawerData.supplierPricesPending) return;
+    if (pendingSupplierPriceOverwriteRef.current) {
+      pendingSupplierPriceOverwriteRef.current = false;
+      setLines((prev) =>
+        applySuggestedPurchaseOrderUnitPrices(prev, drawerData.lastPriceByItemId, { overwrite: true }),
+      );
+      return;
+    }
+    setLines((prev) =>
+      applySuggestedPurchaseOrderUnitPrices(prev, drawerData.lastPriceByItemId, { overwrite: false }),
+    );
+  }, [drawerData.lastPriceByItemId, drawerData.supplierPricesPending, readOnly]);
+
+  useEffect(() => {
+    if (readOnly || drawerData.supplierPricesPending) return;
+    if (skipNextExpectedDateSyncRef.current) {
+      skipNextExpectedDateSyncRef.current = false;
+      return;
+    }
+    if (!expectedDateAutoRef.current) return;
+    const next = suggestedExpectedDate(
+      formValuesWatch?.order_date,
+      maxLeadTimeDaysForLines(lines, drawerData.leadTimeByItemId),
+    );
+    if (expectedDateKey(form.getFieldValue("expected_date")) === expectedDateKey(next)) return;
+    applyingExpectedDateRef.current = true;
+    form.setFieldsValue({ expected_date: next });
+    applyingExpectedDateRef.current = false;
+  }, [
+    drawerData.leadTimeByItemId,
+    drawerData.supplierPricesPending,
+    form,
+    formValuesWatch?.order_date,
+    lines,
+    readOnly,
+  ]);
 
   const { isCreateDirty } = useCreateDiscardBaseline({
     open,
@@ -334,19 +422,39 @@ export default function PurchaseOrderDrawer({
     });
   }, [modal, t, markSentMutation]);
 
+  const handleReceive = useCallback(() => {
+    if (orderId == null) return;
+    router.push(buildReceiveGoodsHref(orderId));
+  }, [orderId, router]);
+
   const showSupplierActions = isPurchaseOrderPrintable(effectiveStatus);
   const canMarkSent = isPurchaseOrderConfirmed(effectiveStatus);
+  const showReceive = access.canAdd && canReceive;
   const supplierActionPending = pdfMutation.isPending || markSentMutation.isPending;
 
   const patchLine = useCallback((index, patch) => {
+    if (Object.prototype.hasOwnProperty.call(patch, "item_id")) {
+      expectedDateAutoRef.current = true;
+    }
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   }, []);
 
   const removeLine = useCallback((index) => {
+    expectedDateAutoRef.current = true;
     setLines((prev) => {
       const next = prev.filter((_, i) => i !== index);
       return next.length > 0 ? next : [getEmptyPurchaseOrderLine()];
     });
+  }, []);
+
+  const handleHeaderValuesChange = useCallback((changed) => {
+    if (!changed || typeof changed !== "object") return;
+    if ("order_date" in changed || "supplier_id" in changed) {
+      expectedDateAutoRef.current = true;
+    }
+    if ("expected_date" in changed && !applyingExpectedDateRef.current) {
+      expectedDateAutoRef.current = false;
+    }
   }, []);
 
   const addLine = useCallback(() => {
@@ -374,7 +482,7 @@ export default function PurchaseOrderDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      size={980}
+      size={1100}
       skeletonParagraphRows={6}
       footer={
         <PurchaseOrderDrawerFooter
@@ -389,6 +497,7 @@ export default function PurchaseOrderDrawer({
           showCancelOrder={orderId != null && isPurchaseOrderCancellable(effectiveStatus)}
           showSupplierActions={showSupplierActions}
           canMarkSent={canMarkSent}
+          canReceive={showReceive}
           pdfLoading={pdfMutation.isPending}
           onSave={handleSave}
           onConfirm={handleConfirm}
@@ -396,6 +505,7 @@ export default function PurchaseOrderDrawer({
           onDelete={handleDelete}
           onDownloadPdf={handleDownloadPdf}
           onMarkSent={handleMarkSent}
+          onReceive={handleReceive}
         />
       }
     >
@@ -411,12 +521,14 @@ export default function PurchaseOrderDrawer({
         poStatus={effectiveStatus}
         sentAt={loadedSentAt}
         showMeta={mode !== "create"}
+        onValuesChange={handleHeaderValuesChange}
       />
       <PurchaseOrderLineEditor
         lines={lines}
         readOnly={readOnly || submitting}
         itemOptions={drawerData.itemOptions}
         itemsPending={drawerData.itemsPending}
+        lastPriceByItemId={drawerData.lastPriceByItemId}
         canAddLine={canAddLine}
         onPatchLine={patchLine}
         onRemoveLine={removeLine}

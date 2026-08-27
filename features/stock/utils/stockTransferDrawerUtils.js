@@ -8,7 +8,7 @@ import { normalizeEntityId } from "@/lib/entityId";
 export const STOCK_TRANSFER_BASE_UOM = "__stock_transfer_base_uom__";
 
 /**
- * @typedef {{ item_id?: string; quantity?: number; item_uom_id?: number | string; notes?: string }} TransferLineFormRow
+ * @typedef {{ item_id?: string; quantity?: number; item_uom_id?: number | string; lot_id?: number; track_lots?: boolean; notes?: string }} TransferLineFormRow
  */
 
 export function getStockTransferDefaults() {
@@ -27,6 +27,8 @@ export function getEmptyTransferLine() {
     item_id: undefined,
     quantity: undefined,
     item_uom_id: STOCK_TRANSFER_BASE_UOM,
+    lot_id: undefined,
+    track_lots: false,
     notes: "",
   };
 }
@@ -51,25 +53,36 @@ export function mapTransferLinesFromApi(lines) {
     item_id: normalizeEntityId(line.item_id) ?? undefined,
     quantity: line.quantity != null ? Number(line.quantity) : undefined,
     item_uom_id: line.item_uom_id != null ? Number(line.item_uom_id) : STOCK_TRANSFER_BASE_UOM,
+    lot_id: line.lot_id != null ? Number(line.lot_id) : undefined,
+    track_lots: Boolean(line.item?.track_lots || line.lot_id != null),
     notes: typeof line.notes === "string" ? line.notes : "",
   }));
 }
 
 /**
- * @param {TransferLineFormRow[]} lines
+ * @param {{ item_id: string; lot_id?: number }} a
+ * @param {{ item_id: string; lot_id?: number }} b
  */
+function compareTransferLineKeys(a, b) {
+  const itemCmp = a.item_id.localeCompare(b.item_id);
+  if (itemCmp !== 0) return itemCmp;
+  return String(a.lot_id ?? "").localeCompare(String(b.lot_id ?? ""));
+}
+
 export function getValidTransferLines(lines) {
   return lines
     .filter(
-      (line) =>
-        line.item_id != null && line.quantity != null && Number(line.quantity) > 0,
+      (line) => isTransferLineComplete(line),
     )
     .map((line) => {
-      /** @type {{ item_id: string; quantity: number; item_uom_id?: number; notes?: string }} */
+      /** @type {{ item_id: string; quantity: number; item_uom_id?: number; lot_id?: number; notes?: string }} */
       const row = {
         item_id: String(line.item_id),
         quantity: Number(line.quantity),
       };
+      if (line.lot_id != null && line.lot_id !== "") {
+        row.lot_id = Number(line.lot_id);
+      }
       if (
         line.item_uom_id != null &&
         line.item_uom_id !== STOCK_TRANSFER_BASE_UOM
@@ -86,7 +99,13 @@ export function getValidTransferLines(lines) {
  * @param {TransferLineFormRow} line
  */
 export function isTransferLineComplete(line) {
-  return line.item_id != null && line.item_id !== "" && line.quantity != null && Number(line.quantity) > 0;
+  if (line.item_id == null || line.item_id === "" || line.quantity == null || Number(line.quantity) <= 0) {
+    return false;
+  }
+  if (line.track_lots && (line.lot_id == null || line.lot_id === "")) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -102,8 +121,8 @@ export function canAddTransferLine(lines) {
  */
 function serializeTransferLines(current, initial) {
   return JSON.stringify({
-    current: getValidTransferLines(current).sort((a, b) => a.item_id.localeCompare(b.item_id)),
-    initial: getValidTransferLines(initial).sort((a, b) => a.item_id.localeCompare(b.item_id)),
+    current: getValidTransferLines(current).sort(compareTransferLineKeys),
+    initial: getValidTransferLines(initial).sort(compareTransferLineKeys),
   });
 }
 

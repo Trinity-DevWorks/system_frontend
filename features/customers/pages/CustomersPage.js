@@ -65,6 +65,7 @@ function CustomersTable() {
     selectedRowKeys,
     onChange: setSelectedRowKeys,
     columnWidth: 48,
+    getCheckboxProps: (record) => ({ disabled: Boolean(record?.is_system) }),
   };
 
   return (

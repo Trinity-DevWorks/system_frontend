@@ -89,11 +89,11 @@ export function itemFormValuesToPayload(values) {
 
   return {
     name: String(values.name ?? "").trim(),
-    sku: String(values.sku ?? "").trim(),
+    sku: values.sku != null && String(values.sku).trim() !== "" ? String(values.sku).trim() : null,
     item_code: itemCode,
     plu_code: values.plu_code ? String(values.plu_code).trim() : null,
     item_type_id: Number(values.item_type_id),
-    category_id: Number(values.category_id),
+    category_id: optionalRelationId(values.category_id),
     brand_id: values.brand_id != null && values.brand_id !== "" ? Number(values.brand_id) : null,
     unit_group_id: Number(values.unit_group_id),
     vat_group_id: optionalRelationId(values.vat_group_id),
@@ -109,6 +109,11 @@ export function itemFormValuesToPayload(values) {
     pos_name: values.allow_sale === true ? optionalPosText(values.pos_name) : null,
     color: values.allow_sale === true ? optionalColor(values.color) : null,
     track_inventory: values.track_inventory === true,
+    track_lots: values.track_inventory === true && values.track_lots === true,
+    costing_method:
+      values.track_inventory === true && values.costing_method
+        ? String(values.costing_method)
+        : null,
     allow_sale: values.allow_sale === true,
     allow_purchase: values.allow_purchase === true,
     is_active: values.is_active !== false,
@@ -144,6 +149,8 @@ export function toItemCacheRow(row) {
     pos_name: row.pos_name ?? null,
     color: row.color ?? null,
     track_inventory: row.track_inventory,
+    track_lots: row.track_lots,
+    costing_method: row.costing_method ?? null,
     allow_sale: row.allow_sale,
     allow_purchase: row.allow_purchase,
     is_active: row.is_active,
@@ -177,6 +184,8 @@ export function mapItemRecordToFormValues(r) {
     pos_name: r.pos_name ?? undefined,
     color: r.color ?? undefined,
     track_inventory: Boolean(r.track_inventory),
+    track_lots: Boolean(r.track_lots),
+    costing_method: r.costing_method ?? "",
     allow_sale: Boolean(r.allow_sale),
     allow_purchase: Boolean(r.allow_purchase),
     is_active: r.is_active !== false,
@@ -184,13 +193,11 @@ export function mapItemRecordToFormValues(r) {
 }
 
 /**
- * @param {string} sku
  * @param {string} name
  * @param {unknown} unitGroupId
  */
-export function requiredGeneralFieldsValid(sku, name, unitGroupId) {
+export function requiredGeneralFieldsValid(name, unitGroupId) {
   return (
-    String(sku ?? "").trim().length > 0 &&
     String(name ?? "").trim().length > 0 &&
     unitGroupId != null &&
     unitGroupId !== ""

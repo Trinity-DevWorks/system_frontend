@@ -4,6 +4,22 @@
 
 import dayjs from "dayjs";
 import { PO_BASE_UOM, getPurchaseOrderDefaults } from "./purchaseOrderDrawerUtils";
+import { parseLeadTimeDays, suggestedExpectedDate } from "./purchaseOrderExpectedDate";
+
+/**
+ * @param {Record<string, unknown>[]} alerts
+ * @param {import("dayjs").Dayjs} orderDate
+ */
+function expectedDateFromAlerts(alerts, orderDate) {
+  /** @type {number | undefined} */
+  let maxDays;
+  for (const alert of alerts) {
+    const days = parseLeadTimeDays(alert?.lead_time_days);
+    if (days == null) continue;
+    maxDays = maxDays == null ? days : Math.max(maxDays, days);
+  }
+  return suggestedExpectedDate(orderDate, maxDays);
+}
 
 /**
  * @param {Record<string, unknown>} alert
@@ -24,6 +40,7 @@ function buildPurchaseOrderLineFromAlert(alert) {
   };
 
   const unitPrice = alert.preferred_supplier?.last_purchase_price;
+  line.unitPriceAuto = true;
   if (unitPrice != null && Number(unitPrice) >= 0) {
     line.unit_price = Number(unitPrice);
   }
@@ -53,6 +70,11 @@ export function buildPurchaseOrderCreateSeedFromAlert(alert) {
   }
   if (warehouseId != null) {
     header.warehouse_id = warehouseId;
+  }
+
+  const expectedDate = expectedDateFromAlerts([alert], header.order_date);
+  if (expectedDate) {
+    header.expected_date = expectedDate;
   }
 
   return { header, lines: [line] };
@@ -133,6 +155,14 @@ export function groupAlertsIntoPurchaseOrderSeeds(alerts) {
     }
     if (first.warehouse_id != null) {
       header.warehouse_id = first.warehouse_id;
+    }
+
+    const expectedDate = expectedDateFromAlerts(
+      rows.map((row) => row.alert),
+      header.order_date,
+    );
+    if (expectedDate) {
+      header.expected_date = expectedDate;
     }
 
     seeds.push({

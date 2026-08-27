@@ -331,7 +331,7 @@ export default function StockTransferDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      size={950}
+      size={1100}
       skeletonParagraphRows={6}
       footer={
         <StockTransferDrawerFooter
@@ -373,6 +373,8 @@ export default function StockTransferDrawer({
         lines={lines}
         readOnly={readOnly || submitting}
         itemOptions={drawerData.itemOptions}
+        stockableItems={drawerData.stockableItems}
+        fromWarehouseId={fromWatch}
         itemsPending={drawerData.itemsPending}
         canAddLine={canAddLine}
         onPatchLine={patchLine}

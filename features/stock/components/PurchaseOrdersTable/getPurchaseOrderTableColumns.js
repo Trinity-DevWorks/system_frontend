@@ -1,9 +1,11 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MailOutlined, MoreOutlined, StopOutlined } from "@ant-design/icons";
+import { DeleteOutlined, DropboxOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MailOutlined, MoreOutlined, StopOutlined } from "@ant-design/icons";
 import {
   getPurchaseOrderStatusLabel,
   isPurchaseOrderCancellable,
   isPurchaseOrderConfirmed,
   isPurchaseOrderPrintable,
+  isPurchaseOrderReceivable,
+  purchaseOrderStatusTagColor,
 } from "../../utils/purchaseOrderStatuses";
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import dayjs from "dayjs";
@@ -20,10 +22,11 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onCancel?: (record: unknown) => void;
  *   onDownloadPdf?: (record: unknown) => void;
  *   onMarkSent?: (record: unknown) => void;
+ *   onReceive?: (record: unknown) => void;
  * }} [actions]
  */
 export function getPurchaseOrderTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onCancel, onDownloadPdf, onMarkSent } = actions;
+  const { onView, onEdit, onDelete, onCancel, onDownloadPdf, onMarkSent, onReceive } = actions;
 
   return [
     {
@@ -72,15 +75,7 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
       sorter: (a, b) => String(a.status ?? "").localeCompare(String(b.status ?? "")),
       render: (value) => {
         const label = getPurchaseOrderStatusLabel(t, value);
-        const color =
-          value === "confirmed"
-            ? "success"
-              : value === "sent"
-                ? "blue"
-              : value === "cancelled"
-                ? "default"
-                : "processing";
-        return <Tag color={color}>{label}</Tag>;
+        return <Tag color={purchaseOrderStatusTagColor(value)}>{label}</Tag>;
       },
     },
     {
@@ -126,6 +121,7 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
         const canCancel = isPurchaseOrderCancellable(record?.status);
         const isConfirmed = isPurchaseOrderConfirmed(record?.status);
         const isPrintable = isPurchaseOrderPrintable(record?.status);
+        const canReceive = isPurchaseOrderReceivable(record?.status);
         const items = [
           {
             key: "view",
@@ -150,6 +146,16 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
                   icon: <MailOutlined />,
                   label: t("actionMarkPoSent"),
                   onClick: () => onMarkSent?.(record),
+                },
+              ]
+            : []),
+          ...(canReceive && onReceive
+            ? [
+                {
+                  key: "receive",
+                  icon: <DropboxOutlined />,
+                  label: t("actionReceiveGoods"),
+                  onClick: () => onReceive(record),
                 },
               ]
             : []),

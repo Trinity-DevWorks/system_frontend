@@ -15,7 +15,7 @@ import {
   notificationVisual,
 } from "@/shell/header/notificationFormat";
 import { theme } from "antd";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale, useMessages, useTranslations } from "next-intl";
 
 /**
  * @param {{
@@ -30,11 +30,12 @@ export default function NotificationListItem({
   showDivider = true,
 }) {
   const t = useTranslations("Notifications");
+  const messages = useMessages();
   const locale = useLocale();
   const { token } = theme.useToken();
 
-  const title = formatNotificationTitle(notification, t);
-  const body = formatNotificationBody(notification, t);
+  const title = formatNotificationTitle(notification, t, messages);
+  const body = formatNotificationBody(notification, t, messages);
   const timeLabel = formatNotificationTime(
     /** @type {string | undefined} */ (notification.created_at),
     locale,

@@ -3,13 +3,15 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { PURCHASE_ORDERS_QUERY_KEY } from "../queries/stockQueryKeys";
+import { PURCHASE_ORDERS_QUERY_KEY, invalidatePurchasingAlertsQueries } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
+import { buildReceiveGoodsHref } from "../utils/goodsReceiptFromPurchaseOrder";
 import { cancelPurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, markPurchaseOrderAsSent } from "../api/purchaseOrders.api";
+import { useRouter } from "@/i18n/navigation";
 import { fetchSupplierNames } from "@/features/suppliers/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -33,6 +35,7 @@ function PurchaseOrdersTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const access = useResourceAccess("stock");
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -145,6 +148,7 @@ function PurchaseOrdersTable() {
     onSuccess: () => {
       message.success(t("poCancelSuccess"));
       queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
+      invalidatePurchasingAlertsQueries(queryClient);
     },
     onError: (err) => {
       notification.error({
@@ -234,6 +238,12 @@ function PurchaseOrdersTable() {
     [modal, t, markSentMutation],
   );
 
+  const handleReceive = useCallback((record) => {
+    const id = normalizeEntityId(record?.id);
+    if (id == null) return;
+    router.push(buildReceiveGoodsHref(id));
+  }, [router]);
+
   const statusLabel = useMemo(() => {
     if (!statusFilter) return null;
     return statusFilterOptions.find((o) => o.value === statusFilter)?.label ?? statusFilter;
@@ -282,18 +292,21 @@ function PurchaseOrdersTable() {
         onCancel: access.canEdit ? handleCancel : undefined,
         onDownloadPdf: handleDownloadPdf,
         onMarkSent: access.canEdit ? handleMarkSent : undefined,
+        onReceive: access.canAdd ? handleReceive : undefined,
       }),
     [
       t,
       access.canView,
       access.canEdit,
       access.canDelete,
+      access.canAdd,
       openViewDrawer,
       openEditDrawer,
       handleDelete,
       handleCancel,
       handleDownloadPdf,
       handleMarkSent,
+      handleReceive,
     ],
   );
 

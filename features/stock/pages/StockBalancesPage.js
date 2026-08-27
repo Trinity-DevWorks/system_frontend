@@ -4,10 +4,11 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { useResourceAccess } from "@/lib/permissions";
+import { normalizeEntityId } from "@/lib/entityId";
 import { App, Checkbox, Form, Select } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
-import StockAdjustmentDrawer from "../components/StockAdjustmentDrawer/StockAdjustmentDrawer";
+import StockAdjustmentDocumentDrawer from "../components/StockAdjustmentDocumentDrawer/StockAdjustmentDocumentDrawer";
 import { stockFilterFieldRowClassName, useStockTableFilters } from "../components/StockTableFilters/StockTableFilters";
 import { getStockBalanceTableColumns } from "../components/StockBalancesTable/getStockBalanceTableColumns";
 import { useStockBalancesTableQuery } from "../queries/useStockBalancesTableQuery";
@@ -24,8 +25,10 @@ function StockBalancesTable() {
   const [warehouseFilter, setWarehouseFilter] = useState(/** @type {number | undefined} */ (undefined));
   const [onlyWithStock, setOnlyWithStock] = useState(true);
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
+  const [adjustmentMode, setAdjustmentMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
+  const [adjustmentId, setAdjustmentId] = useState(/** @type {string | null} */ (null));
   const [adjustmentSeed, setAdjustmentSeed] = useState(
-    /** @type {{ warehouseId?: number; itemId?: string }} */ ({}),
+    /** @type {import("../utils/stockAdjustmentDrawerUtils").AdjCreateSeed | null} */ (null),
   );
 
   const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = useStockBalancesTableQuery({
@@ -56,9 +59,25 @@ function StockBalancesTable() {
     [warehousesQuery.data, t],
   );
 
-  const openAdjustment = useCallback((seed = {}) => {
+  const openAdjustment = useCallback((seed = null) => {
     setAdjustmentSeed(seed);
+    setAdjustmentId(null);
+    setAdjustmentMode("create");
     setAdjustmentOpen(true);
+  }, []);
+
+  const closeAdjustment = useCallback(() => {
+    setAdjustmentOpen(false);
+    setAdjustmentId(null);
+    setAdjustmentSeed(null);
+    setAdjustmentMode("create");
+  }, []);
+
+  const handleAdjustmentCreated = useCallback((record) => {
+    const id = normalizeEntityId(record?.id);
+    if (id == null) return;
+    setAdjustmentId(id);
+    setAdjustmentMode("edit");
   }, []);
 
   const tableData = useMemo(
@@ -98,8 +117,11 @@ function StockBalancesTable() {
         onAdjust: access.canAdd
           ? (record) =>
               openAdjustment({
-                warehouseId: record?.warehouse_id,
-                itemId: record?.item_id != null ? String(record.item_id) : undefined,
+                warehouse_id: record?.warehouse_id != null ? Number(record.warehouse_id) : undefined,
+                item_id: record?.item_id != null ? String(record.item_id) : undefined,
+                item_label: typeof record?.item?.name === "string" ? record.item.name : undefined,
+                lot_id: record?.lot_id != null ? Number(record.lot_id) : undefined,
+                track_lots: Boolean(record?.item?.track_lots || record?.lot_id),
               })
           : undefined,
       }),
@@ -134,7 +156,7 @@ function StockBalancesTable() {
         tableId="stock-balances"
         columns={columns}
         dataSource={tableData}
-        rowKey={(row) => `${row.item_id}-${row.warehouse_id}`}
+        rowKey={(row) => `${row.item_id}-${row.warehouse_id}-${row.lot_id ?? "n"}`}
         loading={isPending}
         refreshFetching={isFetching}
         onRetry={() => refetch()}
@@ -152,14 +174,16 @@ function StockBalancesTable() {
           filterBar,
         }}
         stickyHeader
-        scrollX={960}
+        scrollX={1680}
         pagination={pagination}
       />
-      <StockAdjustmentDrawer
+      <StockAdjustmentDocumentDrawer
         open={adjustmentOpen}
-        onClose={() => setAdjustmentOpen(false)}
-        initialWarehouseId={adjustmentSeed.warehouseId ?? null}
-        initialItemId={adjustmentSeed.itemId ?? null}
+        mode={adjustmentMode}
+        documentId={adjustmentId}
+        createSeed={adjustmentSeed}
+        onClose={closeAdjustment}
+        onCreated={handleAdjustmentCreated}
       />
     </div>
   );

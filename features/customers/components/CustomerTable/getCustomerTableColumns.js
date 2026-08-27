@@ -1,7 +1,7 @@
 import { formatTenantDate } from "@/lib/tenant-format";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { Button, Dropdown, Typography } from "antd";
+import { Button, Dropdown, Space, Typography } from "antd";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
@@ -47,8 +47,18 @@ export function getCustomerTableColumns(t, actions = {}) {
       title: t("colName"),
       dataIndex: "name",
       key: "name",
-      width: 220,
+      width: 240,
       ellipsis: true,
+      render: (value, record) => (
+        <Space size={6} wrap>
+          <span>{value || "—"}</span>
+          {record?.is_system ? (
+            <Typography.Text type="secondary" className="text-xs">
+              {t("systemWalkInBadge")}
+            </Typography.Text>
+          ) : null}
+        </Space>
+      ),
     },
     {
       title: t("colGroup"),
@@ -141,7 +151,7 @@ export function getCustomerTableColumns(t, actions = {}) {
                 label: t("actionDelete"),
                 icon: <DeleteOutlined />,
                 danger: true,
-                disabled: !onDelete,
+                disabled: !onDelete || Boolean(record?.is_system),
                 onClick: () => onDelete?.(record),
               },
             ],

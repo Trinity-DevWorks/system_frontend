@@ -13,7 +13,7 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { STOCK_MOVEMENT_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { normalizeEntityId } from "@/lib/entityId";
-import { formatTenantDateTime } from "@/lib/tenant-format";
+import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import { fetchStockMovement } from "../../api/stock.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Button, Descriptions, Typography } from "antd";
@@ -125,7 +125,23 @@ export default function StockMovementViewDrawer({
           <Descriptions.Item label={t("colWarehouse")}>
             {record?.warehouse?.name ?? "—"}
           </Descriptions.Item>
+          <Descriptions.Item label={t("colLot")}>
+            {record?.lot?.lot_number ?? "—"}
+          </Descriptions.Item>
+          <Descriptions.Item label={t("colExpiry")}>
+            {record?.lot?.expiry_date
+              ? record.lot.is_expired
+                ? `${formatTenantDate(record.lot.expiry_date) || record.lot.expiry_date} · ${t("lotExpired")}`
+                : formatTenantDate(record.lot.expiry_date) || record.lot.expiry_date
+              : "—"}
+          </Descriptions.Item>
           <Descriptions.Item label={t("colQuantityDelta")}>{quantityLabel}</Descriptions.Item>
+          <Descriptions.Item label={t("colUnitCost")}>
+            {formatTenantMoney(record?.unit_cost) || "—"}
+          </Descriptions.Item>
+          <Descriptions.Item label={t("colValueDelta")}>
+            {formatTenantMoney(record?.value_delta) || "—"}
+          </Descriptions.Item>
           <Descriptions.Item label={t("colQuantityOnHand")}>{onHandLabel}</Descriptions.Item>
           <Descriptions.Item label={t("colLineUom")}>
             {formatUomLabel(record?.item_uom?.uom) || "—"}

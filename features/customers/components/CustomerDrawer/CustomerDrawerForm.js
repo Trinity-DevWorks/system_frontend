@@ -3,7 +3,7 @@
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import dayjs from "dayjs";
-import { Button, DatePicker, Divider, Form, Input, InputNumber, Radio, Select, Space, Switch, Typography } from "antd";
+import { Alert, Button, DatePicker, Divider, Form, Input, InputNumber, Radio, Select, Space, Switch, Typography } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   CUSTOMER_LOOKUP_ADD_CUSTOMER_GROUP,
@@ -61,6 +61,7 @@ function currencyOptionsForRow(currencies, currentRows, currentRowIndex, t) {
  *   onOpenVatGroupDrawer?: () => void;
  *   currencies: unknown[];
  *   currenciesPending: boolean;
+ *   isSystem?: boolean;
  * }} props
  */
 export default function CustomerDrawerForm({
@@ -85,6 +86,7 @@ export default function CustomerDrawerForm({
   onOpenVatGroupDrawer,
   currencies,
   currenciesPending,
+  isSystem = false,
 }) {
   const showCode = mode !== "create";
   const creditRowsWatch = Form.useWatch("currency_credit_limits", form);
@@ -105,6 +107,10 @@ export default function CustomerDrawerForm({
         }
       }}
     >
+      {isSystem ? (
+        <Alert type="info" showIcon className="mb-4" message={t("systemWalkInNotice")} />
+      ) : null}
+
       {showCode ? (
         <Form.Item name="customer_code" label={t("fieldCustomerCode")}>
           <Input readOnly disabled className="font-mono text-xs" />
@@ -243,6 +249,7 @@ export default function CustomerDrawerForm({
         rules={[{ required: true, message: t("fieldStatusRequired") }]}
       >
         <Select
+          disabled={isSystem}
           options={[
             { value: "active", label: t("statusActive") },
             { value: "suspended", label: t("statusSuspended") },

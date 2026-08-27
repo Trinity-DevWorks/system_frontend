@@ -61,9 +61,11 @@ export function buildReplenishmentPanelColumns(ctx) {
         }
         const w = r.warehouse;
         if (!w) return "—";
-        const shortcut = typeof w.shortcut_name === "string" ? w.shortcut_name.trim() : "";
+        const code = typeof w.shortcut_name === "string" ? w.shortcut_name.trim() : "";
         const name = typeof w.name === "string" ? w.name : "";
-        return shortcut ? `${shortcut} — ${name}` : name || "—";
+        return (
+          <span title={name || undefined}>{code || "—"}</span>
+        );
       },
     },
     {

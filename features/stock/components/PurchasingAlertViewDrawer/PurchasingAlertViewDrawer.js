@@ -164,6 +164,15 @@ export default function PurchasingAlertViewDrawer({
           <Descriptions.Item label={t("colOnHand")}>
             {formatStockQuantity(record.on_hand_qty)}
           </Descriptions.Item>
+          <Descriptions.Item label={t("colOnOrder")}>
+            {formatStockQuantity(record.on_order_qty)}
+          </Descriptions.Item>
+          <Descriptions.Item label={t("colInTransitIn")}>
+            {formatStockQuantity(record.in_transit_in_qty)}
+          </Descriptions.Item>
+          <Descriptions.Item label={t("colProjected")}>
+            {formatStockQuantity(record.projected_qty)}
+          </Descriptions.Item>
           <Descriptions.Item label={t("colSafetyStock")}>
             {formatStockQuantity(record.safety_stock_qty)}
           </Descriptions.Item>
