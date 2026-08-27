@@ -2,7 +2,7 @@
 
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
-import { getPurchaseOrderStatusLabel } from "../../utils/purchaseOrderStatuses";
+import { getPurchaseOrderStatusLabel, isPurchaseOrderPrintable, purchaseOrderStatusTagColor } from "../../utils/purchaseOrderStatuses";
 import { dayjsDatePattern, formatTenantDateTime } from "@/lib/tenant-format";
 import { Col, DatePicker, Form, Input, Row, Select, Tag } from "antd";
 
@@ -19,6 +19,7 @@ import { Col, DatePicker, Form, Input, Row, Select, Tag } from "antd";
  *   poStatus?: string | null;
  *   sentAt?: string | null;
  *   showMeta?: boolean;
+ *   onValuesChange?: (changed: Record<string, unknown>) => void;
  * }} props
  */
 export default function PurchaseOrderDrawerForm({
@@ -33,6 +34,7 @@ export default function PurchaseOrderDrawerForm({
   poStatus = null,
   sentAt = null,
   showMeta = false,
+  onValuesChange,
 }) {
   return (
     <Form
@@ -41,6 +43,7 @@ export default function PurchaseOrderDrawerForm({
       requiredMark={false}
       className="item-general-form"
       disabled={readOnly}
+      onValuesChange={onValuesChange}
     >
       {showMeta ? (
         <Row gutter={[16, 0]}>
@@ -52,17 +55,7 @@ export default function PurchaseOrderDrawerForm({
           <Col xs={24} sm={12}>
             <Form.Item label={<ResourceDrawerFieldLabel text={t("poFieldStatus")} />}>
               {poStatus ? (
-                <Tag
-                  color={
-                    poStatus === "confirmed"
-                      ? "success"
-                      : poStatus === "sent"
-                        ? "blue"
-                      : poStatus === "cancelled"
-                        ? "default"
-                        : "processing"
-                  }
-                >
+                <Tag color={purchaseOrderStatusTagColor(poStatus)}>
                   {getPurchaseOrderStatusLabel(t, poStatus)}
                 </Tag>
               ) : (
@@ -73,7 +66,7 @@ export default function PurchaseOrderDrawerForm({
         </Row>
       ) : null}
 
-      {showMeta && (poStatus === "confirmed" || poStatus === "sent") ? (
+      {showMeta && isPurchaseOrderPrintable(poStatus) ? (
         <Row gutter={[16, 0]}>
           <Col xs={24} sm={12}>
             <Form.Item label={<ResourceDrawerFieldLabel text={t("poFieldSentAt")} />}>

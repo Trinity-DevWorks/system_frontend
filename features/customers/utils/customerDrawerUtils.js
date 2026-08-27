@@ -226,6 +226,7 @@ export function toCustomerCacheRow(row) {
     balance: row.balance,
     currency_balances: Array.isArray(row.currency_balances) ? row.currency_balances : [],
     status: typeof row.status === "string" ? row.status : "active",
+    is_system: Boolean(row.is_system),
     blacklist_reason: row.blacklist_reason ?? null,
     is_vat_registered: Boolean(row.is_vat_registered),
     vat_number: row.vat_number ?? null,

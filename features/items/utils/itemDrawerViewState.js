@@ -61,6 +61,8 @@ export function getItemDrawerDefaults() {
     vat_group_id: undefined,
     description: undefined,
     track_inventory: true,
+    track_lots: false,
+    costing_method: "",
     allow_sale: true,
     allow_purchase: true,
     is_active: true,

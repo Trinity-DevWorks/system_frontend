@@ -1,80 +1,229 @@
 /**
- * Stock adjustment drawer — defaults, dirty checks, and API payload mapping.
+ * Stock adjustment document drawer — defaults, line mapping, dirty checks, payloads.
  */
 
-/** Select value when the adjustment uses the item's base UOM (API omits item_uom_id). */
-export const STOCK_ADJUSTMENT_BASE_UOM = "__stock_adjustment_base_uom__";
-
-export const STOCK_LOOKUP_ADD_WAREHOUSE = "__stock_add_warehouse__";
-export const STOCK_LOOKUP_ADD_ITEM = "__stock_add_item__";
+import dayjs from "dayjs";
+import { normalizeEntityId } from "@/lib/entityId";
+import { PO_BASE_UOM } from "./purchaseOrderDrawerUtils";
+import { assignNewLotExpiry } from "./stockLotUtils";
 
 /**
- * @param {{ warehouse_id?: number | null; item_id?: string | null }} [seed]
+ * @typedef {{
+ *   warehouse_id?: number;
+ *   stock_adjustment_reason_id?: number;
+ *   item_id?: string;
+ *   item_label?: string;
+ *   lot_id?: number;
+ *   track_lots?: boolean;
+ * }} AdjCreateSeed
  */
-export function getStockAdjustmentDefaults(seed = {}) {
+
+/**
+ * @typedef {{
+ *   item_id?: string;
+ *   item_label?: string;
+ *   quantity?: number;
+ *   item_uom_id?: number | string | null;
+ *   unit_cost?: number | null;
+ *   lot_id?: number;
+ *   lot_number?: string;
+ *   expiry_date?: string;
+ *   track_lots?: boolean;
+ *   item_uom_label?: string;
+ *   notes?: string;
+ * }} AdjLineFormRow
+ */
+
+/**
+ * @param {AdjCreateSeed | null | undefined} [seed]
+ */
+export function getStockAdjustmentDefaults(seed = null) {
   return {
-    warehouse_id: seed.warehouse_id ?? undefined,
-    item_id: seed.item_id ?? undefined,
-    item_uom_id: STOCK_ADJUSTMENT_BASE_UOM,
-    quantity_delta: undefined,
+    warehouse_id: seed?.warehouse_id != null ? Number(seed.warehouse_id) : undefined,
+    stock_adjustment_reason_id:
+      seed?.stock_adjustment_reason_id != null ? Number(seed.stock_adjustment_reason_id) : undefined,
+    adjustment_date: dayjs(),
     notes: "",
   };
+}
+
+/**
+ * @returns {AdjLineFormRow}
+ */
+export function getEmptyAdjLine() {
+  return {
+    item_id: undefined,
+    quantity: undefined,
+    item_uom_id: PO_BASE_UOM,
+    unit_cost: undefined,
+    lot_id: undefined,
+    lot_number: "",
+    expiry_date: "",
+    track_lots: false,
+    notes: "",
+  };
+}
+
+/**
+ * @param {AdjCreateSeed | null | undefined} [seed]
+ * @returns {AdjLineFormRow}
+ */
+export function getSeededAdjLine(seed = null) {
+  if (seed?.item_id == null || String(seed.item_id) === "") {
+    return getEmptyAdjLine();
+  }
+  return {
+    ...getEmptyAdjLine(),
+    item_id: String(seed.item_id),
+    item_label: typeof seed.item_label === "string" ? seed.item_label : "",
+    lot_id: seed.lot_id != null ? Number(seed.lot_id) : undefined,
+    track_lots: Boolean(seed.track_lots || seed.lot_id),
+  };
+}
+
+/**
+ * @param {Record<string, unknown>} record
+ */
+export function mapAdjRecordToForm(record) {
+  return {
+    warehouse_id: record.warehouse_id != null ? Number(record.warehouse_id) : undefined,
+    stock_adjustment_reason_id:
+      record.stock_adjustment_reason_id != null ? Number(record.stock_adjustment_reason_id) : undefined,
+    adjustment_date: record.adjustment_date ?? undefined,
+    notes: record.notes ?? "",
+  };
+}
+
+/**
+ * @param {Array<Record<string, unknown>> | undefined | null} lines
+ * @returns {AdjLineFormRow[]}
+ */
+export function mapAdjLinesFromApi(lines) {
+  return (lines ?? []).map((line) => ({
+    item_id: normalizeEntityId(line.item_id) ?? undefined,
+    item_label: typeof line.item?.name === "string" ? line.item.name : "",
+    quantity: line.quantity != null ? Number(line.quantity) : undefined,
+    item_uom_id: line.item_uom_id != null ? Number(line.item_uom_id) : PO_BASE_UOM,
+    unit_cost: line.unit_cost != null ? Number(line.unit_cost) : undefined,
+    lot_id: line.lot_id != null ? Number(line.lot_id) : undefined,
+    lot_number: typeof line.lot?.lot_number === "string" ? line.lot.lot_number : "",
+    expiry_date: typeof line.lot?.expiry_date === "string" ? line.lot.expiry_date : "",
+    track_lots: Boolean(line.item?.track_lots),
+    item_uom_label:
+      typeof line.item_uom?.uom?.code === "string"
+        ? line.item_uom.uom.code
+        : typeof line.item_uom?.uom?.name === "string"
+          ? line.item_uom.uom.name
+          : "",
+    notes: typeof line.notes === "string" ? line.notes : "",
+  }));
+}
+
+/**
+ * @param {AdjLineFormRow} line
+ */
+export function isAdjLinePersistable(line) {
+  return (
+    line.item_id != null &&
+    String(line.item_id) !== "" &&
+    line.quantity != null &&
+    Number(line.quantity) !== 0
+  );
+}
+
+/**
+ * @param {AdjLineFormRow} line
+ */
+export function isAdjLineComplete(line) {
+  if (!isAdjLinePersistable(line)) return false;
+  if (line.track_lots && line.lot_id == null && !String(line.lot_number ?? "").trim()) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @param {AdjLineFormRow} line
+ */
+function toAdjLinePayload(line) {
+  /** @type {Record<string, unknown>} */
+  const row = {
+    item_id: line.item_id,
+    quantity: Number(line.quantity),
+  };
+  if (line.item_uom_id != null && line.item_uom_id !== PO_BASE_UOM) {
+    row.item_uom_id = Number(line.item_uom_id);
+  }
+  if (line.unit_cost != null && line.unit_cost !== "") row.unit_cost = Number(line.unit_cost);
+  if (line.lot_id != null) row.lot_id = Number(line.lot_id);
+  const lotNumber = String(line.lot_number ?? "").trim();
+  if (lotNumber && line.lot_id == null) row.lot_number = lotNumber;
+  assignNewLotExpiry(row, line);
+  const notes = typeof line.notes === "string" ? line.notes.trim() : "";
+  if (notes) row.notes = notes;
+  return row;
+}
+
+/**
+ * @param {AdjLineFormRow[]} lines
+ */
+export function getPersistableAdjLines(lines) {
+  return lines.filter(isAdjLinePersistable).map(toAdjLinePayload);
+}
+
+/**
+ * @param {AdjLineFormRow[]} lines
+ */
+export function getValidAdjLines(lines) {
+  return lines.filter(isAdjLineComplete).map(toAdjLinePayload);
+}
+
+/**
+ * @param {AdjLineFormRow[]} current
+ * @param {AdjLineFormRow[]} initial
+ */
+export function areAdjLinesDirty(current, initial) {
+  return JSON.stringify(getPersistableAdjLines(current)) !== JSON.stringify(getPersistableAdjLines(initial));
 }
 
 /**
  * @param {import("antd").FormInstance} form
  * @param {ReturnType<typeof getStockAdjustmentDefaults>} baseline
  */
-export function isStockAdjustmentDirtyVsDefaults(form, baseline) {
-  const v = form.getFieldsValue(true);
-  const warehouseId = v.warehouse_id ?? undefined;
-  const itemId = v.item_id ?? undefined;
-  const itemUomId = v.item_uom_id ?? STOCK_ADJUSTMENT_BASE_UOM;
-  const quantityDelta = v.quantity_delta;
-  const notes = String(v.notes ?? "").trim();
-
-  if (warehouseId !== (baseline.warehouse_id ?? undefined)) return true;
-  if (itemId !== (baseline.item_id ?? undefined)) return true;
-  if (itemUomId !== (baseline.item_uom_id ?? STOCK_ADJUSTMENT_BASE_UOM)) return true;
-  if (quantityDelta !== baseline.quantity_delta && quantityDelta != null) return true;
-  if (notes !== String(baseline.notes ?? "").trim()) return true;
-
+export function isAdjHeaderDirtyVsBaseline(form, baseline) {
+  const values = form.getFieldsValue(true);
+  if ((values.warehouse_id ?? undefined) !== (baseline.warehouse_id ?? undefined)) return true;
+  if ((values.stock_adjustment_reason_id ?? undefined) !== (baseline.stock_adjustment_reason_id ?? undefined)) {
+    return true;
+  }
+  if (String(values.notes ?? "").trim() !== String(baseline.notes ?? "").trim()) return true;
+  const date = values.adjustment_date;
+  const dateStr = date && typeof date.format === "function" ? date.format("YYYY-MM-DD") : date;
+  if ((dateStr ?? undefined) !== (baseline.adjustment_date ?? undefined)) return true;
   return false;
 }
 
 /**
  * @param {Record<string, unknown>} values
  */
-export function stockAdjustmentRequiredFieldsValid(values) {
-  const warehouseId = values.warehouse_id;
-  const itemId = values.item_id;
-  const quantityDelta = values.quantity_delta;
-
-  if (warehouseId == null || itemId == null) return false;
-  if (quantityDelta == null || quantityDelta === "") return false;
-  if (Number(quantityDelta) === 0) return false;
-
-  return true;
+export function canSaveAdjDraft(values) {
+  return values.warehouse_id != null && values.stock_adjustment_reason_id != null;
 }
 
 /**
  * @param {Record<string, unknown>} values
- * @returns {Record<string, unknown>}
  */
-export function stockAdjustmentValuesToPayload(values) {
-  const body = {
+export function adjHeaderToPayload(values) {
+  const date = values.adjustment_date;
+  return {
     warehouse_id: values.warehouse_id,
-    item_id: values.item_id,
-    quantity_delta: values.quantity_delta,
-    notes: typeof values.notes === "string" && values.notes.trim() ? values.notes.trim() : undefined,
+    stock_adjustment_reason_id: values.stock_adjustment_reason_id,
+    adjustment_date:
+      date && typeof date.format === "function"
+        ? date.format("YYYY-MM-DD")
+        : typeof date === "string" && date
+          ? date
+          : undefined,
+    notes: typeof values.notes === "string" && values.notes.trim() ? values.notes.trim() : null,
   };
-
-  if (
-    values.item_uom_id != null &&
-    values.item_uom_id !== STOCK_ADJUSTMENT_BASE_UOM
-  ) {
-    body.item_uom_id = values.item_uom_id;
-  }
-
-  return body;
 }

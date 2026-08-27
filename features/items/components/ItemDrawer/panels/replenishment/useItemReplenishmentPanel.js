@@ -92,13 +92,15 @@ export function useItemReplenishmentPanel({
     () =>
       (warehousesQuery.data ?? [])
         .filter((w) => w.is_active !== false && !usedWarehouseIds.has(Number(w.id)))
-        .map((w) => ({
-          value: w.id,
-          label:
-            typeof w.shortcut_name === "string" && w.shortcut_name.trim()
-              ? `${w.shortcut_name} — ${w.name}`
-              : String(w.name ?? w.id),
-        })),
+        .map((w) => {
+          const code = typeof w.shortcut_name === "string" ? w.shortcut_name.trim() : "";
+          const name = typeof w.name === "string" ? w.name : "";
+          return {
+            value: w.id,
+            label: code || String(name || w.id),
+            title: name || undefined,
+          };
+        }),
     [warehousesQuery.data, usedWarehouseIds],
   );
 

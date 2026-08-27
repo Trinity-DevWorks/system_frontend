@@ -74,6 +74,28 @@ export function getPurchasingAlertTableColumns(t, handlers = {}) {
       render: (_v, record) => formatStockQuantity(record?.on_hand_qty),
     },
     {
+      title: t("colOnOrder"),
+      key: "on_order",
+      width: 100,
+      align: "right",
+      render: (_v, record) => formatStockQuantity(record?.on_order_qty),
+    },
+    {
+      title: t("colInTransitIn"),
+      key: "in_transit_in",
+      width: 110,
+      align: "right",
+      render: (_v, record) => formatStockQuantity(record?.in_transit_in_qty),
+    },
+    {
+      title: t("colProjected"),
+      key: "projected",
+      width: 110,
+      align: "right",
+      sorter: (a, b) => Number(a.projected_qty) - Number(b.projected_qty),
+      render: (_v, record) => formatStockQuantity(record?.projected_qty),
+    },
+    {
       title: t("colSafetyStock"),
       key: "safety_stock",
       width: 120,

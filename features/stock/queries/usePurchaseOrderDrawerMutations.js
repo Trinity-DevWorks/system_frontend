@@ -3,6 +3,8 @@
 import {
   PURCHASE_ORDER_DETAIL_QUERY_PREFIX,
   PURCHASE_ORDERS_QUERY_KEY,
+  STOCK_BALANCES_QUERY_KEY,
+  invalidatePurchasingAlertsQueries,
 } from "./stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { normalizeEntityId } from "@/lib/entityId";
@@ -61,6 +63,12 @@ export function usePurchaseOrderDrawerMutations({
   const invalidateOrders = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
   }, [queryClient]);
+
+  const invalidateOnOrderPipeline = useCallback(() => {
+    invalidateOrders();
+    invalidatePurchasingAlertsQueries(queryClient);
+    queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
+  }, [invalidateOrders, queryClient]);
 
   const cacheOrderDetail = useCallback(
     (id, record) => {
@@ -126,7 +134,7 @@ export function usePurchaseOrderDrawerMutations({
     },
     onSuccess: (record) => {
       message.success(t("poConfirmSuccess"));
-      invalidateOrders();
+      invalidateOnOrderPipeline();
       const id = normalizeEntityId(record?.id ?? orderId);
       if (id != null) cacheOrderDetail(id, record);
       if (orderId == null) {
@@ -150,7 +158,7 @@ export function usePurchaseOrderDrawerMutations({
     },
     onSuccess: (record) => {
       message.success(t("poCancelSuccess"));
-      invalidateOrders();
+      invalidateOnOrderPipeline();
       cacheOrderDetail(orderId, record);
       onCancelled?.(/** @type {Record<string, unknown>} */ (record));
       onClose?.();

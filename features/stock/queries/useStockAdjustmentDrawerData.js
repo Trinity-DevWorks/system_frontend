@@ -1,31 +1,22 @@
 /**
- * Lookup queries and select options for the stock adjustment drawer.
- *
- * Used by:
- * - app/[locale]/main/stock/adjustment/StockAdjustmentDrawer.js
+ * Lookup queries for the stock adjustment document drawer.
  */
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
-import { fetchItemUoms } from "@/features/items/index";
 import { fetchItemNames } from "@/features/items/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { formatUomLabel } from "../utils/formatStockQuantity";
-import { isPersistedEntityId } from "@/lib/entityId";
-import { STOCK_ADJUSTMENT_BASE_UOM } from "../utils/stockAdjustmentDrawerUtils";
-import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
 import { formatItemOptionLabel } from "@/features/items/utils/formatItemLabel";
 import { ITEMS_LIST_QUERY_KEY } from "@/features/items";
+import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+import { fetchStockAdjustmentReasonNames } from "../api/stockAdjustmentReasons.api";
+import { STOCK_ADJUSTMENT_REASON_NAMES_QUERY_KEY } from "./stockQueryKeys";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 /**
- * @param {{
- *   open: boolean;
- *   itemId?: string;
- *   t: (key: string) => string;
- * }} args
+ * @param {{ open: boolean }} args
  */
-export function useStockAdjustmentDrawerData({ open, itemId, t }) {
+export function useStockAdjustmentDrawerData({ open }) {
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
@@ -40,20 +31,12 @@ export function useStockAdjustmentDrawerData({ open, itemId, t }) {
     staleTime: QUERY_STALE_TIME.catalog,
   });
 
-  const itemUomsQuery = useQuery({
-    queryKey: [...ITEMS_LIST_QUERY_KEY, itemId, "item-uoms"],
-    queryFn: () => fetchItemUoms(itemId),
-    enabled: open && isPersistedEntityId(itemId),
-    staleTime: QUERY_STALE_TIME.default,
+  const reasonsQuery = useQuery({
+    queryKey: STOCK_ADJUSTMENT_REASON_NAMES_QUERY_KEY,
+    queryFn: fetchStockAdjustmentReasonNames,
+    enabled: open,
+    staleTime: QUERY_STALE_TIME.catalog,
   });
-
-  const stockableItems = useMemo(
-    () =>
-      (itemsQuery.data ?? []).filter(
-        (row) => row?.track_inventory === true && row?.is_active !== false,
-      ),
-    [itemsQuery.data],
-  );
 
   const warehouseOptions = useMemo(
     () =>
@@ -71,33 +54,33 @@ export function useStockAdjustmentDrawerData({ open, itemId, t }) {
 
   const itemOptions = useMemo(
     () =>
-      stockableItems.map((item) => ({
-        value: item.id,
-        label: formatItemOptionLabel(item),
-      })),
-    [stockableItems],
+      (itemsQuery.data ?? [])
+        .filter((row) => row?.track_inventory !== false && row?.is_active !== false)
+        .map((item) => ({
+          value: item.id,
+          label: formatItemOptionLabel(item),
+          track_lots: Boolean(item.track_lots),
+        })),
+    [itemsQuery.data],
   );
 
-  const itemUomOptions = useMemo(() => {
-    const rows = itemUomsQuery.data ?? [];
-    const options = [
-      { value: STOCK_ADJUSTMENT_BASE_UOM, label: t("adjustmentBaseUomOption") },
-    ];
-    for (const row of rows) {
-      const uom = row?.uom;
-      const label = formatUomLabel(uom) || `UOM #${row?.uom_id ?? row?.id}`;
-      options.push({ value: row.id, label });
-    }
-    return options;
-  }, [itemUomsQuery.data, t]);
+  const reasonOptions = useMemo(
+    () =>
+      (reasonsQuery.data ?? []).map((reason) => ({
+        value: reason.id,
+        label: String(reason.name ?? reason.id),
+        direction: typeof reason.direction === "string" ? reason.direction : "both",
+        is_active: reason.is_active !== false,
+      })),
+    [reasonsQuery.data],
+  );
 
   return {
-    stockableItems,
     warehouseOptions,
-    itemOptions,
-    itemUomOptions,
     warehousesPending: warehousesQuery.isPending,
+    itemOptions,
     itemsPending: itemsQuery.isPending,
-    itemUomsPending: itemUomsQuery.isPending,
+    reasonOptions,
+    reasonsPending: reasonsQuery.isPending,
   };
 }

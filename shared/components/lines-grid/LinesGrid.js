@@ -37,6 +37,7 @@ export function buildLinesGridTemplate(
  *   addLabel: string;
  *   deleteAriaLabel: string;
  *   onRemoveLine: (index: number) => void;
+ *   canRemoveLine?: boolean;
  *   renderField: (line: unknown, index: number, columnKey: string) => import("react").ReactNode;
  *   readOnly?: boolean;
  *   actionsColumnWidth?: string;
@@ -50,6 +51,7 @@ export default function LinesGrid({
   addLabel,
   deleteAriaLabel,
   onRemoveLine,
+  canRemoveLine = true,
   renderField,
   readOnly = false,
   actionsColumnWidth = ITEM_LINES_GRID_ACTIONS_WIDTH,
@@ -76,7 +78,7 @@ export default function LinesGrid({
                 {renderField(line, index, col.key)}
               </div>
             ))}
-            {readOnly ? (
+            {readOnly || !canRemoveLine ? (
               <span className="item-lines-row-delete" aria-hidden />
             ) : (
               <Button
@@ -90,13 +92,12 @@ export default function LinesGrid({
         ))}
       </div>
 
-      {!readOnly ? (
+      {!readOnly && canAddLine ? (
         <Button
           type="primary"
           ghost
           icon={<PlusOutlined />}
           className="item-lines-add-row"
-          disabled={!canAddLine}
           onClick={onAddLine}
         >
           {addLabel}

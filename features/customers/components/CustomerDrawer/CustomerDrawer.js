@@ -317,6 +317,11 @@ export default function CustomerDrawer({
     currenciesData,
   });
 
+  const isSystemCustomer = Boolean(
+    (detailQuery.data && /** @type {{ is_system?: boolean }} */ (detailQuery.data).is_system) ||
+      (tableSeedMatches && tableSeedRecord && tableSeedRecord.is_system),
+  );
+
   const editBaselineForDirty = useMemo(() => {
     if (mode !== "edit") return null;
     if (detailQuery.data) return /** @type {Record<string, unknown>} */ (detailQuery.data);
@@ -455,6 +460,7 @@ export default function CustomerDrawer({
         onOpenVatGroupDrawer={readOnly ? undefined : () => setNestedCreate("vat-group")}
         currencies={currenciesData ?? []}
         currenciesPending={currenciesQuery.isPending}
+        isSystem={isSystemCustomer}
       />
       {!readOnly ? (
         <>

@@ -3,26 +3,33 @@
  */
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { isPersistedEntityId } from "@/lib/entityId";
 import { formatUomLabel } from "../utils/formatStockQuantity";
 import { PO_BASE_UOM } from "../utils/purchaseOrderDrawerUtils";
-import { fetchItemNames } from "@/features/items/index";
-import { fetchItemUoms } from "@/features/items/index";
+import { buildLastPurchasePriceByItemId } from "../utils/purchaseOrderLastPurchasePrice";
+import { buildLeadTimeDaysByItemId } from "../utils/purchaseOrderExpectedDate";
+import { fetchItemNames, fetchItemUoms, fetchSupplierItems } from "@/features/items/index";
 import { fetchSupplierNames } from "@/features/suppliers/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
-import { SUPPLIERS_LIST_QUERY_KEY } from "@/features/suppliers";
+import { SUPPLIERS_LIST_QUERY_KEY, supplierItemsBySupplierQueryKey } from "@/features/suppliers";
 import { formatItemOptionLabel } from "@/features/items/utils/formatItemLabel";
 import { ITEMS_LIST_QUERY_KEY } from "@/features/items";
+
+const EMPTY_LAST_PURCHASE_PRICES = /** @type {Map<string, number>} */ (new Map());
+const EMPTY_LEAD_TIMES = /** @type {Map<string, number>} */ (new Map());
 
 /**
  * @param {{
  *   open: boolean;
  *   t: (key: string) => string;
+ *   supplierId?: string | null;
+ *   loadSupplierPrices?: boolean;
  * }} args
  */
-export function usePurchaseOrderDrawerData({ open, t }) {
+export function usePurchaseOrderDrawerData({ open, t, supplierId = null, loadSupplierPrices = true }) {
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
@@ -43,6 +50,31 @@ export function usePurchaseOrderDrawerData({ open, t }) {
     enabled: open,
     staleTime: QUERY_STALE_TIME.catalog,
   });
+
+  const supplierPricesEnabled =
+    open && loadSupplierPrices && isPersistedEntityId(supplierId);
+  const supplierItemsQuery = useQuery({
+    queryKey: supplierItemsBySupplierQueryKey(/** @type {string} */ (supplierId)),
+    queryFn: () => fetchSupplierItems(/** @type {string} */ (supplierId)),
+    enabled: supplierPricesEnabled,
+    staleTime: QUERY_STALE_TIME.ledger,
+  });
+
+  const lastPriceByItemId = useMemo(
+    () =>
+      supplierPricesEnabled
+        ? buildLastPurchasePriceByItemId(supplierItemsQuery.data)
+        : EMPTY_LAST_PURCHASE_PRICES,
+    [supplierPricesEnabled, supplierItemsQuery.data],
+  );
+
+  const leadTimeByItemId = useMemo(
+    () =>
+      supplierPricesEnabled
+        ? buildLeadTimeDaysByItemId(supplierItemsQuery.data)
+        : EMPTY_LEAD_TIMES,
+    [supplierPricesEnabled, supplierItemsQuery.data],
+  );
 
   const purchasableItems = useMemo(
     () =>
@@ -94,6 +126,9 @@ export function usePurchaseOrderDrawerData({ open, t }) {
     warehouseOptions,
     supplierOptions,
     itemOptions,
+    lastPriceByItemId,
+    leadTimeByItemId,
+    supplierPricesPending: supplierPricesEnabled && supplierItemsQuery.isPending,
     warehousesPending: warehousesQuery.isPending,
     suppliersPending: suppliersQuery.isPending,
     itemsPending: itemsQuery.isPending,
@@ -123,6 +158,6 @@ export function usePurchaseOrderLineUomOptions({ itemId, t, enabled = true }) {
 
   return {
     options,
-    pending: itemUomsQuery.isPending,
+    pending: itemUomsQuery.isLoading,
   };
 }

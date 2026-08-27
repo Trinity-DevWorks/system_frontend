@@ -565,7 +565,7 @@ function AppDataTable({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="app-data-table-scroll min-h-0 min-w-0 flex-1 overflow-auto">
+      <div className="app-data-table-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
         <div className="flex min-w-0 flex-col gap-2">
           <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <Space wrap size="small" className="min-w-0">
@@ -678,7 +678,7 @@ function AppDataTable({
             </div>
           ) : null}
 
-          <div className="app-data-table min-w-0 overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
+          <div className="app-data-table min-w-0 overflow-x-auto rounded-lg border border-black/10 dark:border-white/10">
             {renderedTable}
             {showFooter ? (
               <div className="app-data-table-footer grid grid-cols-1 items-center gap-3 border-t border-black/10 bg-[var(--ant-color-bg-container)] px-3 py-2 sm:grid-cols-[1fr_auto_1fr] dark:border-white/10">

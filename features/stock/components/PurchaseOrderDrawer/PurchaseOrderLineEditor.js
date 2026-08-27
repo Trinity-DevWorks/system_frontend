@@ -7,6 +7,7 @@ import { isPersistedEntityId } from "@/lib/entityId";
 import { InputNumber, Select } from "antd";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
+import { suggestedPurchaseOrderUnitPrice } from "../../utils/purchaseOrderLastPurchasePrice";
 import { usePurchaseOrderLineUomOptions } from "../../queries/usePurchaseOrderDrawerData";
 
 /**
@@ -47,6 +48,7 @@ function PurchaseOrderLineUomField({ itemId, value, readOnly, t, onChange }) {
  *   readOnly: boolean;
  *   itemOptions: { value: string; label: string }[];
  *   itemsPending: boolean;
+ *   lastPriceByItemId: Map<string, number>;
  *   canAddLine: boolean;
  *   onPatchLine: (index: number, patch: Partial<import("../../utils/purchaseOrderDrawerUtils").PurchaseOrderLineFormRow>) => void;
  *   onRemoveLine: (index: number) => void;
@@ -59,6 +61,7 @@ export default function PurchaseOrderLineEditor({
   readOnly,
   itemOptions,
   itemsPending,
+  lastPriceByItemId,
   canAddLine,
   onPatchLine,
   onRemoveLine,
@@ -109,6 +112,8 @@ export default function PurchaseOrderLineEditor({
                   onPatchLine(index, {
                     item_id: value,
                     item_uom_id: PO_BASE_UOM,
+                    unit_price: suggestedPurchaseOrderUnitPrice(lastPriceByItemId, value),
+                    unitPriceAuto: true,
                   })
                 }
               />
@@ -133,7 +138,9 @@ export default function PurchaseOrderLineEditor({
                 placeholder={t("poLineUnitPricePlaceholder")}
                 value={row.unit_price}
                 disabled={readOnly}
-                onChange={(value) => onPatchLine(index, { unit_price: value ?? undefined })}
+                onChange={(value) =>
+                  onPatchLine(index, { unit_price: value ?? undefined, unitPriceAuto: false })
+                }
               />
             );
           }

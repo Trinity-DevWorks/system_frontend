@@ -5,6 +5,9 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { formatUomLabel } from "../utils/formatStockQuantity";
 import { STOCK_TRANSFER_BASE_UOM } from "../utils/stockTransferDrawerUtils";
+import { formatLotOptionLabel, formatLotOptionTooltip } from "../utils/stockLotUtils";
+import { fetchStockLots } from "../api/stock.api";
+import { stockLotsQueryKey } from "./stockQueryKeys";
 import { fetchItemNames } from "@/features/items/index";
 import { fetchItemUoms } from "@/features/items/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
@@ -67,6 +70,7 @@ export function useStockTransferDrawerData({ open, t }) {
   );
 
   return {
+    stockableItems,
     warehouseOptions,
     itemOptions,
     warehousesPending: warehousesQuery.isPending,
@@ -99,6 +103,33 @@ export function useTransferLineUomOptions({ itemId, t, enabled = true }) {
 
   return {
     options,
-    pending: itemUomsQuery.isPending,
+    pending: itemUomsQuery.isLoading,
+  };
+}
+
+/**
+ * @param {{ itemId?: string; warehouseId?: number; enabled?: boolean; t: (key: string) => string }} args
+ */
+export function useTransferLineLotOptions({ itemId, warehouseId, enabled = true, t }) {
+  const lotsQuery = useQuery({
+    queryKey: stockLotsQueryKey(itemId, warehouseId),
+    queryFn: () => fetchStockLots(itemId, warehouseId),
+    enabled: enabled && itemId != null && itemId !== "" && warehouseId != null,
+    staleTime: QUERY_STALE_TIME.default,
+  });
+
+  const options = useMemo(
+    () =>
+      (lotsQuery.data ?? []).map((lot) => ({
+        value: lot.id,
+        label: formatLotOptionLabel(lot),
+        tooltip: formatLotOptionTooltip(lot, t),
+      })),
+    [lotsQuery.data, t],
+  );
+
+  return {
+    options,
+    pending: lotsQuery.isLoading,
   };
 }

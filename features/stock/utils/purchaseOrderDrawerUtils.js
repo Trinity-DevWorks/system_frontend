@@ -14,6 +14,7 @@ export const PO_BASE_UOM = "__po_base_uom__";
  *   quantity?: number;
  *   item_uom_id?: number | string;
  *   unit_price?: number;
+ *   unitPriceAuto?: boolean;
  *   notes?: string;
  * }} PurchaseOrderLineFormRow
  */

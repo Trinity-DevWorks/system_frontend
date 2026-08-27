@@ -8,8 +8,10 @@
 
 import {
   BellOutlined,
+  CalendarOutlined,
   CheckCircleOutlined,
   DatabaseOutlined,
+  DropboxOutlined,
   FileDoneOutlined,
   SafetyCertificateOutlined,
   ShoppingCartOutlined,
@@ -21,41 +23,78 @@ import {
 import dayjs from "@/lib/dayjs";
 
 /**
+ * Walk the Notifications.types tree for an API type like `stock.lot_expiry_item`.
+ *
+ * next-intl's `t.has("types.stock.lot_expiry_item.title")` is unreliable for
+ * dynamic dotted keys (and can miss siblings like `lot_expiry` / `lot_expiry_item`),
+ * which made inbox rows fall back to "You have a new notification."
+ *
+ * @param {Record<string, unknown> | null | undefined} messages
+ * @param {string} type
+ * @param {"title" | "body"} field
+ * @returns {string | null}
+ */
+export function getNotificationTypeMessage(messages, type, field) {
+  const root =
+    messages?.Notifications && typeof messages.Notifications === "object"
+      ? messages.Notifications
+      : messages;
+  let node = root?.types;
+  for (const part of String(type || "").split(".")) {
+    if (!part || node == null || typeof node !== "object") return null;
+    node = /** @type {Record<string, unknown>} */ (node)[part];
+  }
+  if (node == null || typeof node !== "object") return null;
+  const value = /** @type {Record<string, unknown>} */ (node)[field];
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * Simple `{name}` interpolation. Type copy only uses named placeholders, not ICU plurals.
+ *
+ * @param {string} template
+ * @param {Record<string, unknown>} params
+ */
+function interpolateTemplate(template, params) {
+  return template.replace(/\{(\w+)\}/g, (_, name) => {
+    if (!Object.prototype.hasOwnProperty.call(params, name)) return "";
+    const value = params[name];
+    return value == null ? "" : String(value);
+  });
+}
+
+/**
  * @param {{ type?: string, params?: Record<string, unknown>, severity?: string }} notification
  * @param {import("next-intl").Translator<any>} t
+ * @param {Record<string, unknown> | null | undefined} [messages]
  */
-export function formatNotificationTitle(notification, t) {
+export function formatNotificationTitle(notification, t, messages) {
   const type = notification?.type || "unknown";
   const params =
     notification?.params && typeof notification.params === "object"
       ? notification.params
       : {};
-  const key = `types.${type}.title`;
-
-  if (typeof t.has === "function" && !t.has(key)) {
-    return t("types.unknown.title");
-  }
-
-  return t(key, params);
+  const template = getNotificationTypeMessage(messages, type, "title");
+  if (template) return interpolateTemplate(template, params);
+  if (messages == null) return t(`types.${type}.title`, params);
+  return t("types.unknown.title");
 }
 
 /**
  * @param {{ type?: string, params?: Record<string, unknown> }} notification
  * @param {import("next-intl").Translator<any>} t
+ * @param {Record<string, unknown> | null | undefined} [messages]
  */
-export function formatNotificationBody(notification, t) {
+export function formatNotificationBody(notification, t, messages) {
   const type = notification?.type || "unknown";
   const params =
     notification?.params && typeof notification.params === "object"
       ? notification.params
       : {};
-  const key = `types.${type}.body`;
-
-  if (typeof t.has === "function" && !t.has(key)) {
-    return t("types.unknown.body");
-  }
-
-  return t(key, params);
+  const template = getNotificationTypeMessage(messages, type, "body");
+  if (template) return interpolateTemplate(template, params);
+  if (messages == null) return t(`types.${type}.body`, params);
+  return t("types.unknown.body");
 }
 
 /**
@@ -86,7 +125,13 @@ export function notificationVisual(notification, token) {
     iconBg: token.colorPrimaryBg,
   };
 
-  if (type.startsWith("purchasing.low_stock") || severity === "critical") {
+  if (type.startsWith("stock.lot_expiry")) {
+    visual = {
+      Icon: CalendarOutlined,
+      accent: severity === "critical" ? token.colorError : token.colorWarning,
+      iconBg: severity === "critical" ? token.colorErrorBg : token.colorWarningBg,
+    };
+  } else if (type.startsWith("purchasing.low_stock") || severity === "critical") {
     visual = {
       Icon: WarningOutlined,
       accent: token.colorWarning,
@@ -97,6 +142,12 @@ export function notificationVisual(notification, token) {
       Icon: type.endsWith(".cancelled") ? FileDoneOutlined : CheckCircleOutlined,
       accent: type.endsWith(".cancelled") ? token.colorWarning : token.colorSuccess,
       iconBg: type.endsWith(".cancelled") ? token.colorWarningBg : token.colorSuccessBg,
+    };
+  } else if (type.startsWith("goods_receipt.")) {
+    visual = {
+      Icon: DropboxOutlined,
+      accent: token.colorSuccess,
+      iconBg: token.colorSuccessBg,
     };
   } else if (type === "user.created") {
     visual = {

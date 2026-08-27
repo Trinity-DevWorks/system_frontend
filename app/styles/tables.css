@@ -1,9 +1,9 @@
 /* AppDataTable / rc-table scroll and sticky-column fixes. */
 
 /*
- * AppDataTable scroll lives on `.app-data-table-scroll` (toolbar, rows, footer).
- * Force rc-table inner wrappers visible so horizontal + vertical scroll share
- * that scrollport instead of a nested overflow box.
+ * Vertical scroll lives on `.app-data-table-scroll` (toolbar, rows, footer).
+ * Horizontal scroll lives on the table itself (`scroll.x`) so extra columns
+ * get a visible X scrollbar instead of being clipped.
  */
 .app-data-table-scroll {
   scrollbar-width: thin;
@@ -23,11 +23,22 @@
   background: transparent;
 }
 
-.app-data-table-scroll .ant-table-container,
-.app-data-table-scroll .ant-table-content,
-.app-data-table-scroll .ant-table-body,
-.app-data-table-scroll .ant-table-header {
-  overflow: visible !important;
+.app-data-table .ant-table-content {
+  scrollbar-width: thin;
+}
+
+.app-data-table .ant-table-content::-webkit-scrollbar {
+  width: 6px;
+  height: 8px;
+}
+
+.app-data-table .ant-table-content::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, currentColor 32%, transparent);
+}
+
+.app-data-table .ant-table-content::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .app-data-table th.items-table-image-cell,

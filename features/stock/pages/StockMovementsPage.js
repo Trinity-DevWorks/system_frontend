@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
-import StockAdjustmentDrawer from "../components/StockAdjustmentDrawer/StockAdjustmentDrawer";
+import StockAdjustmentDocumentDrawer from "../components/StockAdjustmentDocumentDrawer/StockAdjustmentDocumentDrawer";
 import {
   formatStockFilterDateRange,
   stockFilterFieldRowClassName,
@@ -40,6 +40,8 @@ function StockMovementsTable() {
   const [typeFilter, setTypeFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [dateRange, setDateRange] = useState(/** @type {[import("dayjs").Dayjs, import("dayjs").Dayjs] | null} */ (null));
   const [adjustmentOpen, setAdjustmentOpen] = useState(false);
+  const [adjustmentMode, setAdjustmentMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
+  const [adjustmentId, setAdjustmentId] = useState(/** @type {string | null} */ (null));
 
   const fromIso = dateRange?.[0]?.startOf("day").toISOString();
   const toIso = dateRange?.[1]?.endOf("day").toISOString();
@@ -225,16 +227,35 @@ function StockMovementsTable() {
           showRefresh: true,
           onRefresh: () => refetch(),
           showAdd: access.canAdd,
-          onAdd: () => setAdjustmentOpen(true),
+          onAdd: () => {
+            setAdjustmentId(null);
+            setAdjustmentMode("create");
+            setAdjustmentOpen(true);
+          },
           addLabel: t("toolbarAdjust"),
           extra: filterToggle,
           filterBar,
         }}
         stickyHeader
-        scrollX={1360}
+        scrollX={1600}
         pagination={pagination}
       />
-      <StockAdjustmentDrawer open={adjustmentOpen} onClose={() => setAdjustmentOpen(false)} />
+      <StockAdjustmentDocumentDrawer
+        open={adjustmentOpen}
+        mode={adjustmentMode}
+        documentId={adjustmentId}
+        onClose={() => {
+          setAdjustmentOpen(false);
+          setAdjustmentId(null);
+          setAdjustmentMode("create");
+        }}
+        onCreated={(record) => {
+          const id = normalizeEntityId(record?.id);
+          if (id == null) return;
+          setAdjustmentId(id);
+          setAdjustmentMode("edit");
+        }}
+      />
       <StockMovementViewDrawer
         open={viewingMovement}
         movementId={movementDrawerId}

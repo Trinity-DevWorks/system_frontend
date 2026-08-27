@@ -17,7 +17,6 @@ export const ITEM_TYPE_FLAG_DEFAULTS = {
   PRODUCE: { track_inventory: true, allow_sale: true, allow_purchase: false, send_to_kitchen: true, qr_enabled: false },
   BUNDLE: { track_inventory: false, allow_sale: true, allow_purchase: false, send_to_kitchen: true, qr_enabled: false },
   NON_INVENTORY: { track_inventory: false, allow_sale: true, allow_purchase: true, send_to_kitchen: false, qr_enabled: false },
-  PLU: { track_inventory: false, allow_sale: true, allow_purchase: false, send_to_kitchen: true, qr_enabled: false },
 };
 
 export const ITEM_CREATE_SAVE_INTENT_KEY = "itemDrawer:createSaveIntent";

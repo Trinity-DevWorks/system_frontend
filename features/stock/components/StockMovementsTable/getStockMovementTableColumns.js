@@ -1,5 +1,5 @@
 import { EyeOutlined, MoreOutlined } from "@ant-design/icons";
-import { formatTenantDateTime } from "@/lib/tenant-format";
+import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import { Button, Dropdown, Typography } from "antd";
 import dayjs from "dayjs";
 import { formatStockQuantity, formatUomLabel } from "../../utils/formatStockQuantity";
@@ -68,6 +68,27 @@ export function getStockMovementTableColumns(t, actions = {}) {
       render: (_v, record) => record?.warehouse?.name ?? "—",
     },
     {
+      title: t("colLot"),
+      key: "lot",
+      width: 130,
+      ellipsis: true,
+      render: (_v, record) => record?.lot?.lot_number ?? "—",
+    },
+    {
+      title: t("colExpiry"),
+      key: "expiry",
+      width: 130,
+      render: (_v, record) => {
+        const expiry = record?.lot?.expiry_date;
+        if (!expiry) return "—";
+        const label = formatTenantDate(expiry) || expiry;
+        if (record?.lot?.is_expired) {
+          return <Typography.Text type="danger">{label} · {t("lotExpired")}</Typography.Text>;
+        }
+        return label;
+      },
+    },
+    {
       title: t("colQuantityDelta"),
       dataIndex: "quantity_delta",
       key: "quantity_delta",
@@ -81,6 +102,32 @@ export function getStockMovementTableColumns(t, actions = {}) {
         }
         if (Number.isFinite(n) && n > 0) {
           return <Typography.Text type="success">+{formatted}</Typography.Text>;
+        }
+        return formatted;
+      },
+    },
+    {
+      title: t("colUnitCost"),
+      dataIndex: "unit_cost",
+      key: "unit_cost",
+      width: 120,
+      align: "right",
+      render: (value) => formatTenantMoney(value) || "—",
+    },
+    {
+      title: t("colValueDelta"),
+      dataIndex: "value_delta",
+      key: "value_delta",
+      width: 130,
+      align: "right",
+      render: (value) => {
+        const n = Number(value);
+        const formatted = formatTenantMoney(value) || "—";
+        if (Number.isFinite(n) && n < 0) {
+          return <Typography.Text type="danger">{formatted}</Typography.Text>;
+        }
+        if (Number.isFinite(n) && n > 0) {
+          return <Typography.Text type="success">{formatted}</Typography.Text>;
         }
         return formatted;
       },

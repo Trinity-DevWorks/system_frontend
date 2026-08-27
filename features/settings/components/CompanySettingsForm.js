@@ -1,5 +1,6 @@
 "use client";
 
+import { inventoryCostingMethodOptions } from "@/lib/inventory-costing";
 import { Form, Input, InputNumber, Select, Switch } from "antd";
 import { useMemo } from "react";
 
@@ -171,19 +172,44 @@ export default function CompanySettingsForm({
         </Form.Item>
       </div>
 
+      <div className="grid gap-x-4 sm:grid-cols-2">
+        <Form.Item
+          name="tax_enabled"
+          label={t("fieldTaxEnabled")}
+          extra={t("fieldTaxEnabledHelp")}
+          valuePropName="checked"
+        >
+          <Switch
+            checkedChildren={t("switchOn")}
+            unCheckedChildren={t("switchOff")}
+          />
+        </Form.Item>
+        <Form.Item
+          name="tax_price_mode"
+          label={t("fieldTaxPriceMode")}
+          extra={t("fieldTaxPriceModeHelp")}
+          rules={[{ required: true, message: t("fieldTaxPriceModeRequired") }]}
+        >
+          <Select
+            options={[
+              { value: "exclusive", label: t("taxPriceModeExclusive") },
+              { value: "inclusive", label: t("taxPriceModeInclusive") },
+            ]}
+          />
+        </Form.Item>
+      </div>
       <Form.Item
-        name="tax_enabled"
-        label={t("fieldTaxEnabled")}
-        valuePropName="checked"
+        name="inventory_costing_method"
+        label={t("fieldInventoryCostingMethod")}
+        extra={t("fieldInventoryCostingMethodHelp")}
+        rules={[{ required: true, message: t("fieldInventoryCostingMethodRequired") }]}
       >
-        <Switch
-          checkedChildren={t("switchOn")}
-          unCheckedChildren={t("switchOff")}
-        />
+        <Select options={inventoryCostingMethodOptions(t)} />
       </Form.Item>
       <Form.Item
         name="allow_negative_stock"
         label={t("fieldAllowNegativeStock")}
+        extra={t("fieldAllowNegativeStockHelp")}
         valuePropName="checked"
       >
         <Switch

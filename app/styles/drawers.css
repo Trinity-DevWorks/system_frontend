@@ -330,6 +330,14 @@
   background: var(--ant-color-bg-container);
 }
 
+.item-general-form-toggles--compact {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.item-general-form-inventory-fields {
+  margin-top: 16px;
+}
+
 .item-general-form-toggle-cell {
   display: flex;
   flex-direction: column;
@@ -363,16 +371,16 @@
 }
 
 @media (max-width: 900px) {
-  .item-general-form-toggles {
+  .item-general-form-toggles:not(.item-general-form-toggles--compact) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .item-general-form-toggle-cell:nth-child(2) {
+  .item-general-form-toggles:not(.item-general-form-toggles--compact) .item-general-form-toggle-cell:nth-child(2) {
     border-inline-end: none;
   }
 
-  .item-general-form-toggle-cell:nth-child(1),
-  .item-general-form-toggle-cell:nth-child(3) {
+  .item-general-form-toggles:not(.item-general-form-toggles--compact) .item-general-form-toggle-cell:nth-child(1),
+  .item-general-form-toggles:not(.item-general-form-toggles--compact) .item-general-form-toggle-cell:nth-child(3) {
     border-bottom: 1px solid var(--ant-color-border-secondary);
   }
 }

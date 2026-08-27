@@ -14,7 +14,8 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { NOTIFICATIONS_QUERY_KEY, fetchNotificationPreferences, updateNotificationPreferences } from "@/features/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Card, Spin, Switch, Typography, theme } from "antd";
-import { useTranslations } from "next-intl";
+import { getNotificationTypeMessage } from "@/shell/header/notificationFormat";
+import { useMessages, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
 const CHANNELS = /** @type {const} */ (["database", "mail"]);
@@ -43,6 +44,8 @@ const PREFERENCE_GROUPS = [
       "purchase_order.confirmed",
       "purchase_order.sent",
       "purchase_order.cancelled",
+      "purchase_order.closed",
+      "goods_receipt.posted",
     ],
   },
   {
@@ -51,6 +54,8 @@ const PREFERENCE_GROUPS = [
       "stock_transfer.dispatched",
       "stock_transfer.received",
       "stock_transfer.cancelled",
+      "stock.lot_expiry",
+      "stock.lot_expiry_item",
       "stock_movement.posted",
     ],
   },
@@ -97,8 +102,8 @@ function mapsEqual(a, b) {
 
 export default function PreferencesPage() {
   const t = useTranslations("NotificationPreferences");
-  const tNotifications = useTranslations("Notifications");
   const tApiErrors = useTranslations("ApiErrors");
+  const messages = useMessages();
   const { message } = App.useApp();
   const { token } = theme.useToken();
   const queryClient = useQueryClient();
@@ -166,13 +171,8 @@ export default function PreferencesPage() {
   /**
    * @param {string} type
    */
-  const typeTitle = (type) => {
-    const key = `types.${type}.title`;
-    if (typeof tNotifications.has === "function" && !tNotifications.has(key)) {
-      return type;
-    }
-    return tNotifications(key);
-  };
+  const typeTitle = (type) =>
+    getNotificationTypeMessage(messages, type, "title") || type;
 
   if (prefsQuery.isLoading) {
     return (

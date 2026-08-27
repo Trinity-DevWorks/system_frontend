@@ -1,23 +1,31 @@
 "use client";
 
-/**
- * Post stock adjustment mutation with field-level API error mapping.
- *
- * Used by:
- * - app/[locale]/main/stock/adjustment/StockAdjustmentDrawer.js
- */
-
 import {
-  invalidatePurchasingAlertsQueries,
+  STOCK_ADJUSTMENT_DETAIL_QUERY_PREFIX,
+  STOCK_ADJUSTMENTS_QUERY_KEY,
   STOCK_BALANCES_QUERY_KEY,
+  STOCK_LOTS_QUERY_KEY,
   STOCK_MOVEMENTS_QUERY_KEY,
+  invalidatePurchasingAlertsQueries,
 } from "./stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { normalizeEntityId } from "@/lib/entityId";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
-import { postStockAdjustment } from "../api/stock.api";
+import {
+  createStockAdjustment,
+  deleteStockAdjustment,
+  fetchStockAdjustment,
+  postStockAdjustmentDocument,
+  syncStockAdjustmentLines,
+  updateStockAdjustment,
+} from "../api/stockAdjustments.api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { stockAdjustmentValuesToPayload } from "../utils/stockAdjustmentDrawerUtils";
+import {
+  adjHeaderToPayload,
+  getPersistableAdjLines,
+  getValidAdjLines,
+} from "../utils/stockAdjustmentDrawerUtils";
 
 /**
  * @param {{
@@ -26,8 +34,13 @@ import { stockAdjustmentValuesToPayload } from "../utils/stockAdjustmentDrawerUt
  *   notification: import("antd").NotificationInstance;
  *   t: (key: string) => string;
  *   tApiErrors: (key: string) => string;
- *   onClose: () => void;
- *   onPosted?: (movement: unknown) => void;
+ *   documentId: string | null;
+ *   lines: import("../utils/stockAdjustmentDrawerUtils").AdjLineFormRow[];
+ *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onSaved?: (record: Record<string, unknown>) => void;
+ *   onPosted?: (record: Record<string, unknown>) => void;
+ *   onDeleted?: () => void;
+ *   onClose?: () => void;
  * }} args
  */
 export function useStockAdjustmentDrawerMutations({
@@ -36,39 +49,127 @@ export function useStockAdjustmentDrawerMutations({
   notification,
   t,
   tApiErrors,
-  onClose,
+  documentId,
+  lines,
+  onCreated,
+  onSaved,
   onPosted,
+  onDeleted,
+  onClose,
 }) {
   const queryClient = useQueryClient();
 
-  const applyPayload = useCallback((values) => stockAdjustmentValuesToPayload(values), []);
+  const invalidateLedger = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: STOCK_ADJUSTMENTS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: STOCK_LOTS_QUERY_KEY });
+    invalidatePurchasingAlertsQueries(queryClient);
+  }, [queryClient]);
 
-  const postMutation = useMutation({
-    mutationFn: ({ payload }) => postStockAdjustment(payload),
+  const cacheDetail = useCallback(
+    (id, record) => {
+      if (id == null || !record) return;
+      queryClient.setQueryData([...STOCK_ADJUSTMENT_DETAIL_QUERY_PREFIX, id], record);
+    },
+    [queryClient],
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: async ({ values }) => {
+      const persistable = getPersistableAdjLines(lines);
+      if (documentId == null) {
+        return createStockAdjustment({
+          ...adjHeaderToPayload(values),
+          ...(persistable.length > 0 ? { lines: persistable } : {}),
+        });
+      }
+      await updateStockAdjustment(documentId, adjHeaderToPayload(values));
+      await syncStockAdjustmentLines(documentId, { lines: persistable });
+      return fetchStockAdjustment(documentId);
+    },
     onError: (err) => {
       if (!applyApiFieldErrors(form, err)) {
         notification.error({
-          title: t("adjustmentError"),
+          title: t("adjSaveError"),
           description: getLocalizedApiErrorMessage(tApiErrors, err),
         });
       }
     },
-    onSuccess: (data) => {
-      message.success(t("adjustmentSuccess"));
-      queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
-      invalidatePurchasingAlertsQueries(queryClient);
-      if (typeof onPosted === "function") {
-        onPosted(data);
+    onSuccess: (record) => {
+      const id = normalizeEntityId(record?.id);
+      cacheDetail(id, record);
+      invalidateLedger();
+      if (documentId == null) {
+        message.success(t("adjCreateSuccess"));
+        onCreated?.(/** @type {Record<string, unknown>} */ (record));
       } else {
-        onClose();
+        message.success(t("adjUpdateSuccess"));
+        onSaved?.(/** @type {Record<string, unknown>} */ (record));
       }
     },
   });
 
+  const postMutation = useMutation({
+    mutationFn: async ({ values }) => {
+      const validLines = getValidAdjLines(lines);
+      let id = documentId;
+      if (id == null) {
+        const created = await createStockAdjustment({
+          ...adjHeaderToPayload(values),
+          lines: validLines,
+        });
+        id = normalizeEntityId(created?.id);
+        if (id == null) throw new Error("Missing document id after create");
+        await syncStockAdjustmentLines(id, { lines: validLines });
+      } else {
+        await updateStockAdjustment(id, adjHeaderToPayload(values));
+        await syncStockAdjustmentLines(id, { lines: validLines });
+      }
+      return postStockAdjustmentDocument(id);
+    },
+    onError: (err) => {
+      if (!applyApiFieldErrors(form, err)) {
+        notification.error({
+          title: t("adjPostError"),
+          description: getLocalizedApiErrorMessage(tApiErrors, err),
+        });
+      }
+    },
+    onSuccess: (record) => {
+      cacheDetail(normalizeEntityId(record?.id), record);
+      invalidateLedger();
+      message.success(t("adjPostSuccess"));
+      if (documentId == null) {
+        onCreated?.(/** @type {Record<string, unknown>} */ (record));
+      }
+      onPosted?.(/** @type {Record<string, unknown>} */ (record));
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (documentId == null) throw new Error("missing document");
+      return deleteStockAdjustment(documentId);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("adjDeleteError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: () => {
+      invalidateLedger();
+      message.success(t("adjDeleteSuccess"));
+      onDeleted?.();
+      onClose?.();
+    },
+  });
+
   return {
-    applyPayload,
+    saveMutation,
     postMutation,
-    submitting: postMutation.isPending,
+    deleteMutation,
+    submitting: saveMutation.isPending || postMutation.isPending || deleteMutation.isPending,
   };
 }

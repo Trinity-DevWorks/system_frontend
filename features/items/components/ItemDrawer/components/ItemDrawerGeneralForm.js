@@ -7,6 +7,7 @@
  * - drawer/hooks/useItemDrawerTabItems.js
  */
 
+import { inventoryCostingMethodOptions } from "@/lib/inventory-costing";
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
 import LookupTreeSelectWithCreate from "@/shared/components/resource-drawer/LookupTreeSelectWithCreate";
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
@@ -67,6 +68,7 @@ export default function ItemDrawerGeneralForm({
   const isActive = Form.useWatch("is_active", form);
   const allowSale = Form.useWatch("allow_sale", form);
   const qrEnabled = Form.useWatch("qr_enabled", form);
+  const trackInventory = Form.useWatch("track_inventory", form);
   const optionalSuffix = t("fieldOptionalSuffix");
   const showPosSection = allowSale !== false;
 
@@ -89,6 +91,12 @@ export default function ItemDrawerGeneralForm({
       form.setFieldsValue({ qr_description: undefined });
     }
   }, [qrEnabled, form]);
+
+  useEffect(() => {
+    if (trackInventory === false) {
+      form.setFieldsValue({ costing_method: "", track_lots: false });
+    }
+  }, [trackInventory, form]);
 
   return (
     <Form
@@ -119,8 +127,7 @@ export default function ItemDrawerGeneralForm({
         <Col xs={24} md={8}>
           <Form.Item
             name="sku"
-            label={<ResourceDrawerFieldLabel text={t("fieldSku")} required />}
-            rules={[{ required: true, message: t("fieldSkuRequired") }]}
+            label={<ResourceDrawerFieldLabel text={t("fieldSku")} optional optionalSuffix={optionalSuffix} />}
           >
             <Input placeholder={t("fieldSkuPlaceholder")} />
           </Form.Item>
@@ -185,17 +192,15 @@ export default function ItemDrawerGeneralForm({
           <LookupTreeSelectWithCreate
             form={form}
             name="category_id"
-            label={<ResourceDrawerFieldLabel text={t("fieldCategory")} required />}
+            label={<ResourceDrawerFieldLabel text={t("fieldCategory")} optional optionalSuffix={optionalSuffix} />}
             readOnly={readOnly}
             addNewSentinel={ITEM_LOOKUP_ADD_CATEGORY}
             addNewLabel={t("fieldCategoryAddNew")}
             onAddNew={onOpenCategoryDrawer}
             addNewAsLink
-            rules={[{ required: true, message: t("fieldCategoryRequired") }]}
             treeData={categoryTreeData}
             loading={categoriesPending}
             placeholder={t("fieldCategoryPlaceholder")}
-            allowClear={false}
           />
         </Col>
         <Col xs={24} md={12}>
@@ -222,6 +227,48 @@ export default function ItemDrawerGeneralForm({
           </Form.Item>
         </Col>
       </Row>
+
+      <Divider className="item-general-form-section-divider" titlePlacement="start" plain>
+        {t("sectionInventory")}
+      </Divider>
+      <div className="item-general-form-toggles item-general-form-toggles--compact" role="group" aria-label={t("sectionInventory")}>
+        <div className="item-general-form-toggle-cell">
+          <ResourceDrawerFieldLabel text={t("fieldTrackInventory")} help={t("fieldTrackInventoryHelp")} />
+          <Form.Item name="track_inventory" valuePropName="checked" noStyle>
+            <Switch />
+          </Form.Item>
+        </div>
+        {trackInventory ? (
+          <div className="item-general-form-toggle-cell">
+            <ResourceDrawerFieldLabel text={t("fieldTrackLots")} help={t("fieldTrackLotsHelp")} />
+            <Form.Item name="track_lots" valuePropName="checked" noStyle>
+              <Switch />
+            </Form.Item>
+          </div>
+        ) : null}
+      </div>
+      {trackInventory ? (
+        <Row gutter={[24, 0]} className="item-general-form-inventory-fields">
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="costing_method"
+              label={
+                <ResourceDrawerFieldLabel
+                  text={t("fieldCostingMethod")}
+                  optional
+                  optionalSuffix={optionalSuffix}
+                />
+              }
+              extra={t("fieldCostingMethodHelp")}
+            >
+              <Select
+                options={inventoryCostingMethodOptions(t, { includeInherit: true })}
+                placeholder={t("costingMethodInherit")}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+      ) : null}
 
       {showPosSection ? (
         <>
@@ -334,13 +381,7 @@ export default function ItemDrawerGeneralForm({
         </>
       ) : null}
 
-      <div className="item-general-form-toggles" role="group" aria-label={t("fieldStatus")}>
-        <div className="item-general-form-toggle-cell">
-          <ResourceDrawerFieldLabel text={t("fieldTrackInventory")} help={t("fieldTrackInventoryHelp")} />
-          <Form.Item name="track_inventory" valuePropName="checked" noStyle>
-            <Switch />
-          </Form.Item>
-        </div>
+      <div className="item-general-form-toggles item-general-form-toggles--compact" role="group" aria-label={t("fieldStatus")}>
         <div className="item-general-form-toggle-cell">
           <ResourceDrawerFieldLabel text={t("fieldAllowSale")} help={t("fieldAllowSaleHelp")} />
           <Form.Item name="allow_sale" valuePropName="checked" noStyle>

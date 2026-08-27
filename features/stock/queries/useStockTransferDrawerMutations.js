@@ -7,6 +7,7 @@
 import {
   invalidatePurchasingAlertsQueries,
   STOCK_BALANCES_QUERY_KEY,
+  STOCK_LOTS_QUERY_KEY,
   STOCK_MOVEMENTS_QUERY_KEY,
   STOCK_TRANSFER_DETAIL_QUERY_PREFIX,
   STOCK_TRANSFERS_QUERY_KEY,
@@ -72,6 +73,7 @@ export function useStockTransferDrawerMutations({
     queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: STOCK_TRANSFERS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: STOCK_LOTS_QUERY_KEY });
     invalidatePurchasingAlertsQueries(queryClient);
   }, [queryClient]);
 

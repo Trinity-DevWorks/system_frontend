@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Space } from "antd";
+import StockDocumentDrawerFooter from "../StockDocumentDrawerFooter";
 
 /**
  * @param {{
@@ -15,13 +16,16 @@ import { Button, Space } from "antd";
  *   showCancelOrder: boolean;
  *   showSupplierActions?: boolean;
  *   canMarkSent?: boolean;
+ *   canReceive?: boolean;
  *   pdfLoading?: boolean;
+ *   receiveLoading?: boolean;
  *   onSave: () => void;
  *   onConfirm: () => void;
  *   onCancelOrder: () => void;
  *   onDelete: () => void;
  *   onDownloadPdf?: () => void;
  *   onMarkSent?: () => void;
+ *   onReceive?: () => void;
  * }} props
  */
 export default function PurchaseOrderDrawerFooter({
@@ -36,49 +40,28 @@ export default function PurchaseOrderDrawerFooter({
   showCancelOrder,
   showSupplierActions = false,
   canMarkSent = false,
+  canReceive = false,
   pdfLoading = false,
+  receiveLoading = false,
   onSave,
   onConfirm,
   onCancelOrder,
   onDelete,
   onDownloadPdf,
   onMarkSent,
+  onReceive,
 }) {
-  if (readOnly) {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {showSupplierActions || showCancelOrder ? (
-          <Space wrap>
-            {showSupplierActions ? (
-              <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
-                {t("actionDownloadPoPdf")}
-              </Button>
-            ) : null}
-            {canMarkSent ? (
-              <Button disabled={submitting} onClick={onMarkSent}>
-                {t("actionMarkPoSent")}
-              </Button>
-            ) : null}
-            {showCancelOrder ? (
-              <Button disabled={submitting} onClick={onCancelOrder}>
-                {t("actionCancelPo")}
-              </Button>
-            ) : null}
-          </Space>
-        ) : (
-          <span />
-        )}
-        <Button onClick={forceClose}>{t("drawerClose")}</Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
+  const viewExtras =
+    showSupplierActions || showCancelOrder ? (
       <Space wrap>
-        {showDelete ? (
-          <Button danger disabled={submitting} onClick={onDelete}>
-            {t("actionDelete")}
+        {showSupplierActions ? (
+          <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
+            {t("actionDownloadPoPdf")}
+          </Button>
+        ) : null}
+        {canMarkSent ? (
+          <Button disabled={submitting} onClick={onMarkSent}>
+            {t("actionMarkPoSent")}
           </Button>
         ) : null}
         {showCancelOrder ? (
@@ -86,24 +69,37 @@ export default function PurchaseOrderDrawerFooter({
             {t("actionCancelPo")}
           </Button>
         ) : null}
+        {canReceive ? (
+          <Button type="primary" disabled={submitting} loading={receiveLoading} onClick={onReceive}>
+            {t("actionReceiveGoods")}
+          </Button>
+        ) : null}
       </Space>
+    ) : null;
 
-      <Space wrap>
-        <Button onClick={requestClose} disabled={submitting}>
-          {t("drawerCancel")}
-        </Button>
-        <Button disabled={saveDisabled || submitting} loading={submitting} onClick={onSave}>
-          {t("drawerSave")}
-        </Button>
-        <Button
-          type="primary"
-          disabled={confirmDisabled || submitting}
-          loading={submitting}
-          onClick={onConfirm}
-        >
-          {t("actionConfirmPo")}
-        </Button>
-      </Space>
-    </div>
+  return (
+    <StockDocumentDrawerFooter
+      readOnly={readOnly}
+      t={t}
+      forceClose={forceClose}
+      requestClose={requestClose}
+      submitting={submitting}
+      saveDisabled={saveDisabled}
+      primaryDisabled={confirmDisabled}
+      showDelete={showDelete}
+      showPrimary
+      primaryLabel={t("actionConfirmPo")}
+      startExtras={
+        showCancelOrder ? (
+          <Button disabled={submitting} onClick={onCancelOrder}>
+            {t("actionCancelPo")}
+          </Button>
+        ) : null
+      }
+      readOnlyExtras={viewExtras}
+      onSave={onSave}
+      onPrimary={onConfirm}
+      onDelete={onDelete}
+    />
   );
 }

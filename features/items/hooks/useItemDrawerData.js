@@ -114,7 +114,6 @@ export function useItemDrawerData({
   });
 
   const itemTypeIdWatch = Form.useWatch("item_type_id", form);
-  const skuWatch = Form.useWatch("sku", form);
   const nameWatch = Form.useWatch("name", form);
   const unitGroupIdWatch = Form.useWatch("unit_group_id", form);
   const allowPurchaseWatch = Form.useWatch("allow_purchase", form);
@@ -156,8 +155,8 @@ export function useItemDrawerData({
   );
 
   const canSubmitRequired = useMemo(
-    () => requiredGeneralFieldsValid(String(skuWatch ?? ""), String(nameWatch ?? ""), unitGroupIdWatch),
-    [skuWatch, nameWatch, unitGroupIdWatch],
+    () => requiredGeneralFieldsValid(String(nameWatch ?? ""), unitGroupIdWatch),
+    [nameWatch, unitGroupIdWatch],
   );
 
   return {
