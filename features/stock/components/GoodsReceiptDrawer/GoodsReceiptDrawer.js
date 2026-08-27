@@ -65,7 +65,10 @@ export default function GoodsReceiptDrawer({
   const [loadedWarehouseId, setLoadedWarehouseId] = useState(/** @type {number | undefined} */ (undefined));
   const [loadedPoNumber, setLoadedPoNumber] = useState(/** @type {string | null} */ (null));
 
-  const defaults = useMemo(() => getGoodsReceiptDefaults(), [open]);
+  const defaults = useMemo(() => {
+    void open;
+    return getGoodsReceiptDefaults();
+  }, [open]);
   const loadedDetailVersionRef = useRef(0);
   const appliedPoSeedIdRef = useRef(/** @type {string | null} */ (null));
 
@@ -157,6 +160,7 @@ export default function GoodsReceiptDrawer({
   useLayoutEffect(() => {
     if (!open) return;
     if (mode === "create") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset create draft when the drawer opens
       resetCreateDraftState();
       if (fromPurchaseOrderId) {
         form.setFieldsValue({ ...defaults, purchase_order_id: fromPurchaseOrderId });

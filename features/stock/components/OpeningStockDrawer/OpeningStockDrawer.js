@@ -56,7 +56,10 @@ export default function OpeningStockDrawer({
   const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
   const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
 
-  const defaults = useMemo(() => getOpeningStockDefaults(), [open]);
+  const defaults = useMemo(() => {
+    void open;
+    return getOpeningStockDefaults();
+  }, [open]);
   const loadedDetailVersionRef = useRef(0);
 
   const detailEnabled = open && (mode === "edit" || mode === "view") && documentId != null;
@@ -99,6 +102,7 @@ export default function OpeningStockDrawer({
   useLayoutEffect(() => {
     if (!open) return;
     if (mode === "create") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset create draft when the drawer opens
       resetCreateDraftState();
     }
   }, [open, mode, resetCreateDraftState]);

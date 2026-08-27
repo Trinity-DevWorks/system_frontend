@@ -65,8 +65,6 @@ export default function BundleExplosionDrawer({
   const [headerBaseline, setHeaderBaseline] = useState(() => getBundleExplosionDefaults());
   const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
   const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
-  const linesRef = useRef(lines);
-  linesRef.current = lines;
 
   const drawerData = useBundleExplosionDrawerData({ open });
   const defaults = useMemo(
@@ -116,6 +114,7 @@ export default function BundleExplosionDrawer({
     };
     form.resetFields();
     form.setFieldsValue(nextDefaults);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset create draft when the drawer opens
     setLines([]);
     setLinesBaseline([]);
     setHeaderBaseline(nextDefaults);
@@ -123,6 +122,8 @@ export default function BundleExplosionDrawer({
     setLoadedNumber(null);
     loadedDetailVersionRef.current = 0;
     lastScaleRef.current = "";
+    // warehouse default is patched below if still empty — do not reset the form when it arrives
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, form]);
 
   useEffect(() => {
@@ -130,6 +131,7 @@ export default function BundleExplosionDrawer({
     if (form.getFieldValue("warehouse_id") != null) return;
     if (drawerData.defaultWarehouseId == null) return;
     form.setFieldsValue({ warehouse_id: drawerData.defaultWarehouseId });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- apply async warehouse default without wiping the create draft
     setHeaderBaseline((prev) => ({ ...prev, warehouse_id: drawerData.defaultWarehouseId }));
   }, [open, mode, form, drawerData.defaultWarehouseId]);
 
@@ -175,7 +177,7 @@ export default function BundleExplosionDrawer({
     const signature = `${currentItem}|${currentQty}|${bundleComponentSignature(components)}`;
     if (lastScaleRef.current === signature) return;
     lastScaleRef.current = signature;
-    setLines(scaleBundleToLines(components, currentQty, linesRef.current));
+    setLines((prev) => scaleBundleToLines(components, currentQty, prev));
   }, [open, readOnly, mode, watchedItemId, watchedQuantity, components, componentsQuery.isFetching]);
 
   const { isCreateDirty } = useCreateDiscardBaseline({

@@ -91,7 +91,10 @@ export default function PurchaseOrderDrawer({
   const applyingExpectedDateRef = useRef(false);
   const expectedDateAutoRef = useRef(true);
 
-  const defaults = useMemo(() => getPurchaseOrderDefaults(), [open]);
+  const defaults = useMemo(() => {
+    void open;
+    return getPurchaseOrderDefaults();
+  }, [open]);
   const loadedDetailVersionRef = useRef(0);
 
   const detailEnabled = open && (mode === "edit" || mode === "view") && orderId != null;
