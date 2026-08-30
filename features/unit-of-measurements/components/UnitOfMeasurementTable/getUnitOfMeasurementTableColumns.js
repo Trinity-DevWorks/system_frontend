@@ -19,14 +19,19 @@ const normalizeText = (value) =>
     ? value.trim().replace(/\s+/g, " ").toLocaleLowerCase()
     : "";
 
-function getUnitGroupName(row) {
+export function getUnitGroupName(row) {
   const name = row?.unit_group?.name;
   return typeof name === "string" ? name.trim() : "";
 }
 
-function getUnitGroupCode(row) {
+export function getUnitGroupCode(row) {
   const code = row?.unit_group?.code;
   return typeof code === "string" ? code.trim() : "";
+}
+
+export function getUnitGroupDimensionType(row) {
+  const value = row?.unit_group?.dimension_type;
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function UnitGroupFilterDropdown({

@@ -17,21 +17,6 @@ import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
 
-function getUnitGroupName(row) {
-  const name = row?.unit_group?.name;
-  return typeof name === "string" ? name.trim() : "";
-}
-
-function getUnitGroupCode(row) {
-  const code = row?.unit_group?.code;
-  return typeof code === "string" ? code.trim() : "";
-}
-
-function getUnitGroupDimensionType(row) {
-  const value = row?.unit_group?.dimension_type;
-  return typeof value === "string" ? value.trim() : "";
-}
-
 const normalizeText = (value) =>
   typeof value === "string"
     ? value.trim().replace(/\s+/g, " ").toLocaleLowerCase()

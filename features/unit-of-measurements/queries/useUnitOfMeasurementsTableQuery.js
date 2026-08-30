@@ -2,7 +2,13 @@
 
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { useMemo } from "react";
-import { getUnitOfMeasurementDimensionTypeLabel, getUnitOfMeasurementStatusLabel } from "../components/UnitOfMeasurementTable/getUnitOfMeasurementTableColumns";
+import {
+  getUnitGroupCode,
+  getUnitGroupDimensionType,
+  getUnitGroupName,
+  getUnitOfMeasurementDimensionTypeLabel,
+  getUnitOfMeasurementStatusLabel,
+} from "../components/UnitOfMeasurementTable/getUnitOfMeasurementTableColumns";
 import { fetchUnitOfMeasurements } from "../api/unitOfMeasurements.api";
 import { UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY } from "./unitOfMeasurementsQueryKeys";
 
