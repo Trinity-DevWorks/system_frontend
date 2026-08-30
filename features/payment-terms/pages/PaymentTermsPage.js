@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { usePaymentTermsDelete } from "../queries/usePaymentTermsDelete";
 import { usePaymentTermsTableQuery } from "../queries/usePaymentTermsTableQuery";
-import PaymentTermDrawer from "../components/PaymentTermDrawer/PaymentTermDrawer";
 import { getPaymentTermTableColumns } from "../components/PaymentTermTable/getPaymentTermTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -26,17 +24,12 @@ function PaymentTermsTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerPaymentTermId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handlePaymentTermCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("paymentTerms");
 
   const { requestDeletePaymentTerm, openBulkDeleteConfirm, bulkDeletePending } = usePaymentTermsDelete({
     t,
@@ -47,7 +40,7 @@ function PaymentTermsTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -95,14 +88,6 @@ function PaymentTermsTable() {
         scrollX={1280}
         enableColumnDrag
         pagination={pagination}
-      />
-      <PaymentTermDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        paymentTermId={drawerPaymentTermId == null ? null : Number(drawerPaymentTermId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handlePaymentTermCreated}
       />
     </div>
   );

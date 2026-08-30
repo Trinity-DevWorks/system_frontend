@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { useCategoriesDelete } from "../queries/useCategoriesDelete";
 import { useCategoriesTableQuery } from "../queries/useCategoriesTableQuery";
-import CategoryDrawer from "../components/CategoryDrawer/CategoryDrawer";
 import { getCategoryTableColumns } from "../components/CategoryTable/getCategoryTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -33,17 +31,12 @@ function CategoriesTable() {
 
   /** `tableSeed` is a snapshot row for edit/view from the table (or create response); avoids refetch when it matches `drawerCategoryId`. */
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerCategoryId,
-    tableSeed: drawerEditSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleCategoryCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("categories");
 
   const { requestDeleteCategory, openBulkDeleteConfirm, bulkDeletePending } = useCategoriesDelete({
     t,
@@ -54,7 +47,7 @@ function CategoriesTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -96,14 +89,6 @@ function CategoriesTable() {
       scrollX={1420}
       enableColumnDrag
       pagination={pagination}
-    />
-    <CategoryDrawer
-      open={drawerOpen}
-      mode={drawerMode}
-      categoryId={drawerCategoryId == null ? null : Number(drawerCategoryId)}
-      editSeedRecord={drawerEditSeed}
-      onClose={closeDrawer}
-      onCreated={handleCategoryCreated}
     />
     </div>
   );

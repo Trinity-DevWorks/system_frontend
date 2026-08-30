@@ -5,17 +5,15 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { GOODS_RECEIPTS_QUERY_KEY } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { deleteGoodsReceipt } from "../api/goodsReceipts.api";
-import { GRN_FROM_PO_PARAM } from "../utils/goodsReceiptFromPurchaseOrder";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useMemo, useState } from "react";
 import { GOODS_RECEIPT_STATUS_VALUES, getGoodsReceiptStatusLabel } from "../utils/goodsReceiptStatuses";
 import {
@@ -23,7 +21,6 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "../components/StockTableFilters/StockTableFilters";
-import GoodsReceiptDrawer from "../components/GoodsReceiptDrawer/GoodsReceiptDrawer";
 import { getGoodsReceiptTableColumns } from "../components/GoodsReceiptsTable/getGoodsReceiptTableColumns";
 import { useGoodsReceiptsTableQuery } from "../queries/useGoodsReceiptsTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
@@ -95,19 +92,10 @@ function GoodsReceiptsTable() {
   );
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerReceiptId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
-    closeDrawer,
-    promoteCreated: handleReceiptCreated,
-  } = useResourceDrawerUrl();
-  const searchParams = useSearchParams();
-  const fromPurchaseOrderId =
-    drawerOpen && drawerMode === "create" ? searchParams.get(GRN_FROM_PO_PARAM) : null;
+  } = usePageDrawer("stockGoodsReceipts");
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteGoodsReceipt(id),
@@ -250,19 +238,6 @@ function GoodsReceiptsTable() {
         stickyHeader
         scrollX={1280}
         pagination={pagination}
-      />
-      <GoodsReceiptDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        receiptId={
-          typeof drawerReceiptId === "string" || typeof drawerReceiptId === "number"
-            ? String(drawerReceiptId)
-            : null
-        }
-        tableSeedRecord={drawerTableSeed}
-        fromPurchaseOrderId={fromPurchaseOrderId}
-        onClose={closeDrawer}
-        onCreated={handleReceiptCreated}
       />
     </div>
   );

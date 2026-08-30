@@ -4,20 +4,19 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { PURCHASE_ORDERS_QUERY_KEY } from "../queries/stockQueryKeys";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { parseNumericEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { App, Button, Checkbox, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { stockFilterFieldRowClassName, useStockTableFilters } from "../components/StockTableFilters/StockTableFilters";
-import PurchaseOrderDrawer from "../components/PurchaseOrderDrawer/PurchaseOrderDrawer";
 import { getPurchasingAlertTableColumns } from "../components/PurchasingAlertsTable/getPurchasingAlertTableColumns";
 import {
   buildPurchaseOrderCreateSeedFromAlert,
   groupAlertsIntoPurchaseOrderSeeds,
 } from "../utils/purchaseOrderFromAlertUtils";
-import PurchasingAlertViewDrawer from "../components/PurchasingAlertViewDrawer/PurchasingAlertViewDrawer";
 import { usePurchasingAlertsTableQuery } from "../queries/usePurchasingAlertsTableQuery";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -45,29 +44,15 @@ function PurchasingAlertsTable() {
   const { notification, message } = App.useApp();
   const queryClient = useQueryClient();
   const access = useResourceAccess("stock");
-
+  const { openDrawer, closeDrawer: closeForeignDrawer, bumpForeignSeed } = useGlobalDrawer();
+  const { openViewDrawer } = usePageDrawer("stockPurchasingAlerts");
   const [warehouseFilter, setWarehouseFilter] = useState(/** @type {number | undefined} */ (undefined));
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [onlyAlerts, setOnlyAlerts] = useState(true);
   const [selectedRowKeys, setSelectedRowKeys] = useState(/** @type {import("react").Key[]} */ ([]));
-  const [poCreate, setPoCreate] = useState(EMPTY_PO_CREATE_STATE);
-
-  const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: alertViewId,
-    tableSeed: alertViewSeed,
-    openViewDrawer,
-    openCreateDrawer,
-    closeDrawer,
-  } = useResourceDrawerUrl({
-    allowCreateInUrl: true,
-    defaultMode: "view",
-    parseId: parseNumericEntityId,
-  });
-
-  const poCreateOpen = drawerOpen && drawerMode === "create";
-  const alertViewOpen = drawerOpen && drawerMode !== "create";
+  const poQueueRef = useRef(
+    /** @type {PurchaseOrderCreateState} */ ({ key: 0, seed: null, queue: [], bulkFlow: false }),
+  );
 
   const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = usePurchasingAlertsTableQuery({
     t,
@@ -156,33 +141,63 @@ function PurchasingAlertsTable() {
     return lines;
   }, [onlyAlerts, statusLabel, t, warehouseLabel]);
 
-  /**
-   * Stay on purchasing alerts and open the same PO drawer via `?drawer=new&mode=create`.
-   * Prefill stays in React state — not the URL.
-   * @type {(seeds: PurchaseOrderSeed[], options?: { bulkFlow?: boolean }) => void}
-   */
+  /** Prefill / bulk queue stay in memory — not the URL. */
+  const handlePoSessionClose = useCallback(() => {
+    poQueueRef.current = { ...EMPTY_PO_CREATE_STATE, key: poQueueRef.current.key };
+  }, []);
+
+  const handlePoCreated = useCallback(
+    (/** @type {Record<string, unknown>} */ _record) => {
+      queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
+
+      const [nextSeed, ...restQueue] = poQueueRef.current.queue;
+      if (nextSeed) {
+        poQueueRef.current = {
+          ...poQueueRef.current,
+          key: poQueueRef.current.key + 1,
+          seed: nextSeed,
+          queue: restQueue,
+        };
+        bumpForeignSeed(nextSeed);
+        return;
+      }
+
+      if (poQueueRef.current.bulkFlow) {
+        setSelectedRowKeys([]);
+        closeForeignDrawer();
+      }
+    },
+    [bumpForeignSeed, closeForeignDrawer, queryClient],
+  );
+
   const openDrawerWithSeeds = useCallback(
+    /**
+     * Stay on purchasing alerts; host opens `?open=stockPurchaseOrders&drawer=new&mode=create`.
+     * @param {PurchaseOrderSeed[]} seeds
+     * @param {{ bulkFlow?: boolean }} [options]
+     */
     (seeds, options = {}) => {
+      if (!access.canAdd) return;
+
       const { bulkFlow = false } = options;
       const [first, ...rest] = seeds;
       if (!first) return;
 
-      setPoCreate((prev) => ({ key: prev.key + 1, seed: first, queue: rest, bulkFlow }));
-      openCreateDrawer();
-    },
-    [openCreateDrawer],
-  );
-
-  const handleViewAlert = useCallback(
-    (record) => {
-      const replenishmentId = parseNumericEntityId(record?.replenishment_id);
-      if (replenishmentId == null) return;
-      openViewDrawer({
-        .../** @type {Record<string, unknown>} */ (record),
-        id: replenishmentId,
+      poQueueRef.current = {
+        key: poQueueRef.current.key + 1,
+        seed: first,
+        queue: rest,
+        bulkFlow,
+      };
+      openDrawer({
+        featureId: "stockPurchaseOrders",
+        mode: "create",
+        seed: first,
+        onCreated: handlePoCreated,
+        onClose: handlePoSessionClose,
       });
     },
-    [openViewDrawer],
+    [access.canAdd, handlePoCreated, handlePoSessionClose, openDrawer],
   );
 
   const handleCreatePoFromAlert = useCallback(
@@ -198,8 +213,27 @@ function PurchasingAlertsTable() {
     [message, openDrawerWithSeeds, t],
   );
 
+  const handleViewAlert = useCallback(
+    (record) => {
+      const replenishmentId = parseNumericEntityId(record?.replenishment_id);
+      if (replenishmentId == null) return;
+      openViewDrawer(
+        {
+          .../** @type {Record<string, unknown>} */ (record),
+          id: replenishmentId,
+        },
+        {
+          canCreatePo: access.canAdd,
+          onCreatePo: access.canAdd ? handleCreatePoFromAlert : undefined,
+        },
+      );
+    },
+    [access.canAdd, handleCreatePoFromAlert, openViewDrawer],
+  );
+
   const columns = useMemo(
     () =>
+      // eslint-disable-next-line react-hooks/refs -- column factory stores handlers; it does not invoke them
       getPurchasingAlertTableColumns(t, {
         onView: access.canView ? handleViewAlert : undefined,
         onCreatePo: access.canAdd ? handleCreatePoFromAlert : undefined,
@@ -208,6 +242,8 @@ function PurchasingAlertsTable() {
   );
 
   const handleOpenBulkCreate = useCallback(() => {
+    if (!access.canAdd) return;
+
     const alerts = selectedRowKeys
       .map((key) => tableDataByKey.get(String(key)))
       .filter((row) => row != null);
@@ -230,27 +266,7 @@ function PurchasingAlertsTable() {
     }
 
     openDrawerWithSeeds(seeds, { bulkFlow: seeds.length > 1 });
-  }, [message, openDrawerWithSeeds, selectedRowKeys, t, tableDataByKey]);
-
-  const handlePoDrawerClose = useCallback(() => {
-    setPoCreate((prev) => ({ ...EMPTY_PO_CREATE_STATE, key: prev.key }));
-    closeDrawer();
-  }, [closeDrawer]);
-
-  const handlePoCreated = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
-
-    const [nextSeed, ...restQueue] = poCreate.queue;
-    if (nextSeed) {
-      setPoCreate((prev) => ({ ...prev, key: prev.key + 1, seed: nextSeed, queue: restQueue }));
-      return;
-    }
-
-    if (poCreate.bulkFlow) {
-      setSelectedRowKeys([]);
-      handlePoDrawerClose();
-    }
-  }, [handlePoDrawerClose, poCreate.bulkFlow, poCreate.queue, queryClient]);
+  }, [access.canAdd, message, openDrawerWithSeeds, selectedRowKeys, t, tableDataByKey]);
 
   const rowSelection = useMemo(
     () => ({
@@ -321,25 +337,6 @@ function PurchasingAlertsTable() {
         stickyHeader
         scrollX={1680}
         pagination={pagination}
-      />
-
-      <PurchasingAlertViewDrawer
-        open={alertViewOpen}
-        replenishmentId={alertViewOpen ? alertViewId : null}
-        tableSeedRecord={alertViewSeed}
-        onClose={closeDrawer}
-        canCreatePo={access.canAdd}
-        onCreatePo={access.canAdd ? handleCreatePoFromAlert : undefined}
-      />
-
-      <PurchaseOrderDrawer
-        key={poCreate.key}
-        open={poCreateOpen}
-        mode="create"
-        orderId={null}
-        createSeed={poCreate.seed}
-        onClose={handlePoDrawerClose}
-        onCreated={handlePoCreated}
       />
     </div>
   );

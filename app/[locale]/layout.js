@@ -1,9 +1,14 @@
+import {
+  colorModeFromCookieStore,
+  resolvedColorModeFromCookieStore,
+} from "@/lib/color-mode";
 import AntdAppProvider from "@/shared/components/AntdAppProvider";
 import LocaleHtmlLang from "@/shared/components/LocaleHtmlLang";
 import { routing } from "@/i18n/routing";
 import { hasLocale } from "next-intl";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -29,10 +34,16 @@ export default async function LocaleLayout({ children, params }) {
 
   setRequestLocale(locale);
   const messages = await getMessages();
+  const jar = await cookies();
+  const initialColorMode = colorModeFromCookieStore(jar);
+  const initialResolvedColorMode = resolvedColorModeFromCookieStore(jar);
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <AntdAppProvider>
+      <AntdAppProvider
+        initialColorMode={initialColorMode}
+        initialResolvedColorMode={initialResolvedColorMode}
+      >
         <LocaleHtmlLang />
         {children}
       </AntdAppProvider>

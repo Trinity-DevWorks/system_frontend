@@ -3,12 +3,11 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useResourceAccess } from "@/lib/permissions";
-import { normalizeEntityId } from "@/lib/entityId";
-import { App, Checkbox, Form, Select } from "antd";
+import { App, Checkbox, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
-import StockAdjustmentDocumentDrawer from "../components/StockAdjustmentDocumentDrawer/StockAdjustmentDocumentDrawer";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { stockFilterFieldRowClassName, useStockTableFilters } from "../components/StockTableFilters/StockTableFilters";
 import { getStockBalanceTableColumns } from "../components/StockBalancesTable/getStockBalanceTableColumns";
 import { useStockBalancesTableQuery } from "../queries/useStockBalancesTableQuery";
@@ -21,15 +20,10 @@ function StockBalancesTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification } = App.useApp();
   const access = useResourceAccess("stock");
+  const { openDrawer } = useGlobalDrawer();
 
   const [warehouseFilter, setWarehouseFilter] = useState(/** @type {number | undefined} */ (undefined));
   const [onlyWithStock, setOnlyWithStock] = useState(true);
-  const [adjustmentOpen, setAdjustmentOpen] = useState(false);
-  const [adjustmentMode, setAdjustmentMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [adjustmentId, setAdjustmentId] = useState(/** @type {string | null} */ (null));
-  const [adjustmentSeed, setAdjustmentSeed] = useState(
-    /** @type {import("../utils/stockAdjustmentDrawerUtils").AdjCreateSeed | null} */ (null),
-  );
 
   const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = useStockBalancesTableQuery({
     t,
@@ -60,25 +54,12 @@ function StockBalancesTable() {
   );
 
   const openAdjustment = useCallback((seed = null) => {
-    setAdjustmentSeed(seed);
-    setAdjustmentId(null);
-    setAdjustmentMode("create");
-    setAdjustmentOpen(true);
-  }, []);
-
-  const closeAdjustment = useCallback(() => {
-    setAdjustmentOpen(false);
-    setAdjustmentId(null);
-    setAdjustmentSeed(null);
-    setAdjustmentMode("create");
-  }, []);
-
-  const handleAdjustmentCreated = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    setAdjustmentId(id);
-    setAdjustmentMode("edit");
-  }, []);
+    openDrawer({
+      featureId: "stockAdjustments",
+      mode: "create",
+      seed,
+    });
+  }, [openDrawer]);
 
   const tableData = useMemo(
     () =>
@@ -177,14 +158,6 @@ function StockBalancesTable() {
         scrollX={1680}
         pagination={pagination}
       />
-      <StockAdjustmentDocumentDrawer
-        open={adjustmentOpen}
-        mode={adjustmentMode}
-        documentId={adjustmentId}
-        createSeed={adjustmentSeed}
-        onClose={closeAdjustment}
-        onCreated={handleAdjustmentCreated}
-      />
     </div>
   );
 }
@@ -192,7 +165,15 @@ function StockBalancesTable() {
 export default function StockBalancesPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <StockBalancesTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <StockBalancesTable />
+      </Suspense>
     </div>
   );
 }

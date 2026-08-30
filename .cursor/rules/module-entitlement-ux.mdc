@@ -19,7 +19,7 @@ resource:
 ```js
 { id: "brands", path: "/main/brands", section: "master-data",
   labelKey: "navBrands", icon: TrademarkOutlined,
-  module: "master_data", permission: "brands", quickCreate: true },
+  module: "master_data", permission: "brands" },
 ```
 
 Everything derives from it:
@@ -27,7 +27,6 @@ Everything derives from it:
 - the sidebar tree, via `buildMainNavItems` in `shell/sidebar/main-nav.js`
 - `moduleForPath` and `permissionResourceForPath`, used by `ModuleRouteGuard`
 - `ROUTES`
-- the header quick-create menu
 
 Do not add path-to-module or path-to-permission tables anywhere else. They used to
 live in `lib/tenant-modules.js` and `lib/permissions.js` and drifted out of sync

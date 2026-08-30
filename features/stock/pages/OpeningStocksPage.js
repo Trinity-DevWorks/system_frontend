@@ -5,7 +5,7 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { OPENING_STOCKS_QUERY_KEY } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
@@ -21,7 +21,6 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "../components/StockTableFilters/StockTableFilters";
-import OpeningStockDrawer from "../components/OpeningStockDrawer/OpeningStockDrawer";
 import { getOpeningStockTableColumns } from "../components/OpeningStocksTable/getOpeningStockTableColumns";
 import { useOpeningStocksTableQuery } from "../queries/useOpeningStocksTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
@@ -93,16 +92,10 @@ function OpeningStocksTable() {
   );
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerDocumentId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
-    closeDrawer,
-    promoteCreated: handleDocumentCreated,
-  } = useResourceDrawerUrl();
+  } = usePageDrawer("stockOpeningStocks");
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteOpeningStock(id),
@@ -245,18 +238,6 @@ function OpeningStocksTable() {
         stickyHeader
         scrollX={1100}
         pagination={pagination}
-      />
-      <OpeningStockDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        documentId={
-          typeof drawerDocumentId === "string" || typeof drawerDocumentId === "number"
-            ? String(drawerDocumentId)
-            : null
-        }
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleDocumentCreated}
       />
     </div>
   );

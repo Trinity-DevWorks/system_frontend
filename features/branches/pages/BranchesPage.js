@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { useBranchesDelete } from "../queries/useBranchesDelete";
 import { useBranchesTableQuery } from "../queries/useBranchesTableQuery";
-import BranchDrawer from "../components/BranchDrawer/BranchDrawer";
 import { getBranchTableColumns } from "../components/BranchTable/getBranchTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -26,17 +24,12 @@ function BranchesTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerBranchId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleBranchCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("branches");
 
   const { requestDeleteBranch, openBulkDeleteConfirm, bulkDeletePending } = useBranchesDelete({
     t,
@@ -47,7 +40,7 @@ function BranchesTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -98,14 +91,6 @@ function BranchesTable() {
         scrollX={1480}
         enableColumnDrag
         pagination={pagination}
-      />
-      <BranchDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        branchId={drawerBranchId == null ? null : Number(drawerBranchId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleBranchCreated}
       />
     </div>
   );

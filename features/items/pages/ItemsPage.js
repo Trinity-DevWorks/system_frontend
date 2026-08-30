@@ -5,7 +5,6 @@ import { useResourceAccess } from "@/lib/permissions";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useMemo, useState } from "react";
-import ItemDrawer from "../components/ItemDrawer/ItemDrawer";
 import { getItemTableColumns } from "../components/ItemTable/getItemTableColumns";
 import { useItemsDelete } from "../queries/useItemsDelete";
 import { useItemsPageDrawerState } from "../hooks/useItemsPageDrawerState";
@@ -82,15 +81,6 @@ function ItemsTable() {
         scrollX={1000}
         enableColumnDrag
         pagination={pagination}
-      />
-      <ItemDrawer
-        open={drawer.drawerOpen}
-        mode={drawer.drawerMode}
-        itemId={drawer.drawerItemId}
-        editSeedRecord={drawer.drawerEditSeed}
-        onClose={drawer.closeDrawer}
-        onCreated={drawer.handleItemCreated}
-        onSaveAndNew={drawer.openCreateDrawer}
       />
     </div>
   );

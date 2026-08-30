@@ -10,7 +10,7 @@ import {
   STOCK_TRANSFERS_QUERY_KEY,
 } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
@@ -32,7 +32,6 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "../components/StockTableFilters/StockTableFilters";
-import StockTransferDrawer from "../components/StockTransferDrawer/StockTransferDrawer";
 import { getStockTransferTableColumns } from "../components/StockTransfersTable/getStockTransferTableColumns";
 import { useStockTransfersTableQuery } from "../queries/useStockTransfersTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
@@ -109,16 +108,10 @@ function StockTransfersTable() {
   );
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerTransferId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
-    closeDrawer,
-    promoteCreated: handleTransferCreated,
-  } = useResourceDrawerUrl();
+  } = usePageDrawer("stockTransfers");
 
   const invalidateStockLedger = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
@@ -389,18 +382,6 @@ function StockTransfersTable() {
         stickyHeader
         scrollX={1200}
         pagination={pagination}
-      />
-      <StockTransferDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        transferId={
-          typeof drawerTransferId === "string" || typeof drawerTransferId === "number"
-            ? String(drawerTransferId)
-            : null
-        }
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleTransferCreated}
       />
     </div>
   );

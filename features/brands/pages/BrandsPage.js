@@ -1,13 +1,11 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useMemo, useState } from "react";
-import BrandDrawer from "../components/BrandDrawer/BrandDrawer";
 import { getBrandTableColumns } from "../components/BrandTable/getBrandTableColumns";
 import { useBrandsDelete } from "../queries/useBrandsDelete";
 import { useBrandsTableQuery } from "../queries/useBrandsTableQuery";
@@ -33,17 +31,12 @@ function BrandsTable() {
   };
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerBrandId,
-    tableSeed: drawerEditSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleBrandCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("brands");
 
   const { requestDeleteBrand, openBulkDeleteConfirm, bulkDeletePending } = useBrandsDelete({
     t,
@@ -54,7 +47,7 @@ function BrandsTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -96,14 +89,6 @@ function BrandsTable() {
         scrollX={1200}
         enableColumnDrag
         pagination={pagination}
-      />
-      <BrandDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        brandId={drawerBrandId == null ? null : Number(drawerBrandId)}
-        editSeedRecord={drawerEditSeed}
-        onClose={closeDrawer}
-        onCreated={handleBrandCreated}
       />
     </div>
   );

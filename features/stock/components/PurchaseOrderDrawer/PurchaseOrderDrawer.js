@@ -5,11 +5,12 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { PURCHASE_ORDER_DETAIL_QUERY_PREFIX, PURCHASE_ORDERS_QUERY_KEY } from "../../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
-import { buildReceiveGoodsHref } from "../../utils/goodsReceiptFromPurchaseOrder";
+import { goodsReceiptFromPoDrawerArgs } from "../../utils/goodsReceiptFromPurchaseOrder";
 import {
   downloadPurchaseOrderPdf,
   fetchPurchaseOrder,
@@ -17,7 +18,6 @@ import {
 } from "../../api/purchaseOrders.api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
-import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -71,7 +71,7 @@ export default function PurchaseOrderDrawer({
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal, notification } = App.useApp();
-  const router = useRouter();
+  const { openDrawer } = useGlobalDrawer();
   const access = useResourceAccess("stock");
   const [form] = Form.useForm();
 
@@ -423,9 +423,10 @@ export default function PurchaseOrderDrawer({
   }, [modal, t, markSentMutation]);
 
   const handleReceive = useCallback(() => {
-    if (orderId == null) return;
-    router.push(buildReceiveGoodsHref(orderId));
-  }, [orderId, router]);
+    const args = goodsReceiptFromPoDrawerArgs(orderId);
+    if (!args) return;
+    openDrawer(args);
+  }, [openDrawer, orderId]);
 
   const showSupplierActions = isPurchaseOrderPrintable(effectiveStatus);
   const canMarkSent = isPurchaseOrderConfirmed(effectiveStatus);

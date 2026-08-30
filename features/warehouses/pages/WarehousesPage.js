@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { useWarehousesDelete } from "../queries/useWarehousesDelete";
 import { useWarehousesTableQuery } from "../queries/useWarehousesTableQuery";
-import WarehouseDrawer from "../components/WarehouseDrawer/WarehouseDrawer";
 import { getWarehouseTableColumns } from "../components/WarehouseTable/getWarehouseTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -26,17 +24,12 @@ function WarehousesTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerWarehouseId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleWarehouseCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("warehouses");
 
   const { requestDeleteWarehouse, openBulkDeleteConfirm, bulkDeletePending } = useWarehousesDelete({
     t,
@@ -47,7 +40,7 @@ function WarehousesTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -95,14 +88,6 @@ function WarehousesTable() {
         scrollX={1520}
         enableColumnDrag
         pagination={pagination}
-      />
-      <WarehouseDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        warehouseId={drawerWarehouseId == null ? null : Number(drawerWarehouseId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleWarehouseCreated}
       />
     </div>
   );
