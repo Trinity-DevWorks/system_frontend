@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { useRolesDelete } from "../queries/useRolesDelete";
 import { useRolesTableQuery } from "../queries/useRolesTableQuery";
-import RoleDrawer from "../components/RoleDrawer/RoleDrawer";
 import { isOwnerRoleName } from "../utils/roleDrawerUtils";
 import { getRoleTableColumns } from "../components/RoleTable/getRoleTableColumns";
 import { App, Spin } from "antd";
@@ -33,17 +31,12 @@ function RolesTable() {
   };
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerRoleId,
-    tableSeed: drawerEditSeed,
     openCreateDrawer,
     openEditDrawer: openRoleEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleRoleCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("roles");
 
   const openEditDrawer = useCallback(
     (record) => {
@@ -67,7 +60,7 @@ function RolesTable() {
     selectedRowKeys,
     setSelectedRowKeys,
     tableData,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -109,14 +102,6 @@ function RolesTable() {
         scrollX={1100}
         enableColumnDrag
         pagination={pagination}
-      />
-      <RoleDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        roleId={drawerRoleId == null ? null : Number(drawerRoleId)}
-        editSeedRecord={drawerEditSeed}
-        onClose={closeDrawer}
-        onCreated={handleRoleCreated}
       />
     </div>
   );

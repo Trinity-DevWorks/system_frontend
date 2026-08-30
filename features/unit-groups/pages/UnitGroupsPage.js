@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { useUnitGroupsDelete } from "../queries/useUnitGroupsDelete";
 import { useUnitGroupsTableQuery } from "../queries/useUnitGroupsTableQuery";
-import UnitGroupDrawer from "../components/UnitGroupDrawer/UnitGroupDrawer";
 import { getUnitGroupTableColumns } from "../components/UnitGroupTable/getUnitGroupTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -26,17 +24,12 @@ function UnitGroupsTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerUnitGroupId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleUnitGroupCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("unitGroups");
 
   const { requestDeleteUnitGroup, openBulkDeleteConfirm, bulkDeletePending } = useUnitGroupsDelete({
     t,
@@ -47,7 +40,7 @@ function UnitGroupsTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -95,14 +88,6 @@ function UnitGroupsTable() {
         scrollX={1160}
         enableColumnDrag
         pagination={pagination}
-      />
-      <UnitGroupDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        unitGroupId={drawerUnitGroupId == null ? null : Number(drawerUnitGroupId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleUnitGroupCreated}
       />
     </div>
   );

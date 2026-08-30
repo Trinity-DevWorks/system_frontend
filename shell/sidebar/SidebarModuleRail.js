@@ -10,7 +10,7 @@ import { SHELL_CHROME_HEIGHT_PX } from "@/shell/shell-metrics";
  *   active: boolean,
  *   previewing: boolean,
  *   tooltipPlacement: "right" | "left",
- *   onPreview: (module: any) => void,
+ *   onSelect: (module: any) => void,
  * }} props
  */
 function RailButton({
@@ -18,7 +18,7 @@ function RailButton({
   active,
   previewing,
   tooltipPlacement,
-  onPreview,
+  onSelect,
 }) {
   const className = [
     "shell-rail-btn",
@@ -30,18 +30,17 @@ function RailButton({
 
   return (
     <Tooltip title={navModule.label} placement={tooltipPlacement}>
-      <div
+      <button
+        type="button"
         className={className}
-        tabIndex={0}
-        onMouseEnter={() => onPreview(navModule)}
-        onFocus={() => onPreview(navModule)}
+        onClick={() => onSelect(navModule)}
         aria-label={navModule.label}
         aria-current={active ? "true" : undefined}
       >
         <span className="shell-rail-btn-icon" aria-hidden>
           {navModule.icon}
         </span>
-      </div>
+      </button>
     </Tooltip>
   );
 }
@@ -49,12 +48,14 @@ function RailButton({
 /**
  * Narrow always-visible rail of top-level modules.
  *
+ * Hover shows the module name only. Click opens that module's pages in the panel.
+ *
  * @param {{
  *   modules: import("antd").MenuProps["items"],
  *   footerModules: import("antd").MenuProps["items"],
  *   activeModuleKey: string | null,
  *   previewModuleKey: string | null,
- *   onPreviewModule: (module: any) => void,
+ *   onSelectModule: (module: any) => void,
  *   brand: string,
  *   brandLogo?: object | null,
  *   onBrandClick: () => void,
@@ -67,7 +68,7 @@ export default function SidebarModuleRail({
   footerModules,
   activeModuleKey,
   previewModuleKey,
-  onPreviewModule,
+  onSelectModule,
   brand,
   brandLogo,
   onBrandClick,
@@ -100,7 +101,7 @@ export default function SidebarModuleRail({
             active={navModule.key === activeModuleKey}
             previewing={navModule.key === previewModuleKey}
             tooltipPlacement={tooltipPlacement}
-            onPreview={onPreviewModule}
+            onSelect={onSelectModule}
           />
         ))}
       </div>
@@ -114,7 +115,7 @@ export default function SidebarModuleRail({
               active={navModule.key === activeModuleKey}
               previewing={navModule.key === previewModuleKey}
               tooltipPlacement={tooltipPlacement}
-              onPreview={onPreviewModule}
+              onSelect={onSelectModule}
             />
           ))}
         </div>

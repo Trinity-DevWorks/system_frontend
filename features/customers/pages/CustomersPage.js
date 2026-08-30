@@ -1,12 +1,11 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useMemo, useState } from "react";
-import CustomerDrawer from "../components/CustomerDrawer/CustomerDrawer";
 import { getCustomerTableColumns } from "../components/CustomerTable/getCustomerTableColumns";
 import { useCustomersDelete } from "../queries/useCustomersDelete";
 import { useCustomersTableQuery } from "../queries/useCustomersTableQuery";
@@ -26,17 +25,12 @@ function CustomersTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerCustomerId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleCustomerCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl();
+    getOpenRecordId,
+  } = usePageDrawer("customers");
 
   const { requestDeleteCustomer, openBulkDeleteConfirm, bulkDeletePending } = useCustomersDelete({
     t,
@@ -47,7 +41,7 @@ function CustomersTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -96,14 +90,6 @@ function CustomersTable() {
         scrollX={1280}
         enableColumnDrag
         pagination={pagination}
-      />
-      <CustomerDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        customerId={drawerCustomerId == null ? null : String(drawerCustomerId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleCustomerCreated}
       />
     </div>
   );

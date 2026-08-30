@@ -1,5 +1,8 @@
 import { Inter, Cairo } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { COLOR_MODE_BOOT_SCRIPT, resolvedColorModeFromCookieStore } from "@/lib/color-mode";
+import { SIDEBAR_COLLAPSE_BOOT_SCRIPT } from "@/lib/sidebar-collapse";
+import { cookies } from "next/headers";
 import "./globals.css";
 import Providers from "./providers";
 
@@ -18,9 +21,20 @@ const cairo = Cairo({
   fallback: ["system-ui", "Tahoma", "Arial"],
 });
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const jar = await cookies();
+  const isDark = resolvedColorModeFromCookieStore(jar) === "dark";
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={isDark ? "dark" : undefined} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: COLOR_MODE_BOOT_SCRIPT }}
+        />
+        <script
+          dangerouslySetInnerHTML={{ __html: SIDEBAR_COLLAPSE_BOOT_SCRIPT }}
+        />
+      </head>
       <body
         className={`${inter.variable} ${cairo.variable} min-h-full flex flex-col antialiased`}
         suppressHydrationWarning

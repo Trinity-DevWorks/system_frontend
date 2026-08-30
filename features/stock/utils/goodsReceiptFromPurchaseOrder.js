@@ -4,18 +4,34 @@
 
 import dayjs from "dayjs";
 import { formatItemOptionLabel } from "@/features/items/utils/formatItemLabel";
-import { buildResourceDrawerHref } from "@/lib/drawer/useResourceDrawerUrl";
+import { buildResourceDrawerHref, DRAWER_FROM_PO_PARAM } from "@/lib/drawer/drawerUrl";
 import { normalizeEntityId } from "@/lib/entityId";
 import { PO_BASE_UOM } from "./purchaseOrderDrawerUtils";
 import { getGoodsReceiptDefaults } from "./goodsReceiptDrawerUtils";
 
-export const GRN_FROM_PO_PARAM = "from_po";
+/**
+ * @param {string | number | null | undefined} orderId
+ * @returns {{
+ *   featureId: "stockGoodsReceipts",
+ *   mode: "create",
+ *   extras: { fromPurchaseOrderId: string },
+ * } | null}
+ */
+export function goodsReceiptFromPoDrawerArgs(orderId) {
+  const id = normalizeEntityId(orderId);
+  if (id == null) return null;
+  return {
+    featureId: "stockGoodsReceipts",
+    mode: "create",
+    extras: { fromPurchaseOrderId: String(id) },
+  };
+}
 
 /**
  * @param {string} orderId
  */
 export function buildReceiveGoodsHref(orderId) {
-  return `${buildResourceDrawerHref("/main/stock/goods-receipts", null, "create")}&${GRN_FROM_PO_PARAM}=${encodeURIComponent(String(orderId))}`;
+  return `${buildResourceDrawerHref("/main/stock/goods-receipts", null, "create")}&${DRAWER_FROM_PO_PARAM}=${encodeURIComponent(String(orderId))}`;
 }
 
 /**

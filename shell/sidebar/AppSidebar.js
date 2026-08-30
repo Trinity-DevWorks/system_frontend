@@ -13,7 +13,7 @@ const PEEK_CLOSE_DELAY_MS = 140;
  * Dual-rail sidebar: a persistent module rail plus the page panel for the active module.
  *
  * When collapsed only the rail occupies layout space; the panel becomes an overlay that
- * appears on hover or keyboard focus, so opening it never reflows the content tables.
+ * appears on rail click, so opening it never reflows the content tables.
  */
 export default function AppSidebar({
   navItems,
@@ -34,19 +34,25 @@ export default function AppSidebar({
 }) {
   const { collapsed, setCollapsed } = useSidebarCollapse();
   const [peeking, setPeeking] = useState(false);
+  const [motionReady, setMotionReady] = useState(false);
   /**
-   * Module whose pages the panel is showing on hover/focus without committing.
-   * Cleared when the pointer leaves the whole nav — not when it leaves the rail —
-   * so you can move across into the panel and click what you just previewed.
+   * Module whose pages the panel is showing after a rail click, without navigating.
+   * Cleared when the pointer leaves the whole nav without picking a page — the
+   * panel then falls back to the route-active module.
    */
   const [previewModuleKey, setPreviewModuleKey] = useState(null);
   const closeTimerRef = useRef(null);
   const navRef = useRef(null);
   const pointerInsideRef = useRef(false);
-  const suppressPeekRef = useRef(false);
 
-  const hasFocusInside = useCallback(
-    () => Boolean(navRef.current?.contains(document.activeElement)),
+  /** Search/page rows, not a rail icon — click leaves focus on the icon. */
+  const hasPanelFocus = useCallback(
+    () =>
+      Boolean(
+        navRef.current
+          ?.querySelector(".shell-panel")
+          ?.contains(document.activeElement),
+      ),
     [],
   );
 
@@ -68,6 +74,13 @@ export default function AppSidebar({
   }, [cancelClose]);
 
   useEffect(() => cancelClose, [cancelClose]);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setMotionReady(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   /**
    * Drop a stale peek when the sidebar expands, otherwise re-collapsing would
@@ -120,19 +133,19 @@ export default function AppSidebar({
     [onNavigate],
   );
 
-  /** Searching already replaces the panel with cross-module results. */
-  const handlePreviewModule = useCallback(
+  const handleSelectModule = useCallback(
     (navModule) => {
-      if (searchQuery.trim()) return;
+      if (searchQuery.trim()) onSearchChange("");
       setPreviewModuleKey(navModule.key);
+      if (collapsed) openPeek();
     },
-    [searchQuery],
+    [collapsed, onSearchChange, openPeek, searchQuery],
   );
 
   const handleMouseEnter = useCallback(() => {
     pointerInsideRef.current = true;
-    if (collapsed) openPeek();
-  }, [collapsed, openPeek]);
+    cancelClose();
+  }, [cancelClose]);
 
   /**
    * Keyboard focus outranks the pointer: the panel hides with `visibility: hidden`,
@@ -141,15 +154,10 @@ export default function AppSidebar({
    */
   const handleMouseLeave = useCallback(() => {
     pointerInsideRef.current = false;
-    if (hasFocusInside()) return;
+    if (hasPanelFocus()) return;
     setPreviewModuleKey(null);
     if (collapsed) closePeek();
-  }, [collapsed, closePeek, hasFocusInside]);
-
-  const handleFocusCapture = useCallback(() => {
-    if (suppressPeekRef.current) return;
-    openPeek();
-  }, [openPeek]);
+  }, [collapsed, closePeek, hasPanelFocus]);
 
   const handleBlurCapture = useCallback(
     (event) => {
@@ -164,6 +172,7 @@ export default function AppSidebar({
     "shell-nav",
     collapsed ? "is-collapsed" : "",
     collapsed && peeking ? "is-peeking" : "",
+    motionReady ? "is-ready" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -178,7 +187,6 @@ export default function AppSidebar({
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onFocusCapture={collapsed ? handleFocusCapture : undefined}
       onBlurCapture={handleBlurCapture}
       onKeyDown={(event) => {
         if (event.key !== "Escape") return;
@@ -186,14 +194,10 @@ export default function AppSidebar({
         if (!peeking) return;
         cancelClose();
         setPeeking(false);
-        // Park focus on the rail; the panel holding it is about to hide. The guard
-        // stops the refocus from tripping onFocusCapture and reopening the peek.
-        if (hasFocusInside()) {
-          suppressPeekRef.current = true;
+        if (hasPanelFocus()) {
           navRef.current
             ?.querySelector(".shell-rail-btn.is-active, .shell-rail-btn")
             ?.focus();
-          suppressPeekRef.current = false;
         }
       }}
     >
@@ -202,7 +206,7 @@ export default function AppSidebar({
         footerModules={footerModules}
         activeModuleKey={activeModuleKey}
         previewModuleKey={previewModuleKey}
-        onPreviewModule={handlePreviewModule}
+        onSelectModule={handleSelectModule}
         brand={brand}
         brandLogo={brandLogo}
         onBrandClick={() => {

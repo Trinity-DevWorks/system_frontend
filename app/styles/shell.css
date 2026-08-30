@@ -10,10 +10,14 @@
   align-self: stretch;
   min-height: 0;
   width: calc(var(--shell-rail-w) + var(--shell-panel-w));
+}
+
+.shell-nav.is-ready {
   transition: width 0.16s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.shell-nav.is-collapsed {
+.shell-nav.is-collapsed,
+html[data-shell-sidebar-collapsed] .shell-nav {
   width: var(--shell-rail-w);
 }
 
@@ -76,7 +80,7 @@
   height: 40px;
   width: 40px;
   flex: 0 0 auto;
-  cursor: default;
+  cursor: pointer;
   align-items: center;
   justify-content: center;
   border: 0;
@@ -124,7 +128,8 @@
 
 /* Collapsed: the panel leaves the layout and peeks over the content instead,
    so revealing it never reflows the tables underneath. */
-.shell-nav.is-collapsed .shell-panel {
+.shell-nav.is-collapsed .shell-panel,
+html[data-shell-sidebar-collapsed] .shell-nav .shell-panel {
   position: absolute;
   inset-block: 0;
   inset-inline-start: var(--shell-rail-w);
@@ -137,7 +142,8 @@
     visibility 0.14s ease;
 }
 
-.shell-nav.is-collapsed.is-peeking .shell-panel {
+.shell-nav.is-collapsed.is-peeking .shell-panel,
+html[data-shell-sidebar-collapsed] .shell-nav.is-peeking .shell-panel {
   visibility: visible;
   opacity: 1;
   pointer-events: auto;

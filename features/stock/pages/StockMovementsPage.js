@@ -3,8 +3,8 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
-import { normalizeEntityId, parseNumericEntityId } from "@/lib/entityId";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
@@ -12,7 +12,6 @@ import { useQuery } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
-import StockAdjustmentDocumentDrawer from "../components/StockAdjustmentDocumentDrawer/StockAdjustmentDocumentDrawer";
 import {
   formatStockFilterDateRange,
   stockFilterFieldRowClassName,
@@ -20,13 +19,8 @@ import {
 } from "../components/StockTableFilters/StockTableFilters";
 import { STOCK_MOVEMENT_TYPE_VALUES } from "../utils/stockMovementTypes";
 import { getStockMovementTypeLabel } from "../utils/stockMovementTypes";
-import StockTransferDrawer from "../components/StockTransferDrawer/StockTransferDrawer";
 import { getStockMovementTableColumns } from "../components/StockMovementsTable/getStockMovementTableColumns";
-import {
-  isUuidLikeEntityId,
-  resolveStockMovementViewTarget,
-} from "../utils/resolveStockMovementViewTarget";
-import StockMovementViewDrawer from "../components/StockMovementViewDrawer/StockMovementViewDrawer";
+import { resolveStockMovementViewTarget } from "../utils/resolveStockMovementViewTarget";
 import { useStockMovementsTableQuery } from "../queries/useStockMovementsTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
 
@@ -35,13 +29,12 @@ function StockMovementsTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification } = App.useApp();
   const access = useResourceAccess("stock");
+  const { openDrawer } = useGlobalDrawer();
+  const { openViewDrawer } = usePageDrawer("stockMovements");
 
   const [warehouseFilter, setWarehouseFilter] = useState(/** @type {number | undefined} */ (undefined));
   const [typeFilter, setTypeFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [dateRange, setDateRange] = useState(/** @type {[import("dayjs").Dayjs, import("dayjs").Dayjs] | null} */ (null));
-  const [adjustmentOpen, setAdjustmentOpen] = useState(false);
-  const [adjustmentMode, setAdjustmentMode] = useState(/** @type {"create" | "edit" | "view"} */ ("create"));
-  const [adjustmentId, setAdjustmentId] = useState(/** @type {string | null} */ (null));
 
   const fromIso = dateRange?.[0]?.startOf("day").toISOString();
   const toIso = dateRange?.[1]?.endOf("day").toISOString();
@@ -55,21 +48,6 @@ function StockMovementsTable() {
     from: fromIso,
     to: toIso,
   });
-
-  const {
-    open: drawerOpen,
-    recordId: drawerRecordId,
-    tableSeed: drawerTableSeed,
-    openViewDrawer,
-    closeDrawer,
-  } = useResourceDrawerUrl({
-    allowCreateInUrl: false,
-    defaultMode: "view",
-  });
-
-  const viewingTransfer = drawerOpen && isUuidLikeEntityId(drawerRecordId);
-  const viewingMovement =
-    drawerOpen && drawerRecordId != null && !isUuidLikeEntityId(drawerRecordId);
 
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
@@ -205,10 +183,6 @@ function StockMovementsTable() {
     ),
   });
 
-  const movementDrawerId = viewingMovement
-    ? (parseNumericEntityId(drawerRecordId) ?? normalizeEntityId(drawerRecordId))
-    : null;
-
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppDataTable
@@ -227,11 +201,7 @@ function StockMovementsTable() {
           showRefresh: true,
           onRefresh: () => refetch(),
           showAdd: access.canAdd,
-          onAdd: () => {
-            setAdjustmentId(null);
-            setAdjustmentMode("create");
-            setAdjustmentOpen(true);
-          },
+          onAdd: () => openDrawer({ featureId: "stockAdjustments", mode: "create" }),
           addLabel: t("toolbarAdjust"),
           extra: filterToggle,
           filterBar,
@@ -239,37 +209,6 @@ function StockMovementsTable() {
         stickyHeader
         scrollX={1600}
         pagination={pagination}
-      />
-      <StockAdjustmentDocumentDrawer
-        open={adjustmentOpen}
-        mode={adjustmentMode}
-        documentId={adjustmentId}
-        onClose={() => {
-          setAdjustmentOpen(false);
-          setAdjustmentId(null);
-          setAdjustmentMode("create");
-        }}
-        onCreated={(record) => {
-          const id = normalizeEntityId(record?.id);
-          if (id == null) return;
-          setAdjustmentId(id);
-          setAdjustmentMode("edit");
-        }}
-      />
-      <StockMovementViewDrawer
-        open={viewingMovement}
-        movementId={movementDrawerId}
-        tableSeedRecord={
-          drawerTableSeed && !isUuidLikeEntityId(drawerTableSeed.id) ? drawerTableSeed : null
-        }
-        onClose={closeDrawer}
-      />
-      <StockTransferDrawer
-        open={viewingTransfer}
-        mode="view"
-        transferId={viewingTransfer ? String(drawerRecordId) : null}
-        tableSeedRecord={null}
-        onClose={closeDrawer}
       />
     </div>
   );

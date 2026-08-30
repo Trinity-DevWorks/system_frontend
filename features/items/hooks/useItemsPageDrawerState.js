@@ -1,33 +1,22 @@
 /**
- * Items list page drawer state — URL-addressable open/close via useResourceDrawerUrl.
+ * Items list page drawer open/close — URL owned by the global host.
  *
  * Used by:
  * - app/[locale]/main/items/page.js
  */
 
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
-import { normalizeEntityId } from "@/lib/entityId";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 
 export function useItemsPageDrawerState() {
-  const drawer = useResourceDrawerUrl({
-    parseId: normalizeEntityId,
-  });
+  const drawer = usePageDrawer("items");
 
   return {
-    drawerOpen: drawer.open,
-    drawerMode: drawer.mode,
-    drawerItemId:
-      typeof drawer.recordId === "string" || typeof drawer.recordId === "number"
-        ? String(drawer.recordId)
-        : null,
-    drawerEditSeed: drawer.tableSeed,
     openCreateDrawer: drawer.openCreateDrawer,
     openEditDrawer: drawer.openEditDrawer,
     openViewDrawer: drawer.openViewDrawer,
     closeDrawer: drawer.closeDrawer,
-    handleItemCreated: drawer.promoteCreated,
     getOpenDrawerItemId: () => {
-      const id = drawer.sessionRef.current.recordId;
+      const id = drawer.getOpenRecordId();
       return id == null ? null : String(id);
     },
     isDrawerViewingItem: (id) => drawer.isViewingRecord(id),

@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { useSupplierGroupsDelete } from "../queries/useSupplierGroupsDelete";
 import { useSupplierGroupsTableQuery } from "../queries/useSupplierGroupsTableQuery";
-import SupplierGroupDrawer from "../components/SupplierGroupDrawer/SupplierGroupDrawer";
 import { getSupplierGroupTableColumns } from "../components/SupplierGroupTable/getSupplierGroupTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -26,17 +24,12 @@ function SupplierGroupsTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerSupplierGroupId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleSupplierGroupCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("supplierGroups");
 
   const { requestDeleteSupplierGroup, openBulkDeleteConfirm, bulkDeletePending } = useSupplierGroupsDelete({
     t,
@@ -47,7 +40,7 @@ function SupplierGroupsTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -95,14 +88,6 @@ function SupplierGroupsTable() {
         scrollX={1080}
         enableColumnDrag
         pagination={pagination}
-      />
-      <SupplierGroupDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        supplierGroupId={drawerSupplierGroupId == null ? null : Number(drawerSupplierGroupId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleSupplierGroupCreated}
       />
     </div>
   );

@@ -5,7 +5,7 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { STOCK_COUNTS_QUERY_KEY } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
@@ -21,7 +21,6 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "../components/StockTableFilters/StockTableFilters";
-import StockCountDrawer from "../components/StockCountDrawer/StockCountDrawer";
 import { getStockCountTableColumns } from "../components/StockCountsTable/getStockCountTableColumns";
 import { useStockCountsTableQuery } from "../queries/useStockCountsTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
@@ -93,16 +92,10 @@ function StockCountsTable() {
   );
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerDocumentId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
-    closeDrawer,
-    promoteCreated: handleDocumentCreated,
-  } = useResourceDrawerUrl();
+  } = usePageDrawer("stockStockCounts");
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteStockCount(id),
@@ -245,18 +238,6 @@ function StockCountsTable() {
         stickyHeader
         scrollX={1100}
         pagination={pagination}
-      />
-      <StockCountDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        documentId={
-          typeof drawerDocumentId === "string" || typeof drawerDocumentId === "number"
-            ? String(drawerDocumentId)
-            : null
-        }
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleDocumentCreated}
       />
     </div>
   );

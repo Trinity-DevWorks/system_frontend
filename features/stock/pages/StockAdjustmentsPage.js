@@ -5,7 +5,7 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { STOCK_ADJUSTMENT_REASON_NAMES_QUERY_KEY, STOCK_ADJUSTMENTS_QUERY_KEY } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
@@ -25,7 +25,6 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "../components/StockTableFilters/StockTableFilters";
-import StockAdjustmentDocumentDrawer from "../components/StockAdjustmentDocumentDrawer/StockAdjustmentDocumentDrawer";
 import { getStockAdjustmentTableColumns } from "../components/StockAdjustmentsTable/getStockAdjustmentTableColumns";
 import { useStockAdjustmentsTableQuery } from "../queries/useStockAdjustmentsTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
@@ -116,16 +115,10 @@ function StockAdjustmentsTable() {
   );
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerDocumentId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
-    closeDrawer,
-    promoteCreated: handleDocumentCreated,
-  } = useResourceDrawerUrl();
+  } = usePageDrawer("stockAdjustments");
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteStockAdjustment(id),
@@ -286,18 +279,6 @@ function StockAdjustmentsTable() {
         stickyHeader
         scrollX={1200}
         pagination={pagination}
-      />
-      <StockAdjustmentDocumentDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        documentId={
-          typeof drawerDocumentId === "string" || typeof drawerDocumentId === "number"
-            ? String(drawerDocumentId)
-            : null
-        }
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleDocumentCreated}
       />
     </div>
   );

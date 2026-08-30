@@ -3,8 +3,8 @@
  *
  * Before this file the same four facts — path, tenant module, RBAC resource and
  * sidebar placement — were written out separately in `shell/sidebar/main-nav.js`,
- * `lib/permissions.js`, `lib/tenant-modules.js` and `HeaderQuickCreate.js`, so a
- * new feature meant four edits that could silently drift apart. Everything those
+ * `lib/permissions.js` and `lib/tenant-modules.js`, so a new feature meant four
+ * edits that could silently drift apart. Everything those
  * files need is now derived from `NAV_SECTIONS` + `FEATURES`.
  *
  * Adding a feature:
@@ -123,15 +123,14 @@ export const NAV_SECTIONS = [
  *   permission?: string;        RBAC resource_key (config/rbac.php)
  *   gateNav?: boolean;          false = route guard enforces `permission`, sidebar does not
  *   nav?: boolean;              false = routable but never listed in the sidebar
- *   quickCreate?: boolean;      offer in the header "+" menu
  * }} FeatureEntry
  * @type {ReadonlyArray<FeatureEntry>}
  */
 export const FEATURES = [
   { id: "overview", path: "/main/overview", section: "overview", labelKey: "navOverview", icon: DashboardOutlined, module: CORE_MODULE },
 
-  { id: "brands", path: "/main/brands", section: "master-data", labelKey: "navBrands", icon: TrademarkOutlined, module: "master_data", permission: "brands", quickCreate: true },
-  { id: "categories", path: "/main/categories", section: "master-data", labelKey: "navCategories", icon: TagsOutlined, module: "master_data", permission: "categories", quickCreate: true },
+  { id: "brands", path: "/main/brands", section: "master-data", labelKey: "navBrands", icon: TrademarkOutlined, module: "master_data", permission: "brands" },
+  { id: "categories", path: "/main/categories", section: "master-data", labelKey: "navCategories", icon: TagsOutlined, module: "master_data", permission: "categories" },
   { id: "vatGroups", path: "/main/vat-groups", section: "master-data", labelKey: "navVatGroups", icon: PercentageOutlined, module: "master_data", permission: "vat_groups" },
   { id: "unitGroups", path: "/main/unit-groups", section: "master-data", labelKey: "navUnitGroups", icon: DeploymentUnitOutlined, module: "inventory", permission: "unit_groups" },
   { id: "unitOfMeasurements", path: "/main/unit-of-measurements", section: "master-data", labelKey: "navUnitOfMeasurements", icon: CalculatorOutlined, module: "inventory", permission: "unit_of_measurements" },
@@ -141,7 +140,7 @@ export const FEATURES = [
   { id: "paymentTerms", path: "/main/payment-terms", section: "master-data", labelKey: "navPaymentTerms", icon: FieldTimeOutlined, module: "master_data", permission: "payment_terms" },
   { id: "salesmen", path: "/main/salesmen", section: "master-data", labelKey: "navSalesmen", icon: IdcardOutlined, module: "sales", permission: "salesmen" },
 
-  { id: "items", path: "/main/items", section: "inventory", labelKey: "navItems", icon: AppstoreOutlined, groupKey: "navGroupCatalog", module: "inventory", permission: "items", quickCreate: true },
+  { id: "items", path: "/main/items", section: "inventory", labelKey: "navItems", icon: AppstoreOutlined, groupKey: "navGroupCatalog", module: "inventory", permission: "items" },
   { id: "stockAdjustmentReasons", path: "/main/stock/adjustment-reasons", section: "inventory", labelKey: "navAdjustmentReasons", icon: FlagOutlined, groupKey: "navGroupCatalog", module: "inventory", permission: "stock" },
   { id: "stockBalances", path: "/main/stock/balances", section: "inventory", labelKey: "navStockBalances", icon: InboxOutlined, groupKey: "navGroupStockLevels", module: "inventory", permission: "stock" },
   { id: "stockPurchasingAlerts", path: "/main/stock/purchasing-alerts", section: "inventory", labelKey: "navPurchasingAlerts", icon: AlertOutlined, groupKey: "navGroupStockLevels", module: "inventory", permission: "stock" },
@@ -157,10 +156,10 @@ export const FEATURES = [
   { id: "stockTransfers", path: "/main/stock/transfers", section: "inventory", labelKey: "navStockTransfers", icon: RetweetOutlined, groupKey: "navGroupDocuments", module: "inventory", permission: "stock" },
 
   { id: "customerGroups", path: "/main/customer-groups", section: "sales", labelKey: "navCustomerGroups", icon: UsergroupAddOutlined, module: "sales", permission: "customer_groups" },
-  { id: "customers", path: "/main/customers", section: "sales", labelKey: "navCustomers", icon: UserOutlined, module: "sales", permission: "customers", quickCreate: true },
+  { id: "customers", path: "/main/customers", section: "sales", labelKey: "navCustomers", icon: UserOutlined, module: "sales", permission: "customers" },
 
   { id: "supplierGroups", path: "/main/supplier-groups", section: "purchasing", labelKey: "navSupplierGroups", icon: ClusterOutlined, module: "purchasing", permission: "supplier_groups" },
-  { id: "suppliers", path: "/main/suppliers", section: "purchasing", labelKey: "navSuppliers", icon: SolutionOutlined, module: "purchasing", permission: "suppliers", quickCreate: true },
+  { id: "suppliers", path: "/main/suppliers", section: "purchasing", labelKey: "navSuppliers", icon: SolutionOutlined, module: "purchasing", permission: "suppliers" },
 
   { id: "branches", path: "/main/branches", section: "administration", labelKey: "navBranches", icon: ApartmentOutlined, module: CORE_MODULE, permission: "branches" },
   { id: "users", path: "/main/users", section: "administration", labelKey: "navUsers", icon: TeamOutlined, module: CORE_MODULE, permission: "users" },
@@ -238,7 +237,32 @@ export function permissionResourceForPath(pathname) {
   return resolveByPrefix(pathname, "permission");
 }
 
-/** Records created often enough to deserve a shortcut from anywhere in the app. */
-export function quickCreateFeatures() {
-  return FEATURES.filter((f) => f.quickCreate);
+/**
+ * Longest matching FEATURES.path wins (same rule as module/permission gating).
+ *
+ * @param {string} pathname Locale-stripped path
+ * @returns {FeatureEntry | null}
+ */
+export function featureForPath(pathname) {
+  if (!pathname || typeof pathname !== "string") return null;
+
+  let best = /** @type {FeatureEntry | null} */ (null);
+  let bestLength = -1;
+  for (const feature of FEATURES) {
+    if (pathname !== feature.path && !pathname.startsWith(`${feature.path}/`)) continue;
+    if (feature.path.length > bestLength) {
+      bestLength = feature.path.length;
+      best = feature;
+    }
+  }
+  return best;
+}
+
+/**
+ * @param {string | null | undefined} id FEATURES id
+ * @returns {FeatureEntry | null}
+ */
+export function featureById(id) {
+  if (!id || typeof id !== "string") return null;
+  return FEATURES.find((f) => f.id === id) ?? null;
 }

@@ -2,6 +2,13 @@
 
 import { isRtlLocale } from "@/i18n/constants";
 import { applyAppThemeToDocument, getAntdThemeConfig } from "@/lib/app-theme";
+import {
+  COLOR_MODE_DARK,
+  COLOR_MODE_LIGHT,
+  COLOR_MODE_SYSTEM,
+  loadColorMode,
+  saveColorMode,
+} from "@/lib/color-mode";
 import { ConfigProvider } from "antd";
 import arEG from "antd/locale/ar_EG";
 import enUS from "antd/locale/en_US";
@@ -26,12 +33,19 @@ const dayjsLocales = {
   ar: "ar",
 };
 
-const COLOR_MODE_STORAGE_KEY = "app-color-mode";
-const COLOR_MODE_SYSTEM = "system";
-const COLOR_MODE_LIGHT = "light";
-const COLOR_MODE_DARK = "dark";
-
 const ThemeModeContext = createContext(null);
+
+/**
+ * @param {"system" | "light" | "dark"} mode
+ * @param {boolean} prefersDark
+ * @returns {"light" | "dark"}
+ */
+function resolveColorMode(mode, prefersDark) {
+  if (mode === COLOR_MODE_SYSTEM) {
+    return prefersDark ? COLOR_MODE_DARK : COLOR_MODE_LIGHT;
+  }
+  return mode;
+}
 
 export function useThemeMode() {
   const ctx = useContext(ThemeModeContext);
@@ -41,13 +55,25 @@ export function useThemeMode() {
   return ctx;
 }
 
-export default function AntdAppProvider({ children }) {
+export default function AntdAppProvider({
+  children,
+  initialColorMode = COLOR_MODE_SYSTEM,
+  initialResolvedColorMode = COLOR_MODE_LIGHT,
+}) {
   const locale = useLocale();
   const direction = isRtlLocale(locale) ? "rtl" : "ltr";
   const antdLocale = antdLocales[locale] ?? enUS;
 
-  const [colorMode, setColorModeState] = useState(COLOR_MODE_SYSTEM);
-  const [systemPrefersDark, setSystemPrefersDark] = useState(false);
+  const [colorMode, setColorModeState] = useState(() => {
+    if (typeof window === "undefined") return initialColorMode;
+    return loadColorMode();
+  });
+  const [systemPrefersDark, setSystemPrefersDark] = useState(() => {
+    if (typeof window === "undefined") {
+      return initialResolvedColorMode === COLOR_MODE_DARK;
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
 
   useEffect(() => {
     dayjs.locale(dayjsLocales[locale] ?? "en");
@@ -67,61 +93,35 @@ export default function AntdAppProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      let initial = COLOR_MODE_SYSTEM;
-      try {
-        const stored = localStorage.getItem(COLOR_MODE_STORAGE_KEY);
-        if (
-          stored === COLOR_MODE_DARK ||
-          stored === COLOR_MODE_LIGHT ||
-          stored === COLOR_MODE_SYSTEM
-        ) {
-          initial = stored;
-        }
-      } catch {
-        /* ignore */
-      }
-      setColorModeState(initial);
-    });
+    const stored = loadColorMode();
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    saveColorMode(stored, resolveColorMode(stored, prefersDark));
+    setColorModeState((prev) => (prev === stored ? prev : stored));
   }, []);
 
-  const resolvedColorMode =
-    colorMode === COLOR_MODE_SYSTEM
-      ? systemPrefersDark
-        ? COLOR_MODE_DARK
-        : COLOR_MODE_LIGHT
-      : colorMode;
+  const resolvedColorMode = resolveColorMode(colorMode, systemPrefersDark);
 
   useEffect(() => {
     applyAppThemeToDocument(resolvedColorMode === COLOR_MODE_DARK);
-  }, [resolvedColorMode]);
+    saveColorMode(colorMode, resolvedColorMode);
+  }, [colorMode, resolvedColorMode]);
 
-  const setColorMode = useCallback((mode) => {
-    setColorModeState(mode);
-    try {
-      localStorage.setItem(COLOR_MODE_STORAGE_KEY, mode);
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  const setColorMode = useCallback(
+    (mode) => {
+      const value = parseIncomingMode(mode);
+      const resolved = resolveColorMode(value, systemPrefersDark);
+      saveColorMode(value, resolved);
+      setColorModeState(value);
+    },
+    [systemPrefersDark],
+  );
 
   const toggleColorMode = useCallback(() => {
     setColorModeState((prev) => {
-      const currentResolved =
-        prev === COLOR_MODE_SYSTEM
-          ? systemPrefersDark
-            ? COLOR_MODE_DARK
-            : COLOR_MODE_LIGHT
-          : prev;
+      const currentResolved = resolveColorMode(prev, systemPrefersDark);
       const next =
-        currentResolved === COLOR_MODE_DARK
-          ? COLOR_MODE_LIGHT
-          : COLOR_MODE_DARK;
-      try {
-        localStorage.setItem(COLOR_MODE_STORAGE_KEY, next);
-      } catch {
-        /* ignore */
-      }
+        currentResolved === COLOR_MODE_DARK ? COLOR_MODE_LIGHT : COLOR_MODE_DARK;
+      saveColorMode(next, next);
       return next;
     });
   }, [systemPrefersDark]);
@@ -152,4 +152,15 @@ export default function AntdAppProvider({ children }) {
       </ConfigProvider>
     </ThemeModeContext.Provider>
   );
+}
+
+/**
+ * @param {unknown} mode
+ * @returns {"system" | "light" | "dark"}
+ */
+function parseIncomingMode(mode) {
+  if (mode === COLOR_MODE_DARK || mode === COLOR_MODE_LIGHT || mode === COLOR_MODE_SYSTEM) {
+    return mode;
+  }
+  return COLOR_MODE_SYSTEM;
 }

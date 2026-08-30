@@ -1,6 +1,7 @@
 "use client";
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useDrawerHostPresence } from "@/lib/drawer/DrawerHostPresence";
 import { isRtlLocale } from "@/i18n/constants";
 import { Drawer, Skeleton } from "antd";
 import { useLocale } from "next-intl";
@@ -53,6 +54,7 @@ export default function ResourceCrudDrawer({
 }) {
   const locale = useLocale();
   const placement = isRtlLocale(locale) ? "left" : "right";
+  const hostPresence = useDrawerHostPresence();
   const [expanded, setExpanded] = useState(false);
 
   const handleToggleExpand = useCallback(() => {
@@ -91,6 +93,7 @@ export default function ResourceCrudDrawer({
       placement={placement}
       open={open}
       onClose={handleClose}
+      afterOpenChange={hostPresence?.afterOpenChange}
       destroyOnClose
       maskClosable={!submitting}
       closable={false}

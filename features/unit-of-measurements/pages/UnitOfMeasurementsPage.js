@@ -3,13 +3,11 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { UNIT_GROUPS_LIST_QUERY_KEY, fetchUnitGroupNames } from "@/features/unit-groups";
 import { useUnitOfMeasurementsDelete } from "../queries/useUnitOfMeasurementsDelete";
 import { useUnitOfMeasurementsTableQuery } from "../queries/useUnitOfMeasurementsTableQuery";
-import UnitOfMeasurementDrawer from "../components/UnitOfMeasurementDrawer/UnitOfMeasurementDrawer";
 import {
   getUnitOfMeasurementDimensionTypeLabel,
   getUnitOfMeasurementTableColumns,
@@ -92,17 +90,12 @@ function UnitOfMeasurementsTable() {
   }, []);
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerUnitOfMeasurementId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleUnitOfMeasurementCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("unitOfMeasurements");
 
   const { requestDeleteUnitOfMeasurement, openBulkDeleteConfirm, bulkDeletePending } = useUnitOfMeasurementsDelete({
     t,
@@ -113,7 +106,7 @@ function UnitOfMeasurementsTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -177,16 +170,6 @@ function UnitOfMeasurementsTable() {
         scrollX={1660}
         enableColumnDrag
         pagination={pagination}
-      />
-      <UnitOfMeasurementDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        unitOfMeasurementId={
-          drawerUnitOfMeasurementId == null ? null : Number(drawerUnitOfMeasurementId)
-        }
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleUnitOfMeasurementCreated}
       />
     </div>
   );
