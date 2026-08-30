@@ -168,7 +168,7 @@ export const FEATURES = [
   { id: "auditLog", path: "/main/audit-log", section: "administration", labelKey: "navAuditLog", icon: HistoryOutlined, module: CORE_MODULE, permission: "audits" },
 
   { id: "settingsCompanyProfile", path: "/main/settings/company-profile", section: "settings", labelKey: "navCompanyProfile", icon: BankOutlined, groupKey: "settingsCompanyGroup", module: CORE_MODULE, permission: "company_profile" },
-  { id: "settingsCompanySettings", path: "/main/settings/company-settings", section: "settings", labelKey: "navCompanySettings", icon: ControlOutlined, groupKey: "settingsCompanyGroup", module: CORE_MODULE, permission: "tenant_settings" },
+  { id: "settingsCompanySettings", path: "/main/settings/company-settings", section: "settings", labelKey: "navCompanySettings", icon: ControlOutlined, groupKey: "settingsCompanyGroup", module: CORE_MODULE, permission: "company_settings" },
   { id: "settingsPreferences", path: "/main/settings/preferences", section: "settings", labelKey: "navPreferences", icon: BellOutlined, groupKey: "settingsUserGroup", module: CORE_MODULE },
 
   // Reached from the header (avatar menu, notification bell) rather than the rail.

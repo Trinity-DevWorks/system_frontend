@@ -13,7 +13,7 @@ import {
   getLocalizedApiErrorMessage,
 } from "@/lib/api-error-notify";
 import { useBlobObjectUrl } from "@/lib/use-blob-object-url";
-import { DeleteOutlined, UploadOutlined } from "@ant-design/icons";
+import { BankOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Spin, Upload, theme } from "antd";
 
@@ -28,6 +28,8 @@ const MAX_ATTACHMENT_BYTES = 15360 * 1024;
  *   t: (key: string, values?: Record<string, unknown>) => string;
  *   tApiErrors: (key: string) => string;
  *   readOnly?: boolean;
+ *   size?: number;
+ *   hideLabels?: boolean;
  * }} props
  */
 export default function CompanyProfileLogoSection({
@@ -36,6 +38,8 @@ export default function CompanyProfileLogoSection({
   t,
   tApiErrors,
   readOnly = false,
+  size = 96,
+  hideLabels = false,
 }) {
   const { message, modal } = App.useApp();
   const { token } = theme.useToken();
@@ -106,6 +110,104 @@ export default function CompanyProfileLogoSection({
   });
 
   const busy = uploadMutation.isPending || removeMutation.isPending;
+  const buttonSize = hideLabels ? "small" : "middle";
+  const uploadLabel = logoId ? t("logoReplace") : t("logoUpload");
+
+  const preview = (
+    <div
+      className="flex items-center justify-center overflow-hidden rounded-xl border"
+      style={{
+        width: size,
+        height: size,
+        borderColor: token.colorBorderSecondary,
+        background: token.colorFillQuaternary,
+      }}
+    >
+      {logoId && previewQuery.isPending ? (
+        <Spin size="small" />
+      ) : objectUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
+        <img
+          src={objectUrl}
+          alt={logo?.file_name || t("logoTitle")}
+          className="h-full w-full object-contain"
+        />
+      ) : hideLabels ? (
+        <BankOutlined
+          style={{ fontSize: Math.round(size * 0.4), color: token.colorTextDescription }}
+          aria-label={t("logoEmpty")}
+        />
+      ) : (
+        <span
+          className="px-2 text-center text-xs"
+          style={{ color: token.colorTextDescription }}
+        >
+          {t("logoEmpty")}
+        </span>
+      )}
+    </div>
+  );
+
+  const controls = readOnly ? null : (
+    <div className={hideLabels ? "flex flex-wrap justify-center gap-2" : "flex flex-col gap-2"}>
+      <Upload
+        accept="image/*"
+        showUploadList={false}
+        disabled={busy}
+        beforeUpload={(file) => {
+          if (file.size > MAX_ATTACHMENT_BYTES) {
+            message.error(t("logoFileTooLarge"));
+            return Upload.LIST_IGNORE;
+          }
+          uploadMutation.mutate(file);
+          return false;
+        }}
+      >
+        <Button
+          icon={<UploadOutlined />}
+          loading={uploadMutation.isPending}
+          size={buttonSize}
+          aria-label={uploadLabel}
+          title={uploadLabel}
+        >
+          {hideLabels ? null : uploadLabel}
+        </Button>
+      </Upload>
+      {logoId ? (
+        <Button
+          danger
+          type={hideLabels ? "default" : "text"}
+          icon={<DeleteOutlined />}
+          loading={removeMutation.isPending}
+          disabled={busy}
+          size={buttonSize}
+          className={hideLabels ? undefined : "justify-start"}
+          aria-label={t("logoRemove")}
+          title={t("logoRemove")}
+          onClick={() => {
+            modal.confirm({
+              title: t("logoRemoveConfirmTitle"),
+              okText: t("logoRemoveConfirmOk"),
+              cancelText: t("logoRemoveConfirmCancel"),
+              okButtonProps: { danger: true },
+              onOk: () => removeMutation.mutateAsync(),
+            });
+          }}
+        >
+          {hideLabels ? null : t("logoRemove")}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  if (hideLabels) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        {preview}
+        {controls}
+      </div>
+    );
+  }
 
   return (
     <section className="mb-6 max-w-2xl">
@@ -119,75 +221,8 @@ export default function CompanyProfileLogoSection({
         {t("logoHint")}
       </p>
       <div className="flex flex-wrap items-start gap-4">
-        <div
-          className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border"
-          style={{
-            borderColor: token.colorBorderSecondary,
-            background: token.colorFillQuaternary,
-          }}
-        >
-          {logoId && previewQuery.isPending ? (
-            <Spin size="small" />
-          ) : objectUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
-            <img
-              src={objectUrl}
-              alt={logo?.file_name || t("logoTitle")}
-              className="h-full w-full object-contain"
-            />
-          ) : (
-            <span
-              className="px-2 text-center text-xs"
-              style={{ color: token.colorTextDescription }}
-            >
-              {t("logoEmpty")}
-            </span>
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
-          {readOnly ? null : (
-            <>
-              <Upload
-                accept="image/*"
-                showUploadList={false}
-                disabled={busy}
-                beforeUpload={(file) => {
-                  if (file.size > MAX_ATTACHMENT_BYTES) {
-                    message.error(t("logoFileTooLarge"));
-                    return Upload.LIST_IGNORE;
-                  }
-                  uploadMutation.mutate(file);
-                  return false;
-                }}
-              >
-                <Button icon={<UploadOutlined />} loading={uploadMutation.isPending}>
-                  {logoId ? t("logoReplace") : t("logoUpload")}
-                </Button>
-              </Upload>
-              {logoId ? (
-                <Button
-                  danger
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  loading={removeMutation.isPending}
-                  disabled={busy}
-                  className="justify-start"
-                  onClick={() => {
-                    modal.confirm({
-                      title: t("logoRemoveConfirmTitle"),
-                      okText: t("logoRemoveConfirmOk"),
-                      cancelText: t("logoRemoveConfirmCancel"),
-                      okButtonProps: { danger: true },
-                      onOk: () => removeMutation.mutateAsync(),
-                    });
-                  }}
-                >
-                  {t("logoRemove")}
-                </Button>
-              ) : null}
-            </>
-          )}
-        </div>
+        {preview}
+        {controls}
       </div>
     </section>
   );

@@ -12,7 +12,7 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { updateCompanyProfile } from "../api/companyProfile.api";
 import { EditOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Form, Space, Spin } from "antd";
+import { Alert, App, Button, Card, Form, Space, Spin, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -175,27 +175,71 @@ export default function CompanyProfilePage() {
     return <Alert type="error" showIcon title={t("loadError")} />;
   }
 
+  const displayName =
+    typeof profile.company_name === "string" && profile.company_name.trim()
+      ? profile.company_name.trim()
+      : "\u2014";
+  const displayEmail =
+    typeof profile.email === "string" ? profile.email.trim() : "";
+  const displayPhone =
+    typeof profile.phone === "string" ? profile.phone.trim() : "";
+  const displayLegalName =
+    typeof profile.legal_name === "string" ? profile.legal_name.trim() : "";
+
   return (
-    <div className="flex min-h-0 min-w-0 flex-col gap-2 pb-6">
-      <div className="flex items-start justify-end gap-3">
-        <div className="min-w-0 flex-1">
-          <CompanyProfileLogoSection
-            logo={profile.logo}
-            profileQueryKey={queryKey}
-            t={t}
-            tApiErrors={tApiErrors}
-            readOnly={!isEditing}
-          />
+    <div className="mx-auto flex w-full max-w-2xl min-h-0 min-w-0 flex-col gap-4 pb-6 pt-2">
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-start gap-4">
+            <CompanyProfileLogoSection
+              logo={profile.logo}
+              profileQueryKey={queryKey}
+              t={t}
+              tApiErrors={tApiErrors}
+              readOnly={!isEditing}
+              hideLabels
+              size={88}
+            />
+            <div className="min-w-0 flex-1 pt-1">
+              <Typography.Title level={3} className="!mb-1 !mt-0 truncate">
+                {displayName}
+              </Typography.Title>
+              {displayEmail ? (
+                <Typography.Text
+                  type="secondary"
+                  copyable
+                  className="block max-w-full"
+                  ellipsis
+                  aria-label={t("fieldEmail")}
+                >
+                  {displayEmail}
+                </Typography.Text>
+              ) : null}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {displayLegalName ? (
+                  <Tag className="!m-0">{displayLegalName}</Tag>
+                ) : null}
+                {displayPhone ? (
+                  <Typography.Text type="secondary" aria-label={t("fieldPhone")}>
+                    {displayPhone}
+                  </Typography.Text>
+                ) : null}
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0">{actions}</div>
         </div>
-        {actions}
-      </div>
-      <CompanyProfileForm
-        form={form}
-        t={t}
-        disabled={!isEditing}
-        onValuesChange={recomputeDirty}
-        onFinish={(values) => saveMutation.mutate(values)}
-      />
+      </Card>
+
+      <Card title={t("companyDetails")}>
+        <CompanyProfileForm
+          form={form}
+          t={t}
+          disabled={!isEditing}
+          onValuesChange={recomputeDirty}
+          onFinish={(values) => saveMutation.mutate(values)}
+        />
+      </Card>
     </div>
   );
 }

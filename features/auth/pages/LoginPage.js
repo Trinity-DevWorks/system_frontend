@@ -12,8 +12,8 @@ import { consumePendingAuthErrorCode } from "@/lib/pending-auth-error";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { setSessionToken } from "@/lib/session";
 import { tenantModulesQueryKey } from "@/lib/tenant-modules";
-import { tenantSettingsQueryKey } from "@/lib/tenant-settings";
-import { fetchTenantSettings } from "@/lib/api/tenantSettings";
+import { companySettingsQueryKey } from "@/lib/company-settings";
+import { fetchCompanySettings } from "@/lib/api/companySettings";
 import { ArrowRightOutlined, CheckOutlined, LockOutlined, MailOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Form, Input, Typography } from "antd";
@@ -110,9 +110,9 @@ function LoginFormInner({ initialHost }) {
           }
 
           try {
-            const settingsPayload = await fetchTenantSettings();
+            const settingsPayload = await fetchCompanySettings();
             queryClient.setQueryData(
-              tenantSettingsQueryKey(window.location.hostname),
+              companySettingsQueryKey(window.location.hostname),
               settingsPayload,
             );
           } catch {

@@ -60,8 +60,6 @@ export default function ProductionDrawer({
   const [headerBaseline, setHeaderBaseline] = useState(() => getProductionDefaults());
   const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
   const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
-  const linesRef = useRef(lines);
-  linesRef.current = lines;
 
   const drawerData = useProductionDrawerData({ open });
   const defaults = useMemo(
@@ -108,6 +106,7 @@ export default function ProductionDrawer({
     };
     form.resetFields();
     form.setFieldsValue(nextDefaults);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset create draft when the drawer opens
     setLines([]);
     setLinesBaseline([]);
     setHeaderBaseline(nextDefaults);
@@ -115,6 +114,8 @@ export default function ProductionDrawer({
     setLoadedNumber(null);
     loadedDetailVersionRef.current = 0;
     lastScaleRef.current = "";
+    // warehouse default is patched below if still empty — do not reset the form when it arrives
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode, form]);
 
   useEffect(() => {
@@ -122,6 +123,7 @@ export default function ProductionDrawer({
     if (form.getFieldValue("warehouse_id") != null) return;
     if (drawerData.defaultWarehouseId == null) return;
     form.setFieldsValue({ warehouse_id: drawerData.defaultWarehouseId });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- apply async warehouse default without wiping the create draft
     setHeaderBaseline((prev) => ({ ...prev, warehouse_id: drawerData.defaultWarehouseId }));
   }, [open, mode, form, drawerData.defaultWarehouseId]);
 
@@ -151,20 +153,21 @@ export default function ProductionDrawer({
     if (!open || readOnly) return;
     const currentItem = watchedItemId != null ? String(watchedItemId) : "";
     const currentQty = Number(watchedQuantity ?? 0);
+    const clearLines = () => setLines((prev) => (prev.length === 0 ? prev : []));
     if (!currentItem) {
       lastScaleRef.current = "";
-      setLines([]);
+      clearLines();
       return;
     }
     if (recipeQuery.isFetching) {
       const previousItem = lastScaleRef.current.split("|")[0];
-      if (previousItem && previousItem !== currentItem) setLines([]);
+      if (previousItem && previousItem !== currentItem) clearLines();
       return;
     }
     const signature = `${currentItem}|${currentQty}|${recipe?.id ?? "none"}`;
     if (lastScaleRef.current === signature) return;
     lastScaleRef.current = signature;
-    setLines(scaleRecipeToLines(recipe, currentQty, linesRef.current));
+    setLines((prev) => scaleRecipeToLines(recipe, currentQty, prev));
   }, [open, readOnly, watchedItemId, watchedQuantity, recipe, recipeQuery.isFetching]);
 
   const { isCreateDirty } = useCreateDiscardBaseline({

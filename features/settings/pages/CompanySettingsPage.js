@@ -5,13 +5,13 @@ import { areSettingsFormValuesDirty } from "../utils/settingsFormDirty";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import {
-  tenantSettingsQueryKey,
-  useTenantSettings,
-} from "@/lib/tenant-settings";
-import { updateTenantSettings } from "@/lib/api/tenantSettings";
+  companySettingsQueryKey,
+  useCompanySettings,
+} from "@/lib/company-settings";
+import { updateCompanySettings } from "@/lib/api/companySettings";
 import { EditOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Form, Space, Spin } from "antd";
+import { Alert, App, Button, Card, Form, Space, Spin, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -58,11 +58,11 @@ export default function CompanySettingsPage() {
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
-  const { settings, raw, isLoading, isError, isReady } = useTenantSettings();
+  const { settings, raw, isLoading, isError, isReady } = useCompanySettings();
 
   const hostname =
     typeof window !== "undefined" ? window.location.hostname : "";
-  const queryKey = tenantSettingsQueryKey(hostname);
+  const queryKey = companySettingsQueryKey(hostname);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editBaseline, setEditBaseline] = useState(
@@ -104,7 +104,7 @@ export default function CompanySettingsPage() {
 
   const saveMutation = useMutation({
     mutationFn: (values) =>
-      updateTenantSettings({
+      updateCompanySettings({
         country: emptyToNull(values.country),
         preferred_language: values.preferred_language,
         timezone: values.timezone,
@@ -196,21 +196,50 @@ export default function CompanySettingsPage() {
     return <Alert type="error" showIcon title={t("loadError")} />;
   }
 
+  const displayCountry =
+    typeof settings.country === "string" ? settings.country.trim() : "";
+  const languageLabel =
+    settings.preferredLanguage === "ar"
+      ? t("languageAr")
+      : settings.preferredLanguage === "en"
+        ? t("languageEn")
+        : "";
+  const displayTimezone =
+    typeof settings.timezone === "string" ? settings.timezone.trim() : "";
+  const currencyNote = primaryCurrencyLabel
+    ? t("primaryCurrencyReadonly", { currency: primaryCurrencyLabel })
+    : t("primaryCurrencyEmpty");
+
   return (
-    <div className="flex min-h-0 min-w-0 flex-col gap-2 pb-6">
-      <div className="flex items-start justify-end gap-3">
-        <div className="min-w-0 flex-1">
-          <CompanySettingsForm
-            form={form}
-            t={t}
-            primaryCurrencyLabel={primaryCurrencyLabel}
-            disabled={!isEditing}
-            onValuesChange={recomputeDirty}
-            onFinish={(values) => saveMutation.mutate(values)}
-          />
+    <div className="mx-auto flex w-full max-w-2xl min-h-0 min-w-0 flex-col gap-4 pb-6 pt-2">
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 pt-1">
+            <Typography.Title level={3} className="!mb-1 !mt-0 truncate">
+              {t("title")}
+            </Typography.Title>
+            <Typography.Text type="secondary" className="block max-w-full">
+              {currencyNote}
+            </Typography.Text>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {displayCountry ? <Tag className="!m-0">{displayCountry}</Tag> : null}
+              {languageLabel ? <Tag className="!m-0">{languageLabel}</Tag> : null}
+              {displayTimezone ? <Tag className="!m-0">{displayTimezone}</Tag> : null}
+            </div>
+          </div>
+          <div className="shrink-0">{actions}</div>
         </div>
-        {actions}
-      </div>
+      </Card>
+
+      <Card title={t("regionalSettings")}>
+        <CompanySettingsForm
+          form={form}
+          t={t}
+          disabled={!isEditing}
+          onValuesChange={recomputeDirty}
+          onFinish={(values) => saveMutation.mutate(values)}
+        />
+      </Card>
     </div>
   );
 }

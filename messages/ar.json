@@ -210,6 +210,7 @@
           "body": "هناك {alert_count} تنبيه(ات) بحاجة للمتابعة ({critical_count} نفاد مخزون)."
         },
         "low_stock_item": {
+          "label": "انخفاض مخزون صنف",
           "title": "انخفاض المخزون في {warehouse_name}",
           "body": "المخزون المتاح للصنف {item_code} — {item_name} هو {on_hand_qty}."
         }
@@ -333,6 +334,7 @@
     "avatarRemoveConfirmCancel": "إلغاء"
   },
   "CompanyProfile": {
+    "companyDetails": "تفاصيل الشركة",
     "edit": "تعديل",
     "cancel": "إلغاء",
     "save": "حفظ التغييرات",
@@ -375,6 +377,8 @@
     "attachmentsUploadError": "تعذر رفع الملف."
   },
   "CompanySettings": {
+    "title": "إعدادات الشركة",
+    "regionalSettings": "الإعدادات الإقليمية",
     "edit": "تعديل",
     "cancel": "إلغاء",
     "save": "حفظ التغييرات",
@@ -1551,7 +1555,6 @@
     "movementViewUnavailableContent": "حركة التحويل هذه لا تحتوي على مرجع التحويل المرتبط.",
     "drawerCancel": "إلغاء",
     "drawerSaveUpdate": "ترحيل التعديل",
-    "drawerCreateSuccess": "تم ترحيل تعديل المخزون.",
     "unsavedTitle": "تجاهل التغييرات؟",
     "unsavedContent": "لديك معلومات غير محفوظة. هل تريد الإغلاق دون حفظ؟",
     "unsavedLeave": "إغلاق دون حفظ",
@@ -1595,7 +1598,6 @@
     "colDispatchedAt": "تاريخ الإرسال",
     "colReceivedAt": "تاريخ الاستلام",
     "colCreatedAt": "تاريخ الإنشاء",
-    "filterAllStatuses": "كل الحالات",
     "filterStatus": "الحالة",
     "filterFromWarehouse": "من مستودع",
     "filterToWarehouse": "إلى مستودع",
@@ -3153,7 +3155,7 @@
     "auditable_role": "دور",
     "auditable_permission": "صلاحية",
     "auditable_company_profile": "ملف الشركة",
-    "auditable_tenant_setting": "إعدادات المستأجر",
+    "auditable_company_setting": "إعدادات الشركة",
     "auditable_attachment": "مرفق",
     "auditable_brand": "علامة تجارية",
     "auditable_category": "فئة",

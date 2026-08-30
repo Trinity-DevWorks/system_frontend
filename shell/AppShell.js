@@ -17,7 +17,7 @@ import { clearActiveBranchId } from "@/lib/active-branch";
 import { clearQueryCacheOnAuthChange } from "@/lib/clear-query-cache-on-auth";
 import { useTenantModules } from "@/lib/tenant-modules";
 import { usePermissions } from "@/lib/permissions";
-import { useTenantSettings } from "@/lib/tenant-settings";
+import { useCompanySettings } from "@/lib/company-settings";
 import { hasUiLocaleOverride } from "@/lib/ui-locale-preference";
 import { useQueryClient } from "@tanstack/react-query";
 import { App, Layout, theme as antdTheme } from "antd";
@@ -51,7 +51,7 @@ export default function AppShell({ children, initialCollapsed = false }) {
 
   const { moduleSet, isError } = useTenantModules();
   const { can: canPermission } = usePermissions();
-  const { settings, isReady: settingsReady } = useTenantSettings();
+  const { settings, isReady: settingsReady } = useCompanySettings();
   const { profile } = useCompanyProfile();
 
   const workspaceBrand = useMemo(() => {

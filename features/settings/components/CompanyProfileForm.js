@@ -23,7 +23,6 @@ export default function CompanyProfileForm({
       form={form}
       layout="vertical"
       requiredMark={disabled ? false : "optional"}
-      className="max-w-2xl"
       disabled={disabled}
       onFinish={onFinish}
       onValuesChange={onValuesChange}

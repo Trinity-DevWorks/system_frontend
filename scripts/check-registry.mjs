@@ -56,7 +56,7 @@ const OLD_MODULE_RULES = [
 ];
 
 const OLD_PERMISSION_RULES = [
-  { prefix: "/main/settings/company-settings", resource: "tenant_settings" },
+  { prefix: "/main/settings/company-settings", resource: "company_settings" },
   { prefix: "/main/settings/company-profile", resource: "company_profile" },
   { prefix: "/main/branches", resource: "branches" },
   { prefix: "/main/users", resource: "users" },
@@ -259,7 +259,7 @@ const OLD_NAV = [
     matchPath: "/main/settings",
     children: [
       { key: "/main/settings/company-profile", label: "navCompanyProfile", group: "settingsCompanyGroup", module: "core", permission: "company_profile" },
-      { key: "/main/settings/company-settings", label: "navCompanySettings", group: "settingsCompanyGroup", module: "core", permission: "tenant_settings" },
+      { key: "/main/settings/company-settings", label: "navCompanySettings", group: "settingsCompanyGroup", module: "core", permission: "company_settings" },
       { key: "/main/settings/preferences", label: "navPreferences", group: "settingsUserGroup", module: "core" },
     ],
   },

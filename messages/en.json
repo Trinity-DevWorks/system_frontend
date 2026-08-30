@@ -210,6 +210,7 @@
           "body": "{alert_count} alert(s) need attention ({critical_count} out of stock)."
         },
         "low_stock_item": {
+          "label": "Item low stock",
           "title": "Low stock in {warehouse_name}",
           "body": "{item_code} — {item_name} has {on_hand_qty} on hand."
         }
@@ -333,6 +334,7 @@
     "avatarRemoveConfirmCancel": "Cancel"
   },
   "CompanyProfile": {
+    "companyDetails": "Company details",
     "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save changes",
@@ -375,6 +377,8 @@
     "attachmentsUploadError": "Could not upload file."
   },
   "CompanySettings": {
+    "title": "Company settings",
+    "regionalSettings": "Regional settings",
     "edit": "Edit",
     "cancel": "Cancel",
     "save": "Save changes",
@@ -1551,7 +1555,6 @@
     "movementViewUnavailableContent": "This transfer movement is missing its linked transfer reference.",
     "drawerCancel": "Cancel",
     "drawerSaveUpdate": "Post adjustment",
-    "drawerCreateSuccess": "Stock adjustment posted.",
     "unsavedTitle": "Discard changes?",
     "unsavedContent": "You have unsaved information. Close without saving?",
     "unsavedLeave": "Close without saving",
@@ -1595,7 +1598,6 @@
     "colDispatchedAt": "Dispatched",
     "colReceivedAt": "Received",
     "colCreatedAt": "Created",
-    "filterAllStatuses": "All statuses",
     "filterStatus": "Status",
     "filterFromWarehouse": "From warehouse",
     "filterToWarehouse": "To warehouse",
@@ -3153,7 +3155,7 @@
     "auditable_role": "Role",
     "auditable_permission": "Permission",
     "auditable_company_profile": "Company profile",
-    "auditable_tenant_setting": "Tenant settings",
+    "auditable_company_setting": "Company settings",
     "auditable_attachment": "Attachment",
     "auditable_brand": "Brand",
     "auditable_category": "Category",
