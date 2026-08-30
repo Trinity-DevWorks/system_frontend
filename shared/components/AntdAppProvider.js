@@ -85,18 +85,10 @@ export default function AntdAppProvider({
     const sync = () => {
       setSystemPrefersDark(media.matches);
     };
-    sync();
     media.addEventListener("change", sync);
     return () => {
       media.removeEventListener("change", sync);
     };
-  }, []);
-
-  useEffect(() => {
-    const stored = loadColorMode();
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    saveColorMode(stored, resolveColorMode(stored, prefersDark));
-    setColorModeState((prev) => (prev === stored ? prev : stored));
   }, []);
 
   const resolvedColorMode = resolveColorMode(colorMode, systemPrefersDark);

@@ -1,6 +1,7 @@
 "use client";
 
 import CompanySettingsForm from "../components/CompanySettingsForm";
+import { useCountriesQuery } from "../queries/useCountriesQuery";
 import { areSettingsFormValuesDirty } from "../utils/settingsFormDirty";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
@@ -59,6 +60,7 @@ export default function CompanySettingsPage() {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const { settings, raw, isLoading, isError, isReady } = useCompanySettings();
+  const { countries } = useCountriesQuery();
 
   const hostname =
     typeof window !== "undefined" ? window.location.hostname : "";
@@ -196,8 +198,10 @@ export default function CompanySettingsPage() {
     return <Alert type="error" showIcon title={t("loadError")} />;
   }
 
-  const displayCountry =
+  const countryCode =
     typeof settings.country === "string" ? settings.country.trim() : "";
+  const countryName = countries.find((country) => country.code === countryCode)?.name;
+  const displayCountry = countryName || countryCode;
   const languageLabel =
     settings.preferredLanguage === "ar"
       ? t("languageAr")
