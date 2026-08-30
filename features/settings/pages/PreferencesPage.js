@@ -12,11 +12,12 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { NOTIFICATIONS_QUERY_KEY, fetchNotificationPreferences, updateNotificationPreferences } from "@/features/notifications";
+import { EditOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Card, Spin, Switch, Typography, theme } from "antd";
+import { Alert, App, Button, Card, Space, Spin, Switch, Tag, Typography, theme } from "antd";
 import { getNotificationTypeMessage } from "@/shell/header/notificationFormat";
 import { useMessages, useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const CHANNELS = /** @type {const} */ (["database", "mail"]);
 
@@ -100,6 +101,19 @@ function mapsEqual(a, b) {
   return true;
 }
 
+/**
+ * @param {Map<string, boolean>} map
+ * @param {string} channel
+ */
+function countEnabledForChannel(map, channel) {
+  const suffix = `|${channel}`;
+  let count = 0;
+  for (const [key, enabled] of map.entries()) {
+    if (enabled && key.endsWith(suffix)) count += 1;
+  }
+  return count;
+}
+
 export default function PreferencesPage() {
   const t = useTranslations("NotificationPreferences");
   const tApiErrors = useTranslations("ApiErrors");
@@ -116,6 +130,7 @@ export default function PreferencesPage() {
     staleTime: QUERY_STALE_TIME.ledger,
   });
 
+  const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(/** @type {Map<string, boolean> | null} */ (null));
 
   const serverMap = useMemo(
@@ -123,15 +138,15 @@ export default function PreferencesPage() {
     [prefsQuery.data],
   );
 
-  // `null` draft means "show the server matrix". Edits copy into `draft`;
-  // reset and a successful save return to the server snapshot without an effect.
-  const isDirty = draft !== null && !mapsEqual(draft, serverMap);
+  const isDirty =
+    isEditing && draft !== null && !mapsEqual(draft, serverMap);
 
   const saveMutation = useMutation({
     mutationFn: () => updateNotificationPreferences(mapToPayload(draft ?? new Map())),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKey, data);
       setDraft(null);
+      setIsEditing(false);
       message.success(t("saveSuccess"));
     },
     onError: (err) => {
@@ -141,9 +156,19 @@ export default function PreferencesPage() {
     },
   });
 
-  const resetDraft = () => {
+  const startEditing = useCallback(() => {
+    setDraft(new Map(serverMap));
+    setIsEditing(true);
+  }, [serverMap]);
+
+  const cancelEditing = useCallback(() => {
     setDraft(null);
-  };
+    setIsEditing(false);
+  }, []);
+
+  const resetDraft = useCallback(() => {
+    setDraft(new Map(serverMap));
+  }, [serverMap]);
 
   /**
    * @param {string} type
@@ -151,6 +176,7 @@ export default function PreferencesPage() {
    * @param {boolean} enabled
    */
   const setToggle = (type, channel, enabled) => {
+    if (!isEditing) return;
     setDraft((prev) => {
       const next = new Map(prev ?? serverMap);
       next.set(`${type}|${channel}`, enabled);
@@ -192,31 +218,57 @@ export default function PreferencesPage() {
     return <Alert type="error" showIcon title={t("loadError")} />;
   }
 
+  const inAppCount = countEnabledForChannel(serverMap, "database");
+  const emailCount = countEnabledForChannel(serverMap, "mail");
+  const actions = !isEditing ? (
+    <Button type="default" icon={<EditOutlined />} onClick={startEditing}>
+      {t("edit")}
+    </Button>
+  ) : (
+    <Space wrap>
+      <Button onClick={cancelEditing} disabled={saveMutation.isPending}>
+        {t("cancel")}
+      </Button>
+      <Button
+        onClick={resetDraft}
+        disabled={!isDirty || saveMutation.isPending}
+      >
+        {t("reset")}
+      </Button>
+      <Button
+        type={isDirty ? "primary" : "default"}
+        disabled={!isDirty}
+        loading={saveMutation.isPending}
+        onClick={() => saveMutation.mutate()}
+      >
+        {t("save")}
+      </Button>
+    </Space>
+  );
+
   return (
-    <div className="flex min-h-0 min-w-0 flex-col gap-4 pb-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 4 }}>
-            {t("title")}
-          </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            {t("subtitle")}
-          </Typography.Paragraph>
+    <div className="mx-auto flex w-full max-w-2xl min-h-0 min-w-0 flex-col gap-4 pb-6 pt-2">
+      <Card>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 pt-1">
+            <Typography.Title level={3} className="!mb-1 !mt-0 truncate">
+              {t("title")}
+            </Typography.Title>
+            <Typography.Text type="secondary" className="block max-w-full">
+              {t("subtitle")}
+            </Typography.Text>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Tag className="!m-0">
+                {t("channelInApp")} · {inAppCount}
+              </Tag>
+              <Tag className="!m-0">
+                {t("channelEmail")} · {emailCount}
+              </Tag>
+            </div>
+          </div>
+          <div className="shrink-0">{actions}</div>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <Button onClick={resetDraft} disabled={!isDirty || saveMutation.isPending}>
-            {t("reset")}
-          </Button>
-          <Button
-            type={isDirty ? "primary" : "default"}
-            disabled={!isDirty}
-            loading={saveMutation.isPending}
-            onClick={() => saveMutation.mutate()}
-          >
-            {t("save")}
-          </Button>
-        </div>
-      </div>
+      </Card>
 
       <div
         className="hidden grid-cols-[minmax(0,1fr)_88px_88px] gap-3 px-4 text-xs font-semibold uppercase tracking-wide md:grid"
@@ -230,7 +282,6 @@ export default function PreferencesPage() {
       {PREFERENCE_GROUPS.map((group) => (
         <Card
           key={group.id}
-          size="small"
           title={t(`groups.${group.id}`)}
           styles={{
             header: { borderBottomColor: token.colorSplit },
@@ -271,6 +322,7 @@ export default function PreferencesPage() {
                     </span>
                     <Switch
                       size="small"
+                      disabled={!isEditing}
                       checked={isEnabled(type, channel)}
                       onChange={(checked) => setToggle(type, channel, checked)}
                       aria-label={`${typeTitle(type)} — ${

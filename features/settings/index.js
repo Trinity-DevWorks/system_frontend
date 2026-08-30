@@ -8,4 +8,6 @@
 
 export * from "./api/companyProfile.api";
 export * from "./api/companyProfileAttachments.api";
+export * from "./api/countries.api";
+export * from "./queries/countriesQueryKeys";
 export * from "./utils/settingsFormDirty";

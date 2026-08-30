@@ -1,8 +1,9 @@
 "use client";
 
 import { inventoryCostingMethodOptions } from "@/lib/inventory-costing";
-import { Form, Input, InputNumber, Select, Switch } from "antd";
+import { Form, InputNumber, Select, Switch } from "antd";
 import { useMemo } from "react";
+import { useCountriesQuery } from "../queries/useCountriesQuery";
 
 /**
  * @returns {{ value: string, label: string }[]}
@@ -45,6 +46,17 @@ export default function CompanySettingsForm({
   onValuesChange,
 }) {
   const timezones = useMemo(() => timezoneOptions(), []);
+  const { countries, isPending: countriesLoading } = useCountriesQuery();
+  const countryCodes = useMemo(
+    () => new Set(countries.map((country) => country.code)),
+    [countries],
+  );
+  const countryOptions = useMemo(() => {
+    return countries.map((country) => ({
+      value: country.code,
+      label: country.name,
+    }));
+  }, [countries]);
 
   return (
     <Form
@@ -63,17 +75,29 @@ export default function CompanySettingsForm({
             {
               validator: async (_, value) => {
                 if (value == null || value === "") return;
-                if (!/^[A-Za-z]{2}$/.test(String(value))) {
-                  throw new Error(t("fieldCountryPattern"));
+                const code = String(value).trim().toUpperCase();
+                if (countryCodes.size > 0 && !countryCodes.has(code)) {
+                  throw new Error(t("fieldCountryInvalid"));
                 }
               },
             },
           ]}
-          normalize={(value) =>
-            typeof value === "string" ? value.toUpperCase() : value
-          }
         >
-          <Input maxLength={2} placeholder={t("fieldCountryPlaceholder")} />
+          <Select
+            allowClear
+            showSearch
+            loading={countriesLoading}
+            placeholder={t("fieldCountryPlaceholder")}
+            optionFilterProp="label"
+            filterOption={(input, option) => {
+              const query = String(input).trim().toLowerCase();
+              if (!query) return true;
+              const label = String(option?.label ?? "").toLowerCase();
+              const value = String(option?.value ?? "").toLowerCase();
+              return label.includes(query) || value.includes(query);
+            }}
+            options={countryOptions}
+          />
         </Form.Item>
         <Form.Item
           name="preferred_language"
