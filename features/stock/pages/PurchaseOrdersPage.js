@@ -5,13 +5,13 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { PURCHASE_ORDERS_QUERY_KEY, invalidatePurchasingAlertsQueries } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { buildReceiveGoodsHref } from "../utils/goodsReceiptFromPurchaseOrder";
+import { goodsReceiptFromPoDrawerArgs } from "../utils/goodsReceiptFromPurchaseOrder";
 import { cancelPurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, markPurchaseOrderAsSent } from "../api/purchaseOrders.api";
-import { useRouter } from "@/i18n/navigation";
 import { fetchSupplierNames } from "@/features/suppliers/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,7 +24,6 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "../components/StockTableFilters/StockTableFilters";
-import PurchaseOrderDrawer from "../components/PurchaseOrderDrawer/PurchaseOrderDrawer";
 import { getPurchaseOrderTableColumns } from "../components/PurchaseOrdersTable/getPurchaseOrderTableColumns";
 import { usePurchaseOrdersTableQuery } from "../queries/usePurchaseOrdersTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
@@ -35,8 +34,8 @@ function PurchaseOrdersTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
-  const router = useRouter();
   const access = useResourceAccess("stock");
+  const { openDrawer } = useGlobalDrawer();
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [supplierFilter, setSupplierFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -118,16 +117,10 @@ function PurchaseOrdersTable() {
   );
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerOrderId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
-    closeDrawer,
-    promoteCreated: handleOrderCreated,
-  } = useResourceDrawerUrl();
+  } = usePageDrawer("stockPurchaseOrders");
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deletePurchaseOrder(id),
@@ -239,10 +232,10 @@ function PurchaseOrdersTable() {
   );
 
   const handleReceive = useCallback((record) => {
-    const id = normalizeEntityId(record?.id);
-    if (id == null) return;
-    router.push(buildReceiveGoodsHref(id));
-  }, [router]);
+    const args = goodsReceiptFromPoDrawerArgs(record?.id);
+    if (!args) return;
+    openDrawer(args);
+  }, [openDrawer]);
 
   const statusLabel = useMemo(() => {
     if (!statusFilter) return null;
@@ -389,14 +382,6 @@ function PurchaseOrdersTable() {
         stickyHeader
         scrollX={1460}
         pagination={pagination}
-      />
-      <PurchaseOrderDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        orderId={typeof drawerOrderId === "string" || typeof drawerOrderId === "number" ? String(drawerOrderId) : null}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleOrderCreated}
       />
     </div>
   );

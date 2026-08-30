@@ -4,9 +4,10 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 /**
  * Read-only purchasing alert detail drawer (URL: ?drawer=<replenishment_id>&mode=view).
+ * Create-PO from this drawer is a foreign overlay (`?open=stockPurchaseOrders&drawer=new&mode=create`).
  *
  * Used by:
- * - app/[locale]/main/stock/purchasing-alerts/page.js
+ * - shell/GlobalDrawerHost.js (stockPurchasingAlerts registry)
  */
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
@@ -15,10 +16,13 @@ import { PURCHASING_ALERT_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKe
 import { normalizeEntityId } from "@/lib/entityId";
 import { fetchPurchasingAlert } from "../../api/purchasingAlerts.api";
 import { useQuery } from "@tanstack/react-query";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
+import { useResourceAccess } from "@/lib/permissions";
 import { App, Button, Descriptions, Space, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { formatStockQuantity, formatUomLabel } from "../../utils/formatStockQuantity";
+import { buildPurchaseOrderCreateSeedFromAlert } from "../../utils/purchaseOrderFromAlertUtils";
 
 /** @type {Record<string, string>} */
 const STATUS_TAG_COLOR = {
@@ -58,7 +62,10 @@ export default function PurchasingAlertViewDrawer({
 }) {
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
-  const { modal } = App.useApp();
+  const { modal, message } = App.useApp();
+  const { openDrawer } = useGlobalDrawer();
+  const stockAccess = useResourceAccess("stock");
+  const allowCreatePo = canCreatePo || stockAccess.canAdd;
 
   const detailEnabled = open && replenishmentId != null;
   const seedMatches = seedMatchesReplenishment(tableSeedRecord, replenishmentId);
@@ -89,10 +96,10 @@ export default function PurchasingAlertViewDrawer({
   }, [record]);
 
   const canCreateFromRecord = useMemo(() => {
-    if (!canCreatePo || !record || !onCreatePo) return false;
+    if (!allowCreatePo || !record) return false;
     const suggestedQty = Number(record.suggested_order_qty);
     return Number.isFinite(suggestedQty) && suggestedQty > 0;
-  }, [canCreatePo, onCreatePo, record]);
+  }, [allowCreatePo, record]);
 
   const warehouseLabel = useMemo(() => {
     const w = record?.warehouse;
@@ -125,7 +132,23 @@ export default function PurchasingAlertViewDrawer({
             {canCreateFromRecord ? (
               <Button
                 type="primary"
-                onClick={() => onCreatePo?.(/** @type {Record<string, unknown>} */ (record))}
+                onClick={() => {
+                  const current = /** @type {Record<string, unknown>} */ (record);
+                  if (onCreatePo) {
+                    onCreatePo(current);
+                    return;
+                  }
+                  const seed = buildPurchaseOrderCreateSeedFromAlert(current);
+                  if (!seed) {
+                    message.warning(t("poFromAlertsCannotCreateRow"));
+                    return;
+                  }
+                  openDrawer({
+                    featureId: "stockPurchaseOrders",
+                    mode: "create",
+                    seed,
+                  });
+                }}
               >
                 {t("actionCreatePoFromAlert")}
               </Button>

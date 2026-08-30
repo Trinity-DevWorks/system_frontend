@@ -1,14 +1,12 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
-import { parseNumericEntityId } from "@/lib/entityId";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo } from "react";
-import AdjustmentReasonDrawer from "../components/AdjustmentReasonDrawer/AdjustmentReasonDrawer";
 import { getAdjustmentReasonTableColumns } from "../components/AdjustmentReasonsTable/getAdjustmentReasonTableColumns";
 import { useStockAdjustmentReasonMutations } from "../queries/useStockAdjustmentReasonMutations";
 import { useStockAdjustmentReasonsTableQuery } from "../queries/useStockAdjustmentReasonsTableQuery";
@@ -27,16 +25,12 @@ function AdjustmentReasonsTable() {
     });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerReasonId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleReasonCreated,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("stockAdjustmentReasons");
 
   const { deleteMutation } = useStockAdjustmentReasonMutations({
     message,
@@ -97,14 +91,6 @@ function AdjustmentReasonsTable() {
         stickyHeader
         scrollX={980}
         pagination={pagination}
-      />
-      <AdjustmentReasonDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        reasonId={drawerReasonId == null ? null : Number(drawerReasonId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleReasonCreated}
       />
     </div>
   );

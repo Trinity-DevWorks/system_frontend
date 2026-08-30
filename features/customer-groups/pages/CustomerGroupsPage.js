@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { useCustomerGroupsDelete } from "../queries/useCustomerGroupsDelete";
 import { useCustomerGroupsTableQuery } from "../queries/useCustomerGroupsTableQuery";
-import CustomerGroupDrawer from "../components/CustomerGroupDrawer/CustomerGroupDrawer";
 import { getCustomerGroupTableColumns } from "../components/CustomerGroupTable/getCustomerGroupTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -26,17 +24,12 @@ function CustomerGroupsTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerCustomerGroupId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleCustomerGroupCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("customerGroups");
 
   const { requestDeleteCustomerGroup, openBulkDeleteConfirm, bulkDeletePending } = useCustomerGroupsDelete({
     t,
@@ -47,7 +40,7 @@ function CustomerGroupsTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -95,14 +88,6 @@ function CustomerGroupsTable() {
         scrollX={1080}
         enableColumnDrag
         pagination={pagination}
-      />
-      <CustomerGroupDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        customerGroupId={drawerCustomerGroupId == null ? null : Number(drawerCustomerGroupId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleCustomerGroupCreated}
       />
     </div>
   );

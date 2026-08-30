@@ -1,12 +1,11 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useMemo, useState } from "react";
-import SalesmanDrawer from "../components/SalesmanDrawer/SalesmanDrawer";
 import { getSalesmanTableColumns } from "../components/SalesmanTable/getSalesmanTableColumns";
 import { useSalesmenDelete } from "../queries/useSalesmenDelete";
 import { useSalesmenTableQuery } from "../queries/useSalesmenTableQuery";
@@ -26,17 +25,12 @@ function SalesmenTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerSalesmanId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleSalesmanCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl();
+    getOpenRecordId,
+  } = usePageDrawer("salesmen");
 
   const { requestDeleteSalesman, openBulkDeleteConfirm, bulkDeletePending } = useSalesmenDelete({
     t,
@@ -47,7 +41,7 @@ function SalesmenTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -95,14 +89,6 @@ function SalesmenTable() {
         scrollX={1460}
         enableColumnDrag
         pagination={pagination}
-      />
-      <SalesmanDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        salesmanId={drawerSalesmanId == null ? null : String(drawerSalesmanId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleSalesmanCreated}
       />
     </div>
   );

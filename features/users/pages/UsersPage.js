@@ -1,11 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
 import { useUsersDelete } from "../queries/useUsersDelete";
 import { useUsersTableQuery } from "../queries/useUsersTableQuery";
-import UserDrawer from "../components/UserDrawer/UserDrawer";
 import { getUserTableColumns } from "../components/UserTable/getUserTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -31,17 +30,12 @@ function UsersTable() {
   };
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerUserId,
-    tableSeed: drawerEditSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleUserCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl();
+    getOpenRecordId,
+  } = usePageDrawer("users");
 
   const { requestDeleteUser, openBulkDeleteConfirm, bulkDeletePending } = useUsersDelete({
     t,
@@ -52,7 +46,7 @@ function UsersTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -94,18 +88,6 @@ function UsersTable() {
         scrollX={1360}
         enableColumnDrag
         pagination={pagination}
-      />
-      <UserDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        userId={
-          typeof drawerUserId === "string" || typeof drawerUserId === "number"
-            ? String(drawerUserId)
-            : null
-        }
-        editSeedRecord={drawerEditSeed}
-        onClose={closeDrawer}
-        onCreated={handleUserCreated}
       />
     </div>
   );

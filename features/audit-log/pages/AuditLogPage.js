@@ -1,14 +1,14 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { DownloadOutlined } from "@ant-design/icons";
-import { App, Button, DatePicker, Form, Input, Select, Space } from "antd";
+import { App, Button, DatePicker, Form, Input, Select, Space, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useServerTablePagination } from "@/lib/tables/useServerTablePagination";
-import AuditLogDetailDrawer from "../components/AuditLogDetailDrawer/AuditLogDetailDrawer";
 import {
   AUDIT_AUDITABLE_TYPE_VALUES,
   AUDIT_EVENT_VALUES,
@@ -29,6 +29,7 @@ function AuditLogTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification } = App.useApp();
   const access = useResourceAccess("audits");
+  const { openViewDrawer } = usePageDrawer("auditLog");
 
   const [eventFilter, setEventFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [auditableTypeFilter, setAuditableTypeFilter] = useState(
@@ -45,7 +46,6 @@ function AuditLogTable() {
       pageSizeOptions: [10, 25, 50, 100],
       defaultPageSize: 25,
     });
-  const [detailRecord, setDetailRecord] = useState(/** @type {Record<string, unknown> | null} */ (null));
 
   const fromIso = dateRange?.[0]?.startOf("day").toISOString();
   const toIso = dateRange?.[1]?.endOf("day").toISOString();
@@ -120,9 +120,9 @@ function AuditLogTable() {
   const columns = useMemo(
     () =>
       getAuditLogTableColumns(t, {
-        onView: access.canView ? (record) => setDetailRecord(record) : undefined,
+        onView: access.canView ? openViewDrawer : undefined,
       }),
-    [t, access.canView],
+    [t, access.canView, openViewDrawer],
   );
 
   const { toggle: filterToggle, filterBar } = useAuditLogFilters({
@@ -267,11 +267,6 @@ function AuditLogTable() {
                 : undefined,
         }}
       />
-      <AuditLogDetailDrawer
-        open={detailRecord != null}
-        record={detailRecord}
-        onClose={() => setDetailRecord(null)}
-      />
     </div>
   );
 }
@@ -279,7 +274,15 @@ function AuditLogTable() {
 export default function AuditLogPage() {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col p-0">
-      <AuditLogTable />
+      <Suspense
+        fallback={
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        }
+      >
+        <AuditLogTable />
+      </Suspense>
     </div>
   );
 }

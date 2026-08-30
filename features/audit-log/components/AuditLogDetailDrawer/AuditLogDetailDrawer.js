@@ -1,9 +1,14 @@
 "use client";
 
+import { useDrawerHostPresence } from "@/lib/drawer/DrawerHostPresence";
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { formatTenantDateTime } from "@/lib/tenant-format";
-import { Descriptions, Drawer, Typography } from "antd";
+import { Descriptions, Drawer, Spin, Typography } from "antd";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
+import { fetchAudit } from "../../api/audits.api";
+import { AUDIT_LOG_LIST_QUERY_KEY } from "../../queries/auditsQueryKeys";
 import { getAuditEventLabel, getAuditableTypeLabel } from "../../utils/auditLogLabels";
 
 /**
@@ -30,11 +35,23 @@ function formatJsonBlock(value) {
  * @param {{
  *   open: boolean;
  *   record: Record<string, unknown> | null;
+ *   auditId?: string | number | null;
  *   onClose: () => void;
  * }} props
  */
-export default function AuditLogDetailDrawer({ open, record, onClose }) {
+export default function AuditLogDetailDrawer({ open, record: seedRecord, auditId = null, onClose }) {
   const t = useTranslations("AuditLog");
+  const hostPresence = useDrawerHostPresence();
+
+  const detailEnabled = open && auditId != null && seedRecord == null;
+  const detailQuery = useQuery({
+    queryKey: [...AUDIT_LOG_LIST_QUERY_KEY, "record", auditId],
+    queryFn: () => fetchAudit(/** @type {string | number} */ (auditId)),
+    enabled: detailEnabled,
+    staleTime: QUERY_STALE_TIME.default,
+  });
+
+  const record = seedRecord ?? detailQuery.data ?? null;
 
   const oldText = useMemo(() => formatJsonBlock(record?.old_values), [record?.old_values]);
   const newText = useMemo(() => formatJsonBlock(record?.new_values), [record?.new_values]);
@@ -55,10 +72,15 @@ export default function AuditLogDetailDrawer({ open, record, onClose }) {
       title={t("drawerTitleView")}
       open={open}
       onClose={onClose}
+      afterOpenChange={hostPresence?.afterOpenChange}
       size={720}
       destroyOnHidden
     >
-      {!record ? null : (
+      {detailEnabled && detailQuery.isPending && !record ? (
+        <div className="flex min-h-40 items-center justify-center">
+          <Spin />
+        </div>
+      ) : !record ? null : (
         <div className="flex flex-col gap-4">
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label={t("colCreatedAt")}>

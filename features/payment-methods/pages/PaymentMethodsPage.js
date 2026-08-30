@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { usePaymentMethodsDelete } from "../queries/usePaymentMethodsDelete";
 import { usePaymentMethodsTableQuery } from "../queries/usePaymentMethodsTableQuery";
-import PaymentMethodDrawer from "../components/PaymentMethodDrawer/PaymentMethodDrawer";
 import { getPaymentMethodTableColumns } from "../components/PaymentMethodTable/getPaymentMethodTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -26,17 +24,12 @@ function PaymentMethodsTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerPaymentMethodId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handlePaymentMethodCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("paymentMethods");
 
   const { requestDeletePaymentMethod, openBulkDeleteConfirm, bulkDeletePending } = usePaymentMethodsDelete({
     t,
@@ -47,7 +40,7 @@ function PaymentMethodsTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -95,14 +88,6 @@ function PaymentMethodsTable() {
         scrollX={1400}
         enableColumnDrag
         pagination={pagination}
-      />
-      <PaymentMethodDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        paymentMethodId={drawerPaymentMethodId == null ? null : Number(drawerPaymentMethodId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handlePaymentMethodCreated}
       />
     </div>
   );

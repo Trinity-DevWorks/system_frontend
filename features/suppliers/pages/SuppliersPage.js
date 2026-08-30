@@ -1,12 +1,11 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useMemo, useState } from "react";
-import SupplierDrawer from "../components/SupplierDrawer/SupplierDrawer";
 import { getSupplierTableColumns } from "../components/SupplierTable/getSupplierTableColumns";
 import { useSuppliersDelete } from "../queries/useSuppliersDelete";
 import { useSuppliersTableQuery } from "../queries/useSuppliersTableQuery";
@@ -26,17 +25,12 @@ function SuppliersTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerSupplierId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleSupplierCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl();
+    getOpenRecordId,
+  } = usePageDrawer("suppliers");
 
   const { requestDeleteSupplier, openBulkDeleteConfirm, bulkDeletePending } = useSuppliersDelete({
     t,
@@ -47,7 +41,7 @@ function SuppliersTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -95,14 +89,6 @@ function SuppliersTable() {
         scrollX={1560}
         enableColumnDrag
         pagination={pagination}
-      />
-      <SupplierDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        supplierId={drawerSupplierId == null ? null : String(drawerSupplierId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleSupplierCreated}
       />
     </div>
   );

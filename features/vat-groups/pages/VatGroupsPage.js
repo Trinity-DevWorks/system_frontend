@@ -1,12 +1,10 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { useVatGroupsDelete } from "../queries/useVatGroupsDelete";
 import { useVatGroupsTableQuery } from "../queries/useVatGroupsTableQuery";
-import VatGroupDrawer from "../components/VatGroupDrawer/VatGroupDrawer";
 import { getVatGroupTableColumns } from "../components/VatGroupTable/getVatGroupTableColumns";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -26,17 +24,12 @@ function VatGroupsTable() {
   });
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerVatGroupId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleVatGroupCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("vatGroups");
 
   const { requestDeleteVatGroup, openBulkDeleteConfirm, bulkDeletePending } = useVatGroupsDelete({
     t,
@@ -47,7 +40,7 @@ function VatGroupsTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -95,14 +88,6 @@ function VatGroupsTable() {
         scrollX={1180}
         enableColumnDrag
         pagination={pagination}
-      />
-      <VatGroupDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        vatGroupId={drawerVatGroupId == null ? null : Number(drawerVatGroupId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleVatGroupCreated}
       />
     </div>
   );

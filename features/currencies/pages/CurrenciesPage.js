@@ -1,15 +1,13 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { useResourceDrawerUrl } from "@/lib/drawer/useResourceDrawerUrl";
+import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
-import { parseNumericEntityId } from "@/lib/entityId";
 import { useCurrenciesDelete } from "../queries/useCurrenciesDelete";
 import { useCurrenciesTableQuery } from "../queries/useCurrenciesTableQuery";
 import { SwapOutlined } from "@ant-design/icons";
 import CurrencyRateHistoryModal from "../components/CurrencyRateHistoryModal/CurrencyRateHistoryModal";
 import CurrencyExchangeRatesModal from "../components/CurrencyExchangeRatesModal/CurrencyExchangeRatesModal";
-import CurrencyDrawer from "../components/CurrencyDrawer/CurrencyDrawer";
 import { getCurrencyTableColumns } from "../components/CurrencyTable/getCurrencyTableColumns";
 import { App, Button, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -32,17 +30,12 @@ function CurrenciesTable() {
   const [exchangeOpen, setExchangeOpen] = useState(false);
 
   const {
-    open: drawerOpen,
-    mode: drawerMode,
-    recordId: drawerCurrencyId,
-    tableSeed: drawerTableSeed,
     openCreateDrawer,
     openEditDrawer,
     openViewDrawer,
     closeDrawer,
-    promoteCreated: handleCurrencyCreated,
-    sessionRef: drawerSessionRef,
-  } = useResourceDrawerUrl({ parseId: parseNumericEntityId });
+    getOpenRecordId,
+  } = usePageDrawer("currencies");
 
   const { requestDeleteCurrency, openBulkDeleteConfirm, bulkDeletePending } = useCurrenciesDelete({
     t,
@@ -53,7 +46,7 @@ function CurrenciesTable() {
     modal,
     selectedRowKeys,
     setSelectedRowKeys,
-    getOpenDrawerRecordId: () => drawerSessionRef.current.recordId,
+    getOpenDrawerRecordId: getOpenRecordId,
     closeDrawer,
   });
 
@@ -120,14 +113,6 @@ function CurrenciesTable() {
         scrollX={1280}
         enableColumnDrag
         pagination={pagination}
-      />
-      <CurrencyDrawer
-        open={drawerOpen}
-        mode={drawerMode}
-        currencyId={drawerCurrencyId == null ? null : Number(drawerCurrencyId)}
-        tableSeedRecord={drawerTableSeed}
-        onClose={closeDrawer}
-        onCreated={handleCurrencyCreated}
       />
       <CurrencyRateHistoryModal
         open={historyRecord != null}

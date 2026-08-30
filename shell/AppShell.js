@@ -31,12 +31,14 @@ import { buildMainNavItems,
   findModuleKeyForPath,
   findNavLabelForPath,
   selectedKeysForPath, } from "@/shell/sidebar/main-nav";
+import { GlobalDrawerProvider } from "@/lib/drawer/GlobalDrawerContext";
+import GlobalDrawerHost from "@/shell/GlobalDrawerHost";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 const { Content } = Layout;
 
-export default function AppShell({ children }) {
+export default function AppShell({ children, initialCollapsed = false }) {
   const t = useTranslations("Shell");
   const router = useRouter();
   const pathname = usePathname();
@@ -191,8 +193,9 @@ export default function AppShell({ children }) {
 
   return (
     <App>
-      <NotificationRealtimeProvider>
-        <SidebarCollapseProvider>
+      <GlobalDrawerProvider>
+        <NotificationRealtimeProvider>
+          <SidebarCollapseProvider initialCollapsed={initialCollapsed}>
           <Layout hasSider className="h-dvh overflow-hidden">
             <AppSidebar
               navItems={menuItems}
@@ -225,11 +228,15 @@ export default function AppShell({ children }) {
                 style={{ background: colorBgLayout }}
               >
                 <AppShellMainContent>{children}</AppShellMainContent>
+                <Suspense fallback={null}>
+                  <GlobalDrawerHost />
+                </Suspense>
               </Content>
             </Layout>
           </Layout>
         </SidebarCollapseProvider>
-      </NotificationRealtimeProvider>
+        </NotificationRealtimeProvider>
+      </GlobalDrawerProvider>
     </App>
   );
 }

@@ -24,7 +24,6 @@ import AppBreadcrumb from "@/shell/header/AppBreadcrumb";
 import BranchSwitcher from "@/shell/header/BranchSwitcher";
 import HeaderProfileAvatar from "@/shell/header/HeaderProfileAvatar";
 import HeaderProfileMenuIdentity from "@/shell/header/HeaderProfileMenuIdentity";
-import HeaderQuickCreate from "@/shell/header/HeaderQuickCreate";
 import NotificationBell from "@/shell/header/NotificationBell";
 
 const { Header } = Layout;
@@ -182,7 +181,6 @@ export default function AppHeader({
       <div className="shell-header-spacer" />
 
       <BranchSwitcher companyName={companyName} />
-      <HeaderQuickCreate navItems={menuItems} />
       <NotificationBell />
 
       <Dropdown
