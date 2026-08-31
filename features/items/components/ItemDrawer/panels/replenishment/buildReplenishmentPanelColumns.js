@@ -1,4 +1,5 @@
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { formatStockQuantity } from "@/features/stock";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Checkbox, InputNumber, Select, Space, Tag } from "antd";
@@ -211,7 +212,7 @@ export function buildReplenishmentPanelColumns(ctx) {
                 modal.confirm({
                   title: t("replenishmentDeleteConfirm"),
                   okType: "danger",
-                  onOk: () => deleteMutation.mutateAsync(Number(r.id)),
+                  onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(Number(r.id))),
                 })
               }
             />

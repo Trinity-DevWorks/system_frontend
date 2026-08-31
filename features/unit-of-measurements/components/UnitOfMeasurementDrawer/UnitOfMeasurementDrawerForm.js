@@ -34,7 +34,7 @@ export default function UnitOfMeasurementDrawerForm({
           type="error"
           showIcon
           className="mb-4"
-          message={getLocalizedApiErrorMessage(tApiErrors, unitGroupsError)}
+          title={getLocalizedApiErrorMessage(tApiErrors, unitGroupsError)}
         />
       ) : null}
       <LookupSelectWithCreate

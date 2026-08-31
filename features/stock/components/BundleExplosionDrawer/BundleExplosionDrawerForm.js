@@ -91,8 +91,8 @@ export default function BundleExplosionDrawerForm({
         </Col>
       </Row>
 
-      {componentsPending ? <Alert type="info" showIcon message={t("bexComponentsLoading")} className="mb-4" /> : null}
-      {componentsEmpty ? <Alert type="warning" showIcon message={t("bexNoComponents")} className="mb-4" /> : null}
+      {componentsPending ? <Alert type="info" showIcon title={t("bexComponentsLoading")} className="mb-4" /> : null}
+      {componentsEmpty ? <Alert type="warning" showIcon title={t("bexNoComponents")} className="mb-4" /> : null}
 
       <Form.Item name="notes" label={t("bexFieldNotes")}>
         <Input.TextArea rows={2} maxLength={2000} showCount />

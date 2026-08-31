@@ -11,9 +11,10 @@ export async function fetchStockBalances(params = {}) {
 }
 
 /**
- * @param {number} itemId
+ * @param {string | number} itemId
  * @param {number} warehouseId
- * @returns {Promise<unknown>}
+ * @param {number | string | null} [lotId]
+ * @returns {Promise<{ quantity?: string | number }>}
  */
 export function fetchStockBalance(itemId, warehouseId, lotId = null) {
   const query = new URLSearchParams({

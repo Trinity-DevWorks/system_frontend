@@ -10,6 +10,7 @@ import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { goodsReceiptFromPoDrawerArgs } from "../../utils/goodsReceiptFromPurchaseOrder";
 import {
   downloadPurchaseOrderPdf,
@@ -352,7 +353,7 @@ export default function PurchaseOrderDrawer({
           content: t("poConfirmConfirmContent"),
           okText: t("poConfirmConfirmOk"),
           cancelText: t("drawerCancel"),
-          onOk: () => confirmMutation.mutateAsync({ values }),
+          onOk: () => closeConfirmOnError(confirmMutation.mutateAsync({ values })),
         });
       })
       .catch(() => {});
@@ -364,7 +365,7 @@ export default function PurchaseOrderDrawer({
       content: t("poCancelConfirmContent"),
       okText: t("poCancelConfirmOk"),
       cancelText: t("drawerCancel"),
-      onOk: () => cancelMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(cancelMutation.mutateAsync()),
     });
   }, [modal, t, cancelMutation]);
 
@@ -376,7 +377,7 @@ export default function PurchaseOrderDrawer({
       okText: t("poDeleteConfirmOk"),
       okButtonProps: { danger: true },
       cancelText: t("drawerCancel"),
-      onOk: () => deleteMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
     });
   }, [modal, t, deleteMutation, loadedNumber, orderId]);
 
@@ -421,7 +422,7 @@ export default function PurchaseOrderDrawer({
       content: t("poMarkSentConfirmContent"),
       okText: t("actionMarkPoSent"),
       cancelText: t("drawerCancel"),
-      onOk: () => markSentMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(markSentMutation.mutateAsync()),
     });
   }, [modal, t, markSentMutation]);
 

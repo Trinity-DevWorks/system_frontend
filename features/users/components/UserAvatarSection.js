@@ -12,6 +12,7 @@ import {
   getAttachmentUploadErrorMessage,
   getLocalizedApiErrorMessage,
 } from "@/lib/api-error-notify";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { patchTenantListCache } from "@/lib/tables/tenantListCache";
 import { useBlobObjectUrl } from "@/lib/use-blob-object-url";
 import { DeleteOutlined, UploadOutlined, UserOutlined } from "@ant-design/icons";
@@ -283,7 +284,7 @@ export default function UserAvatarSection({
                     title: t("avatarRemoveConfirmTitle"),
                     okText: t("avatarRemoveConfirmOk"),
                     cancelText: t("avatarRemoveConfirmCancel"),
-                    onOk: () => removeMutation.mutateAsync(),
+                    onOk: () => closeConfirmOnError(removeMutation.mutateAsync()),
                   });
                 }}
               >

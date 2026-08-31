@@ -11,8 +11,47 @@ import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
+import { isPersistedEntityId } from "@/lib/entityId";
 import { Button, Col, Form, InputNumber, Row, Select } from "antd";
+import { useEffect } from "react";
 import { useRecipeLineEditor } from "./useRecipeLineEditor";
+import { useItemRecipeUomOptions } from "./useItemRecipeUomOptions";
+
+/**
+ * @param {{
+ *   itemId?: string;
+ *   value?: number;
+ *   t: (k: string) => string;
+ *   onChange: (value: number | undefined) => void;
+ * }} props
+ */
+function RecipeLineUomField({ itemId, value, t, onChange }) {
+  const { options, pending, preferredUomId } = useItemRecipeUomOptions({
+    itemId,
+    enabled: isPersistedEntityId(itemId),
+  });
+
+  useEffect(() => {
+    if (!isPersistedEntityId(itemId) || pending || options.length === 0) return;
+    if (value != null && options.some((o) => o.value === Number(value))) return;
+    if (preferredUomId != null) onChange(preferredUomId);
+  }, [itemId, pending, options, value, preferredUomId, onChange]);
+
+  return (
+    <Select
+      showSearch
+      optionFilterProp="label"
+      className="w-full"
+      placeholder={t("recipeFieldUom")}
+      value={value}
+      options={options}
+      loading={pending}
+      disabled={!isPersistedEntityId(itemId)}
+      getPopupContainer={drawerSelectGetPopup}
+      onChange={onChange}
+    />
+  );
+}
 
 /**
  * @param {{
@@ -20,7 +59,9 @@ import { useRecipeLineEditor } from "./useRecipeLineEditor";
  *   initialHeader: { yield_quantity: number; uom_id?: number };
  *   initialLines: { item_id?: string; quantity?: number; uom_id?: number }[];
  *   itemOptions: { value: number; label: string }[];
- *   uomOptions: { value: number; label: string }[];
+ *   itemsPending?: boolean;
+ *   yieldUomOptions: { value: number; label: string }[];
+ *   yieldUomsPending?: boolean;
  *   t: (k: string) => string;
  *   tApiErrors: (k: string) => string;
  * }} props
@@ -30,7 +71,9 @@ export function RecipeLineEditor({
   initialHeader,
   initialLines,
   itemOptions,
-  uomOptions,
+  itemsPending = false,
+  yieldUomOptions,
+  yieldUomsPending = false,
   t,
   tApiErrors,
 }) {
@@ -91,7 +134,8 @@ export function RecipeLineEditor({
                   showSearch
                   optionFilterProp="label"
                   className="w-full"
-                  options={uomOptions}
+                  options={yieldUomOptions}
+                  loading={yieldUomsPending}
                   getPopupContainer={drawerSelectGetPopup}
                 />
               </Form.Item>
@@ -117,10 +161,11 @@ export function RecipeLineEditor({
                 optionFilterProp="label"
                 className="w-full"
                 placeholder={t("recipeFieldItem")}
-                value={row.item_id}
+                value={row.item_id != null ? String(row.item_id) : undefined}
                 options={itemOptions}
+                loading={itemsPending}
                 getPopupContainer={drawerSelectGetPopup}
-                onChange={(v) => patchLine(index, { item_id: v })}
+                onChange={(v) => patchLine(index, { item_id: v != null ? String(v) : undefined, uom_id: undefined })}
               />
             );
           }
@@ -136,14 +181,10 @@ export function RecipeLineEditor({
             );
           }
           return (
-            <Select
-              showSearch
-              optionFilterProp="label"
-              className="w-full"
-              placeholder={t("recipeFieldUom")}
+            <RecipeLineUomField
+              itemId={row.item_id}
               value={row.uom_id}
-              options={uomOptions}
-              getPopupContainer={drawerSelectGetPopup}
+              t={t}
               onChange={(v) => patchLine(index, { uom_id: v })}
             />
           );

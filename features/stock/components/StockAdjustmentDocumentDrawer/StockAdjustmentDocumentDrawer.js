@@ -5,6 +5,7 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { STOCK_ADJUSTMENT_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { fetchStockAdjustment } from "../../api/stockAdjustments.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -225,7 +226,7 @@ export default function StockAdjustmentDocumentDrawer({
           content: t("adjPostConfirmContent"),
           okText: t("actionPostAdjustment"),
           cancelText: t("drawerCancel"),
-          onOk: () => postMutation.mutateAsync({ values }),
+          onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
         });
       })
       .catch(() => {});
@@ -238,7 +239,7 @@ export default function StockAdjustmentDocumentDrawer({
       okText: t("adjDeleteConfirmOk"),
       okButtonProps: { danger: true },
       cancelText: t("drawerCancel"),
-      onOk: () => deleteMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
     });
   }, [modal, t, deleteMutation, loadedNumber]);
 
@@ -276,7 +277,7 @@ export default function StockAdjustmentDocumentDrawer({
       detailLoadFailed={Boolean(detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      size={1100}
+      size={1180}
       footer={
         <StockAdjustmentDrawerFooter
           readOnly={readOnly}

@@ -1,6 +1,7 @@
 "use client";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
@@ -51,7 +52,7 @@ function AdjustmentReasonsTable() {
         okText: t("adjDeleteConfirmOk"),
         okButtonProps: { danger: true },
         cancelText: t("drawerCancel"),
-        onOk: () => deleteMutation.mutateAsync(id),
+        onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(id)),
       });
     },
     [modal, t, deleteMutation],
