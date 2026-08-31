@@ -7,7 +7,7 @@ import {
   isPurchaseOrderReceivable,
   purchaseOrderStatusTagColor,
 } from "../../utils/purchaseOrderStatuses";
-import { formatTenantDateTime } from "@/lib/tenant-format";
+import { formatTenantDate, formatTenantDateTime } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -65,7 +65,7 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
       key: "order_date",
       width: 120,
       sorter: (a, b) => toTime(a.order_date) - toTime(b.order_date),
-      render: (value) => value ?? "\u2014",
+      render: (value) => formatTenantDate(value) || "\u2014",
     },
     {
       title: t("colStatus"),

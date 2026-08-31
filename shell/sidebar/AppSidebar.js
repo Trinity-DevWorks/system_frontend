@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSidebarCollapse } from "@/shell/SidebarCollapseContext";
 import { SHELL_PANEL_WIDTH_PX, SHELL_RAIL_WIDTH_PX } from "@/shell/shell-metrics";
 import { buildPanelSections } from "@/shell/sidebar/build-panel-sections";
+import { pickSearchEnterTarget } from "@/shell/sidebar/filter-nav-items";
 import SidebarModuleRail from "@/shell/sidebar/SidebarModuleRail";
 import SidebarPagePanel from "@/shell/sidebar/SidebarPagePanel";
 
@@ -133,6 +134,13 @@ export default function AppSidebar({
     [onNavigate],
   );
 
+  const handleSearchEnter = useCallback(() => {
+    const path = pickSearchEnterTarget(sections, searchQuery);
+    if (!path) return;
+    onSearchChange("");
+    handleNavigate(path);
+  }, [handleNavigate, onSearchChange, searchQuery, sections]);
+
   const handleSelectModule = useCallback(
     (navModule) => {
       if (searchQuery.trim()) onSearchChange("");
@@ -223,6 +231,7 @@ export default function AppSidebar({
         title={title}
         searchValue={searchQuery}
         onSearchChange={onSearchChange}
+        onSearchEnter={handleSearchEnter}
         searchPlaceholder={labels.searchPlaceholder}
         searchAria={labels.searchAria}
         sections={sections}

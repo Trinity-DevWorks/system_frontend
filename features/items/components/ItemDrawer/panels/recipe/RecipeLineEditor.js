@@ -12,7 +12,8 @@ import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/Resour
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { Button, Col, Form, InputNumber, Row, Select } from "antd";
+import { Button, Col, Form, Row, Select } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useEffect } from "react";
 import { useRecipeLineEditor } from "./useRecipeLineEditor";
 import { useItemRecipeUomOptions } from "./useItemRecipeUomOptions";
@@ -121,7 +122,7 @@ export function RecipeLineEditor({
                 label={<ResourceDrawerFieldLabel text={t("recipeYield")} required />}
                 rules={[{ required: true, message: t("recipeYield") }]}
               >
-                <InputNumber className="w-full" min={0.000001} />
+                <TenantNumberInput kind="quantity" className="w-full" min={0.000001} />
               </Form.Item>
             </Col>
             <Col flex="200px" className="item-lines-yield-col item-lines-yield-col-uom">
@@ -171,7 +172,8 @@ export function RecipeLineEditor({
           }
           if (columnKey === "qty") {
             return (
-              <InputNumber
+              <TenantNumberInput
+                kind="quantity"
                 className="w-full"
                 min={0.000001}
                 placeholder={t("recipeFieldQty")}

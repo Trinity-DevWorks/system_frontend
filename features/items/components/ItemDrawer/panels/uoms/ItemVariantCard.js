@@ -2,10 +2,11 @@
 
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { formatTenantMoney } from "@/lib/tenant-format";
 import ItemVariantBarcodesSection from "./ItemVariantBarcodesSection";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import { Button, Checkbox, InputNumber, Radio, Select, Tooltip, Typography } from "antd";
+import { Button, Checkbox, Radio, Select, Tooltip, Typography } from "antd";
 import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
 
 /**
@@ -258,7 +259,8 @@ export default function ItemVariantCard({
 
             <div className={variantFormGridClass}>
               <VariantFormField label={t("uomFieldFactor")}>
-                <InputNumber
+                <TenantNumberInput
+                  kind="quantity"
                   className="!w-full"
                   style={{ width: "100%" }}
                   min={0.000001}
@@ -269,7 +271,8 @@ export default function ItemVariantCard({
                 />
               </VariantFormField>
               <VariantFormField label={t("uomFieldSell")}>
-                <InputNumber
+                <TenantNumberInput
+                  kind="money"
                   className="!w-full"
                   style={{ width: "100%" }}
                   min={0}
@@ -278,7 +281,8 @@ export default function ItemVariantCard({
                 />
               </VariantFormField>
               <VariantFormField label={t("uomFieldCost")}>
-                <InputNumber
+                <TenantNumberInput
+                  kind="money"
                   className="!w-full"
                   style={{ width: "100%" }}
                   min={0}
@@ -287,7 +291,8 @@ export default function ItemVariantCard({
                 />
               </VariantFormField>
               <VariantFormField label={t("uomColTakeaway")}>
-                <InputNumber
+                <TenantNumberInput
+                  kind="money"
                   className="!w-full"
                   style={{ width: "100%" }}
                   min={0}
@@ -296,7 +301,8 @@ export default function ItemVariantCard({
                 />
               </VariantFormField>
               <VariantFormField label={t("uomColDineIn")}>
-                <InputNumber
+                <TenantNumberInput
+                  kind="money"
                   className="!w-full"
                   style={{ width: "100%" }}
                   min={0}
@@ -305,7 +311,8 @@ export default function ItemVariantCard({
                 />
               </VariantFormField>
               <VariantFormField label={t("uomColDelivery")}>
-                <InputNumber
+                <TenantNumberInput
+                  kind="money"
                   className="!w-full"
                   style={{ width: "100%" }}
                   min={0}

@@ -1,8 +1,9 @@
 "use client";
 
 import { SALESMAN_COMMISSION_TYPES } from "../../utils/salesmanDrawerUtils";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { Form, Input, InputNumber, Select, Switch, DatePicker, Typography } from "antd";
+import { Form, Input, Select, Switch, DatePicker, Typography } from "antd";
 import { useEffect } from "react";
 
 const { TextArea } = Input;
@@ -130,11 +131,11 @@ export default function SalesmanDrawerForm({
           ]}
         >
           <div className="flex items-center gap-2">
-            <InputNumber
+            <TenantNumberInput
               className="w-36"
+              kind={commissionType === "percent" ? "percent" : "money"}
               min={0}
               max={commissionType === "percent" ? 100 : undefined}
-              precision={4}
             />
             {commissionType === "fixed" ? (
               <Typography.Text type="secondary" className="shrink-0 text-sm">
@@ -145,7 +146,7 @@ export default function SalesmanDrawerForm({
         </Form.Item>
       )}
       <Form.Item name="target_amount" label={t("fieldTargetAmount")}>
-        <InputNumber className="w-full" min={0} precision={4} />
+        <TenantNumberInput kind="money" className="w-full" min={0} />
       </Form.Item>
       <Form.Item name="hire_date" label={t("fieldHireDate")}>
         <DatePicker className="w-full" format={dayjsDatePattern()} allowClear />

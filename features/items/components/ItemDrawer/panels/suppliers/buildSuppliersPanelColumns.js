@@ -1,7 +1,8 @@
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { normalizeEntityId } from "@/lib/entityId";
-import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
+import { formatTenantMoney } from "@/lib/tenant-format";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { Button, Input, InputNumber, Radio, Select, Space } from "antd";
 import { PANEL_ACTIONS_CELL_STYLE } from "../shared/panelTableStyles";
 import { SUPPLIER_DRAFT_ROW_ID } from "./supplierPanelConstants";
@@ -90,7 +91,8 @@ export function buildSuppliersPanelColumns(ctx) {
         const draft = getInlineValues(r);
         if (draft) {
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="money"
               size="small"
               className="w-full min-w-0"
               min={0}
@@ -101,7 +103,7 @@ export function buildSuppliersPanelColumns(ctx) {
             />
           );
         }
-        return r.last_purchase_price ?? "—";
+        return formatTenantMoney(r.last_purchase_price) || "—";
       },
     },
     {

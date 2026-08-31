@@ -4,7 +4,8 @@ import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { InputNumber, Select, Typography } from "antd";
+import { Select, Typography } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
 import { formatStockQuantity } from "../../utils/formatStockQuantity";
@@ -222,10 +223,10 @@ export default function StockAdjustmentLineEditor({
           }
           if (columnKey === "unit_cost") {
             return (
-              <InputNumber
+              <TenantNumberInput
+                kind="money"
                 className="w-full"
                 min={0}
-                step={0.0001}
                 value={row.unit_cost}
                 disabled={readOnly}
                 onChange={(value) => onPatchLine(index, { unit_cost: value ?? undefined })}
@@ -234,7 +235,8 @@ export default function StockAdjustmentLineEditor({
           }
           const bounds = quantityBounds(reasonDirection, row.quantity);
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="quantity"
               className="w-full"
               min={bounds.min}
               max={bounds.max}

@@ -4,6 +4,7 @@
  * Stock table filters: toolbar popover for fields, summary strip when filters are active.
  */
 
+import { formatTenantDateRangeLabel } from "@/lib/tenant-format";
 import { FilterOutlined } from "@ant-design/icons";
 import { Button, ConfigProvider, Form, Popover, Space, Tag, Typography, theme } from "antd";
 import { useTranslations } from "next-intl";
@@ -23,11 +24,7 @@ export const stockFilterFieldRowClassName =
   "grid grid-cols-2 gap-x-3 gap-y-0 [&_.ant-checkbox-wrapper]:min-h-8 [&_.ant-checkbox-wrapper]:items-center [&_.ant-form-item]:mb-1 [&_.ant-form-item-label]:!min-h-0 [&_.ant-form-item-label]:!pb-0.5 [&_.ant-form-item-label>label]:!h-auto [&_.ant-form-item-label>label]:text-xs [&_.ant-picker]:w-full [&_.ant-select]:w-full";
 
 export function formatStockFilterDateRange(from, to) {
-  if (!from && !to) return null;
-  const fmt = (/** @type {import("dayjs").Dayjs} */ d) => d.format("YYYY-MM-DD");
-  if (from && to) return `${fmt(from)} – ${fmt(to)}`;
-  if (from) return fmt(from);
-  return fmt(to);
+  return formatTenantDateRangeLabel(from, to);
 }
 
 /**

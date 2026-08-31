@@ -109,8 +109,9 @@
 
 .app-data-table tr.stock-warehouse-group-child > td {
   overflow: hidden;
-  padding-block: 0 !important;
-  transition: border-width 0.22s ease;
+  transition:
+    padding-block 0.22s ease,
+    border-width 0.22s ease;
 }
 
 .stock-warehouse-group-child-inner {
@@ -121,10 +122,13 @@
   transition: max-height 0.22s ease;
 }
 
+.app-data-table .ant-table-small .stock-warehouse-group-child-inner {
+  max-height: 2.5rem;
+}
+
 .stock-warehouse-group-child-inner-clip {
   overflow: hidden;
   width: 100%;
-  padding-block: var(--ant-table-cell-padding-block, 12px);
   text-align: inherit;
 }
 
@@ -135,6 +139,7 @@
 }
 
 .app-data-table tr.stock-warehouse-group-child-collapsed > td {
+  padding-block: 0 !important;
   border-bottom-width: 0 !important;
 }
 

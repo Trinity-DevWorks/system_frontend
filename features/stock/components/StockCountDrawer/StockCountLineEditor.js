@@ -3,7 +3,9 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
-import { Button, InputNumber, Select } from "antd";
+import { Button, Select } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { formatStockQuantity } from "../../utils/formatStockQuantity";
 import { useEffect, useMemo, useRef } from "react";
 import InboundLotFields from "../InboundLotFields";
 import { useStockBalanceOnHand } from "../../queries/useStockBalanceOnHand";
@@ -197,10 +199,18 @@ export default function StockCountLineEditor({
             );
           }
           if (columnKey === "theoretical") {
-            return <InputNumber className="w-full" value={row.theoretical_quantity} disabled />;
+            return (
+              <span className="block w-full truncate tabular-nums">
+                {formatStockQuantity(row.theoretical_quantity)}
+              </span>
+            );
           }
           if (columnKey === "variance") {
-            return <InputNumber className="w-full" value={cntLineVariance(row)} disabled />;
+            return (
+              <span className="block w-full truncate tabular-nums">
+                {formatStockQuantity(cntLineVariance(row))}
+              </span>
+            );
           }
           if (columnKey === "uom") {
             return <span className="truncate">{row.item_uom_label || "—"}</span>;
@@ -232,10 +242,10 @@ export default function StockCountLineEditor({
           }
           if (columnKey === "unit_cost") {
             return (
-              <InputNumber
+              <TenantNumberInput
+                kind="money"
                 className="w-full"
                 min={0}
-                step={0.0001}
                 value={row.unit_cost}
                 disabled={readOnly || !isCntSurplusLine(row)}
                 onChange={(value) => onPatchLine(index, { unit_cost: value ?? undefined })}
@@ -243,7 +253,8 @@ export default function StockCountLineEditor({
             );
           }
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="quantity"
               className="w-full"
               min={0}
               value={row.counted_quantity}

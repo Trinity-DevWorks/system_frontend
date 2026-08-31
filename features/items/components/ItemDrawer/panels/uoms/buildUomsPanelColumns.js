@@ -1,8 +1,9 @@
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import { Button, Checkbox, Input, InputNumber, Radio, Select, Space, Tag } from "antd";
+import { Button, Checkbox, Input, Radio, Select, Space, Tag } from "antd";
 import { PANEL_ACTIONS_CELL_STYLE } from "../shared/panelTableStyles";
 import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
 
@@ -66,7 +67,8 @@ export function buildUomsPanelColumns(ctx) {
     const draft = getInlineValues(r);
     if (draft) {
       return (
-        <InputNumber
+        <TenantNumberInput
+          kind="money"
           size="small"
           className="w-full"
           min={0}
@@ -96,7 +98,8 @@ export function buildUomsPanelColumns(ctx) {
         const draft = getInlineValues(r);
         if (draft) {
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="quantity"
               size="small"
               className="w-full"
               min={0.000001}

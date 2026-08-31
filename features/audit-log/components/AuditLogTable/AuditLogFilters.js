@@ -4,6 +4,7 @@
  * Audit log filter popover + summary strip (mirrors stock table filters UX).
  */
 
+import { formatTenantDateRangeLabel } from "@/lib/tenant-format";
 import { FilterOutlined } from "@ant-design/icons";
 import { Button, ConfigProvider, Form, Popover, Space, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
@@ -19,11 +20,7 @@ export const auditFilterFieldRowClassName =
  * @returns {string | null}
  */
 export function formatAuditFilterDateRange(from, to) {
-  if (!from && !to) return null;
-  const fmt = (/** @type {import("dayjs").Dayjs} */ d) => d.format("YYYY-MM-DD");
-  if (from && to) return `${fmt(from)} – ${fmt(to)}`;
-  if (from) return fmt(from);
-  return fmt(/** @type {import("dayjs").Dayjs} */ (to));
+  return formatTenantDateRangeLabel(from, to);
 }
 
 /**

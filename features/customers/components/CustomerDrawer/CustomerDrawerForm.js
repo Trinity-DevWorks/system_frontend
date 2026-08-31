@@ -1,9 +1,10 @@
 "use client";
 
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import dayjs from "dayjs";
-import { Alert, Button, DatePicker, Divider, Form, Input, InputNumber, Radio, Select, Space, Switch, Typography } from "antd";
+import { Alert, Button, DatePicker, Divider, Form, Input, Radio, Select, Space, Switch, Typography } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   CUSTOMER_LOOKUP_ADD_CUSTOMER_GROUP,
@@ -334,7 +335,7 @@ export default function CustomerDrawerForm({
                       ]}
                       className="mb-0 min-w-[160px]"
                     >
-                      <InputNumber className="w-full" min={0} step={0.0001} precision={4} placeholder="0" />
+                      <TenantNumberInput kind="money" className="w-full" min={0} placeholder="0" />
                     </Form.Item>
                     {!readOnly ? (
                       <Button
@@ -405,7 +406,7 @@ export default function CustomerDrawerForm({
                       />
                     </Form.Item>
                     <Form.Item {...restField} name={[name, "opening_balance"]} label={t("fieldOpeningBalance")} className="mb-0 min-w-[140px]">
-                      <InputNumber className="w-full" step={0.0001} precision={4} placeholder="0" />
+                      <TenantNumberInput kind="money" className="w-full" placeholder="0" />
                     </Form.Item>
                     <Form.Item
                       {...restField}
@@ -429,7 +430,7 @@ export default function CustomerDrawerForm({
                     </Form.Item>
                     {mode !== "create" ? (
                       <Form.Item {...restField} name={[name, "ledger_balance"]} label={t("fieldLedgerBalance")} className="mb-0 min-w-[120px]">
-                        <InputNumber className="w-full" disabled readOnly step={0.0001} precision={4} />
+                        <TenantNumberInput kind="money" className="w-full" disabled readOnly />
                       </Form.Item>
                     ) : null}
                     {!readOnly ? (

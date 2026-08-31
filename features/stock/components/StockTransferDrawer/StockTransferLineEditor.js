@@ -3,7 +3,8 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
-import { InputNumber, Select, Typography } from "antd";
+import { Select, Typography } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import { STOCK_TRANSFER_BASE_UOM } from "../../utils/stockTransferDrawerUtils";
 import { isPersistedEntityId } from "@/lib/entityId";
@@ -186,7 +187,8 @@ export default function StockTransferLineEditor({
             );
           }
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="quantity"
               className="w-full"
               min={0.000001}
               placeholder={t("transferLineQtyPlaceholder")}

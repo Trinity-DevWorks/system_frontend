@@ -10,7 +10,8 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
-import { Button, InputNumber, Select } from "antd";
+import { Button, Select } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useBundleLineEditor } from "./useBundleLineEditor";
 
 /**
@@ -84,7 +85,8 @@ export function BundleLineEditor({ itemId, initialLines, itemOptions, t, tApiErr
             );
           }
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="quantity"
               className="w-full"
               min={0.000001}
               placeholder={t("bundleFieldQty")}
