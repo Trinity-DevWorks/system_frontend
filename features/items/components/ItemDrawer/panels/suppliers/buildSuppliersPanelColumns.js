@@ -3,6 +3,7 @@ import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { normalizeEntityId } from "@/lib/entityId";
 import { formatTenantMoney } from "@/lib/tenant-format";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Input, InputNumber, Radio, Select, Space } from "antd";
 import { PANEL_ACTIONS_CELL_STYLE } from "../shared/panelTableStyles";
 import { SUPPLIER_DRAFT_ROW_ID } from "./supplierPanelConstants";
