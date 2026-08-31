@@ -15,7 +15,7 @@ import { fetchBundleItems } from "../../../../api/bundleItems.api";
 import { fetchItemNames } from "../../../../api/items.api";
 import { itemBundleItemsQueryKey } from "../../../../queries/itemBundleQueryCache";
 import { getItemTypeCode } from "../../../../utils/itemFormMappers";
-import { formatItemOptionLabel } from "../../../../utils/formatItemLabel";
+import { formatItemBaseUomLabel, formatItemOptionLabel } from "../../../../utils/formatItemLabel";
 import { useQuery } from "@tanstack/react-query";
 import { Table } from "antd";
 import { useMemo } from "react";
@@ -53,7 +53,11 @@ export function ItemBundlePanel({ itemId, readOnly, t, tApiErrors, active }) {
     () =>
       (itemsQuery.data ?? [])
         .filter((i) => i.id !== itemId && getItemTypeCode(i) !== "BUNDLE")
-        .map((i) => ({ value: i.id, label: formatItemOptionLabel(i) })),
+        .map((i) => ({
+          value: i.id,
+          label: formatItemOptionLabel(i),
+          baseUomLabel: formatItemBaseUomLabel(i.base_uom),
+        })),
     [itemsQuery.data, itemId],
   );
 
@@ -73,6 +77,11 @@ export function ItemBundlePanel({ itemId, readOnly, t, tApiErrors, active }) {
             columns={[
               { title: t("bundleColItem"), render: (_v, r) => r.child_item?.name ?? "—" },
               { title: t("bundleColQty"), dataIndex: "quantity", key: "qty", width: 112 },
+              {
+                title: t("bundleColUom"),
+                render: (_v, r) => formatItemBaseUomLabel(r.child_item?.base_uom) || "—",
+                width: 120,
+              },
             ]}
           />
         </div>

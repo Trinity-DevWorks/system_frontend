@@ -5,6 +5,7 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { OPENING_STOCK_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { fetchOpeningStock } from "../../api/openingStocks.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -200,7 +201,7 @@ export default function OpeningStockDrawer({
           content: t("osPostConfirmContent"),
           okText: t("actionPostOpeningStock"),
           cancelText: t("drawerCancel"),
-          onOk: () => postMutation.mutateAsync({ values }),
+          onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
         });
       })
       .catch(() => {});
@@ -213,7 +214,7 @@ export default function OpeningStockDrawer({
       okText: t("osDeleteConfirmOk"),
       okButtonProps: { danger: true },
       cancelText: t("drawerCancel"),
-      onOk: () => deleteMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
     });
   }, [modal, t, deleteMutation, loadedNumber]);
 

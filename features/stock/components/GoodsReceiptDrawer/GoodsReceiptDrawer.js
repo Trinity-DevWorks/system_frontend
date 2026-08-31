@@ -5,6 +5,7 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { GOODS_RECEIPT_DETAIL_QUERY_PREFIX, PURCHASE_ORDER_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { fetchGoodsReceipt } from "../../api/goodsReceipts.api";
 import { fetchPurchaseOrder } from "../../api/purchaseOrders.api";
@@ -288,7 +289,7 @@ export default function GoodsReceiptDrawer({
           content: t("grnPostConfirmContent"),
           okText: t("actionPostGrn"),
           cancelText: t("drawerCancel"),
-          onOk: () => postMutation.mutateAsync({ values }),
+          onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
         });
       })
       .catch(() => {});
@@ -301,7 +302,7 @@ export default function GoodsReceiptDrawer({
       okText: t("grnDeleteConfirmOk"),
       okButtonProps: { danger: true },
       cancelText: t("drawerCancel"),
-      onOk: () => deleteMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
     });
   }, [modal, t, deleteMutation, loadedNumber]);
 

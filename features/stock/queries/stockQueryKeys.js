@@ -1,5 +1,14 @@
 export const STOCK_BALANCES_QUERY_KEY = ["tenant", "stock", "balances"];
 
+/**
+ * @param {string | number | null | undefined} itemId
+ * @param {number | null | undefined} warehouseId
+ * @param {number | string | null | undefined} [lotId]
+ */
+export function stockBalanceShowQueryKey(itemId, warehouseId, lotId = null) {
+  return [...STOCK_BALANCES_QUERY_KEY, "show", itemId ?? null, warehouseId ?? null, lotId ?? null];
+}
+
 export const STOCK_LOTS_QUERY_KEY = ["tenant", "stock", "lots"];
 
 export const STOCK_INVENTORY_LOTS_QUERY_KEY = ["tenant", "stock", "inventory-lots"];

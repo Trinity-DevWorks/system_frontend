@@ -1,4 +1,5 @@
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { normalizeEntityId } from "@/lib/entityId";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Input, InputNumber, Radio, Select, Space } from "antd";
@@ -223,10 +224,12 @@ export function buildSuppliersPanelColumns(ctx) {
                 modal.confirm({
                   title: t("panelDeleteConfirm"),
                   onOk: () =>
-                    deleteMutation.mutateAsync({
-                      supplierId: normalizeEntityId(r.supplier_id ?? r.supplier?.id),
-                      id: Number(r.id),
-                    }),
+                    closeConfirmOnError(
+                      deleteMutation.mutateAsync({
+                        supplierId: normalizeEntityId(r.supplier_id ?? r.supplier?.id),
+                        id: Number(r.id),
+                      }),
+                    ),
                 })
               }
             />

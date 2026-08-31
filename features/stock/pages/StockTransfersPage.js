@@ -10,6 +10,7 @@ import {
   STOCK_TRANSFERS_QUERY_KEY,
 } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
@@ -22,7 +23,8 @@ import {
 } from "../api/stockTransfers.api";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, DatePicker, Form, Select, Spin } from "antd";
+import { App, Button, DatePicker, Form, Select, Spin } from "antd";
+import { SwapOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
 import { STOCK_TRANSFER_STATUS_VALUES } from "../utils/stockTransferStatuses";
@@ -185,7 +187,7 @@ function StockTransfersTable() {
         content: t("transferDispatchConfirmContent"),
         okText: t("transferDispatchConfirmOk"),
         cancelText: t("drawerCancel"),
-        onOk: () => dispatchMutation.mutateAsync(id),
+        onOk: () => closeConfirmOnError(dispatchMutation.mutateAsync(id)),
       });
     },
     [modal, t, dispatchMutation],
@@ -200,7 +202,7 @@ function StockTransfersTable() {
         content: t("transferReceiveConfirmContent"),
         okText: t("actionReceiveTransfer"),
         cancelText: t("drawerCancel"),
-        onOk: () => receiveMutation.mutateAsync(id),
+        onOk: () => closeConfirmOnError(receiveMutation.mutateAsync(id)),
       });
     },
     [modal, t, receiveMutation],
@@ -215,7 +217,7 @@ function StockTransfersTable() {
         content: t("transferCancelInTransitConfirmContent"),
         okText: t("transferCancelConfirmOk"),
         cancelText: t("drawerCancel"),
-        onOk: () => cancelMutation.mutateAsync(id),
+        onOk: () => closeConfirmOnError(cancelMutation.mutateAsync(id)),
       });
     },
     [modal, t, cancelMutation],
@@ -235,7 +237,7 @@ function StockTransfersTable() {
         okText: t("transferDeleteConfirmOk"),
         okButtonProps: { danger: true },
         cancelText: t("drawerCancel"),
-        onOk: () => deleteMutation.mutateAsync(id),
+        onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(id)),
       });
     },
     [modal, t, deleteMutation],
@@ -313,23 +315,42 @@ function StockTransfersTable() {
     onClearAll: clearAllFilters,
     children: (
       <div className="flex flex-col gap-1">
-        <div className={stockFilterFieldRowClassName}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-x-2 [&_.ant-form-item]:mb-1 [&_.ant-form-item-label]:!min-h-0 [&_.ant-form-item-label]:!pb-0.5 [&_.ant-form-item-label>label]:!h-auto [&_.ant-form-item-label>label]:text-xs [&_.ant-select]:w-full">
           <Form.Item label={t("filterFromWarehouse")}>
             <Select
               className="w-full"
+              allowClear
+              showSearch
+              optionFilterProp="label"
               value={fromWarehouseFilter ?? ""}
               options={warehouseFilterOptions}
               loading={warehousesQuery.isPending}
-              onChange={(v) => setFromWarehouseFilter(v === "" ? undefined : Number(v))}
+              onChange={(v) => setFromWarehouseFilter(v === "" || v == null ? undefined : Number(v))}
+            />
+          </Form.Item>
+          <Form.Item label={<span aria-hidden="true">&nbsp;</span>}>
+            <Button
+              htmlType="button"
+              icon={<SwapOutlined />}
+              disabled={fromWarehouseFilter == null && toWarehouseFilter == null}
+              onClick={() => {
+                setFromWarehouseFilter(toWarehouseFilter);
+                setToWarehouseFilter(fromWarehouseFilter);
+              }}
+              aria-label={t("transferSwapWarehouses")}
+              title={t("transferSwapWarehouses")}
             />
           </Form.Item>
           <Form.Item label={t("filterToWarehouse")}>
             <Select
               className="w-full"
+              allowClear
+              showSearch
+              optionFilterProp="label"
               value={toWarehouseFilter ?? ""}
               options={warehouseFilterOptions}
               loading={warehousesQuery.isPending}
-              onChange={(v) => setToWarehouseFilter(v === "" ? undefined : Number(v))}
+              onChange={(v) => setToWarehouseFilter(v === "" || v == null ? undefined : Number(v))}
             />
           </Form.Item>
         </div>

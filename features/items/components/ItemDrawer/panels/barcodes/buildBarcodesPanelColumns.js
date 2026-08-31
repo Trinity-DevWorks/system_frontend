@@ -1,4 +1,5 @@
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Input, Radio, Select, Space } from "antd";
 import { PANEL_ACTIONS_CELL_STYLE } from "../shared/panelTableStyles";
@@ -164,7 +165,7 @@ export function buildBarcodesPanelColumns(ctx) {
               onClick={() =>
                 modal.confirm({
                   title: t("panelDeleteConfirm"),
-                  onOk: () => deleteMutation.mutateAsync(Number(r.id)),
+                  onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(Number(r.id))),
                 })
               }
             />

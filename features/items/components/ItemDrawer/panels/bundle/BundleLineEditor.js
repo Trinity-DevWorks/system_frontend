@@ -17,7 +17,7 @@ import { useBundleLineEditor } from "./useBundleLineEditor";
  * @param {{
  *   itemId: number;
  *   initialLines: { child_item_id?: string; quantity?: number }[];
- *   itemOptions: { value: number; label: string }[];
+ *   itemOptions: { value: number; label: string; baseUomLabel?: string }[];
  *   t: (k: string) => string;
  *   tApiErrors: (k: string) => string;
  * }} props
@@ -73,6 +73,14 @@ export function BundleLineEditor({ itemId, initialLines, itemOptions, t, tApiErr
                 getPopupContainer={drawerSelectGetPopup}
                 onChange={(v) => patchLine(index, { child_item_id: v })}
               />
+            );
+          }
+          if (columnKey === "uom") {
+            const selected = itemOptions.find((o) => String(o.value) === String(row.child_item_id ?? ""));
+            return (
+              <span className="item-lines-readonly-uom truncate">
+                {selected?.baseUomLabel || "—"}
+              </span>
             );
           }
           return (

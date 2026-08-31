@@ -4,13 +4,80 @@ import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { Button, InputNumber, Select } from "antd";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import InboundLotFields from "../InboundLotFields";
+import { useStockBalanceOnHand } from "../../queries/useStockBalanceOnHand";
 import {
   canCntCreateLot,
   cntLineVariance,
   isCntSurplusLine,
 } from "../../utils/stockCountDrawerUtils";
+
+/**
+ * Fills theoretical qty and warehouse unit cost when an item (and lot) is chosen.
+ *
+ * @param {{
+ *   itemId?: string;
+ *   warehouseId?: number;
+ *   lotId?: number;
+ *   lotNumber?: string;
+ *   trackLots?: boolean;
+ *   theoretical?: number;
+ *   unitCost?: number | null;
+ *   enabled: boolean;
+ *   onApply: (patch: { theoretical_quantity?: number; unit_cost?: number }) => void;
+ * }} props
+ */
+function CntLineBalanceSync({
+  itemId,
+  warehouseId,
+  lotId,
+  lotNumber,
+  trackLots,
+  theoretical,
+  unitCost,
+  enabled,
+  onApply,
+}) {
+  const newLot = Boolean(trackLots) && lotId == null && Boolean(String(lotNumber ?? "").trim());
+  const balance = useStockBalanceOnHand({
+    itemId,
+    warehouseId,
+    lotId,
+    trackLots,
+    newLot,
+  });
+  const onApplyRef = useRef(onApply);
+  onApplyRef.current = onApply;
+
+  useEffect(() => {
+    if (!enabled || !itemId) return;
+    if (balance.waitingOnWarehouse || balance.waitingOnLot || balance.pending) return;
+    if (balance.quantity == null || !Number.isFinite(balance.quantity)) return;
+
+    /** @type {{ theoretical_quantity?: number; unit_cost?: number }} */
+    const patch = {};
+    if (theoretical !== balance.quantity) {
+      patch.theoretical_quantity = balance.quantity;
+    }
+    if (unitCost == null && balance.unitCost != null && balance.unitCost > 0) {
+      patch.unit_cost = balance.unitCost;
+    }
+    if (Object.keys(patch).length > 0) onApplyRef.current(patch);
+  }, [
+    enabled,
+    itemId,
+    balance.waitingOnWarehouse,
+    balance.waitingOnLot,
+    balance.pending,
+    balance.quantity,
+    balance.unitCost,
+    theoretical,
+    unitCost,
+  ]);
+
+  return null;
+}
 
 /**
  * @param {{
@@ -62,6 +129,7 @@ export default function StockCountLineEditor({
       <ResourceDrawerPanelHeader
         title={t("cntLinesTitle")}
         description={t("cntLinesDescription")}
+        actionsClassName="self-end !pt-0"
         actions={
           !readOnly && onLoadBalances ? (
             <Button disabled={!canLoadBalances || loadingBalances} loading={loadingBalances} onClick={onLoadBalances}>
@@ -70,6 +138,21 @@ export default function StockCountLineEditor({
           ) : null
         }
       />
+
+      {lines.map((line, index) => (
+        <CntLineBalanceSync
+          key={`cnt-balance-${index}-${line.item_id ?? "none"}-${line.lot_id ?? line.lot_number ?? "none"}`}
+          itemId={line.item_id}
+          warehouseId={warehouseId}
+          lotId={line.lot_id}
+          lotNumber={line.lot_number}
+          trackLots={line.track_lots}
+          theoretical={line.theoretical_quantity}
+          unitCost={line.unit_cost}
+          enabled={!readOnly}
+          onApply={(patch) => onPatchLine(index, patch)}
+        />
+      ))}
 
       <LinesGrid
         columns={columns}
@@ -136,7 +219,9 @@ export default function StockCountLineEditor({
                 onPatch={(patch) =>
                   onPatchLine(index, {
                     ...patch,
-                    ...("lot_id" in patch ? { theoretical_quantity: undefined } : {}),
+                    ...("lot_id" in patch || "lot_number" in patch
+                      ? { theoretical_quantity: undefined, unit_cost: undefined }
+                      : {}),
                   })
                 }
               />

@@ -5,6 +5,7 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { PURCHASE_ORDERS_QUERY_KEY, invalidatePurchasingAlertsQueries } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { normalizeEntityId } from "@/lib/entityId";
@@ -162,7 +163,7 @@ function PurchaseOrdersTable() {
         okText: t("poDeleteConfirmOk"),
         okButtonProps: { danger: true },
         cancelText: t("drawerCancel"),
-        onOk: () => deleteMutation.mutateAsync(id),
+        onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(id)),
       });
     },
     [modal, t, deleteMutation],
@@ -177,7 +178,7 @@ function PurchaseOrdersTable() {
         content: t("poCancelConfirmContent"),
         okText: t("poCancelConfirmOk"),
         cancelText: t("drawerCancel"),
-        onOk: () => cancelMutation.mutateAsync(id),
+        onOk: () => closeConfirmOnError(cancelMutation.mutateAsync(id)),
       });
     },
     [modal, t, cancelMutation],
@@ -225,7 +226,7 @@ function PurchaseOrdersTable() {
         content: t("poMarkSentConfirmContent"),
         okText: t("actionMarkPoSent"),
         cancelText: t("drawerCancel"),
-        onOk: () => markSentMutation.mutateAsync(id),
+        onOk: () => closeConfirmOnError(markSentMutation.mutateAsync(id)),
       });
     },
     [modal, t, markSentMutation],

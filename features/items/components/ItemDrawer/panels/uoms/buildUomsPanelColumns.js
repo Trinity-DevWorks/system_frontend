@@ -1,4 +1,5 @@
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Checkbox, Input, InputNumber, Radio, Select, Space, Tag } from "antd";
@@ -315,7 +316,7 @@ export function buildUomsPanelColumns(ctx) {
               onClick={() =>
                 modal.confirm({
                   title: t("panelDeleteConfirm"),
-                  onOk: () => deleteMutation.mutateAsync(Number(r.id)),
+                  onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(Number(r.id))),
                 })
               }
             />

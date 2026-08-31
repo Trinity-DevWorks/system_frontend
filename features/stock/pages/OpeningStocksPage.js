@@ -5,6 +5,7 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { OPENING_STOCKS_QUERY_KEY } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
@@ -122,7 +123,7 @@ function OpeningStocksTable() {
         okText: t("osDeleteConfirmOk"),
         okButtonProps: { danger: true },
         cancelText: t("drawerCancel"),
-        onOk: () => deleteMutation.mutateAsync(id),
+        onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(id)),
       });
     },
     [modal, t, deleteMutation],

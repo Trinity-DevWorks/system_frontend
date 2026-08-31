@@ -19,6 +19,7 @@ export {
   getItemTypeCode,
   isBundleItem,
   isProduceItem,
+  isAllowedRecipeIngredient,
   findItemTypeById,
   flagsForItemType,
   itemFormValuesToPayload,
@@ -40,4 +41,6 @@ export {
   canAddRecipeLine,
   isRecipeHeaderDirty,
   canSaveRecipePanel,
+  mapItemUomsToRecipeUomOptions,
+  preferredRecipeUomId,
 } from "./itemLineHelpers";

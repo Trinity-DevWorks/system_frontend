@@ -5,6 +5,7 @@
  * - drawer/utils/itemDrawerUtils.js (barrel)
  * - drawer/panels/bundle/useBundleLineEditor.js
  * - drawer/panels/recipe/useRecipeLineEditor.js
+ * - drawer/panels/recipe/useItemRecipeUomOptions.js
  */
 
 /**
@@ -119,4 +120,40 @@ export function canSaveRecipePanel(current, initial, header, initialHeader) {
   if (!headerDirty && !linesDirty) return false;
   if (headerDirty) return true;
   return getValidRecipeLines(current).length > 0;
+}
+
+/**
+ * Recipe stores `uom_id` (unit_of_measurements.id). Deduplicate item-uom rows
+ * that share a UOM across currencies.
+ *
+ * @param {unknown[] | null | undefined} itemUoms
+ * @returns {{ value: number; label: string; is_base: boolean }[]}
+ */
+export function mapItemUomsToRecipeUomOptions(itemUoms) {
+  const seen = new Set();
+  /** @type {{ value: number; label: string; is_base: boolean }[]} */
+  const options = [];
+
+  for (const row of itemUoms ?? []) {
+    if (!row || typeof row !== "object") continue;
+    const r = /** @type {{ uom?: { id?: number; code?: string; name?: string }; uom_id?: number; is_base?: boolean }} */ (row);
+    const uomId = r.uom?.id ?? r.uom_id;
+    if (uomId == null || seen.has(Number(uomId))) continue;
+    seen.add(Number(uomId));
+    const name = typeof r.uom?.name === "string" ? r.uom.name.trim() : "";
+    const code = typeof r.uom?.code === "string" ? r.uom.code.trim() : "";
+    const label = name && code && name !== code ? `${name} (${code})` : name || code || `UOM #${uomId}`;
+    options.push({ value: Number(uomId), label, is_base: Boolean(r.is_base) });
+  }
+
+  return options;
+}
+
+/**
+ * @param {{ value: number; is_base?: boolean }[]} options
+ * @returns {number | undefined}
+ */
+export function preferredRecipeUomId(options) {
+  const base = options.find((o) => o.is_base);
+  return base?.value ?? options[0]?.value;
 }

@@ -41,16 +41,20 @@ export default function SalesmanDrawerForm({
   }, [commissionType, form]);
 
   useEffect(() => {
-    if (readOnly) return;
+    if (readOnly || lookupsLoading) return;
+    if (branchId == null || branchId === "") return;
     const warehouseId = form.getFieldValue("warehouse_id");
     if (warehouseId == null || warehouseId === "") return;
     const sentinel = addWarehouseSentinel != null ? String(addWarehouseSentinel) : null;
-    if (sentinel != null && warehouseId === sentinel) return;
-    const stillAllowed = warehouseOptions.some((opt) => Number(opt.value) === Number(warehouseId));
+    if (sentinel != null && String(warehouseId) === sentinel) return;
+    const stillAllowed = warehouseOptions.some((opt) => {
+      if (sentinel != null && String(opt.value) === sentinel) return false;
+      return Number(opt.value) === Number(warehouseId);
+    });
     if (!stillAllowed) {
       form.setFieldValue("warehouse_id", undefined);
     }
-  }, [branchId, warehouseOptions, form, readOnly, addWarehouseSentinel]);
+  }, [branchId, warehouseOptions, form, readOnly, addWarehouseSentinel, lookupsLoading]);
 
   const sentinel = addWarehouseSentinel != null ? String(addWarehouseSentinel) : null;
   const warehouseGetValueFromEvent = sentinel
@@ -167,7 +171,7 @@ export default function SalesmanDrawerForm({
           loading={lookupsLoading}
           options={warehouseOptions}
           placeholder={t("fieldWarehousePlaceholder")}
-          disabled={!readOnly && (branchId == null || branchId === "")}
+          disabled={readOnly || branchId == null || branchId === ""}
           onSelect={warehouseOnSelect}
         />
       </Form.Item>

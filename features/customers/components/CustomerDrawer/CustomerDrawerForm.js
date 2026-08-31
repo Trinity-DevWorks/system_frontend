@@ -108,7 +108,7 @@ export default function CustomerDrawerForm({
       }}
     >
       {isSystem ? (
-        <Alert type="info" showIcon className="mb-4" message={t("systemWalkInNotice")} />
+        <Alert type="info" showIcon className="mb-4" title={t("systemWalkInNotice")} />
       ) : null}
 
       {showCode ? (

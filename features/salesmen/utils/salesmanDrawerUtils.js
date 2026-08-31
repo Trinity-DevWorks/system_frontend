@@ -13,6 +13,27 @@ export const SALESMAN_CREATE_SAVE_INTENT_KEY = "salesmanDrawer:createSaveIntent"
 export const SALESMAN_CREATE_SAVE_INTENT_EVENT = "salesmanDrawer:createSaveIntent:change";
 
 /**
+ * Active branch if it exists in the list, otherwise the tenant default / first active branch.
+ * @param {unknown} branches
+ * @param {unknown} activeBranchId
+ * @returns {number | undefined}
+ */
+export function resolveDefaultCreateBranchId(branches, activeBranchId) {
+  if (!Array.isArray(branches) || branches.length === 0) return undefined;
+  const activeId = activeBranchId == null || activeBranchId === "" ? null : Number(activeBranchId);
+  const active =
+    activeId != null && Number.isFinite(activeId)
+      ? branches.find((b) => b && typeof b === "object" && Number(b.id) === activeId)
+      : null;
+  if (active?.id != null) return Number(active.id);
+
+  const activeBranches = branches.filter((b) => b && typeof b === "object" && b.is_active !== false);
+  const defaultBranch = activeBranches.find((b) => b.is_default === true) ?? activeBranches[0] ?? null;
+  if (defaultBranch?.id != null) return Number(defaultBranch.id);
+  return undefined;
+}
+
+/**
  * @param {string} firstName
  * @param {string} lastName
  */

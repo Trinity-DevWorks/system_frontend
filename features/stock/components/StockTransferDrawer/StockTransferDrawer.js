@@ -10,6 +10,7 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { STOCK_TRANSFER_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { fetchStockTransfer } from "../../api/stockTransfers.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -250,7 +251,7 @@ export default function StockTransferDrawer({
           content: t("transferDispatchConfirmContent"),
           okText: t("transferDispatchConfirmOk"),
           cancelText: t("drawerCancel"),
-          onOk: () => dispatchMutation.mutateAsync({ values }),
+          onOk: () => closeConfirmOnError(dispatchMutation.mutateAsync({ values })),
         });
       })
       .catch(() => {});
@@ -262,7 +263,7 @@ export default function StockTransferDrawer({
       content: t("transferReceiveConfirmContent"),
       okText: t("actionReceiveTransfer"),
       cancelText: t("drawerCancel"),
-      onOk: () => receiveMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(receiveMutation.mutateAsync()),
     });
   }, [modal, t, receiveMutation]);
 
@@ -276,7 +277,7 @@ export default function StockTransferDrawer({
         : t("transferCancelConfirmContent"),
       okText: t("transferCancelConfirmOk"),
       cancelText: t("drawerCancel"),
-      onOk: () => cancelMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(cancelMutation.mutateAsync()),
     });
   }, [modal, t, cancelMutation, effectiveStatus]);
 
@@ -288,7 +289,7 @@ export default function StockTransferDrawer({
       okText: t("transferDeleteConfirmOk"),
       okButtonProps: { danger: true },
       cancelText: t("drawerCancel"),
-      onOk: () => deleteMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
     });
   }, [modal, t, deleteMutation, loadedNumber, transferId]);
 

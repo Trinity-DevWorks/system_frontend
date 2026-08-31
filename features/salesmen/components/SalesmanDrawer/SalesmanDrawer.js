@@ -31,6 +31,7 @@ import {
   isCreateDirtyVsDefaults,
   isEditDirtyVsLoaded,
   requiredFieldsValid,
+  resolveDefaultCreateBranchId,
   toSalesmanCacheRow,
 } from "../../utils/salesmanDrawerUtils";
 import { SALESMEN_LIST_QUERY_KEY } from "../../queries/salesmenQueryKeys";
@@ -70,27 +71,6 @@ export default function SalesmanDrawer({
 
   const readOnly = mode === "view";
 
-  const defaults = useMemo(
-    () => ({
-      salesman_code: "",
-      first_name: "",
-      last_name: "",
-      phone: "",
-      email: "",
-      address: "",
-      commission_type: "none",
-      commission_value: undefined,
-      target_amount: undefined,
-      hire_date: null,
-      branch_id: undefined,
-      warehouse_id: undefined,
-      user_id: undefined,
-      is_active: true,
-      notes: "",
-    }),
-    [],
-  );
-
   const branchesQuery = useQuery({
     queryKey: BRANCHES_LIST_QUERY_KEY,
     queryFn: fetchBranchNames,
@@ -112,6 +92,33 @@ export default function SalesmanDrawer({
     staleTime: QUERY_STALE_TIME.default,
   });
 
+  const activeBranchId = getActiveBranchId();
+  const defaultCreateBranchId = useMemo(
+    () => resolveDefaultCreateBranchId(branchesQuery.data, activeBranchId),
+    [branchesQuery.data, activeBranchId],
+  );
+
+  const defaults = useMemo(
+    () => ({
+      salesman_code: "",
+      first_name: "",
+      last_name: "",
+      phone: "",
+      email: "",
+      address: "",
+      commission_type: "none",
+      commission_value: undefined,
+      target_amount: undefined,
+      hire_date: null,
+      branch_id: defaultCreateBranchId,
+      warehouse_id: undefined,
+      user_id: undefined,
+      is_active: true,
+      notes: "",
+    }),
+    [defaultCreateBranchId],
+  );
+
   const branchOptions = useMemo(() => {
     const list = Array.isArray(branchesQuery.data) ? branchesQuery.data : [];
     return list
@@ -124,27 +131,11 @@ export default function SalesmanDrawer({
 
   useEffect(() => {
     if (!open || mode !== "create" || readOnly) return;
-    if (!Array.isArray(branchesQuery.data) || branchesQuery.data.length === 0) return;
+    if (defaultCreateBranchId == null) return;
     const current = form.getFieldValue("branch_id");
     if (current != null && current !== "") return;
-
-    const activeId = getActiveBranchId();
-    const active = activeId != null
-      ? branchesQuery.data.find((b) => Number(b?.id) === activeId)
-      : null;
-    if (active?.id != null) {
-      form.setFieldValue("branch_id", Number(active.id));
-      return;
-    }
-
-    const activeBranches = branchesQuery.data.filter(
-      (b) => b && typeof b === "object" && b.is_active !== false,
-    );
-    const defaultBranch = activeBranches.find((b) => b.is_default === true) ?? activeBranches[0] ?? null;
-    if (defaultBranch?.id != null) {
-      form.setFieldValue("branch_id", Number(defaultBranch.id));
-    }
-  }, [open, mode, readOnly, branchesQuery.data, form]);
+    form.setFieldValue("branch_id", defaultCreateBranchId);
+  }, [open, mode, readOnly, defaultCreateBranchId, form]);
 
   const branchIdWatch = Form.useWatch("branch_id", form);
 
@@ -164,11 +155,6 @@ export default function SalesmanDrawer({
         label: String(row.name ?? row.id),
       }));
   }, [warehousesQuery.data, branchIdWatch]);
-
-  const warehouseOptionsForSelect = useMemo(() => {
-    if (readOnly) return warehouseOptions;
-    return [{ value: SALESMAN_WAREHOUSE_ADD_NEW_VALUE, label: t("fieldWarehouseAddNew") }, ...warehouseOptions];
-  }, [readOnly, warehouseOptions, t]);
 
   const openWarehouseCreateDrawer = useCallback(() => {
     setWarehouseCreateDrawerOpen(true);
@@ -235,6 +221,32 @@ export default function SalesmanDrawer({
     mapSeedToCacheRow,
     mapRecordToFormValues,
   });
+
+  const loadedWarehouseOption = useMemo(() => {
+    if (mode === "create") return null;
+    const row =
+      detailQuery.data && typeof detailQuery.data === "object"
+        ? /** @type {Record<string, unknown>} */ (detailQuery.data)
+        : tableSeedMatches && tableSeedRecord
+          ? tableSeedRecord
+          : null;
+    if (row == null || row.warehouse_id == null || row.warehouse_id === "") return null;
+    const recordBranch = row.branch_id == null || row.branch_id === "" ? null : Number(row.branch_id);
+    const currentBranch = branchIdWatch == null || branchIdWatch === "" ? null : Number(branchIdWatch);
+    if (currentBranch != null && recordBranch != null && currentBranch !== recordBranch) return null;
+    const id = Number(row.warehouse_id);
+    if (!Number.isFinite(id)) return null;
+    return { value: id, label: String(row.warehouse_name ?? id) };
+  }, [mode, detailQuery.data, tableSeedMatches, tableSeedRecord, branchIdWatch]);
+
+  const warehouseOptionsForSelect = useMemo(() => {
+    const merged = [...warehouseOptions];
+    if (loadedWarehouseOption && !merged.some((opt) => Number(opt.value) === loadedWarehouseOption.value)) {
+      merged.unshift(loadedWarehouseOption);
+    }
+    if (readOnly) return merged;
+    return [{ value: SALESMAN_WAREHOUSE_ADD_NEW_VALUE, label: t("fieldWarehouseAddNew") }, ...merged];
+  }, [readOnly, warehouseOptions, loadedWarehouseOption, t]);
 
   const firstWatch = Form.useWatch("first_name", form);
   const lastWatch = Form.useWatch("last_name", form);
