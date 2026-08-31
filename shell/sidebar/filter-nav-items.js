@@ -41,3 +41,26 @@ export function filterMenuItemsByQuery(items, query) {
 
   return filterRecursive(items);
 }
+
+/**
+ * Page to open when the user presses Enter in sidebar search.
+ * Exact label match wins; otherwise a single remaining result.
+ *
+ * @param {Array<{ items?: Array<{ path: string, label: string }> }>} sections
+ * @param {string} query
+ * @returns {string | null} path
+ */
+export function pickSearchEnterTarget(sections, query) {
+  const q = query.trim().toLowerCase();
+  if (!q || !sections?.length) return null;
+
+  const items = sections.flatMap((section) => section.items ?? []);
+  if (!items.length) return null;
+
+  const exact = items.filter(
+    (item) => typeof item.label === "string" && item.label.trim().toLowerCase() === q,
+  );
+  if (exact.length) return exact[0].path ?? null;
+  if (items.length === 1) return items[0].path ?? null;
+  return null;
+}

@@ -12,6 +12,7 @@ import SidebarNavRow from "@/shell/sidebar/SidebarNavRow";
  *   title: string,
  *   searchValue: string,
  *   onSearchChange: (value: string) => void,
+ *   onSearchEnter?: () => void,
  *   searchPlaceholder: string,
  *   searchAria: string,
  *   sections: Array<{
@@ -33,6 +34,7 @@ export default function SidebarPagePanel({
   title,
   searchValue,
   onSearchChange,
+  onSearchEnter,
   searchPlaceholder,
   searchAria,
   sections,
@@ -60,6 +62,10 @@ export default function SidebarPagePanel({
           allowClear
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}
+          onPressEnter={(event) => {
+            if (event.nativeEvent.isComposing) return;
+            onSearchEnter?.();
+          }}
           placeholder={searchPlaceholder}
           aria-label={searchAria}
           prefix={<SearchOutlined />}

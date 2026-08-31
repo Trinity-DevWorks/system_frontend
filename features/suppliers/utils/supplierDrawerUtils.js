@@ -3,6 +3,7 @@
  */
 
 import dayjs from "dayjs";
+import { tenantMoneyFixed } from "@/lib/tenant-format";
 
 /** @typedef {"keep" | "new" | "close"} SupplierCreateSaveIntent */
 
@@ -106,7 +107,7 @@ export function currencyBalancesFingerprint(rows) {
         const parsed = dayjs(d);
         dateKey = parsed.isValid() ? parsed.format("YYYY-MM-DD") : String(d).slice(0, 10);
       }
-      return `${id}:${c.toFixed(4)}:${o.toFixed(4)}:${dateKey}`;
+      return `${id}:${tenantMoneyFixed(c)}:${tenantMoneyFixed(o)}:${dateKey}`;
     })
     .sort()
     .join("|");
@@ -386,13 +387,13 @@ export function primarySnapshotForOptimistic(primaryFromApi, currencyBalancesPay
   const primaryRow =
     primaryId != null ? list.find((b) => b && Number(b.currency_id) === Number(primaryId)) : list[0] ?? null;
   const creditStr = primaryRow
-    ? String(Number(primaryRow.credit_limit ?? 0).toFixed(4))
-    : String(Number(primaryFromApi ?? 0).toFixed(4));
+    ? tenantMoneyFixed(primaryRow.credit_limit ?? 0)
+    : tenantMoneyFixed(primaryFromApi ?? 0);
   const openingStr = primaryRow
-    ? String(Number(primaryRow.opening_balance ?? 0).toFixed(4))
-    : String(Number(primaryFromApi ?? 0).toFixed(4));
+    ? tenantMoneyFixed(primaryRow.opening_balance ?? 0)
+    : tenantMoneyFixed(primaryFromApi ?? 0);
   const openingNum = Number(openingStr);
-  const balanceGuess = Number.isFinite(openingNum) ? openingNum.toFixed(4) : "0.0000";
+  const balanceGuess = Number.isFinite(openingNum) ? tenantMoneyFixed(openingNum) : tenantMoneyFixed(0);
   return {
     credit_limit: creditStr,
     opening_balance: openingStr,

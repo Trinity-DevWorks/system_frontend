@@ -25,6 +25,7 @@ import {
   saveTableDensity,
 } from "@/lib/table-prefs-storage";
 import { useLocalPreferenceUserId } from "@/lib/local-preference-user";
+import { useCompanySettings } from "@/lib/company-settings";
 import {
   App,
   Button,
@@ -132,6 +133,8 @@ function AppDataTable({
 }) {
   const t = useTranslations("DataTable");
   const { message } = App.useApp();
+  // Re-render cells when date/number/price format changes (column defs are often memoized).
+  useCompanySettings();
   const prefsUserId = useLocalPreferenceUserId();
   const {
     showSearch = true,

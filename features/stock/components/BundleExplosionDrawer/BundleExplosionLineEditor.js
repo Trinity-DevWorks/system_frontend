@@ -3,7 +3,8 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { InputNumber } from "antd";
+import { formatStockQuantity } from "../../utils/formatStockQuantity";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import StockLotSelect from "../StockLotSelect";
 import { useTransferLineLotOptions } from "../../queries/useStockTransferDrawerData";
@@ -81,7 +82,11 @@ export default function BundleExplosionLineEditor({ lines, readOnly, warehouseId
             return <span className="truncate">{row.item_label || "—"}</span>;
           }
           if (columnKey === "theoretical") {
-            return <InputNumber className="w-full" value={row.theoretical_quantity} disabled />;
+            return (
+              <span className="block w-full truncate tabular-nums">
+                {formatStockQuantity(row.theoretical_quantity)}
+              </span>
+            );
           }
           if (columnKey === "uom") {
             return <span className="truncate">{row.item_uom_label || "—"}</span>;
@@ -100,7 +105,8 @@ export default function BundleExplosionLineEditor({ lines, readOnly, warehouseId
             );
           }
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="quantity"
               className="w-full"
               min={0.000001}
               value={row.quantity}

@@ -1,7 +1,8 @@
 "use client";
 
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { Alert, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { Alert, Col, DatePicker, Form, Input, Row, Select, Space } from "antd";
 import dayjs from "dayjs";
 import InboundLotFields from "../InboundLotFields";
 
@@ -106,7 +107,7 @@ export default function ProductionDrawerForm({
                 noStyle
                 rules={[{ required: true, message: t("prdQuantityRequired") }]}
               >
-                <InputNumber className="w-28" min={0.000001} />
+                <TenantNumberInput kind="quantity" className="w-28" min={0.000001} />
               </Form.Item>
               {recipeUom ? (
                 <Input

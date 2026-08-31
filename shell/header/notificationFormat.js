@@ -6,6 +6,7 @@
  * Solves: Keeps English/Arabic copy in next-intl and keeps visual category cues consistent.
  */
 
+import { formatTenantDate, formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import {
   BellOutlined,
   CalendarOutlined,
@@ -64,16 +65,57 @@ function interpolateTemplate(template, params) {
 }
 
 /**
+ * @param {Record<string, unknown>} params
+ * @returns {Record<string, unknown>}
+ */
+function formatNotificationParams(params) {
+  /** @type {Record<string, unknown>} */
+  const out = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null) {
+      out[key] = value;
+      continue;
+    }
+    if (key === "expiry_date" || key.endsWith("_date")) {
+      out[key] = formatTenantDate(value) || value;
+      continue;
+    }
+    if (
+      key === "on_hand_qty" ||
+      key.endsWith("_qty") ||
+      key.endsWith("_quantity")
+    ) {
+      out[key] =
+        formatTenantNumber(value, { decimals: 6, trimTrailingZeros: true }) ||
+        value;
+      continue;
+    }
+    if (
+      key.endsWith("_price") ||
+      key.endsWith("_amount") ||
+      key === "unit_cost" ||
+      key === "amount"
+    ) {
+      out[key] = formatTenantMoney(value) || value;
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
+/**
  * @param {{ type?: string, params?: Record<string, unknown>, severity?: string }} notification
  * @param {import("next-intl").Translator<any>} t
  * @param {Record<string, unknown> | null | undefined} [messages]
  */
 export function formatNotificationTitle(notification, t, messages) {
   const type = notification?.type || "unknown";
-  const params =
+  const params = formatNotificationParams(
     notification?.params && typeof notification.params === "object"
       ? notification.params
-      : {};
+      : {},
+  );
   const template = getNotificationTypeMessage(messages, type, "title");
   if (template) return interpolateTemplate(template, params);
   if (messages == null) return t(`types.${type}.title`, params);
@@ -87,10 +129,11 @@ export function formatNotificationTitle(notification, t, messages) {
  */
 export function formatNotificationBody(notification, t, messages) {
   const type = notification?.type || "unknown";
-  const params =
+  const params = formatNotificationParams(
     notification?.params && typeof notification.params === "object"
       ? notification.params
-      : {};
+      : {},
+  );
   const template = getNotificationTypeMessage(messages, type, "body");
   if (template) return interpolateTemplate(template, params);
   if (messages == null) return t(`types.${type}.body`, params);

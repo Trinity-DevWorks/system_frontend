@@ -1,7 +1,8 @@
 "use client";
 
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { Alert, Col, DatePicker, Form, Input, InputNumber, Row, Select } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { Alert, Col, DatePicker, Form, Input, Row, Select } from "antd";
 import dayjs from "dayjs";
 
 /**
@@ -86,7 +87,7 @@ export default function BundleExplosionDrawerForm({
             label={t("bexFieldQuantity")}
             rules={[{ required: true, message: t("bexQuantityRequired") }]}
           >
-            <InputNumber className="w-full" min={0.000001} />
+            <TenantNumberInput kind="quantity" className="w-full" min={0.000001} />
           </Form.Item>
         </Col>
       </Row>
