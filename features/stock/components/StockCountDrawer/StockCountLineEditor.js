@@ -48,7 +48,10 @@ function CntLineBalanceSync({
     newLot,
   });
   const onApplyRef = useRef(onApply);
-  onApplyRef.current = onApply;
+
+  useEffect(() => {
+    onApplyRef.current = onApply;
+  }, [onApply]);
 
   useEffect(() => {
     if (!enabled || !itemId) return;
