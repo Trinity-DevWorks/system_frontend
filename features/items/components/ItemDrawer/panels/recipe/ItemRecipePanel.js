@@ -13,17 +13,17 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { fetchItemNames } from "../../../../api/items.api";
 import { fetchRecipe, fetchRecipeItems } from "../../../../api/recipes.api";
-import { fetchUnitOfMeasurementNames } from "@/features/unit-of-measurements/index";
 import { itemRecipeItemsQueryKey, itemRecipeQueryKey } from "../../../../queries/itemRecipeQueryCache";
 import { useQuery } from "@tanstack/react-query";
 import { Table, Typography } from "antd";
 import { useMemo } from "react";
 import { isPersistedEntityId, normalizeEntityId } from "@/lib/entityId";
 import { formatItemOptionLabel } from "../../../../utils/formatItemLabel";
+import { isAllowedRecipeIngredient } from "../../../../utils/itemFormMappers";
 import { buildRecipeLineEditorKey } from "../shared/lineEditorKeys";
 import { RecipeLineEditor } from "./RecipeLineEditor";
+import { useItemRecipeUomOptions } from "./useItemRecipeUomOptions";
 import { ITEMS_LIST_QUERY_KEY } from "../../../../queries/itemsQueryKeys";
-import { UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY } from "@/features/unit-of-measurements";
 
 /**
  * @param {{
@@ -43,12 +43,7 @@ export function ItemRecipePanel({ itemId, readOnly, t, tApiErrors, active, baseU
     staleTime: QUERY_STALE_TIME.catalog,
   });
 
-  const uomsQuery = useQuery({
-    queryKey: UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY,
-    queryFn: fetchUnitOfMeasurementNames,
-    enabled: active,
-    staleTime: QUERY_STALE_TIME.catalog,
-  });
+  const yieldUoms = useItemRecipeUomOptions({ itemId, enabled: active && !readOnly });
 
   const recipeQuery = useQuery({
     queryKey: itemRecipeQueryKey(itemId),
@@ -64,25 +59,39 @@ export function ItemRecipePanel({ itemId, readOnly, t, tApiErrors, active, baseU
     retry: false,
   });
 
-  const uomOptions = useMemo(
-    () => (uomsQuery.data ?? []).map((u) => ({ value: u.id, label: u.name ?? u.code })),
-    [uomsQuery.data],
-  );
+  const itemOptions = useMemo(() => {
+    const selectedIds = new Set(
+      (recipeItemsQuery.data ?? [])
+        .map((r) => normalizeEntityId(r.item_id))
+        .filter(Boolean),
+    );
 
-  const itemOptions = useMemo(
-    () =>
-      (itemsQuery.data ?? [])
-        .filter((i) => i.id !== itemId)
-        .map((i) => ({ value: i.id, label: formatItemOptionLabel(i) })),
-    [itemsQuery.data, itemId],
-  );
+    /** @type {Map<string, { value: string; label: string }>} */
+    const byId = new Map();
+
+    for (const i of itemsQuery.data ?? []) {
+      const id = normalizeEntityId(i.id);
+      if (!id) continue;
+      if (!isAllowedRecipeIngredient(i, itemId) && !selectedIds.has(id)) continue;
+      byId.set(id, { value: id, label: formatItemOptionLabel(i) });
+    }
+
+    for (const r of recipeItemsQuery.data ?? []) {
+      const id = normalizeEntityId(r.item_id);
+      if (!id || byId.has(id)) continue;
+      const label = formatItemOptionLabel(r.ingredient_item);
+      byId.set(id, { value: id, label: label || id });
+    }
+
+    return [...byId.values()];
+  }, [itemsQuery.data, recipeItemsQuery.data, itemId]);
 
   const initialHeader = useMemo(
     () => ({
       yield_quantity: Number(recipeQuery.data?.yield_quantity ?? 1),
-      uom_id: recipeQuery.data?.uom_id ?? baseUomId,
+      uom_id: recipeQuery.data?.uom_id ?? yieldUoms.preferredUomId ?? baseUomId,
     }),
-    [recipeQuery.data, baseUomId],
+    [recipeQuery.data, yieldUoms.preferredUomId, baseUomId],
   );
 
   const initialLines = useMemo(() => {
@@ -138,7 +147,9 @@ export function ItemRecipePanel({ itemId, readOnly, t, tApiErrors, active, baseU
       initialHeader={initialHeader}
       initialLines={initialLines}
       itemOptions={itemOptions}
-      uomOptions={uomOptions}
+      itemsPending={itemsQuery.isPending}
+      yieldUomOptions={yieldUoms.options}
+      yieldUomsPending={yieldUoms.pending}
       t={t}
       tApiErrors={tApiErrors}
     />

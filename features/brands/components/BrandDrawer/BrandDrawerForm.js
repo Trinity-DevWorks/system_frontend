@@ -31,7 +31,7 @@ export default function BrandDrawerForm({
           type="error"
           showIcon
           className="mb-4"
-          message={getLocalizedApiErrorMessage(tApiErrors, brandsError)}
+          title={getLocalizedApiErrorMessage(tApiErrors, brandsError)}
         />
       ) : null}
       <Form.Item

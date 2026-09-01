@@ -14,7 +14,7 @@ import {
   formatNotificationTitle,
   notificationVisual,
 } from "@/shell/header/notificationFormat";
-import { theme } from "antd";
+import { formatTenantDateTime } from "@/lib/tenant-format";
 import { useLocale, useMessages, useTranslations } from "next-intl";
 
 /**
@@ -39,6 +39,9 @@ export default function NotificationListItem({
   const timeLabel = formatNotificationTime(
     /** @type {string | undefined} */ (notification.created_at),
     locale,
+  );
+  const timeExact = formatTenantDateTime(
+    /** @type {string | undefined} */ (notification.created_at),
   );
   const { Icon, accent, iconBg } = notificationVisual(notification, token);
   const isUnread = !notification.read;
@@ -91,6 +94,7 @@ export default function NotificationListItem({
             <span
               className="whitespace-nowrap text-[11px] leading-4"
               style={{ color: token.colorTextDescription }}
+              title={timeExact || undefined}
             >
               {timeLabel}
             </span>

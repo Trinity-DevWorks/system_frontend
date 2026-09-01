@@ -12,6 +12,7 @@ import {
   getAttachmentUploadErrorMessage,
   getLocalizedApiErrorMessage,
 } from "@/lib/api-error-notify";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { useBlobObjectUrl } from "@/lib/use-blob-object-url";
 import { BankOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -190,7 +191,7 @@ export default function CompanyProfileLogoSection({
               okText: t("logoRemoveConfirmOk"),
               cancelText: t("logoRemoveConfirmCancel"),
               okButtonProps: { danger: true },
-              onOk: () => removeMutation.mutateAsync(),
+              onOk: () => closeConfirmOnError(removeMutation.mutateAsync()),
             });
           }}
         >

@@ -1,5 +1,7 @@
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { formatStockQuantity } from "@/features/stock";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Checkbox, InputNumber, Select, Space, Tag } from "antd";
 import { PANEL_ACTIONS_CELL_STYLE } from "../shared/panelTableStyles";
@@ -25,7 +27,8 @@ export function buildReplenishmentPanelColumns(ctx) {
   } = ctx;
 
   const qtyCell = (draft, field, min = 0) => (
-    <InputNumber
+    <TenantNumberInput
+      kind="quantity"
       size="small"
       className="w-full min-w-0"
       min={min}
@@ -211,7 +214,7 @@ export function buildReplenishmentPanelColumns(ctx) {
                 modal.confirm({
                   title: t("replenishmentDeleteConfirm"),
                   okType: "danger",
-                  onOk: () => deleteMutation.mutateAsync(Number(r.id)),
+                  onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(Number(r.id))),
                 })
               }
             />

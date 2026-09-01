@@ -82,6 +82,16 @@ export function useResourceDrawerDetailSync({
 
     if (mode !== "edit" && mode !== "view") return;
     const row = detailQuery.data;
+
+    /**
+     * Create → edit after Save: same drawer instance, URL now has the new id.
+     * Keep the form as-is so the panel does not flash empty then reload.
+     */
+    if (lastAppliedRef.current.mode === "create" && recordId != null) {
+      lastAppliedRef.current = { mode, recordId, data: row ?? lastAppliedRef.current.data };
+      return;
+    }
+
     if (!row || typeof row !== "object") return;
 
     const isNewRecord =

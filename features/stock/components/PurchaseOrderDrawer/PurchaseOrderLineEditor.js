@@ -4,7 +4,8 @@ import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { InputNumber, Select } from "antd";
+import { Select } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
 import { suggestedPurchaseOrderUnitPrice } from "../../utils/purchaseOrderLastPurchasePrice";
@@ -132,7 +133,8 @@ export default function PurchaseOrderLineEditor({
           }
           if (columnKey === "unit_price") {
             return (
-              <InputNumber
+              <TenantNumberInput
+                kind="money"
                 className="w-full"
                 min={0}
                 placeholder={t("poLineUnitPricePlaceholder")}
@@ -145,7 +147,8 @@ export default function PurchaseOrderLineEditor({
             );
           }
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="quantity"
               className="w-full"
               min={0.000001}
               placeholder={t("poLineQtyPlaceholder")}

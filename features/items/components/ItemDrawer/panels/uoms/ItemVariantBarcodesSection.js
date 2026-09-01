@@ -1,6 +1,7 @@
 "use client";
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { createItemBarcode, deleteItemBarcode, updateItemBarcode } from "../../../../api/itemBarcodes.api";
 import {
   isItemBarcodeRow,
@@ -149,7 +150,7 @@ export default function ItemVariantBarcodesSection({ itemId, itemUomId, barcodes
                             modal.confirm({
                               title: t("variantBarcodeDeleteConfirm"),
                               okType: "danger",
-                              onOk: () => deleteMutation.mutateAsync(r.id),
+                              onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(r.id)),
                             })
                           }
                         />

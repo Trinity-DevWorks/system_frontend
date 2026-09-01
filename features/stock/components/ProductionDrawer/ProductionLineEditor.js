@@ -3,7 +3,8 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { InputNumber } from "antd";
+import { formatStockQuantity } from "../../utils/formatStockQuantity";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import StockLotSelect from "../StockLotSelect";
 import { useTransferLineLotOptions } from "../../queries/useStockTransferDrawerData";
@@ -82,7 +83,9 @@ export default function ProductionLineEditor({ lines, readOnly, warehouseId, onP
           }
           if (columnKey === "theoretical") {
             return (
-              <InputNumber className="w-full" value={row.theoretical_quantity} disabled />
+              <span className="block w-full truncate tabular-nums">
+                {formatStockQuantity(row.theoretical_quantity)}
+              </span>
             );
           }
           if (columnKey === "uom") {
@@ -102,7 +105,8 @@ export default function ProductionLineEditor({ lines, readOnly, warehouseId, onP
             );
           }
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="quantity"
               className="w-full"
               min={0.000001}
               value={row.quantity}

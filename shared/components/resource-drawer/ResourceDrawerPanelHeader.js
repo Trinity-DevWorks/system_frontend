@@ -9,9 +9,10 @@ import { Typography } from "antd";
  *   title: import("react").ReactNode;
  *   description?: string;
  *   actions?: import("react").ReactNode;
+ *   actionsClassName?: string;
  * }} props
  */
-export default function ResourceDrawerPanelHeader({ title, description, actions }) {
+export default function ResourceDrawerPanelHeader({ title, description, actions, actionsClassName }) {
   const desc = typeof description === "string" ? description.trim() : "";
 
   return (
@@ -26,7 +27,11 @@ export default function ResourceDrawerPanelHeader({ title, description, actions 
           </Typography.Paragraph>
         ) : null}
       </div>
-      {actions ? <div className="shrink-0 pt-0.5">{actions}</div> : null}
+      {actions ? (
+        <div className={["shrink-0 pt-0.5", actionsClassName].filter(Boolean).join(" ")}>
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }

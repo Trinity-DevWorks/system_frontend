@@ -256,6 +256,14 @@
   border-bottom: 1px solid var(--ant-color-border-secondary);
 }
 
+.item-lines-readonly-uom {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--ant-color-text-secondary);
+  font-size: 13px;
+}
+
 .item-lines-row:last-of-type > .item-lines-row-field {
   padding-bottom: 0;
   border-bottom: none;

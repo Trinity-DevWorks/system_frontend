@@ -1,10 +1,11 @@
 "use client";
 
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, DatePicker, Divider, Form, Input, InputNumber, Select, Space, Switch, Typography } from "antd";
+import { Button, DatePicker, Divider, Form, Input, Select, Space, Switch, Typography } from "antd";
 import {
   SUPPLIER_LOOKUP_ADD_PAYMENT_METHOD,
   SUPPLIER_LOOKUP_ADD_PAYMENT_TERMS,
@@ -274,7 +275,7 @@ export default function SupplierDrawerForm({
                       ]}
                       className="mb-0 min-w-[160px]"
                     >
-                      <InputNumber className="w-full" min={0} step={0.0001} precision={4} placeholder="0" />
+                      <TenantNumberInput kind="money" className="w-full" min={0} placeholder="0" />
                     </Form.Item>
                     {!readOnly ? (
                       <Button
@@ -350,7 +351,7 @@ export default function SupplierDrawerForm({
                       label={t("fieldOpeningBalance")}
                       className="mb-0 min-w-[140px]"
                     >
-                      <InputNumber className="w-full" step={0.0001} precision={4} placeholder="0" />
+                      <TenantNumberInput kind="money" className="w-full" placeholder="0" />
                     </Form.Item>
                     <Form.Item
                       {...restField}
@@ -379,7 +380,7 @@ export default function SupplierDrawerForm({
                         label={t("fieldLedgerBalance")}
                         className="mb-0 min-w-[120px]"
                       >
-                        <InputNumber className="w-full" disabled readOnly step={0.0001} precision={4} />
+                        <TenantNumberInput kind="money" className="w-full" disabled readOnly />
                       </Form.Item>
                     ) : null}
                     {!readOnly ? (

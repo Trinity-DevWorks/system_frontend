@@ -1,5 +1,8 @@
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { normalizeEntityId } from "@/lib/entityId";
+import { formatTenantMoney } from "@/lib/tenant-format";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Input, InputNumber, Radio, Select, Space } from "antd";
 import { PANEL_ACTIONS_CELL_STYLE } from "../shared/panelTableStyles";
@@ -89,7 +92,8 @@ export function buildSuppliersPanelColumns(ctx) {
         const draft = getInlineValues(r);
         if (draft) {
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="money"
               size="small"
               className="w-full min-w-0"
               min={0}
@@ -100,7 +104,7 @@ export function buildSuppliersPanelColumns(ctx) {
             />
           );
         }
-        return r.last_purchase_price ?? "—";
+        return formatTenantMoney(r.last_purchase_price) || "—";
       },
     },
     {
@@ -223,10 +227,12 @@ export function buildSuppliersPanelColumns(ctx) {
                 modal.confirm({
                   title: t("panelDeleteConfirm"),
                   onOk: () =>
-                    deleteMutation.mutateAsync({
-                      supplierId: normalizeEntityId(r.supplier_id ?? r.supplier?.id),
-                      id: Number(r.id),
-                    }),
+                    closeConfirmOnError(
+                      deleteMutation.mutateAsync({
+                        supplierId: normalizeEntityId(r.supplier_id ?? r.supplier?.id),
+                        id: Number(r.id),
+                      }),
+                    ),
                 })
               }
             />

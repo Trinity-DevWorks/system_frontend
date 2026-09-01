@@ -5,6 +5,7 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { STOCK_COUNT_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { fetchStockCount } from "../../api/stockCounts.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -220,7 +221,7 @@ export default function StockCountDrawer({
           content: t("cntPostConfirmContent"),
           okText: t("actionPostStockCount"),
           cancelText: t("drawerCancel"),
-          onOk: () => postMutation.mutateAsync({ values }),
+          onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
         });
       })
       .catch(() => {});
@@ -233,7 +234,7 @@ export default function StockCountDrawer({
       okText: t("cntDeleteConfirmOk"),
       okButtonProps: { danger: true },
       cancelText: t("drawerCancel"),
-      onOk: () => deleteMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
     });
   }, [modal, t, deleteMutation, loadedNumber]);
 

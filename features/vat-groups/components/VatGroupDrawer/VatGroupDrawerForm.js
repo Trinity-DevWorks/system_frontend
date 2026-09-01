@@ -4,7 +4,8 @@
  * Form fields for a VAT group (abbreviation, name, percentage, default switch).
  */
 
-import { Form, Input, InputNumber, Space, Switch } from "antd";
+import { Form, Input, Space, Switch } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 
 const percentageRules = (t) => [
   { required: true, message: t("fieldPercentageRequired") },
@@ -56,7 +57,7 @@ export default function VatGroupDrawerForm({ form, readOnly, t }) {
         <Space.Compact block className="w-full">
           <div className="min-w-0 flex-1">
             <Form.Item name="percentage" noStyle rules={percentageRules(t)}>
-              <InputNumber min={0} max={100} step={0.01} controls={false} className="w-full" />
+              <TenantNumberInput kind="percent" min={0} max={100} controls={false} className="w-full" />
             </Form.Item>
           </div>
           <Input
