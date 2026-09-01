@@ -5,16 +5,20 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { GOODS_RECEIPT_DETAIL_QUERY_PREFIX, PURCHASE_ORDER_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { isPersistedEntityId } from "@/lib/entityId";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
+import { useResourceAccess } from "@/lib/permissions";
+import { goodsReceiptCanCreateInvoice, tryOpenPurchaseInvoiceFromGoodsReceipt } from "@/features/purchase-invoices/utils/purchaseInvoiceFromGoodsReceipt";
+import { isGoodsReceiptDraft, isGoodsReceiptPosted } from "../../utils/goodsReceiptStatuses";
 import { fetchGoodsReceipt } from "../../api/goodsReceipts.api";
 import { fetchPurchaseOrder } from "../../api/purchaseOrders.api";
 import { mapPurchaseOrderToGrnCreateSeed } from "../../utils/goodsReceiptFromPurchaseOrder";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isGoodsReceiptDraft } from "../../utils/goodsReceiptStatuses";
 import GoodsReceiptDrawerFooter from "./GoodsReceiptDrawerFooter";
 import GoodsReceiptDrawerForm from "./GoodsReceiptDrawerForm";
 import GoodsReceiptLineEditor from "./GoodsReceiptLineEditor";
@@ -52,8 +56,12 @@ export default function GoodsReceiptDrawer({
   onCreated,
 }) {
   const t = useTranslations("Stock");
+  const tPi = useTranslations("PurchaseInvoices");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal, notification } = App.useApp();
+  const { openDrawer } = useGlobalDrawer();
+  const queryClient = useQueryClient();
+  const invoiceAccess = useResourceAccess("purchase_invoices");
   const [form] = Form.useForm();
 
   const [lines, setLines] = useState(() => []);
@@ -179,6 +187,12 @@ export default function GoodsReceiptDrawer({
 
   const effectiveStatus = loadedStatus ?? (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
   const readOnly = mode === "view" || !isGoodsReceiptDraft(effectiveStatus);
+  const canCreateInvoice = useMemo(() => {
+    if (!invoiceAccess.canAdd || !isGoodsReceiptPosted(effectiveStatus) || !receiptId) return false;
+    const fromDetail = goodsReceiptCanCreateInvoice(detailQuery.data ?? null);
+    if (fromDetail != null) return fromDetail;
+    return goodsReceiptCanCreateInvoice(tableSeedRecord) === true;
+  }, [detailQuery.data, effectiveStatus, invoiceAccess.canAdd, receiptId, tableSeedRecord]);
 
   const formValuesWatch = Form.useWatch([], form);
   const watchedPoId = Form.useWatch("purchase_order_id", form);
@@ -306,6 +320,54 @@ export default function GoodsReceiptDrawer({
     });
   }, [modal, t, deleteMutation, loadedNumber]);
 
+  const handleCreateInvoice = useCallback(async () => {
+    if (detailQuery.isPending) return;
+    if (detailQuery.isError) {
+      notification.error({
+        title: t("loadError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, detailQuery.error),
+      });
+      return;
+    }
+    const id = receiptId;
+    if (id == null) return;
+    try {
+      const cached = detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null;
+      const receipt = Array.isArray(cached?.lines)
+        ? cached
+        : await queryClient.fetchQuery({
+            queryKey: [...GOODS_RECEIPT_DETAIL_QUERY_PREFIX, id],
+            queryFn: () => fetchGoodsReceipt(id),
+            staleTime: 0,
+          });
+      tryOpenPurchaseInvoiceFromGoodsReceipt({
+        receipt: /** @type {Record<string, unknown>} */ (receipt),
+        receiptId: id,
+        openDrawer,
+        message,
+        t: tPi,
+      });
+    } catch (err) {
+      notification.error({
+        title: t("loadError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    }
+  }, [
+    detailQuery.data,
+    detailQuery.error,
+    detailQuery.isError,
+    detailQuery.isPending,
+    message,
+    notification,
+    openDrawer,
+    queryClient,
+    receiptId,
+    t,
+    tApiErrors,
+    tPi,
+  ]);
+
   const patchLine = useCallback((index, patch) => {
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   }, []);
@@ -378,9 +440,11 @@ export default function GoodsReceiptDrawer({
           postDisabled={!canPost}
           showDelete={!readOnly && receiptId != null}
           showPost={!readOnly}
+          showCreateInvoice={canCreateInvoice}
           onSave={handleSave}
           onPost={handlePost}
           onDelete={handleDelete}
+          onCreateInvoice={handleCreateInvoice}
         />
       }
     >

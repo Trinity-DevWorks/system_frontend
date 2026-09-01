@@ -9,6 +9,8 @@ import dayjs from "dayjs";
  * @param {{
  *   form: import("antd").FormInstance;
  *   readOnly: boolean;
+ *   linkedToGoodsReceipt?: boolean;
+ *   goodsReceiptNumber?: string | null;
  *   supplierOptions: { value: string; label: string }[];
  *   currencyOptions: { value: number; label: string }[];
  *   paymentTermOptions: { value: number; label: string }[];
@@ -19,6 +21,8 @@ import dayjs from "dayjs";
 export default function PurchaseInvoiceDrawerForm({
   form,
   readOnly,
+  linkedToGoodsReceipt = false,
+  goodsReceiptNumber = null,
   supplierOptions,
   currencyOptions,
   paymentTermOptions,
@@ -27,6 +31,15 @@ export default function PurchaseInvoiceDrawerForm({
 }) {
   return (
     <Form form={form} layout="vertical" disabled={readOnly} className="space-y-1">
+      <Form.Item name="goods_receipt_id" hidden>
+        <Input />
+      </Form.Item>
+      {goodsReceiptNumber ? (
+        <Form.Item label={t("fieldGoodsReceipt")}>
+          <Input value={goodsReceiptNumber} disabled />
+        </Form.Item>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2">
         <Form.Item
           name="supplier_id"
@@ -39,6 +52,7 @@ export default function PurchaseInvoiceDrawerForm({
             placeholder={t("fieldSupplierPlaceholder")}
             options={supplierOptions}
             loading={catalogsPending}
+            disabled={readOnly || linkedToGoodsReceipt}
             getPopupContainer={drawerSelectGetPopup}
           />
         </Form.Item>

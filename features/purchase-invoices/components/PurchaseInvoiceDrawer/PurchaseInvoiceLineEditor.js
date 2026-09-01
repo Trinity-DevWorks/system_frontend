@@ -46,6 +46,7 @@ function PiLineUomField({ itemId, value, readOnly, t, onChange }) {
  * @param {{
  *   lines: import("../../utils/purchaseInvoiceDrawerUtils").PiLineFormRow[];
  *   readOnly: boolean;
+ *   linkedToGoodsReceipt?: boolean;
  *   itemOptions?: { value: string; label: string }[];
  *   itemsPending?: boolean;
  *   onPatchLine: (index: number, patch: Partial<import("../../utils/purchaseInvoiceDrawerUtils").PiLineFormRow>) => void;
@@ -57,6 +58,7 @@ function PiLineUomField({ itemId, value, readOnly, t, onChange }) {
 export default function PurchaseInvoiceLineEditor({
   lines,
   readOnly,
+  linkedToGoodsReceipt = false,
   itemOptions = [],
   itemsPending = false,
   onPatchLine,
@@ -89,7 +91,7 @@ export default function PurchaseInvoiceLineEditor({
           <LinesGrid
             columns={columns}
             lines={lines}
-            canAddLine={!readOnly}
+            canAddLine={!readOnly && !linkedToGoodsReceipt}
             onAddLine={onAddLine ?? (() => {})}
             addLabel={t("panelAddRow")}
             deleteAriaLabel={t("panelDeleteConfirm")}
@@ -99,7 +101,8 @@ export default function PurchaseInvoiceLineEditor({
               const row =
                 /** @type {import("../../utils/purchaseInvoiceDrawerUtils").PiLineFormRow} */ (line);
               if (columnKey === "item") {
-                if (readOnly) {
+                const lockItem = readOnly || Boolean(row.goods_receipt_line_id);
+                if (lockItem) {
                   return <Input value={row.item_label || row.item_id || ""} disabled />;
                 }
                 return (
@@ -133,7 +136,8 @@ export default function PurchaseInvoiceLineEditor({
                 );
               }
               if (columnKey === "uom") {
-                if (readOnly) {
+                const lockUom = readOnly || Boolean(row.goods_receipt_line_id);
+                if (lockUom) {
                   return <Input value={row.item_uom_label || t("baseUomOption")} disabled />;
                 }
                 return (

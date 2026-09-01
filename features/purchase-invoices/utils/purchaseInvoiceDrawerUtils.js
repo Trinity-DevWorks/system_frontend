@@ -20,6 +20,8 @@ export const PI_BASE_UOM = /** @type {const} */ ("base");
  *   line_subtotal?: number | null;
  *   tax_amount?: number | null;
  *   line_total?: number | null;
+ *   goods_receipt_line_id?: number;
+ *   purchase_order_line_id?: number;
  *   notes?: string;
  * }} PiLineFormRow
  */
@@ -29,6 +31,7 @@ export function getPurchaseInvoiceDefaults() {
     supplier_id: undefined,
     currency_id: undefined,
     payment_terms_id: undefined,
+    goods_receipt_id: undefined,
     invoice_date: dayjs(),
     due_date: undefined,
     supplier_reference: "",
@@ -58,6 +61,7 @@ export function mapPiRecordToForm(record) {
     currency_id: record.currency_id != null ? Number(record.currency_id) : undefined,
     payment_terms_id:
       record.payment_terms_id != null ? Number(record.payment_terms_id) : undefined,
+    goods_receipt_id: record.goods_receipt_id ?? undefined,
     invoice_date: record.invoice_date ? dayjs(String(record.invoice_date)) : dayjs(),
     due_date: record.due_date ? dayjs(String(record.due_date)) : undefined,
     supplier_reference: typeof record.supplier_reference === "string" ? record.supplier_reference : "",
@@ -90,6 +94,10 @@ export function mapPiLinesFromApi(lines) {
     line_subtotal: line.line_subtotal != null ? Number(line.line_subtotal) : undefined,
     tax_amount: line.tax_amount != null ? Number(line.tax_amount) : undefined,
     line_total: line.line_total != null ? Number(line.line_total) : undefined,
+    goods_receipt_line_id:
+      line.goods_receipt_line_id != null ? Number(line.goods_receipt_line_id) : undefined,
+    purchase_order_line_id:
+      line.purchase_order_line_id != null ? Number(line.purchase_order_line_id) : undefined,
     notes: typeof line.notes === "string" ? line.notes : "",
   }));
 }
@@ -123,6 +131,8 @@ export function getPersistablePiLines(lines) {
     quantity: line.quantity,
     item_uom_id: line.item_uom_id === PI_BASE_UOM || line.item_uom_id == null ? null : Number(line.item_uom_id),
     unit_price: line.unit_price,
+    goods_receipt_line_id: line.goods_receipt_line_id ?? null,
+    purchase_order_line_id: line.purchase_order_line_id ?? null,
     notes: line.notes?.trim() ? line.notes.trim() : null,
   }));
 }
@@ -138,6 +148,7 @@ export function piHeaderToPayload(values) {
       values.payment_terms_id != null && values.payment_terms_id !== ""
         ? Number(values.payment_terms_id)
         : null,
+    goods_receipt_id: values.goods_receipt_id ?? null,
     invoice_date: values.invoice_date
       ? dayjs(/** @type {import("dayjs").ConfigType} */ (values.invoice_date)).format("YYYY-MM-DD")
       : undefined,
@@ -173,7 +184,7 @@ export function canSavePiDraft(values, _lines = []) {
  */
 export function isPiHeaderDirtyVsBaseline(form, baseline) {
   const values = form.getFieldsValue(true);
-  const keys = ["supplier_id", "currency_id", "payment_terms_id", "supplier_reference", "notes"];
+  const keys = ["supplier_id", "currency_id", "payment_terms_id", "goods_receipt_id", "supplier_reference", "notes"];
   for (const key of keys) {
     if (normalizeComparable(values?.[key]) !== normalizeComparable(baseline?.[key])) {
       return true;

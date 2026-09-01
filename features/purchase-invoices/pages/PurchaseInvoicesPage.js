@@ -2,12 +2,14 @@
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { deletePurchaseInvoice } from "../api/purchaseInvoices.api";
+import { deletePurchaseInvoice, postPurchaseInvoice } from "../api/purchaseInvoices.api";
 import { PURCHASE_INVOICES_QUERY_KEY } from "../queries/purchaseInvoiceQueryKeys";
+import { GOODS_RECEIPT_DETAIL_QUERY_PREFIX, GOODS_RECEIPTS_QUERY_KEY } from "@/features/stock/queries/stockQueryKeys";
 import { usePurchaseInvoicesTableQuery } from "../queries/usePurchaseInvoicesTableQuery";
 import { getPurchaseInvoiceTableColumns } from "../components/PurchaseInvoiceTable/getPurchaseInvoiceTableColumns";
 import {
@@ -102,6 +104,22 @@ function PurchaseInvoicesTable() {
     },
   });
 
+  const postMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => postPurchaseInvoice(id),
+    onSuccess: () => {
+      message.success(t("postSuccess"));
+      queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: GOODS_RECEIPTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: GOODS_RECEIPT_DETAIL_QUERY_PREFIX });
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("postError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
   const handleDelete = useCallback(
     (record) => {
       const id = normalizeEntityId(record?.id);
@@ -119,14 +137,30 @@ function PurchaseInvoicesTable() {
     [modal, t, deleteMutation],
   );
 
+  const handlePost = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("postConfirmTitle"),
+        content: t("postConfirmContent"),
+        okText: t("actionPost"),
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(postMutation.mutateAsync(id)),
+      });
+    },
+    [modal, t, postMutation],
+  );
+
   const columns = useMemo(
     () =>
       getPurchaseInvoiceTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
+        onPost: access.canEdit ? handlePost : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, handleDelete],
+    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, handleDelete, handlePost],
   );
 
   return (

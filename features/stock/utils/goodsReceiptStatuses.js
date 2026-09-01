@@ -18,3 +18,10 @@ export function getGoodsReceiptStatusLabel(t, status) {
 export function isGoodsReceiptDraft(status) {
   return status === "draft" || status == null;
 }
+
+/**
+ * @param {string | null | undefined} status
+ */
+export function isGoodsReceiptPosted(status) {
+  return status === "posted";
+}

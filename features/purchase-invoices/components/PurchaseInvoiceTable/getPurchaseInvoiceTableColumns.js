@@ -3,7 +3,7 @@ import {
   getPurchaseInvoiceStatusLabel,
   isPurchaseInvoiceDraft,
 } from "../../utils/purchaseInvoiceStatuses";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Tag } from "antd";
 
 /**
@@ -12,10 +12,11 @@ import { Button, Dropdown, Tag } from "antd";
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
+ *   onPost?: (record: unknown) => void;
  * }} [actions]
  */
 export function getPurchaseInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete } = actions;
+  const { onView, onEdit, onDelete, onPost } = actions;
 
   return [
     {
@@ -97,6 +98,14 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
             icon: <EyeOutlined />,
             label: t("actionView"),
             onClick: () => onView(record),
+          });
+        }
+        if (onPost && isPurchaseInvoiceDraft(record?.status) && Number(record?.lines_count) > 0) {
+          items.push({
+            key: "post",
+            icon: <CheckCircleOutlined />,
+            label: t("actionPost"),
+            onClick: () => onPost(record),
           });
         }
         if (onEdit && isPurchaseInvoiceDraft(record?.status)) {

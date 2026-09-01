@@ -1,6 +1,6 @@
 import { formatTenantDate, formatTenantDateTime } from "@/lib/tenant-format";
-import { getGoodsReceiptStatusLabel, isGoodsReceiptDraft } from "../../utils/goodsReceiptStatuses";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
+import { getGoodsReceiptStatusLabel, isGoodsReceiptDraft, isGoodsReceiptPosted } from "../../utils/goodsReceiptStatuses";
+import { DeleteOutlined, EditOutlined, EyeOutlined, FileTextOutlined, MoreOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Tag } from "antd";
 
 /**
@@ -9,10 +9,11 @@ import { Button, Dropdown, Tag } from "antd";
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
+ *   onCreateInvoice?: (record: unknown) => void;
  * }} [actions]
  */
 export function getGoodsReceiptTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete } = actions;
+  const { onView, onEdit, onDelete, onCreateInvoice } = actions;
 
   return [
     {
@@ -82,6 +83,14 @@ export function getGoodsReceiptTableColumns(t, actions = {}) {
         const items = [];
         if (onView) {
           items.push({ key: "view", icon: <EyeOutlined />, label: t("actionView"), onClick: () => onView(record) });
+        }
+        if (onCreateInvoice && isGoodsReceiptPosted(record?.status) && record?.can_invoice) {
+          items.push({
+            key: "invoice",
+            icon: <FileTextOutlined />,
+            label: t("actionCreatePurchaseInvoice"),
+            onClick: () => onCreateInvoice(record),
+          });
         }
         if (onEdit && isGoodsReceiptDraft(record?.status)) {
           items.push({ key: "edit", icon: <EditOutlined />, label: t("actionEdit"), onClick: () => onEdit(record) });

@@ -4,6 +4,7 @@ import {
   PURCHASE_INVOICE_DETAIL_QUERY_PREFIX,
   PURCHASE_INVOICES_QUERY_KEY,
 } from "./purchaseInvoiceQueryKeys";
+import { GOODS_RECEIPT_DETAIL_QUERY_PREFIX, GOODS_RECEIPTS_QUERY_KEY } from "@/features/stock/queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { normalizeEntityId } from "@/lib/entityId";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
@@ -57,6 +58,8 @@ export function usePurchaseInvoiceDrawerMutations({
 
   const invalidateList = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICES_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: GOODS_RECEIPTS_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: GOODS_RECEIPT_DETAIL_QUERY_PREFIX });
   }, [queryClient]);
 
   const cacheDetail = useCallback(

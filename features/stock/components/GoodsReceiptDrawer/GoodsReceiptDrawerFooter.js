@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "antd";
 import StockDocumentDrawerFooter from "../StockDocumentDrawerFooter";
 
 /**
@@ -13,9 +14,11 @@ import StockDocumentDrawerFooter from "../StockDocumentDrawerFooter";
  *   postDisabled: boolean;
  *   showDelete: boolean;
  *   showPost: boolean;
+ *   showCreateInvoice?: boolean;
  *   onSave: () => void;
  *   onPost: () => void;
  *   onDelete: () => void;
+ *   onCreateInvoice?: () => void;
  * }} props
  */
 export default function GoodsReceiptDrawerFooter(props) {
@@ -26,6 +29,13 @@ export default function GoodsReceiptDrawerFooter(props) {
       showPrimary={props.showPost}
       primaryLabel={props.t("actionPostGrn")}
       onPrimary={props.onPost}
+      readOnlyExtras={
+        props.showCreateInvoice ? (
+          <Button type="primary" onClick={props.onCreateInvoice}>
+            {props.t("actionCreatePurchaseInvoice")}
+          </Button>
+        ) : null
+      }
     />
   );
 }

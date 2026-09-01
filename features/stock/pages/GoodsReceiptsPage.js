@@ -3,19 +3,21 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { GOODS_RECEIPTS_QUERY_KEY } from "../queries/stockQueryKeys";
+import { GOODS_RECEIPT_DETAIL_QUERY_PREFIX, GOODS_RECEIPTS_QUERY_KEY } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
+import { tryOpenPurchaseInvoiceFromGoodsReceipt } from "@/features/purchase-invoices/utils/purchaseInvoiceFromGoodsReceipt";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { deleteGoodsReceipt } from "../api/goodsReceipts.api";
+import { deleteGoodsReceipt, fetchGoodsReceipt } from "../api/goodsReceipts.api";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { GOODS_RECEIPT_STATUS_VALUES, getGoodsReceiptStatusLabel } from "../utils/goodsReceiptStatuses";
 import {
   formatStockFilterDateRange,
@@ -28,10 +30,14 @@ import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
 
 function GoodsReceiptsTable() {
   const t = useTranslations("Stock");
+  const tPi = useTranslations("PurchaseInvoices");
   const tApiErrors = useTranslations("ApiErrors");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const access = useResourceAccess("stock");
+  const invoiceAccess = useResourceAccess("purchase_invoices");
+  const { openDrawer } = useGlobalDrawer();
+  const createInvoiceInflightRef = useRef(/** @type {string | null} */ (null));
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [warehouseFilter, setWarehouseFilter] = useState(
@@ -129,6 +135,39 @@ function GoodsReceiptsTable() {
     [modal, t, deleteMutation],
   );
 
+  const handleCreateInvoice = useCallback(
+    async (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      if (createInvoiceInflightRef.current === id) return;
+      createInvoiceInflightRef.current = id;
+      try {
+        const receipt = await queryClient.fetchQuery({
+          queryKey: [...GOODS_RECEIPT_DETAIL_QUERY_PREFIX, id],
+          queryFn: () => fetchGoodsReceipt(id),
+          staleTime: 0,
+        });
+        tryOpenPurchaseInvoiceFromGoodsReceipt({
+          receipt: /** @type {Record<string, unknown>} */ (receipt),
+          receiptId: id,
+          openDrawer,
+          message,
+          t: tPi,
+        });
+      } catch (err) {
+        notification.error({
+          title: t("loadError"),
+          description: getLocalizedApiErrorMessage(tApiErrors, err),
+        });
+      } finally {
+        if (createInvoiceInflightRef.current === id) {
+          createInvoiceInflightRef.current = null;
+        }
+      }
+    },
+    [message, notification, openDrawer, queryClient, t, tApiErrors, tPi],
+  );
+
   const statusLabel = useMemo(() => {
     if (!statusFilter) return null;
     return statusFilterOptions.find((o) => o.value === statusFilter)?.label ?? statusFilter;
@@ -167,8 +206,19 @@ function GoodsReceiptsTable() {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
+        onCreateInvoice: invoiceAccess.canAdd ? handleCreateInvoice : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, handleDelete],
+    [
+      t,
+      access.canView,
+      access.canEdit,
+      access.canDelete,
+      invoiceAccess.canAdd,
+      openViewDrawer,
+      openEditDrawer,
+      handleDelete,
+      handleCreateInvoice,
+    ],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({

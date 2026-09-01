@@ -3,11 +3,19 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { PURCHASE_INVOICE_DETAIL_QUERY_PREFIX } from "../../queries/purchaseInvoiceQueryKeys";
+import { GOODS_RECEIPT_DETAIL_QUERY_PREFIX } from "@/features/stock/queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { formatTenantMoney } from "@/lib/tenant-format";
+import { useCompanySettings } from "@/lib/company-settings";
 import { fetchPurchaseInvoice } from "../../api/purchaseInvoices.api";
+import { fetchGoodsReceipt } from "@/features/stock/api/goodsReceipts.api";
+import {
+  goodsReceiptHasOpenToInvoice,
+  mapGoodsReceiptToPiCreateSeed,
+  PI_GR_NO_OPEN_QTY_MESSAGE_KEY,
+} from "../../utils/purchaseInvoiceFromGoodsReceipt";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
@@ -35,6 +43,7 @@ import { usePurchaseInvoiceDrawerMutations } from "../../queries/usePurchaseInvo
  *   mode: "create" | "edit" | "view";
  *   invoiceId: string | null;
  *   tableSeedRecord?: Record<string, unknown> | null;
+ *   fromGoodsReceiptId?: string | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
  * }} props
@@ -44,6 +53,7 @@ export default function PurchaseInvoiceDrawer({
   mode,
   invoiceId,
   tableSeedRecord = null,
+  fromGoodsReceiptId = null,
   onClose,
   onCreated,
 }) {
@@ -57,6 +67,8 @@ export default function PurchaseInvoiceDrawer({
   const [headerBaseline, setHeaderBaseline] = useState(() => getPurchaseInvoiceDefaults());
   const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
   const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
+  const [loadedGrNumber, setLoadedGrNumber] = useState(/** @type {string | null} */ (null));
+  const [loadedSupplierName, setLoadedSupplierName] = useState(/** @type {string | null} */ (null));
   const [totals, setTotals] = useState({
     subtotal: /** @type {string | null} */ (null),
     tax_total: /** @type {string | null} */ (null),
@@ -69,6 +81,10 @@ export default function PurchaseInvoiceDrawer({
     return getPurchaseInvoiceDefaults();
   }, [open]);
   const loadedDetailVersionRef = useRef(0);
+  const appliedGrSeedIdRef = useRef(/** @type {string | null} */ (null));
+  const warnedNoOpenQtyGrIdRef = useRef(/** @type {string | null} */ (null));
+  const createResetKeyRef = useRef(/** @type {string | null} */ (null));
+  const { settings: companySettings } = useCompanySettings();
 
   const detailEnabled = open && (mode === "edit" || mode === "view") && invoiceId != null;
 
@@ -105,6 +121,10 @@ export default function PurchaseInvoiceDrawer({
       setHeaderBaseline(mapPiRecordToForm(record));
       setLoadedStatus(typeof record.status === "string" ? record.status : null);
       setLoadedNumber(typeof record.invoice_number === "string" ? record.invoice_number : null);
+      setLoadedGrNumber(
+        typeof record.goods_receipt?.grn_number === "string" ? record.goods_receipt.grn_number : null,
+      );
+      setLoadedSupplierName(typeof record.supplier?.name === "string" ? record.supplier.name : null);
       setTotals({
         subtotal: record.subtotal != null ? String(record.subtotal) : null,
         tax_total: record.tax_total != null ? String(record.tax_total) : null,
@@ -125,6 +145,8 @@ export default function PurchaseInvoiceDrawer({
     setHeaderBaseline(defaults);
     setLoadedStatus("draft");
     setLoadedNumber(null);
+    setLoadedGrNumber(null);
+    setLoadedSupplierName(null);
     setTotals({ subtotal: null, tax_total: null, grand_total: null, currency_code: null });
     loadedDetailVersionRef.current = 0;
   }, [form, defaults]);
@@ -132,10 +154,19 @@ export default function PurchaseInvoiceDrawer({
   useLayoutEffect(() => {
     if (!open) {
       loadedDetailVersionRef.current = 0;
+      appliedGrSeedIdRef.current = null;
+      warnedNoOpenQtyGrIdRef.current = null;
+      createResetKeyRef.current = null;
       return;
     }
     if (mode === "create") {
+      const resetKey = `create:${fromGoodsReceiptId ?? ""}`;
+      if (createResetKeyRef.current === resetKey) return;
+      createResetKeyRef.current = resetKey;
       resetCreateDraftState();
+      if (fromGoodsReceiptId) {
+        form.setFieldsValue({ ...defaults, goods_receipt_id: fromGoodsReceiptId });
+      }
       return;
     }
     // Table row has no lines — only paint header metadata until detail loads (see GoodsReceiptDrawer).
@@ -145,7 +176,7 @@ export default function PurchaseInvoiceDrawer({
         typeof tableSeedRecord.invoice_number === "string" ? tableSeedRecord.invoice_number : null,
       );
     }
-  }, [open, mode, invoiceId, tableSeedRecord, resetCreateDraftState]);
+  }, [open, mode, invoiceId, tableSeedRecord, resetCreateDraftState, fromGoodsReceiptId, form, defaults]);
 
   useEffect(() => {
     if (!open || mode === "create" || !detailQuery.isSuccess || !detailQuery.data) return;
@@ -164,6 +195,65 @@ export default function PurchaseInvoiceDrawer({
   ]);
 
   const formValuesWatch = Form.useWatch([], form);
+  const watchedGrId = Form.useWatch("goods_receipt_id", form);
+  const watchedSupplierId = Form.useWatch("supplier_id", form);
+  const watchedCurrencyId = Form.useWatch("currency_id", form);
+  const hasGoodsReceipt = watchedGrId != null && watchedGrId !== "";
+  const grSeedEnabled = open && mode === "create" && isPersistedEntityId(fromGoodsReceiptId || watchedGrId);
+
+  const applyGoodsReceiptSeed = useCallback(
+    (receipt) => {
+      const seed = mapGoodsReceiptToPiCreateSeed(/** @type {Record<string, unknown>} */ (receipt), {
+        currencyId: companySettings.primaryCurrencyId,
+      });
+      if (!seed) {
+        // Incomplete cache (no lines) is not "fully billed" — wait for a refetch.
+        if (goodsReceiptHasOpenToInvoice(receipt) !== false) return false;
+        const grId = String(/** @type {{ id?: unknown }} */ (receipt).id ?? fromGoodsReceiptId ?? "");
+        if (grId && warnedNoOpenQtyGrIdRef.current !== grId) {
+          warnedNoOpenQtyGrIdRef.current = grId;
+          message.warning({ content: t("grNoOpenQty"), key: PI_GR_NO_OPEN_QTY_MESSAGE_KEY });
+        }
+        if (fromGoodsReceiptId) {
+          onClose();
+        } else {
+          setLines([]);
+          setLinesBaseline([]);
+          setLoadedGrNumber(null);
+          setLoadedSupplierName(null);
+          syncBaselineFromFormFields();
+        }
+        return true;
+      }
+      form.setFieldsValue(seed.header);
+      setLines(seed.lines);
+      setLinesBaseline(seed.lines);
+      setHeaderBaseline(seed.header);
+      setLoadedGrNumber(seed.goodsReceiptNumber);
+      setLoadedSupplierName(seed.supplierName);
+      syncBaselineFromFormFields();
+      return true;
+    },
+    [companySettings.primaryCurrencyId, form, fromGoodsReceiptId, message, onClose, syncBaselineFromFormFields, t],
+  );
+
+  const grSeedQuery = useQuery({
+    queryKey: [...GOODS_RECEIPT_DETAIL_QUERY_PREFIX, fromGoodsReceiptId || watchedGrId],
+    queryFn: () => fetchGoodsReceipt(/** @type {string} */ (fromGoodsReceiptId || watchedGrId)),
+    enabled: grSeedEnabled,
+    staleTime: fromGoodsReceiptId ? 0 : QUERY_STALE_TIME.default,
+  });
+
+  useEffect(() => {
+    if (!open || mode !== "create" || !grSeedQuery.isSuccess || !grSeedQuery.data) return;
+    const grId = String(/** @type {{ id?: unknown }} */ (grSeedQuery.data).id ?? "");
+    const stamp = `${grId}:${companySettings.primaryCurrencyId ?? ""}`;
+    if (!grId || appliedGrSeedIdRef.current === stamp) return;
+    if (applyGoodsReceiptSeed(grSeedQuery.data)) {
+      appliedGrSeedIdRef.current = stamp;
+    }
+  }, [open, mode, grSeedQuery.isSuccess, grSeedQuery.data, grSeedQuery.dataUpdatedAt, applyGoodsReceiptSeed, companySettings.primaryCurrencyId]);
+
   const isLinesDirty = useMemo(() => arePiLinesDirty(lines, linesBaseline), [lines, linesBaseline]);
   const isHeaderDirty = useMemo(() => {
     if (mode === "create") return isCreateDirty();
@@ -172,9 +262,14 @@ export default function PurchaseInvoiceDrawer({
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
-    if (mode === "create") return isCreateDirty() || isLinesDirty;
+    if (mode === "create") {
+      if (grSeedEnabled && (grSeedQuery.isPending || (grSeedQuery.isFetching && !loadedGrNumber))) {
+        return false;
+      }
+      return isCreateDirty() || isLinesDirty;
+    }
     return isHeaderDirty || isLinesDirty;
-  }, [readOnly, mode, isCreateDirty, isLinesDirty, isHeaderDirty]);
+  }, [readOnly, mode, grSeedEnabled, grSeedQuery.isPending, grSeedQuery.isFetching, loadedGrNumber, isCreateDirty, isLinesDirty, isHeaderDirty]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,
@@ -260,6 +355,24 @@ export default function PurchaseInvoiceDrawer({
         ? t("drawerEditTitle", { number: loadedNumber })
         : t("drawerTitle");
 
+  const supplierOptionsForForm = useMemo(() => {
+    if (watchedSupplierId == null || watchedSupplierId === "") return supplierOptions;
+    if (supplierOptions.some((o) => String(o.value) === String(watchedSupplierId))) return supplierOptions;
+    return [
+      {
+        value: String(watchedSupplierId),
+        label: loadedSupplierName || String(watchedSupplierId),
+      },
+      ...supplierOptions,
+    ];
+  }, [loadedSupplierName, supplierOptions, watchedSupplierId]);
+
+  const currencyOptionsForForm = useMemo(() => {
+    if (watchedCurrencyId == null || watchedCurrencyId === "") return currencyOptions;
+    if (currencyOptions.some((o) => Number(o.value) === Number(watchedCurrencyId))) return currencyOptions;
+    return [{ value: Number(watchedCurrencyId), label: String(watchedCurrencyId) }, ...currencyOptions];
+  }, [currencyOptions, watchedCurrencyId]);
+
   return (
     <ResourceCrudDrawer
       open={open}
@@ -268,9 +381,14 @@ export default function PurchaseInvoiceDrawer({
       recordName={loadedNumber}
       size={1100}
       submitting={submitting}
-      showDetailLoading={detailEnabled && detailQuery.isPending}
-      detailLoadFailed={Boolean(detailEnabled && detailQuery.isError)}
-      detailError={detailQuery.error}
+      showDetailLoading={
+        (detailEnabled && detailQuery.isPending) ||
+        (grSeedEnabled && (grSeedQuery.isPending || (Boolean(fromGoodsReceiptId) && grSeedQuery.isFetching && !loadedGrNumber)))
+      }
+      detailLoadFailed={Boolean(
+        (detailEnabled && detailQuery.isError) || (grSeedEnabled && grSeedQuery.isError),
+      )}
+      detailError={detailQuery.error ?? grSeedQuery.error}
       tApiErrors={tApiErrors}
       footer={
         <PurchaseInvoiceDrawerFooter
@@ -292,8 +410,10 @@ export default function PurchaseInvoiceDrawer({
       <PurchaseInvoiceDrawerForm
         form={form}
         readOnly={readOnly}
-        supplierOptions={supplierOptions}
-        currencyOptions={currencyOptions}
+        linkedToGoodsReceipt={hasGoodsReceipt || Boolean(loadedGrNumber)}
+        goodsReceiptNumber={loadedGrNumber}
+        supplierOptions={supplierOptionsForForm}
+        currencyOptions={currencyOptionsForForm}
         paymentTermOptions={paymentTermOptions}
         catalogsPending={catalogsPending}
         t={t}
@@ -302,6 +422,7 @@ export default function PurchaseInvoiceDrawer({
       <PurchaseInvoiceLineEditor
         lines={lines}
         readOnly={readOnly}
+        linkedToGoodsReceipt={hasGoodsReceipt || Boolean(loadedGrNumber)}
         itemOptions={itemOptions}
         itemsPending={catalogsPending}
         onPatchLine={(index, patch) => {
