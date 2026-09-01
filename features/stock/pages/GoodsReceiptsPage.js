@@ -202,6 +202,7 @@ function GoodsReceiptsTable() {
 
   const columns = useMemo(
     () =>
+      // eslint-disable-next-line react-hooks/refs -- column factory stores handlers; it does not invoke them
       getGoodsReceiptTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,

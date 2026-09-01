@@ -95,7 +95,28 @@ export default function PurchaseInvoiceDrawer({
     staleTime: QUERY_STALE_TIME.default,
   });
 
-  const isDraft = isPurchaseInvoiceDraft(loadedStatus);
+  const detailMatchesInvoice =
+    mode !== "create" &&
+    detailQuery.data != null &&
+    invoiceId != null &&
+    String(/** @type {{ id?: unknown }} */ (detailQuery.data).id) === String(invoiceId);
+  const effectiveStatus =
+    mode === "create"
+      ? loadedStatus
+      : ((detailMatchesInvoice && typeof detailQuery.data.status === "string"
+          ? detailQuery.data.status
+          : null) ??
+        (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : null) ??
+        loadedStatus);
+  const effectiveNumber =
+    mode === "create"
+      ? loadedNumber
+      : ((detailMatchesInvoice && typeof detailQuery.data.invoice_number === "string"
+          ? detailQuery.data.invoice_number
+          : null) ??
+        (typeof tableSeedRecord?.invoice_number === "string" ? tableSeedRecord.invoice_number : null) ??
+        loadedNumber);
+  const isDraft = isPurchaseInvoiceDraft(effectiveStatus);
   const readOnly = mode === "view" || !isDraft;
   const loadCatalogs = open && !readOnly;
 
@@ -159,24 +180,15 @@ export default function PurchaseInvoiceDrawer({
       createResetKeyRef.current = null;
       return;
     }
-    if (mode === "create") {
-      const resetKey = `create:${fromGoodsReceiptId ?? ""}`;
-      if (createResetKeyRef.current === resetKey) return;
-      createResetKeyRef.current = resetKey;
-      resetCreateDraftState();
-      if (fromGoodsReceiptId) {
-        form.setFieldsValue({ ...defaults, goods_receipt_id: fromGoodsReceiptId });
-      }
-      return;
+    if (mode !== "create") return;
+    const resetKey = `create:${fromGoodsReceiptId ?? ""}`;
+    if (createResetKeyRef.current === resetKey) return;
+    createResetKeyRef.current = resetKey;
+    resetCreateDraftState();
+    if (fromGoodsReceiptId) {
+      form.setFieldsValue({ ...defaults, goods_receipt_id: fromGoodsReceiptId });
     }
-    // Table row has no lines — only paint header metadata until detail loads (see GoodsReceiptDrawer).
-    if (tableSeedRecord && typeof tableSeedRecord === "object") {
-      setLoadedStatus(typeof tableSeedRecord.status === "string" ? tableSeedRecord.status : null);
-      setLoadedNumber(
-        typeof tableSeedRecord.invoice_number === "string" ? tableSeedRecord.invoice_number : null,
-      );
-    }
-  }, [open, mode, invoiceId, tableSeedRecord, resetCreateDraftState, fromGoodsReceiptId, form, defaults]);
+  }, [open, mode, resetCreateDraftState, fromGoodsReceiptId, form, defaults]);
 
   useEffect(() => {
     if (!open || mode === "create" || !detailQuery.isSuccess || !detailQuery.data) return;
@@ -255,10 +267,8 @@ export default function PurchaseInvoiceDrawer({
   }, [open, mode, grSeedQuery.isSuccess, grSeedQuery.data, grSeedQuery.dataUpdatedAt, applyGoodsReceiptSeed, companySettings.primaryCurrencyId]);
 
   const isLinesDirty = useMemo(() => arePiLinesDirty(lines, linesBaseline), [lines, linesBaseline]);
-  const isHeaderDirty = useMemo(() => {
-    if (mode === "create") return isCreateDirty();
-    return isPiHeaderDirtyVsBaseline(form, headerBaseline);
-  }, [mode, isCreateDirty, form, headerBaseline, formValuesWatch]);
+  const isHeaderDirty =
+    mode === "create" ? isCreateDirty() : isPiHeaderDirtyVsBaseline(form, headerBaseline);
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
@@ -340,19 +350,19 @@ export default function PurchaseInvoiceDrawer({
   const handleDelete = useCallback(() => {
     modal.confirm({
       title: t("deleteConfirmTitle"),
-      content: t("deleteConfirmContent", { name: loadedNumber ?? invoiceId }),
+      content: t("deleteConfirmContent", { name: effectiveNumber ?? invoiceId }),
       okText: t("deleteConfirmOk"),
       okButtonProps: { danger: true },
       cancelText: t("drawerCancel"),
       onOk: () => deleteMutation.mutateAsync(),
     });
-  }, [modal, t, deleteMutation, loadedNumber, invoiceId]);
+  }, [modal, t, deleteMutation, effectiveNumber, invoiceId]);
 
   const title =
     mode === "create"
       ? t("drawerCreateTitle")
-      : loadedNumber
-        ? t("drawerEditTitle", { number: loadedNumber })
+      : effectiveNumber
+        ? t("drawerEditTitle", { number: effectiveNumber })
         : t("drawerTitle");
 
   const supplierOptionsForForm = useMemo(() => {
@@ -378,7 +388,7 @@ export default function PurchaseInvoiceDrawer({
       open={open}
       requestClose={requestClose}
       title={title}
-      recordName={loadedNumber}
+      recordName={effectiveNumber}
       size={1100}
       submitting={submitting}
       showDetailLoading={
