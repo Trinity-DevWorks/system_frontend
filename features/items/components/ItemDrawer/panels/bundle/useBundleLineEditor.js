@@ -69,6 +69,7 @@ export function useBundleLineEditor({ itemId, initialLines, t, tApiErrors }) {
     () => [
       { key: "item", label: t("bundleColItem"), width: "minmax(0, 1fr)" },
       { key: "qty", label: t("bundleColQty"), width: "112px" },
+      { key: "uom", label: t("bundleColUom"), width: "120px" },
     ],
     [t],
   );

@@ -5,6 +5,7 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { PRODUCTION_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { fetchProduction } from "../../api/productions.api";
 import { formatItemOptionLabel } from "@/features/items/utils/formatItemLabel";
 import { normalizeEntityId } from "@/lib/entityId";
@@ -288,7 +289,7 @@ export default function ProductionDrawer({
           content: t("prdPostConfirmContent"),
           okText: t("actionPostProduction"),
           cancelText: t("drawerCancel"),
-          onOk: () => postMutation.mutateAsync({ values }),
+          onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
         });
       })
       .catch(() => {});
@@ -301,7 +302,7 @@ export default function ProductionDrawer({
       okText: t("prdDeleteConfirmOk"),
       okButtonProps: { danger: true },
       cancelText: t("drawerCancel"),
-      onOk: () => deleteMutation.mutateAsync(),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
     });
   }, [modal, t, deleteMutation, loadedNumber]);
 

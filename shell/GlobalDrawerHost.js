@@ -155,6 +155,7 @@ export default function GlobalDrawerHost() {
         id,
         mode: "edit",
         seed: record && typeof record === "object" ? record : null,
+        keepInstance: true,
       });
     },
     [openDrawer, session, targetFeatureId],
@@ -279,8 +280,9 @@ export default function GlobalDrawerHost() {
   const { Component, props } = rendered;
   return (
     <DrawerHostPresenceProvider afterOpenChange={handleAfterOpenChange}>
+      {/* Record id is not in the key so Save (keep) can change ?drawer=new → ?drawer=:id without remounting. */}
       <Component
-        key={`${renderState.featureId}:${renderState.recordId ?? "new"}:${renderState.remountKey}`}
+        key={`${renderState.featureId}:${renderState.remountKey}`}
         {...props}
       />
     </DrawerHostPresenceProvider>

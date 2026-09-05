@@ -4,10 +4,13 @@ import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { InputNumber, Select } from "antd";
+import { Select, Typography } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
+import { formatStockQuantity } from "../../utils/formatStockQuantity";
 import { usePurchaseOrderLineUomOptions } from "../../queries/usePurchaseOrderDrawerData";
+import { useStockBalanceOnHand } from "../../queries/useStockBalanceOnHand";
 import InboundLotFields from "../InboundLotFields";
 
 /**
@@ -56,6 +59,46 @@ function quantityBounds(direction, quantity) {
 
 /**
  * @param {{
+ *   itemId?: string;
+ *   warehouseId?: number;
+ *   lotId?: number;
+ *   lotNumber?: string;
+ *   trackLots?: boolean;
+ *   t: (key: string) => string;
+ * }} props
+ */
+function AdjLineOnHandCell({ itemId, warehouseId, lotId, lotNumber, trackLots, t }) {
+  const newLot = Boolean(trackLots) && lotId == null && Boolean(String(lotNumber ?? "").trim());
+  const { quantity, waitingOnWarehouse, waitingOnLot, pending } = useStockBalanceOnHand({
+    itemId,
+    warehouseId,
+    lotId,
+    trackLots,
+    newLot,
+  });
+
+  let label = "—";
+  if (!itemId) {
+    label = "—";
+  } else if (waitingOnWarehouse) {
+    label = t("adjLineOnHandNeedWarehouse");
+  } else if (waitingOnLot) {
+    label = t("adjLineOnHandNeedLot");
+  } else if (pending) {
+    label = "…";
+  } else if (quantity != null && Number.isFinite(quantity)) {
+    label = formatStockQuantity(quantity);
+  }
+
+  return (
+    <Typography.Text type="secondary" className="block truncate tabular-nums">
+      {label}
+    </Typography.Text>
+  );
+}
+
+/**
+ * @param {{
  *   lines: import("../../utils/stockAdjustmentDrawerUtils").AdjLineFormRow[];
  *   readOnly: boolean;
  *   warehouseId?: number;
@@ -84,7 +127,8 @@ export default function StockAdjustmentLineEditor({
 
   const columns = useMemo(
     () => [
-      { key: "item", label: t("adjLineItem"), width: "minmax(220px, 1fr)" },
+      { key: "item", label: t("adjLineItem"), width: "minmax(200px, 1fr)" },
+      { key: "on_hand", label: t("adjLineOnHand"), width: "110px" },
       { key: "quantity", label: t("adjLineQuantity"), width: "130px" },
       { key: "uom", label: t("adjLineUom"), width: "150px" },
       ...(showLotColumn ? [{ key: "lot", label: t("adjLineLot"), width: "220px" }] : []),
@@ -134,6 +178,18 @@ export default function StockAdjustmentLineEditor({
               />
             );
           }
+          if (columnKey === "on_hand") {
+            return (
+              <AdjLineOnHandCell
+                itemId={row.item_id}
+                warehouseId={warehouseId}
+                lotId={row.lot_id}
+                lotNumber={row.lot_number}
+                trackLots={row.track_lots}
+                t={t}
+              />
+            );
+          }
           if (columnKey === "uom") {
             return (
               <AdjLineUomField
@@ -167,10 +223,10 @@ export default function StockAdjustmentLineEditor({
           }
           if (columnKey === "unit_cost") {
             return (
-              <InputNumber
+              <TenantNumberInput
+                kind="money"
                 className="w-full"
                 min={0}
-                step={0.0001}
                 value={row.unit_cost}
                 disabled={readOnly}
                 onChange={(value) => onPatchLine(index, { unit_cost: value ?? undefined })}
@@ -179,7 +235,8 @@ export default function StockAdjustmentLineEditor({
           }
           const bounds = quantityBounds(reasonDirection, row.quantity);
           return (
-            <InputNumber
+            <TenantNumberInput
+              kind="quantity"
               className="w-full"
               min={bounds.min}
               max={bounds.max}

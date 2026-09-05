@@ -6,6 +6,7 @@ import { areSettingsFormValuesDirty } from "../utils/settingsFormDirty";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import {
+  bumpCompanySettingsSync,
   companySettingsQueryKey,
   useCompanySettings,
 } from "@/lib/company-settings";
@@ -121,6 +122,7 @@ export default function CompanySettingsPage() {
       }),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKey, data);
+      bumpCompanySettingsSync();
       setIsDirty(false);
       setIsEditing(false);
       setEditBaseline(null);

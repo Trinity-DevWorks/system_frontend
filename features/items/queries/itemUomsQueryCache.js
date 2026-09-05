@@ -1,7 +1,7 @@
 import { fetchItemUoms } from "../api/itemUoms.api";
 import { ITEMS_LIST_QUERY_KEY } from "./itemsQueryKeys";
 
-/** @param {number} itemId */
+/** @param {string | number} itemId */
 export function itemUomsQueryKey(itemId) {
   return /** @type {const} */ ([...ITEMS_LIST_QUERY_KEY, itemId, "item-uoms"]);
 }

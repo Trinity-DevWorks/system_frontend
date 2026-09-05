@@ -1,6 +1,7 @@
 "use client";
 
-import { Collapse, Form, Input, InputNumber, Switch } from "antd";
+import { Collapse, Form, Input, Switch } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 
 /**
  * @param {{
@@ -70,19 +71,19 @@ export default function CurrencyDrawerForm({ form, readOnly, t }) {
             children: (
               <>
                 <Form.Item name="smallest_unit" label={t("fieldSmallestUnit")}>
-                  <InputNumber min={0} className="w-full" controls={false} />
+                  <TenantNumberInput kind="money" min={0} className="w-full" controls={false} />
                 </Form.Item>
                 <Form.Item name="round_limit" label={t("fieldRoundLimit")}>
-                  <InputNumber min={0} className="w-full" controls={false} />
+                  <TenantNumberInput kind="money" min={0} className="w-full" controls={false} />
                 </Form.Item>
                 <Form.Item name="acceptable_amount_overdue" label={t("fieldAcceptableOverdue")}>
-                  <InputNumber min={0} className="w-full" controls={false} />
+                  <TenantNumberInput kind="money" min={0} className="w-full" controls={false} />
                 </Form.Item>
                 <Form.Item name="allowed_difference_in_receipt" label={t("fieldAllowedDiffReceipt")}>
-                  <InputNumber min={0} className="w-full" controls={false} />
+                  <TenantNumberInput kind="money" min={0} className="w-full" controls={false} />
                 </Form.Item>
                 <Form.Item name="allowed_difference_in_payment" label={t("fieldAllowedDiffPayment")}>
-                  <InputNumber min={0} className="w-full" controls={false} />
+                  <TenantNumberInput kind="money" min={0} className="w-full" controls={false} />
                 </Form.Item>
               </>
             ),

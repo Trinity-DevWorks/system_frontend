@@ -11,10 +11,15 @@
  * - drawer/utils/itemDrawerOptionMappers.js
  * - drawer/utils/itemDrawerMutationCache.js
  * - drawer/panels/bundle/ItemBundlePanel.js
+ * - drawer/panels/recipe/ItemRecipePanel.js
  */
 
 import { normalizeHexColor } from "@/lib/drawer/normalizeHexColor";
 import { ITEM_TYPE_FLAG_DEFAULTS } from "./itemDrawerConstants";
+
+/** Matches backend RecipeRules allowed / disallowed ingredient types. */
+const RECIPE_INGREDIENT_TYPE_CODES = new Set(["INGREDIENT", "INVENTORY", "PRODUCE"]);
+const RECIPE_DISALLOWED_INGREDIENT_TYPE_CODES = new Set(["BUNDLE", "SERVICE", "NON_INVENTORY"]);
 
 function optionalRelationId(value) {
   if (value == null || value === "") return null;
@@ -60,6 +65,26 @@ export function isBundleItem(record) {
  */
 export function isProduceItem(record) {
   return getItemTypeCode(record) === "PRODUCE";
+}
+
+/**
+ * Items that can appear on a recipe line (excludes the produced item, inactive,
+ * non-stock, and types the API rejects).
+ *
+ * @param {unknown} record
+ * @param {string | number | null | undefined} producedItemId
+ */
+export function isAllowedRecipeIngredient(record, producedItemId) {
+  if (!record || typeof record !== "object") return false;
+  const row = /** @type {{ id?: string | number; is_active?: boolean; track_inventory?: boolean }} */ (record);
+  if (producedItemId != null && String(row.id) === String(producedItemId)) return false;
+  if (row.is_active === false) return false;
+  if (row.track_inventory === false) return false;
+  const code = getItemTypeCode(record);
+  if (RECIPE_DISALLOWED_INGREDIENT_TYPE_CODES.has(code)) return false;
+  // Names payloads can omit item_type; the API allows an empty type code.
+  if (code !== "" && !RECIPE_INGREDIENT_TYPE_CODES.has(code)) return false;
+  return true;
 }
 
 /**

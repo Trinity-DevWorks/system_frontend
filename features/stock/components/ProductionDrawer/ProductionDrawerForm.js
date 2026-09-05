@@ -1,7 +1,8 @@
 "use client";
 
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { Alert, Col, DatePicker, Form, Input, InputNumber, Row, Select, Space } from "antd";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { Alert, Col, DatePicker, Form, Input, Row, Select, Space } from "antd";
 import dayjs from "dayjs";
 import InboundLotFields from "../InboundLotFields";
 
@@ -77,7 +78,7 @@ export default function ProductionDrawerForm({
               value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
             })}
           >
-            <DatePicker className="w-full" format={dayjsDatePattern()} />
+            <DatePicker className="w-[calc(7rem+52px)]" format={dayjsDatePattern()} />
           </Form.Item>
         </Col>
         <Col xs={24} md={12}>
@@ -100,24 +101,23 @@ export default function ProductionDrawerForm({
         </Col>
         <Col xs={24} md={12}>
           <Form.Item label={t("prdFieldQuantity")} required>
-            <Space.Compact block className="w-full">
-              <div className="min-w-0 flex-1">
-                <Form.Item
-                  name="quantity"
-                  noStyle
-                  rules={[{ required: true, message: t("prdQuantityRequired") }]}
-                >
-                  <InputNumber className="w-full" min={0.000001} />
-                </Form.Item>
-              </div>
+            <Space.Compact>
+              <Form.Item
+                name="quantity"
+                noStyle
+                rules={[{ required: true, message: t("prdQuantityRequired") }]}
+              >
+                <TenantNumberInput kind="quantity" className="w-28" min={0.000001} />
+              </Form.Item>
               {recipeUom ? (
                 <Input
                   readOnly
                   value={recipeUom}
                   tabIndex={-1}
                   aria-hidden
-                  className="!w-auto max-w-[8rem] shrink-0 flex-none text-center"
-                  styles={{ input: { textAlign: "center" } }}
+                  className="!w-[3.25rem] shrink-0 px-1 text-center"
+                  style={{ width: 52 }}
+                  styles={{ input: { textAlign: "center", width: 52 } }}
                 />
               ) : null}
             </Space.Compact>
@@ -125,9 +125,9 @@ export default function ProductionDrawerForm({
         </Col>
       </Row>
 
-      {recipePending ? <Alert type="info" showIcon message={t("prdRecipeLoading")} className="mb-4" /> : null}
-      {recipeMissing ? <Alert type="warning" showIcon message={t("prdNoRecipe")} className="mb-4" /> : null}
-      {recipeEmpty ? <Alert type="warning" showIcon message={t("prdNoIngredients")} className="mb-4" /> : null}
+      {recipePending ? <Alert type="info" showIcon title={t("prdRecipeLoading")} className="mb-4" /> : null}
+      {recipeMissing ? <Alert type="warning" showIcon title={t("prdNoRecipe")} className="mb-4" /> : null}
+      {recipeEmpty ? <Alert type="warning" showIcon title={t("prdNoIngredients")} className="mb-4" /> : null}
       {yieldHint ? <p className="mb-4 text-sm text-[var(--ant-color-text-secondary)]">{yieldHint}</p> : null}
 
       {produceTrackLots ? (

@@ -1,11 +1,13 @@
 "use client";
 
+import { formatTenantNumber } from "@/lib/tenant-format";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 
 import { fetchCurrencyNames, fetchCurrencyPairRates, fetchOnlineExchangeRates, updateCurrency } from "../../api/currencies.api";
 import { SwapOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Button, InputNumber, Modal, Select, Space, Spin, Typography } from "antd";
+import { App, Button, Modal, Select, Space, Spin, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { CURRENCIES_LIST_QUERY_KEY } from "../../queries/currenciesQueryKeys";
@@ -298,7 +300,8 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
           placeholder={t("pairTo")}
           options={currencyOptions}
         />
-        <InputNumber
+        <TenantNumberInput
+          kind="rate"
           className="w-full"
           value={newRate}
           onChange={setNewRate}
@@ -337,7 +340,8 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
               <Typography.Text code>{row.to_code}</Typography.Text>
               <span className="mx-1 text-slate-400">|</span>
               {editingKey === row.key ? (
-                <InputNumber
+                <TenantNumberInput
+                  kind="rate"
                   min={0.000001}
                   step={0.000001}
                   controls={false}
@@ -345,7 +349,12 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
                   onChange={setEditRate}
                 />
               ) : (
-                <Typography.Text>{String(row.rate)}</Typography.Text>
+                <Typography.Text>
+                  {formatTenantNumber(row.rate, {
+                    decimals: 6,
+                    trimTrailingZeros: true,
+                  }) || "—"}
+                </Typography.Text>
               )}
               <div className="ml-auto">
                 {editingKey === row.key ? (

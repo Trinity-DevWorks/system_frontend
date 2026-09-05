@@ -1,4 +1,4 @@
-import { formatTenantDate } from "@/lib/tenant-format";
+import { formatTenantDate, formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { renderActiveInactiveStatus } from "@/shared/components/tables/ActiveStatusBadge";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -96,10 +96,16 @@ export function getSalesmanTableColumns(t, actions = {}) {
           return getSalesmanCommissionTypeLabel(value, t);
         }
         if (value === "percent" && cv != null && cv !== "") {
-          return <span>{String(cv)}%</span>;
+          return (
+            <span>
+              {formatTenantNumber(cv, { decimals: 2, trimTrailingZeros: true }) ||
+                String(cv)}
+              %
+            </span>
+          );
         }
         if (value === "fixed" && cv != null && cv !== "") {
-          return <span>{String(cv)}</span>;
+          return <span>{formatTenantMoney(cv) || String(cv)}</span>;
         }
         if (cv != null && cv !== "") {
           const label = getSalesmanCommissionTypeLabel(value, t);
@@ -107,7 +113,7 @@ export function getSalesmanTableColumns(t, actions = {}) {
             <span>
               {label}
               <Typography.Text type="secondary" className="ml-1 text-xs">
-                ({String(cv)})
+                ({formatTenantMoney(cv) || String(cv)})
               </Typography.Text>
             </span>
           );

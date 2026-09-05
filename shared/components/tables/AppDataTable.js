@@ -25,6 +25,7 @@ import {
   saveTableDensity,
 } from "@/lib/table-prefs-storage";
 import { useLocalPreferenceUserId } from "@/lib/local-preference-user";
+import { useCompanySettings } from "@/lib/company-settings";
 import {
   App,
   Button,
@@ -40,11 +41,16 @@ import {
   Typography,
 } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ColumnDragShell, SortableTableBodyCell, SortableTableHeaderCell } from "@/shared/components/tables/AppDataTableColumnDrag";
 
 const DEFAULT_SCROLL_X = 1000;
 const PICKER_SKIP = new Set(["actions"]);
+
+/** Ant Design Space treats `null`/`false` children as items on the client (hydration mismatch). */
+function spaceChildren(nodes) {
+  return nodes.filter(Boolean);
+}
 
 /**
  * Reusable list shell: toolbar, filters, density, column visibility, selection bar,
@@ -86,6 +92,9 @@ const PICKER_SKIP = new Set(["actions"]);
  * @param {boolean} [props.showSelectionBar]
  * @param {number} [props.scrollX]
  * @param {boolean} [props.enableColumnDrag] Drag-reorder headers (@dnd-kit, like ant.design Table demo); persists order in localStorage.
+ * @param {(record: any, index?: number) => string} [props.rowClassName]
+ * @param {(record: any, index?: number) => object} [props.onRow]
+ * @param {import("antd").TableProps["onChange"]} [props.onTableChange] Forwarded to Ant Table `onChange`.
  * @param {false | {
  *   mode?: "server",
  *   pageSize?: number,
@@ -118,9 +127,14 @@ function AppDataTable({
   scrollX = DEFAULT_SCROLL_X,
   pagination = false,
   enableColumnDrag = false,
+  rowClassName,
+  onRow,
+  onTableChange,
 }) {
   const t = useTranslations("DataTable");
   const { message } = App.useApp();
+  // Re-render cells when date/number/price format changes (column defs are often memoized).
+  useCompanySettings();
   const prefsUserId = useLocalPreferenceUserId();
   const {
     showSearch = true,
@@ -525,6 +539,9 @@ function AppDataTable({
         size={tableSize}
         sticky={false}
         scroll={scroll}
+        rowClassName={rowClassName}
+        onRow={onRow}
+        onChange={onTableChange}
         className="[&_.ant-table]:rounded-none"
         components={columnDndActive && sortableIds.length > 0 ? dragTableComponents : undefined}
       />
@@ -553,6 +570,9 @@ function AppDataTable({
     t,
     tableSize,
     scroll,
+    rowClassName,
+    onRow,
+    onTableChange,
     tableId,
     columnDndActive,
     sortableIds,
@@ -569,73 +589,81 @@ function AppDataTable({
         <div className="flex min-w-0 flex-col gap-2">
           <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <Space wrap size="small" className="min-w-0">
-              {showSearch ? (
-                <Input.Search
-                  allowClear
-                  placeholder={t("searchPlaceholder")}
-                  value={searchDraft}
-                  onChange={(e) => setSearchDraft(e.target.value)}
-                  style={{ minWidth: 200, maxWidth: 320 }}
-                  aria-label={t("searchAria")}
-                />
-              ) : null}
-              {showRefresh && onRefresh ? (
-                <Tooltip title={t("refresh")}>
-                  <Button
-                    icon={<ReloadOutlined spin={loading || refreshFetching} />}
-                    onClick={handleRefresh}
-                    disabled={loading || refreshFetching}
-                    aria-label={t("refresh")}
+              {spaceChildren([
+                showSearch ? (
+                  <Input.Search
+                    key="search"
+                    allowClear
+                    placeholder={t("searchPlaceholder")}
+                    value={searchDraft}
+                    onChange={(e) => setSearchDraft(e.target.value)}
+                    style={{ minWidth: 200, maxWidth: 320 }}
+                    aria-label={t("searchAria")}
                   />
-                </Tooltip>
-              ) : null}
-              <Tooltip
-                title={density === "compact" ? t("densityComfortable") : t("densityCompact")}
-              >
-                <Button
-                  icon={<ColumnHeightOutlined />}
-                  onClick={() =>
-                    setDensityAndSave(density === "compact" ? "comfortable" : "compact")
-                  }
-                  aria-label={t("densityToggleAria")}
-                />
-              </Tooltip>
-              <Dropdown
-                open={columnPickerOpen}
-                onOpenChange={(open, info) => {
-                  if (!open && info?.source === "menu") return;
-                  setColumnPickerOpen(open);
-                }}
-                menu={{ items: columnMenuItems }}
-                trigger={["click"]}
-                disabled={!prefsReady}
-              >
-                <Button icon={<EyeOutlined />} aria-label={t("columnsAria")}>
-                  {t("columns")}
-                </Button>
-              </Dropdown>
-              {extra}
+                ) : null,
+                showRefresh && onRefresh ? (
+                  <Tooltip key="refresh" title={t("refresh")}>
+                    <Button
+                      icon={<ReloadOutlined spin={loading || refreshFetching} />}
+                      onClick={handleRefresh}
+                      disabled={loading || refreshFetching}
+                      aria-label={t("refresh")}
+                    />
+                  </Tooltip>
+                ) : null,
+                <Tooltip
+                  key="density"
+                  title={density === "compact" ? t("densityComfortable") : t("densityCompact")}
+                >
+                  <Button
+                    icon={<ColumnHeightOutlined />}
+                    onClick={() =>
+                      setDensityAndSave(density === "compact" ? "comfortable" : "compact")
+                    }
+                    aria-label={t("densityToggleAria")}
+                  />
+                </Tooltip>,
+                <Dropdown
+                  key="columns"
+                  open={columnPickerOpen}
+                  onOpenChange={(open, info) => {
+                    if (!open && info?.source === "menu") return;
+                    setColumnPickerOpen(open);
+                  }}
+                  menu={{ items: columnMenuItems }}
+                  trigger={["click"]}
+                  disabled={!prefsReady}
+                >
+                  <Button icon={<EyeOutlined />} aria-label={t("columnsAria")}>
+                    {t("columns")}
+                  </Button>
+                </Dropdown>,
+                extra ? <Fragment key="extra">{extra}</Fragment> : null,
+              ])}
             </Space>
             <Space wrap size="small" className="shrink-0 justify-end">
-              {showImportExportCluster && importExportMenuItems.length > 0 ? (
-                <Dropdown
-                  trigger={["click"]}
-                  placement="bottomRight"
-                  menu={{
-                    items: importExportMenuItems,
-                    onClick: handleImportExportMenuClick,
-                  }}
-                >
-                  <Button icon={<ExportOutlined />} aria-label={t("importExportMenuAria")}>
-                    {t("importExportMenu")}
+              {spaceChildren([
+                showImportExportCluster && importExportMenuItems.length > 0 ? (
+                  <Dropdown
+                    key="import-export"
+                    trigger={["click"]}
+                    placement="bottomRight"
+                    menu={{
+                      items: importExportMenuItems,
+                      onClick: handleImportExportMenuClick,
+                    }}
+                  >
+                    <Button icon={<ExportOutlined />} aria-label={t("importExportMenuAria")}>
+                      {t("importExportMenu")}
+                    </Button>
+                  </Dropdown>
+                ) : null,
+                showAdd && onAdd ? (
+                  <Button key="add" type="primary" icon={<PlusOutlined />} onClick={onAdd}>
+                    {addLabel ?? t("add")}
                   </Button>
-                </Dropdown>
-              ) : null}
-              {showAdd && onAdd ? (
-                <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
-                  {addLabel ?? t("add")}
-                </Button>
-              ) : null}
+                ) : null,
+              ])}
             </Space>
           </div>
 

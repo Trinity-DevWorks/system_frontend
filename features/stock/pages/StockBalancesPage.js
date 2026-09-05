@@ -5,10 +5,14 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useResourceAccess } from "@/lib/permissions";
-import { App, Checkbox, Form, Select, Spin } from "antd";
+import { App, Checkbox, Form, Select, Space, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
 import { stockFilterFieldRowClassName, useStockTableFilters } from "../components/StockTableFilters/StockTableFilters";
+import {
+  StockWarehouseViewSwitch,
+  useWarehouseGroupedTable,
+} from "../components/StockWarehouseGroupView";
 import { getStockBalanceTableColumns } from "../components/StockBalancesTable/getStockBalanceTableColumns";
 import { useStockBalancesTableQuery } from "../queries/useStockBalancesTableQuery";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
@@ -24,6 +28,7 @@ function StockBalancesTable() {
 
   const [warehouseFilter, setWarehouseFilter] = useState(/** @type {number | undefined} */ (undefined));
   const [onlyWithStock, setOnlyWithStock] = useState(true);
+  const [viewMode, setViewMode] = useState(/** @type {"list" | "warehouse"} */ ("warehouse"));
 
   const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = useStockBalancesTableQuery({
     t,
@@ -109,6 +114,13 @@ function StockBalancesTable() {
     [t, access.canAdd, openAdjustment],
   );
 
+  const grouped = useWarehouseGroupedTable({
+    enabled: viewMode === "warehouse",
+    rows: tableData,
+    columns,
+    t,
+  });
+
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,
     summary: filterSummary,
@@ -135,9 +147,12 @@ function StockBalancesTable() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppDataTable
         tableId="stock-balances"
-        columns={columns}
-        dataSource={tableData}
-        rowKey={(row) => `${row.item_id}-${row.warehouse_id}-${row.lot_id ?? "n"}`}
+        columns={grouped.columns}
+        dataSource={grouped.dataSource}
+        rowKey={grouped.resolveRowKey((row) => `${row.item_id}-${row.warehouse_id}-${row.lot_id ?? "n"}`)}
+        rowClassName={grouped.rowClassName}
+        onRow={grouped.onRow}
+        onTableChange={grouped.onTableChange}
         loading={isPending}
         refreshFetching={isFetching}
         onRetry={() => refetch()}
@@ -151,7 +166,12 @@ function StockBalancesTable() {
           showAdd: access.canAdd,
           onAdd: () => openAdjustment(),
           addLabel: t("toolbarAdjust"),
-          extra: filterToggle,
+          extra: (
+            <Space size="small" wrap>
+              <StockWarehouseViewSwitch value={viewMode} onChange={setViewMode} t={t} />
+              {filterToggle}
+            </Space>
+          ),
           filterBar,
         }}
         stickyHeader

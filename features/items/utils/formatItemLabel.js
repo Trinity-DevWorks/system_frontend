@@ -7,3 +7,14 @@ export function formatItemOptionLabel(item) {
   const name = String(item?.name ?? item?.id ?? "");
   return code ? `${code} — ${name}` : name;
 }
+
+/**
+ * @param {{ code?: unknown; name?: unknown } | null | undefined} uom
+ * @returns {string}
+ */
+export function formatItemBaseUomLabel(uom) {
+  if (!uom || typeof uom !== "object") return "";
+  const name = typeof uom.name === "string" ? uom.name.trim() : "";
+  const code = typeof uom.code === "string" ? uom.code.trim() : "";
+  return name || code;
+}

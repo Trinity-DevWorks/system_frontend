@@ -10,6 +10,7 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
  */
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { fetchItemBarcodes } from "../../../../api/itemBarcodes.api";
 import { fetchCurrencyNames } from "@/features/currencies/index";
@@ -265,7 +266,7 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     modal.confirm({
       title: t("variantCardDeleteConfirm"),
       okType: "danger",
-      onOk: () => deleteMutation.mutateAsync(Number(row.id)),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(Number(row.id))),
     });
   };
 
