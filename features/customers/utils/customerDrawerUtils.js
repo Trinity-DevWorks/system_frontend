@@ -22,8 +22,16 @@ export const CUSTOMER_LOOKUP_ADD_VAT_GROUP = "__customer_drawer_add_vat_group__"
 /** @param {unknown} value */
 export function optionalRelationId(value) {
   if (value == null || value === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  const s = String(value).trim();
+  if (s === "" || s.startsWith("__")) return null;
+  if (/^-?\d+$/.test(s)) {
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+  return s;
 }
 
 /**
@@ -142,6 +150,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (isVat !== Boolean(defaults.is_vat_registered)) return true;
   if (vat !== String(defaults.vat_number ?? "").trim()) return true;
   if (notes !== String(defaults.notes ?? "").trim()) return true;
+  if (addressesFingerprint(v.addresses) !== addressesFingerprint(defaults.addresses)) return true;
   if (currencyBalancesFingerprint(
     mergeCreditAndOpeningRows(/** @type {unknown[]} */ (v.currency_credit_limits ?? []), /** @type {unknown[]} */ (v.currency_opening_balances ?? [])),
   ) !==
@@ -187,6 +196,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (isVat !== Boolean(row.is_vat_registered)) return true;
   if (vat !== String(row.vat_number ?? "").trim()) return true;
   if (notes !== String(row.notes ?? "").trim()) return true;
+  if (addressesFingerprint(v.addresses) !== addressesFingerprint(row.addresses)) return true;
   if (
     currencyBalancesFingerprint(
       mergeCreditAndOpeningRows(/** @type {unknown[]} */ (v.currency_credit_limits ?? []), /** @type {unknown[]} */ (v.currency_opening_balances ?? [])),
@@ -232,6 +242,7 @@ export function toCustomerCacheRow(row) {
     is_vat_registered: Boolean(row.is_vat_registered),
     vat_number: row.vat_number ?? null,
     notes: row.notes ?? null,
+    addresses: Array.isArray(row.addresses) ? row.addresses : [],
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -280,6 +291,61 @@ function mapMergedBalanceToPayload(row) {
 }
 
 /**
+ * @param {unknown[]} rows
+ */
+function addressesFingerprint(rows) {
+  if (!Array.isArray(rows)) return "";
+  return JSON.stringify(
+    rows.map((raw) => {
+      const r = raw && typeof raw === "object" ? /** @type {Record<string, unknown>} */ (raw) : {};
+      return {
+        id: r.id ?? null,
+        address_type: String(r.address_type ?? ""),
+        address_line_1: String(r.address_line_1 ?? "").trim(),
+        address_line_2: String(r.address_line_2 ?? "").trim(),
+        city: String(r.city ?? "").trim(),
+        state: String(r.state ?? "").trim(),
+        country: String(r.country ?? "").trim(),
+        phone: String(r.phone ?? "").trim(),
+        is_default: Boolean(r.is_default),
+      };
+    }),
+  );
+}
+
+/**
+ * @param {unknown[]} rows
+ */
+function mapAddressesToPayload(rows) {
+  if (!Array.isArray(rows)) return [];
+  /** @type {Record<string, unknown>[]} */
+  const out = [];
+  for (const raw of rows) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = /** @type {Record<string, unknown>} */ (raw);
+    const line1 = String(r.address_line_1 ?? "").trim();
+    if (!line1) continue;
+    /** @type {Record<string, unknown>} */
+    const row = {
+      address_type: r.address_type === "billing" ? "billing" : "shipping",
+      address_line_1: line1,
+      address_line_2: String(r.address_line_2 ?? "").trim() || null,
+      city: String(r.city ?? "").trim(),
+      state: String(r.state ?? "").trim(),
+      country: String(r.country ?? "").trim(),
+      phone: String(r.phone ?? "").trim() || null,
+      is_default: Boolean(r.is_default),
+    };
+    if (r.id != null && r.id !== "") {
+      const id = Number(r.id);
+      if (Number.isFinite(id) && id > 0) row.id = id;
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+/**
  * @param {Record<string, unknown>} values
  * @param {"create" | "edit"} mode
  */
@@ -319,6 +385,7 @@ export function customerFormValuesToPayload(values, mode) {
     is_vat_registered: isVat,
     vat_number: isVat ? (vatNumRaw === "" ? null : vatNumRaw.slice(0, 128)) : null,
     notes: notesRaw === "" ? null : notesRaw,
+    addresses: mapAddressesToPayload(/** @type {unknown[]} */ (values.addresses ?? [])),
   };
 
   if (mode === "create") {

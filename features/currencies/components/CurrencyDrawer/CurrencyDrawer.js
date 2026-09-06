@@ -230,7 +230,6 @@ export default function CurrencyDrawer({ open, mode, currencyId, tableSeedRecord
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={6}
       footer={
         <ResourceDrawerFooter
           mode={mode}

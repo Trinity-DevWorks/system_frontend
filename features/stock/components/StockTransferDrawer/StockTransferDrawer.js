@@ -333,7 +333,6 @@ export default function StockTransferDrawer({
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
       size={1100}
-      skeletonParagraphRows={6}
       footer={
         <StockTransferDrawerFooter
           readOnly={readOnly}

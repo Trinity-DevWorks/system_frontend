@@ -15,6 +15,7 @@ import {
   notificationVisual,
 } from "@/shell/header/notificationFormat";
 import { formatTenantDateTime } from "@/lib/tenant-format";
+import { theme } from "antd";
 import { useLocale, useMessages, useTranslations } from "next-intl";
 
 /**

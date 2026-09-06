@@ -18,6 +18,7 @@ import { Alert, App, Button, Card, Space, Spin, Switch, Tag, Typography, theme }
 import { getNotificationTypeMessage } from "@/shell/header/notificationFormat";
 import { useMessages, useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
+import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 
 const CHANNELS = /** @type {const} */ (["database", "mail"]);
 
@@ -226,7 +227,7 @@ export default function PreferencesPage() {
     </Button>
   ) : (
     <Space wrap>
-      <Button onClick={cancelEditing} disabled={saveMutation.isPending}>
+      <Button {...APP_DISMISS_BUTTON_PROPS} onClick={cancelEditing} disabled={saveMutation.isPending}>
         {t("cancel")}
       </Button>
       <Button

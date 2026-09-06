@@ -248,7 +248,6 @@ export default function PaymentMethodDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={6}
       footer={
         <ResourceDrawerFooter
           mode={mode}

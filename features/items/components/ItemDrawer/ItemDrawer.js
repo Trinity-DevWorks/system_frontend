@@ -49,6 +49,7 @@ import { normalizeEntityId } from "@/lib/entityId";
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  *   onSaveAndNew?: () => void;
+ *   zIndex?: number;
  * }} props
  */
 export default function ItemDrawer({
@@ -60,6 +61,7 @@ export default function ItemDrawer({
   onCreateSuccess,
   onSaveAndNew,
   editSeedRecord = null,
+  zIndex,
 }) {
   const t = useTranslations("Items");
   const tApiErrors = useTranslations("ApiErrors");
@@ -281,11 +283,11 @@ export default function ItemDrawer({
       requestClose={actions.requestClose}
       submitting={submitting}
       size={1170}
+      zIndex={zIndex}
       showDetailLoading={fetchRemoteDetail && detailQuery.isPending}
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={8}
       footer={<ItemDrawerFooter {...footerProps} />}
     >
       {showSaveGeneralFirstAlert ? (

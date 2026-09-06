@@ -302,7 +302,6 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={7}
       footer={
         <ResourceDrawerFooter
           mode={mode}

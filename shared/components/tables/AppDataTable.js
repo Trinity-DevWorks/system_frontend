@@ -174,6 +174,8 @@ function AppDataTable({
   });
   /** Avoid SSR/client hydration mismatch: @dnd-kit aria-describedby ids differ pre/post mount. */
   const [columnDndReady, setColumnDndReady] = useState(false);
+  /** Permissions/token are client-only; checkbox column must not appear in SSR HTML. */
+  const [hasMounted, setHasMounted] = useState(false);
 
   /** `null` on first mount so we treat as table change and load `columnOrder` from localStorage. */
   const lastPrefsScopeRef = useRef(null);
@@ -193,6 +195,10 @@ function AppDataTable({
   useEffect(() => {
     onSearchChangeRef.current = onSearchChange;
   }, [onSearchChange]);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -521,6 +527,8 @@ function AppDataTable({
 
   const showFooter = pagination !== false;
   const tableSize = density === "compact" ? "small" : "middle";
+  const tableRowSelection =
+    hasMounted && rowSelection !== false ? rowSelection : undefined;
 
   const scroll = useMemo(() => ({ x: scrollX }), [scrollX]);
 
@@ -533,7 +541,7 @@ function AppDataTable({
         dataSource={displayedRows}
         loading={loading}
         tableLayout="fixed"
-        rowSelection={rowSelection === false ? undefined : rowSelection}
+        rowSelection={tableRowSelection}
         pagination={false}
         locale={{ emptyText: emptyText ?? t("empty") }}
         size={tableSize}
@@ -565,7 +573,7 @@ function AppDataTable({
     tableColumns,
     displayedRows,
     loading,
-    rowSelection,
+    tableRowSelection,
     emptyText,
     t,
     tableSize,

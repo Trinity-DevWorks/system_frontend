@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { CURRENCIES_LIST_QUERY_KEY } from "../../queries/currenciesQueryKeys";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
+import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 
 const CURRENCY_PAIR_RATES_QUERY_KEY = /** @type {const} */ ([...CURRENCIES_LIST_QUERY_KEY, "pair-rates"]);
 
@@ -380,7 +381,7 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
                         >
                           {t("pairSave")}
                         </Button>
-                        <Button size="small" onClick={() => setEditingKey("")}>
+                        <Button size="small" {...APP_DISMISS_BUTTON_PROPS} onClick={() => setEditingKey("")}>
                           {t("pairCancel")}
                         </Button>
                       </Space>

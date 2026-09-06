@@ -237,7 +237,6 @@ export default function BrandDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={5}
       footer={
         <ResourceDrawerFooter
           mode={mode}

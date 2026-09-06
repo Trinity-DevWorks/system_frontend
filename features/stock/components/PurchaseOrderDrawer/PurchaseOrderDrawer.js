@@ -488,7 +488,6 @@ export default function PurchaseOrderDrawer({
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
       size={1100}
-      skeletonParagraphRows={6}
       footer={
         <PurchaseOrderDrawerFooter
           readOnly={readOnly}

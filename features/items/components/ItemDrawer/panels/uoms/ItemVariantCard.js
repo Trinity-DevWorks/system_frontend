@@ -8,6 +8,7 @@ import ItemVariantBarcodesSection from "./ItemVariantBarcodesSection";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Checkbox, Radio, Select, Tooltip, Typography } from "antd";
 import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
+import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 
 /**
  * @param {Record<string, unknown>} values
@@ -195,7 +196,13 @@ export default function ItemVariantCard({
                 >
                   {t("variantCardSave")}
                 </Button>
-                <Button size="small" icon={<CloseOutlined />} disabled={savePending} onClick={onCancel}>
+                <Button
+                  size="small"
+                  {...APP_DISMISS_BUTTON_PROPS}
+                  icon={<CloseOutlined />}
+                  disabled={savePending}
+                  onClick={onCancel}
+                >
                   {t("uomInlineCancel")}
                 </Button>
                 {canDelete ? deleteButton : null}
