@@ -8,7 +8,7 @@ const DRAWER_STATUS_BADGE_BASE =
   "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium";
 
 /**
- * Drawer header row: title (+ optional record name), status badge, expand and close actions.
+ * Drawer header row: title (+ optional record name), status badge, optional extra meta, expand and close actions.
  *
  * @param {{
  *   title: import("react").ReactNode;
@@ -21,6 +21,7 @@ const DRAWER_STATUS_BADGE_BASE =
  *   onClose: () => void;
  *   closeDisabled?: boolean;
  *   showExpand?: boolean;
+ *   headerExtra?: import("react").ReactNode;
  * }} props
  */
 export default function ResourceDrawerHeader({
@@ -34,13 +35,14 @@ export default function ResourceDrawerHeader({
   onClose,
   closeDisabled = false,
   showExpand = true,
+  headerExtra = null,
 }) {
   const name = typeof recordName === "string" ? recordName.trim() : "";
   const showStatus = statusActive !== null && statusActive !== undefined;
 
   return (
     <div className="resource-drawer-header-inner flex w-full min-w-0 items-center justify-between gap-3">
-      <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      <div className={`flex min-w-0 items-center gap-2.5 ${headerExtra ? "shrink-0" : "flex-1"}`}>
         <Typography.Title level={5} className="!mb-0 min-w-0 truncate !text-base !font-semibold">
           <span>{title}</span>
           {name ? (
@@ -53,6 +55,7 @@ export default function ResourceDrawerHeader({
           </span>
         ) : null}
       </div>
+      {headerExtra ? <div className="min-w-0 flex-1">{headerExtra}</div> : null}
       <Space size={4} className="shrink-0">
         {showExpand && onToggleExpand ? (
           <Button

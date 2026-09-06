@@ -49,6 +49,7 @@ const OLD_MODULE_RULES = [
   { prefix: "/main/items", module: "inventory" },
   { prefix: "/main/stock", module: "inventory" },
   { prefix: "/main/salesmen", module: "sales" },
+  { prefix: "/main/sales-invoices", module: "sales" },
   { prefix: "/main/customer-groups", module: "sales" },
   { prefix: "/main/customers", module: "sales" },
   { prefix: "/main/supplier-groups", module: "purchasing" },
@@ -75,6 +76,7 @@ const OLD_PERMISSION_RULES = [
   { prefix: "/main/items", resource: "items" },
   { prefix: "/main/stock", resource: "stock" },
   { prefix: "/main/salesmen", resource: "salesmen" },
+  { prefix: "/main/sales-invoices", resource: "sales_invoices" },
   { prefix: "/main/customer-groups", resource: "customer_groups" },
   { prefix: "/main/customers", resource: "customers" },
   { prefix: "/main/supplier-groups", resource: "supplier_groups" },
@@ -124,6 +126,7 @@ const OLD_ROUTES = {
   stockStockCounts: "/main/stock/stock-counts",
   stockAdjustmentReasons: "/main/stock/adjustment-reasons",
   customerGroups: "/main/customer-groups",
+  salesInvoices: "/main/sales-invoices",
   customers: "/main/customers",
   supplierGroups: "/main/supplier-groups",
   suppliers: "/main/suppliers",
@@ -229,6 +232,7 @@ const OLD_NAV = [
     key: "sales",
     label: "navSales",
     children: [
+      { key: "/main/sales-invoices", label: "navSalesInvoices", module: "sales", permission: "sales_invoices" },
       { key: "/main/customer-groups", label: "navCustomerGroups", module: "sales", permission: "customer_groups" },
       { key: "/main/customers", label: "navCustomers", module: "sales", permission: "customers" },
     ],
@@ -312,10 +316,11 @@ if (canonical(derived) !== canonical(OLD_NAV)) {
   }
 }
 
-// Every rail row and page row is distinguished only by its icon, so duplicates
-// are a real UX bug rather than a style nit.
+// Leaf pages (and leaf sections like overview) must have unique icons.
+// Parent rail sections may share a glyph with a submenu page; Dropbox/Database
+// collisions are pre-existing and must not be "fixed" by reshuffling those icons.
 const icons = [
-  ...NAV_SECTIONS.map((s) => [s.id, s.icon]),
+  ...NAV_SECTIONS.filter((s) => s.leaf).map((s) => [s.id, s.icon]),
   ...FEATURES.filter((f) => f.nav !== false).map((f) => [f.id, f.icon]),
 ];
 const seen = new Map();

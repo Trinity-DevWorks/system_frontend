@@ -12,13 +12,85 @@
   min-width: 0;
 }
 
+.resource-crud-drawer-top .resource-drawer-header-inner {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.sales-invoice-drawer-header-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.sales-invoice-drawer-footer-posted {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.sales-invoice-drawer-footer-posted-item {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.sales-invoice-drawer-footer-posted-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 32px;
+  color: var(--ant-color-text-tertiary);
+  white-space: nowrap;
+}
+
+.sales-invoice-drawer-footer-posted-value {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 32px;
+  color: var(--ant-color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .resource-crud-drawer-body {
   padding: 12px 24px 24px !important;
+}
+
+.resource-crud-drawer-loading.ant-drawer .ant-drawer-content,
+.resource-crud-drawer-loading .ant-drawer-content,
+.resource-crud-drawer-loading .ant-drawer-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.resource-crud-drawer-loading .resource-crud-drawer-body {
+  display: flex !important;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.resource-drawer-detail-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .resource-crud-drawer-footer {
   border-top: 1px solid var(--ant-color-border-secondary);
   padding: 12px 24px !important;
+}
+
+.resource-crud-drawer-top.ant-drawer .ant-drawer-content {
+  height: 100%;
 }
 
 .resource-drawer-tabs .ant-tabs-nav {
@@ -118,6 +190,285 @@
   border-radius: 6px;
 }
 
+.sales-invoice-header {
+  display: grid;
+  gap: 0 12px;
+}
+
+.sales-invoice-form .sales-invoice-header .ant-form-item {
+  margin-bottom: 0;
+}
+
+.sales-invoice-form .sales-invoice-header .ant-form-item-label {
+  padding-bottom: 4px !important;
+}
+
+.sales-invoice-form .sales-invoice-header .ant-form-item-label > label {
+  height: auto;
+}
+
+@media (min-width: 768px) {
+  .sales-invoice-header {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .sales-invoice-header-pane + .sales-invoice-header-pane {
+    border-inline-start: 1px solid var(--ant-color-border-secondary);
+    padding-inline-start: 12px;
+  }
+}
+
+.sales-invoice-exchange-rate-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sales-invoice-exchange-rate-inline .item-general-form-label {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.sales-invoice-exchange-rate-inline .ant-input-number {
+  flex: 1 1 auto;
+  width: 100% !important;
+  min-width: 0;
+}
+
+.resource-crud-drawer-body:has(.sales-invoice-form) {
+  display: flex;
+  flex-direction: column;
+}
+
+.resource-crud-drawer-body:has(.sales-invoice-form) > .relative {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.sales-invoice-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.sales-invoice-form .sales-invoice-header {
+  flex-shrink: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.sales-invoice-form .item-lines-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 8px;
+  padding-block: 12px;
+}
+
+.sales-invoice-form .item-lines-section-card {
+  padding: 8px 12px 12px;
+}
+
+.sales-invoice-form .item-lines-header,
+.sales-invoice-form .item-lines-row {
+  gap: 8px 12px;
+}
+
+.sales-invoice-form .item-lines-header > .item-lines-col-label {
+  padding-bottom: 4px;
+  margin-bottom: 0;
+}
+
+.sales-invoice-form .item-lines-row {
+  padding-block: 6px;
+}
+
+.sales-invoice-form .item-lines-row-delete.ant-btn {
+  margin-bottom: 0;
+}
+
+.sales-invoice-form .item-lines-add-row {
+  margin-top: 8px;
+}
+
+.sales-invoice-totals {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px 12px;
+  width: 100%;
+  min-width: 0;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.sales-invoice-totals-pane {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.sales-invoice-totals-pane + .sales-invoice-totals-pane {
+  border-inline-start: 1px solid var(--ant-color-border-secondary);
+  padding-inline-start: 12px;
+}
+
+.sales-invoice-form .sales-invoice-totals .ant-form-item {
+  margin-bottom: 0;
+}
+
+.sales-invoice-form .sales-invoice-totals .ant-form-item-label {
+  padding-bottom: 4px !important;
+}
+
+.sales-invoice-totals-notes.ant-form-item {
+  margin-bottom: 0;
+  width: 50%;
+  max-width: 50%;
+}
+
+.sales-invoice-totals-notes .ant-form-item-label {
+  padding-bottom: 2px !important;
+}
+
+.sales-invoice-totals-notes .ant-input-textarea {
+  position: relative;
+}
+
+.sales-invoice-totals-notes .ant-input {
+  min-height: 32px;
+  padding-block: 4px;
+}
+
+/* Avoid `.ant-input-data-count` — Tailwind v4 parses `-data-count` as a variant. */
+.sales-invoice-totals-notes [class*="input-data-count"] {
+  position: absolute;
+  right: 8px;
+  bottom: 2px;
+  margin: 0;
+  line-height: 1;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-summary {
+  display: grid;
+  margin-top: 0;
+  gap: 4px 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card-value {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 22px;
+  text-align: right;
+  padding-right: 8px;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card-label {
+  margin-bottom: 0;
+  font-size: 13px;
+  line-height: 22px;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card .ant-form-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card .ant-form-item-row {
+  display: flex !important;
+  width: 100%;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 22px;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card .ant-form-item-label {
+  flex: none !important;
+  max-width: unset !important;
+  padding: 0 !important;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card .ant-form-item-label > label {
+  height: 22px;
+  line-height: 22px;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card .ant-form-item-control {
+  flex: none !important;
+  width: auto !important;
+  max-width: unset !important;
+  min-width: 0;
+  margin-left: auto !important;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card .ant-form-item-control-input,
+.sales-invoice-totals .resource-drawer-pricing-card .ant-form-item-control-input-content {
+  width: auto;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card .ant-input-number {
+  width: 5.5rem !important;
+  height: 22px;
+  min-height: 22px;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card .ant-input-number-input {
+  height: 22px;
+  min-height: 22px;
+  text-align: right;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card.sales-invoice-totals-net {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--ant-color-primary);
+}
+
+.sales-invoice-totals-net .resource-drawer-pricing-card-label,
+.sales-invoice-totals-net .resource-drawer-pricing-card-value {
+  color: var(--ant-color-text-light-solid);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .sales-invoice-totals {
+    flex-direction: column;
+  }
+
+  .sales-invoice-totals-pane + .sales-invoice-totals-pane {
+    border-inline-start: 0;
+    padding-inline-start: 0;
+    border-block-start: 1px solid var(--ant-color-border-secondary);
+    padding-block-start: 12px;
+  }
+}
+
 /* Lookup select/tree with integrated "+ Add new" footer (same bordered box) */
 .lookup-field-composite {
   border: 1px solid var(--ant-color-border);
@@ -176,6 +527,19 @@
   font-weight: 600;
 }
 
+.lookup-select-add-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ant-color-primary);
+  font-weight: 500;
+}
+
+.ant-select-item.lookup-select-add-new-option {
+  color: var(--ant-color-primary);
+  border-block-end: 1px solid var(--ant-color-border-secondary);
+}
+
 /* Item drawer — Recipe / Bundle lines panels */
 .item-lines-panel {
   display: flex;
@@ -228,15 +592,30 @@
 }
 
 .item-lines-grid {
-  display: grid;
-  gap: 12px 16px;
-  align-items: end;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
 }
 
-.item-lines-grid > .item-lines-col-label {
-  padding-bottom: 10px;
+.item-lines-header,
+.item-lines-row {
+  display: grid;
+  gap: 12px 16px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.item-lines-header {
+  align-items: end;
+  padding-inline: 8px;
   margin-bottom: 4px;
   border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.item-lines-header > .item-lines-col-label {
+  padding-bottom: 10px;
   font-size: 13px;
   font-weight: 500;
   color: var(--ant-color-text);
@@ -248,12 +627,34 @@
 }
 
 .item-lines-row {
-  display: contents;
+  padding: 8px;
+  border-radius: 6px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  transition: background-color 0.15s ease;
+}
+
+.item-lines-row:hover,
+.item-lines-row.item-lines-row-menu-open {
+  background-color: var(--ant-color-fill-quaternary);
+}
+
+.item-lines-row:last-child {
+  border-bottom-color: transparent;
 }
 
 .item-lines-row > .item-lines-row-field {
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  min-width: 0;
+}
+
+.item-lines-context-menu-anchor {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .item-lines-readonly-uom {
@@ -264,9 +665,15 @@
   font-size: 13px;
 }
 
-.item-lines-row:last-of-type > .item-lines-row-field {
-  padding-bottom: 0;
-  border-bottom: none;
+.item-lines-line-no,
+.item-lines-line-no-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.item-lines-line-no-header {
+  min-height: 22px;
 }
 
 .item-lines-row-delete.ant-btn {
@@ -274,10 +681,9 @@
   height: 36px;
   min-width: 36px;
   padding: 0;
-  margin-bottom: 12px;
   border-color: var(--ant-color-error);
   color: var(--ant-color-error);
-  background: var(--ant-color-bg-container);
+  background: transparent;
 }
 
 .item-lines-row-delete.ant-btn:not(:disabled):hover {
@@ -286,36 +692,25 @@
   background: var(--ant-color-error-bg) !important;
 }
 
-.item-lines-row:last-of-type > .item-lines-row-delete {
-  margin-bottom: 0;
-}
-
 .item-lines-add-row {
   margin-top: 16px;
 }
 
 @media (max-width: 720px) {
-  .item-lines-grid {
-    grid-template-columns: 1fr !important;
-    gap: 8px;
-  }
-
-  .item-lines-grid > .item-lines-col-label {
+  .item-lines-header {
     display: none;
   }
 
   .item-lines-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr auto !important;
     gap: 8px 12px;
-    padding-bottom: 16px;
-    margin-bottom: 16px;
+    padding: 12px 8px;
+    margin-bottom: 8px;
     border-bottom: 1px solid var(--ant-color-border-secondary);
   }
 
-  .item-lines-row > .item-lines-row-field {
-    padding-bottom: 0;
-    border-bottom: none;
+  .item-lines-row:last-child {
+    margin-bottom: 0;
   }
 
   .item-lines-row > .item-lines-row-field:first-child {
@@ -323,7 +718,6 @@
   }
 
   .item-lines-row > .item-lines-row-delete {
-    margin-bottom: 0;
     align-self: end;
   }
 }

@@ -13,6 +13,7 @@ import { Alert, App, Button, Card, Form, Input, Select, Space, Spin, Tag, Typogr
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { USERS_LIST_QUERY_KEY } from "@/features/users";
+import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 
 function emptyToNull(value) {
   if (value == null) return null;
@@ -217,7 +218,7 @@ export default function ProfilePage() {
     </Button>
   ) : (
     <Space wrap>
-      <Button onClick={cancelEditing} disabled={saveMutation.isPending}>
+      <Button {...APP_DISMISS_BUTTON_PROPS} onClick={cancelEditing} disabled={saveMutation.isPending}>
         {t("cancel")}
       </Button>
       <Button

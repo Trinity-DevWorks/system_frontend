@@ -35,6 +35,7 @@ import {
   DropboxOutlined,
   ExperimentOutlined,
   FieldTimeOutlined,
+  FileDoneOutlined,
   FileTextOutlined,
   FlagOutlined,
   FormOutlined,
@@ -155,6 +156,7 @@ export const FEATURES = [
   { id: "stockStockCounts", path: "/main/stock/stock-counts", section: "inventory", labelKey: "navStockCounts", icon: CheckSquareOutlined, groupKey: "navGroupDocuments", module: "inventory", permission: "stock" },
   { id: "stockTransfers", path: "/main/stock/transfers", section: "inventory", labelKey: "navStockTransfers", icon: RetweetOutlined, groupKey: "navGroupDocuments", module: "inventory", permission: "stock" },
 
+  { id: "salesInvoices", path: "/main/sales-invoices", section: "sales", labelKey: "navSalesInvoices", icon: FileDoneOutlined, module: "sales", permission: "sales_invoices" },
   { id: "customerGroups", path: "/main/customer-groups", section: "sales", labelKey: "navCustomerGroups", icon: UsergroupAddOutlined, module: "sales", permission: "customer_groups" },
   { id: "customers", path: "/main/customers", section: "sales", labelKey: "navCustomers", icon: UserOutlined, module: "sales", permission: "customers" },
 

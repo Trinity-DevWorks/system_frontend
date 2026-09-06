@@ -3,7 +3,7 @@
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useDrawerHostPresence } from "@/lib/drawer/DrawerHostPresence";
 import { isRtlLocale } from "@/i18n/constants";
-import { Drawer, Skeleton } from "antd";
+import { Drawer, Spin } from "antd";
 import { useLocale } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import ResourceDrawerHeader from "@/shared/components/resource-drawer/ResourceDrawerHeader";
@@ -26,10 +26,11 @@ import ResourceDrawerHeader from "@/shared/components/resource-drawer/ResourceDr
  *   detailLoadFailed: boolean;
  *   detailError: unknown;
  *   tApiErrors: (key: string) => string;
- *   skeletonParagraphRows?: number;
  *   children: import("react").ReactNode;
- *   size?: number | "default" | "large";
+ *   size?: number | string | "default" | "large";
  *   zIndex?: number;
+ *   placement?: "top" | "bottom" | "left" | "right";
+ *   headerExtra?: import("react").ReactNode;
  * }} props
  */
 export default function ResourceCrudDrawer({
@@ -39,6 +40,7 @@ export default function ResourceCrudDrawer({
   statusActiveLabel,
   statusInactiveLabel,
   showExpand = true,
+  headerExtra = null,
   open,
   requestClose,
   submitting,
@@ -47,13 +49,13 @@ export default function ResourceCrudDrawer({
   detailLoadFailed,
   detailError,
   tApiErrors,
-  skeletonParagraphRows = 5,
   children,
   size = 520,
   zIndex,
+  placement: placementOverride,
 }) {
   const locale = useLocale();
-  const placement = isRtlLocale(locale) ? "left" : "right";
+  const placement = placementOverride ?? (isRtlLocale(locale) ? "left" : "right");
   const hostPresence = useDrawerHostPresence();
   const [expanded, setExpanded] = useState(false);
 
@@ -66,10 +68,11 @@ export default function ResourceCrudDrawer({
     requestClose();
   }, [requestClose]);
 
+  const isVertical = placement === "top" || placement === "bottom";
   const drawerSize = useMemo(() => {
-    if (open && expanded) return "100%";
+    if (!isVertical && open && expanded) return "100%";
     return size;
-  }, [open, expanded, size]);
+  }, [open, expanded, size, isVertical]);
 
   const drawerTitle = (
     <ResourceDrawerHeader
@@ -83,6 +86,7 @@ export default function ResourceCrudDrawer({
       onClose={handleClose}
       closeDisabled={submitting}
       showExpand={showExpand}
+      headerExtra={headerExtra}
     />
   );
 
@@ -99,6 +103,12 @@ export default function ResourceCrudDrawer({
       closable={false}
       footer={footer}
       zIndex={zIndex}
+      className={[
+        isVertical ? "resource-crud-drawer-top" : null,
+        showDetailLoading ? "resource-crud-drawer-loading" : null,
+      ]
+        .filter(Boolean)
+        .join(" ") || undefined}
       classNames={{
         header: "resource-crud-drawer-header",
         body: "resource-crud-drawer-body",
@@ -108,14 +118,13 @@ export default function ResourceCrudDrawer({
       {detailLoadFailed ? (
         <p className="text-sm text-red-600 dark:text-red-400">{getLocalizedApiErrorMessage(tApiErrors, detailError)}</p>
       ) : (
-        <div className="relative min-h-[120px]">
-          {showDetailLoading ? (
-            <div className="absolute inset-0 z-10 flex bg-[var(--ant-color-bg-container)]">
-              <Skeleton active className="w-full" paragraph={{ rows: skeletonParagraphRows }} />
-            </div>
-          ) : null}
-          {children}
-        </div>
+        showDetailLoading ? (
+          <div className="resource-drawer-detail-loading">
+            <Spin size="large" />
+          </div>
+        ) : (
+          <div className="relative min-h-[120px]">{children}</div>
+        )
       )}
     </Drawer>
   );

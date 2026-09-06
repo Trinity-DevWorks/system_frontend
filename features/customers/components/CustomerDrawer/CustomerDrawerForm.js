@@ -240,6 +240,143 @@ export default function CustomerDrawerForm({
         <Input placeholder={t("fieldPhonePlaceholder")} allowClear />
       </Form.Item>
 
+      <Typography.Text className="mb-1 mt-2 block font-medium">{t("drawerSectionAddresses")}</Typography.Text>
+      <Typography.Text type="secondary" className="mb-3 block text-sm">
+        {t("fieldAddressesHint")}
+      </Typography.Text>
+      <Form.List name="addresses">
+        {(fields, { add, remove }) => (
+          <div className="flex flex-col gap-3">
+            {fields.map((field) => {
+              const { key, name, ...restField } = field;
+              return (
+                <div
+                  key={key}
+                  className="rounded-lg border border-neutral-200 bg-neutral-50/80 p-3 dark:border-neutral-700 dark:bg-neutral-900/40"
+                >
+                  <Form.Item {...restField} name={[name, "id"]} hidden>
+                    <Input />
+                  </Form.Item>
+                  <Space wrap className="w-full" align="start">
+                    <Form.Item
+                      {...restField}
+                      name={[name, "address_type"]}
+                      label={t("fieldAddressType")}
+                      rules={[{ required: true, message: t("fieldAddressTypeRequired") }]}
+                      className="mb-0 min-w-[140px]"
+                    >
+                      <Select
+                        options={[
+                          { value: "billing", label: t("fieldAddressTypeBilling") },
+                          { value: "shipping", label: t("fieldAddressTypeShipping") },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, "address_line_1"]}
+                      label={t("fieldAddressLine1")}
+                      rules={[
+                        { required: true, message: t("fieldAddressLine1Required") },
+                        { max: 255, message: t("fieldAddressLine1Max") },
+                      ]}
+                      className="mb-0 min-w-[200px] flex-1"
+                    >
+                      <Input placeholder={t("fieldAddressLine1Placeholder")} allowClear />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, "address_line_2"]}
+                      label={t("fieldAddressLine2")}
+                      rules={[{ max: 255, message: t("fieldAddressLine2Max") }]}
+                      className="mb-0 min-w-[180px] flex-1"
+                    >
+                      <Input placeholder={t("fieldAddressLine2Placeholder")} allowClear />
+                    </Form.Item>
+                  </Space>
+                  <Space wrap className="mt-2 w-full" align="start">
+                    <Form.Item
+                      {...restField}
+                      name={[name, "city"]}
+                      label={t("fieldCity")}
+                      rules={[
+                        { required: true, message: t("fieldCityRequired") },
+                        { max: 120, message: t("fieldCityMax") },
+                      ]}
+                      className="mb-0 min-w-[140px]"
+                    >
+                      <Input allowClear />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, "state"]}
+                      label={t("fieldState")}
+                      rules={[
+                        { required: true, message: t("fieldStateRequired") },
+                        { max: 120, message: t("fieldStateMax") },
+                      ]}
+                      className="mb-0 min-w-[140px]"
+                    >
+                      <Input allowClear />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, "country"]}
+                      label={t("fieldCountry")}
+                      rules={[
+                        { required: true, message: t("fieldCountryRequired") },
+                        { max: 100, message: t("fieldCountryMax") },
+                      ]}
+                      className="mb-0 min-w-[140px]"
+                    >
+                      <Input allowClear />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, "phone"]}
+                      label={t("fieldAddressPhone")}
+                      rules={[{ max: PHONE_MAX, message: t("fieldPhoneMax") }]}
+                      className="mb-0 min-w-[160px]"
+                    >
+                      <Input placeholder={t("fieldPhonePlaceholder")} allowClear />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, "is_default"]}
+                      label={t("fieldAddressDefault")}
+                      valuePropName="checked"
+                      className="mb-0"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    {!readOnly ? (
+                      <Button
+                        type="text"
+                        danger
+                        icon={<MinusCircleOutlined />}
+                        className="mt-1 shrink-0"
+                        onClick={() => remove(name)}
+                        aria-label={t("fieldAddressRemove")}
+                      />
+                    ) : null}
+                  </Space>
+                </div>
+              );
+            })}
+            {!readOnly ? (
+              <Button
+                type="dashed"
+                onClick={() => add({ address_type: "shipping", is_default: fields.length === 0 })}
+                block
+                icon={<PlusOutlined />}
+              >
+                {t("fieldAddressAdd")}
+              </Button>
+            ) : null}
+          </div>
+        )}
+      </Form.List>
+
       <Divider titlePlacement="start" className="!mt-6">
         {t("drawerSectionAccount")}
       </Divider>

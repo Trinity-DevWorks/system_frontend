@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useResourceAccess } from "@/lib/permissions";
 import { App, Button, Descriptions, Space, Tag, Typography } from "antd";
+import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { formatStockQuantity, formatUomLabel } from "../../utils/formatStockQuantity";
@@ -128,7 +129,9 @@ export default function PurchasingAlertViewDrawer({
       footer={
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Space wrap>
-            <Button onClick={forceClose}>{t("drawerClose")}</Button>
+            <Button {...APP_DISMISS_BUTTON_PROPS} onClick={forceClose}>
+              {t("drawerClose")}
+            </Button>
             {canCreateFromRecord ? (
               <Button
                 type="primary"

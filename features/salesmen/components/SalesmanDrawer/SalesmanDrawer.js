@@ -380,7 +380,6 @@ export default function SalesmanDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={8}
       footer={
         <ResourceDrawerFooter
           mode={mode}
