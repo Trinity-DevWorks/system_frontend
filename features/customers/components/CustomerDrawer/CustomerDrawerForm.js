@@ -130,6 +130,14 @@ export default function CustomerDrawerForm({
       </Form.Item>
 
       <Form.Item
+        name="account_number"
+        label={t("fieldAccountNumber")}
+        rules={[{ max: 128, message: t("fieldAccountNumberMax") }]}
+      >
+        <Input placeholder={t("fieldAccountNumberPlaceholder")} allowClear />
+      </Form.Item>
+
+      <Form.Item
         name="type"
         label={t("fieldType")}
         rules={[{ required: true, message: t("fieldTypeRequired") }]}

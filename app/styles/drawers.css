@@ -58,6 +58,16 @@
   white-space: nowrap;
 }
 
+.stock-transfer-drawer-footer-audit {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 0;
+}
+
 .resource-crud-drawer-body {
   padding: 12px 24px 24px !important;
 }
@@ -237,23 +247,55 @@
   min-width: 0;
 }
 
+.sales-invoice-crud-drawer.ant-drawer .ant-drawer-content,
+.sales-invoice-crud-drawer.ant-drawer .ant-drawer-section,
+.sales-invoice-crud-drawer .ant-drawer-content,
+.sales-invoice-crud-drawer .ant-drawer-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sales-invoice-crud-drawer .resource-crud-drawer-body {
+  display: flex !important;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden !important;
+}
+
 .resource-crud-drawer-body:has(.sales-invoice-form) {
   display: flex;
   flex-direction: column;
 }
 
-.resource-crud-drawer-body:has(.sales-invoice-form) > .relative {
+.sales-invoice-crud-drawer .resource-crud-drawer-body > .relative {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  min-height: 100%;
+  min-height: 0 !important;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sales-invoice-keyboard-root {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .sales-invoice-form {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  min-height: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .sales-invoice-form .sales-invoice-header {
@@ -263,14 +305,37 @@
 }
 
 .sales-invoice-form .item-lines-panel {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
   min-height: 0;
   gap: 8px;
   padding-block: 12px;
+  overflow: hidden;
 }
 
 .sales-invoice-form .item-lines-section-card {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
   padding: 8px 12px 12px;
+  overflow: hidden;
+}
+
+.sales-invoice-form .item-lines-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sales-invoice-form .item-lines-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ant-color-bg-container);
 }
 
 .sales-invoice-form .item-lines-header,
@@ -292,6 +357,10 @@
 }
 
 .sales-invoice-form .item-lines-add-row {
+  flex-shrink: 0;
+  align-self: center;
+  width: auto;
+  min-width: 10rem;
   margin-top: 8px;
 }
 
@@ -540,6 +609,45 @@
   border-block-end: 1px solid var(--ant-color-border-secondary);
 }
 
+.server-search-select-footer {
+  display: flex;
+  justify-content: center;
+  padding: 4px 8px 6px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.server-search-select-recent-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.server-search-select-recent-label .ant-btn {
+  height: auto;
+  padding-inline: 0;
+  line-height: 1.2;
+}
+
+.ant-select-item.server-search-select-status-option {
+  cursor: default;
+  pointer-events: none;
+}
+
+.server-search-select-results-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 24px;
+  color: var(--ant-color-text-secondary);
+}
+
+.ant-select-item.server-search-select-empty-option {
+  color: var(--ant-color-text-secondary);
+}
+
 /* Item drawer — Recipe / Bundle lines panels */
 .item-lines-panel {
   display: flex;
@@ -693,6 +801,9 @@
 }
 
 .item-lines-add-row {
+  align-self: center;
+  width: auto;
+  min-width: 10rem;
   margin-top: 16px;
 }
 

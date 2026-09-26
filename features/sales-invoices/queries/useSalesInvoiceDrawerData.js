@@ -6,16 +6,16 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { isPersistedEntityId } from "@/lib/entityId";
 import {
   mergeLookupOptions,
+  mapSalesInvoiceCustomerOption,
   salesInvoiceCodeLabel,
-  salesInvoiceItemCodeLabel,
   salesInvoicePaymentMethodOption,
   salesInvoicePaymentTermOption,
   salesInvoiceSalesmanOption,
   salesInvoiceUomCodeLabel,
   salesInvoiceWarehouseCodeLabel,
 } from "../utils/salesInvoiceDrawerUtils";
-import { fetchItemNames, fetchItemUoms, fetchItemBarcodes } from "@/features/items/index";
-import { fetchCustomer, fetchCustomerNames } from "@/features/customers/index";
+import { fetchItemInvoiceLineSetup } from "@/features/items/index";
+import { fetchCustomer } from "@/features/customers/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { fetchCurrencyNames, fetchCurrencyPairRates } from "@/features/currencies/index";
 import { fetchSalesInvoiceItemAvailability } from "../api/salesInvoices.api";
@@ -26,7 +26,7 @@ import { useMemo } from "react";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
 import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
 import { CURRENCIES_LIST_QUERY_KEY } from "@/features/currencies";
-import { ITEMS_LIST_QUERY_KEY, itemDetailQueryKey } from "@/features/items";
+import { itemInvoiceLineSetupQueryKey } from "@/features/items";
 import { useCompanySettings } from "@/lib/company-settings";
 
 /**
@@ -44,20 +44,6 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
-    enabled: open,
-    staleTime: QUERY_STALE_TIME.catalog,
-  });
-
-  const customersQuery = useQuery({
-    queryKey: CUSTOMERS_LIST_QUERY_KEY,
-    queryFn: fetchCustomerNames,
-    enabled: open,
-    staleTime: QUERY_STALE_TIME.catalog,
-  });
-
-  const itemsQuery = useQuery({
-    queryKey: ITEMS_LIST_QUERY_KEY,
-    queryFn: fetchItemNames,
     enabled: open,
     staleTime: QUERY_STALE_TIME.catalog,
   });
@@ -84,14 +70,6 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
     staleTime: QUERY_STALE_TIME.default,
   });
 
-  const sellableItems = useMemo(
-    () =>
-      (itemsQuery.data ?? []).filter(
-        (row) => row?.allow_sale !== false && row?.is_active !== false,
-      ),
-    [itemsQuery.data],
-  );
-
   const warehouseOptions = useMemo(
     () =>
       (warehousesQuery.data ?? [])
@@ -116,45 +94,12 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
     return general?.value ?? warehouseOptions[0]?.value;
   }, [warehouseOptions]);
 
-  const customerOptions = useMemo(
-    () =>
-      (customersQuery.data ?? [])
-        .filter((c) => c?.status !== "blacklisted")
-        .map((c) => {
-          const code = typeof c.customer_code === "string" ? c.customer_code.trim() : "";
-          const name = String(c.name ?? c.id);
-          return {
-            value: c.id,
-            label: code ? `${code} — ${name}` : name,
-          };
-        }),
-    [customersQuery.data],
-  );
-
-  const itemOptions = useMemo(
-    () =>
-      sellableItems.map((item) => ({
-        value: String(item.id),
-        label: salesInvoiceItemCodeLabel(item),
-        searchText: `${item.item_code ?? ""} ${item.name ?? ""}`,
-        track_inventory: Boolean(item.track_inventory),
-        track_lots: Boolean(item.track_lots),
-        vat_percentage:
-          item.vat_group?.percentage != null && item.vat_group.percentage !== ""
-            ? Number(item.vat_group.percentage)
-            : 0,
-      })),
-    [sellableItems],
-  );
-
-  const itemsById = useMemo(() => {
-    /** @type {Map<string, Record<string, unknown>>} */
-    const map = new Map();
-    for (const item of sellableItems) {
-      if (item?.id != null) map.set(String(item.id), item);
-    }
-    return map;
-  }, [sellableItems]);
+  const customerSeedOptions = useMemo(() => {
+    const option = mapSalesInvoiceCustomerOption(
+      /** @type {Record<string, unknown> | null} */ (customerDetailQuery.data ?? null),
+    );
+    return option ? [option] : [];
+  }, [customerDetailQuery.data]);
 
   const currencyOptions = useMemo(
     () =>
@@ -226,9 +171,7 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
   return {
     warehouseOptions,
     defaultWarehouseId,
-    customerOptions,
-    itemOptions,
-    itemsById,
+    customerSeedOptions,
     currencyOptions,
     paymentMethodOptions,
     paymentTermOptions,
@@ -238,8 +181,6 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
     customerDetail,
     customerDetailPending: customerLookupsPending,
     warehousesPending: warehousesQuery.isPending,
-    customersPending: customersQuery.isPending,
-    itemsPending: itemsQuery.isPending,
     currenciesPending: currenciesQuery.isPending,
     paymentMethodsPending: customerLookupsPending,
     paymentTermsPending: customerLookupsPending,
@@ -248,57 +189,24 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
 }
 
 /**
- * Prefer item_uoms.barcode, else primary/first row from item_barcodes for that UOM.
- * @param {Record<string, unknown>} uomRow
- * @param {unknown[]} barcodes
- */
-function resolveSalesInvoiceUomBarcode(uomRow, barcodes) {
-  if (typeof uomRow?.barcode === "string" && uomRow.barcode.trim()) {
-    return uomRow.barcode.trim();
-  }
-  const uomId = uomRow?.id != null ? Number(uomRow.id) : null;
-  if (uomId == null || !Number.isFinite(uomId)) return "";
-  const forUom = barcodes.filter(
-    (row) =>
-      row &&
-      typeof row === "object" &&
-      Number(/** @type {{ item_uom_id?: unknown }} */ (row).item_uom_id) === uomId,
-  );
-  const primary = forUom.find((row) => Boolean(/** @type {{ is_primary?: unknown }} */ (row).is_primary));
-  const pick = primary ?? forUom[0];
-  const code = pick && typeof /** @type {{ barcode?: unknown }} */ (pick).barcode === "string"
-    ? /** @type {{ barcode: string }} */ (pick).barcode.trim()
-    : "";
-  return code;
-}
-
-/**
  * @param {{ itemId?: string; t: (key: string) => string; enabled?: boolean }} args
  */
 export function useSalesInvoiceLineUomOptions({ itemId, t, enabled = true }) {
   const itemReady = enabled && itemId != null && itemId !== "";
 
-  const itemUomsQuery = useQuery({
-    queryKey: [...itemDetailQueryKey(itemId ?? ""), "item-uoms"],
-    queryFn: () => fetchItemUoms(itemId),
-    enabled: itemReady,
-    staleTime: QUERY_STALE_TIME.default,
-  });
-
-  const itemBarcodesQuery = useQuery({
-    queryKey: [...ITEMS_LIST_QUERY_KEY, itemId ?? "", "barcodes"],
-    queryFn: () => fetchItemBarcodes(itemId),
+  const lineSetupQuery = useQuery({
+    queryKey: itemInvoiceLineSetupQueryKey(itemId ?? ""),
+    queryFn: () => fetchItemInvoiceLineSetup(itemId),
     enabled: itemReady,
     staleTime: QUERY_STALE_TIME.default,
   });
 
   const options = useMemo(() => {
-    const rows = itemUomsQuery.data ?? [];
-    const barcodes = itemBarcodesQuery.data ?? [];
+    const rows = Array.isArray(lineSetupQuery.data?.item_uoms) ? lineSetupQuery.data.item_uoms : [];
     /** @type {{ value: number | string; label: import("react").ReactNode; searchText?: string; conversion_factor?: unknown; selling_price?: number | null; barcode?: string; is_base?: boolean; is_default_sale?: boolean }[]} */
     const result = [];
     for (const row of rows) {
-      const codeLabel = salesInvoiceUomCodeLabel(row?.uom) || `UOM #${row?.uom_id ?? row?.id}`;
+      const codeLabel = salesInvoiceUomCodeLabel(row?.uom) || `UOM #${row?.id ?? ""}`;
       const isBase = Boolean(row.is_base);
       result.push({
         value: row.id,
@@ -315,18 +223,18 @@ export function useSalesInvoiceLineUomOptions({ itemId, t, enabled = true }) {
         searchText: `${row?.uom?.code ?? ""} ${row?.uom?.name ?? ""} ${isBase ? t("lineUomBaseBadge") : ""}`,
         conversion_factor: row.conversion_factor,
         selling_price: row.selling_price != null ? Number(row.selling_price) : null,
-        barcode: resolveSalesInvoiceUomBarcode(row, barcodes),
+        barcode: typeof row.barcode === "string" ? row.barcode : "",
         is_base: isBase,
         is_default_sale: Boolean(row.is_default_sale),
       });
     }
     return result;
-  }, [itemBarcodesQuery.data, itemUomsQuery.data, t]);
+  }, [lineSetupQuery.data, t]);
 
   return {
     options,
-    pending: itemUomsQuery.isLoading || itemBarcodesQuery.isLoading,
-    rows: itemUomsQuery.data ?? [],
+    pending: lineSetupQuery.isLoading,
+    rows: Array.isArray(lineSetupQuery.data?.item_uoms) ? lineSetupQuery.data.item_uoms : [],
   };
 }
 

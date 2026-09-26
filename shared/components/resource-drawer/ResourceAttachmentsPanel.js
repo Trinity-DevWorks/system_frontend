@@ -19,6 +19,7 @@ import {
   derivePrimaryImageFromAttachments,
 } from "@/shared/components/attachments/primaryImage";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
+import { withConfirmKeyboard } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import { getAttachmentUploadErrorMessage, getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { isPersistedEntityId, normalizeEntityId } from "@/lib/entityId";
 import { snapshotTenantListCache, restoreTenantListCache } from "@/lib/tables/tenantListCache";
@@ -313,20 +314,22 @@ export default function ResourceAttachmentsPanel({
 
   const handleDelete = useCallback(
     (/** @type {AttachmentRow} */ row) => {
-      modal.confirm({
-        title: t("attachmentsDeleteConfirmTitle"),
-        content: row.file_name,
-        okText: t("attachmentsDeleteConfirmOk"),
-        cancelText: t("drawerCancel"),
-        okButtonProps: { danger: true },
-        onOk: async () => {
-          try {
-            await deleteMutation.mutateAsync({ id: row.id });
-          } catch {
-            /* mutation onError */
-          }
-        },
-      });
+      modal.confirm(
+        withConfirmKeyboard({
+          title: t("attachmentsDeleteConfirmTitle"),
+          content: row.file_name,
+          okText: t("attachmentsDeleteConfirmOk"),
+          cancelText: t("drawerCancel"),
+          okButtonProps: { danger: true },
+          onOk: async () => {
+            try {
+              await deleteMutation.mutateAsync({ id: row.id });
+            } catch {
+              /* mutation onError */
+            }
+          },
+        }),
+      );
     },
     [deleteMutation, modal, t],
   );

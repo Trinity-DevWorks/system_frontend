@@ -21,6 +21,7 @@ const DRAWER_STATUS_BADGE_BASE =
  *   onClose: () => void;
  *   closeDisabled?: boolean;
  *   showExpand?: boolean;
+ *   titleExtra?: import("react").ReactNode;
  *   headerExtra?: import("react").ReactNode;
  * }} props
  */
@@ -35,6 +36,7 @@ export default function ResourceDrawerHeader({
   onClose,
   closeDisabled = false,
   showExpand = true,
+  titleExtra = null,
   headerExtra = null,
 }) {
   const name = typeof recordName === "string" ? recordName.trim() : "";
@@ -54,6 +56,7 @@ export default function ResourceDrawerHeader({
             {statusActive ? statusActiveLabel : statusInactiveLabel}
           </span>
         ) : null}
+        {titleExtra ? <span className="shrink-0">{titleExtra}</span> : null}
       </div>
       {headerExtra ? <div className="min-w-0 flex-1">{headerExtra}</div> : null}
       <Space size={4} className="shrink-0">
@@ -65,6 +68,7 @@ export default function ResourceDrawerHeader({
             icon={expanded ? <CompressOutlined /> : <ExpandOutlined />}
             onClick={onToggleExpand}
             disabled={closeDisabled}
+            tabIndex={-1}
             aria-label={expanded ? "Exit full width" : "Expand drawer"}
           />
         ) : null}
@@ -75,6 +79,7 @@ export default function ResourceDrawerHeader({
           icon={<CloseOutlined />}
           onClick={onClose}
           disabled={closeDisabled}
+          tabIndex={-1}
           aria-label="Close"
         />
       </Space>

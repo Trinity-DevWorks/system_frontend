@@ -5,19 +5,27 @@ import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
-import { ClearOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
+import { ClearOutlined, CopyOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { App, Checkbox, Input, Select } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import ServerSearchSelect from "@/shared/components/selects/ServerSearchSelect";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useTranslations } from "next-intl";
-import { SI_BASE_UOM, salesInvoiceLinePatchFromBarcodeLookup, salesInvoiceSelectFilter, salesInvoiceWarehouseCodeLabel } from "../../utils/salesInvoiceDrawerUtils";
+import { SI_BASE_UOM, isSalesInvoiceLineEmpty, mapSalesInvoiceItemOption, salesInvoiceLinePatchFromBarcodeLookup, salesInvoiceLinePatchFromItemPick, salesInvoiceSelectFilter, salesInvoiceWarehouseCodeLabel } from "../../utils/salesInvoiceDrawerUtils";
 import { previewLineAmounts, previewLineTaxRate } from "../../utils/salesInvoiceTax";
 import {
   useSalesInvoiceItemAvailability,
   useSalesInvoiceLineUomOptions,
 } from "../../queries/useSalesInvoiceDrawerData";
-import { lookupItemByBarcode } from "@/features/items/index";
+import { ITEMS_LIST_QUERY_KEY, lookupItemByBarcode } from "@/features/items";
+import { rememberRecentSelectorOption } from "@/lib/recentSelectorOptions";
+import {
+  fetchSalesInvoiceItemSelectorPage,
+  SALES_INVOICE_ITEM_RECENT_KIND,
+  SALES_INVOICE_ITEM_SELECTOR_PARAMS,
+} from "../../api/salesInvoiceSelectors.api";
+import { SiFocusStop } from "./salesInvoiceDrawerKeyboard";
 
 /**
  * @param {{
@@ -27,15 +35,31 @@ import { lookupItemByBarcode } from "@/features/items/index";
  *   t: (key: string) => string;
  *   onChange: (value: number | string, option?: Record<string, unknown>) => void;
  *   onCatalogDefaults?: (option: Record<string, unknown>) => void;
+ *   onCatalogReprice?: (option: Record<string, unknown>) => void;
+ *   catalogReloadKey?: number;
  * }} props
  */
-function SalesInvoiceLineUomField({ itemId, value, readOnly, t, onChange, onCatalogDefaults }) {
+function SalesInvoiceLineUomField({
+  itemId,
+  value,
+  readOnly,
+  t,
+  onChange,
+  onCatalogDefaults,
+  onCatalogReprice,
+  catalogReloadKey = 0,
+}) {
   const { options, pending } = useSalesInvoiceLineUomOptions({
     itemId,
     t,
     enabled: !readOnly && isPersistedEntityId(itemId),
   });
   const appliedItemRef = useRef(/** @type {string | null} */ (null));
+  const appliedReloadRef = useRef(0);
+
+  useEffect(() => {
+    appliedReloadRef.current = 0;
+  }, [itemId]);
 
   useEffect(() => {
     if (itemId == null) {
@@ -47,6 +71,17 @@ function SalesInvoiceLineUomField({ itemId, value, readOnly, t, onChange, onCata
     appliedItemRef.current = itemId;
     if (preferred) onCatalogDefaults?.(preferred);
   }, [itemId, pending, readOnly, options, onCatalogDefaults]);
+
+  useEffect(() => {
+    if (!catalogReloadKey || readOnly || pending) return;
+    if (appliedReloadRef.current === catalogReloadKey) return;
+    const current =
+      options.find((row) => row.value === value || String(row.value) === String(value)) ??
+      options.find((row) => row.is_default_sale) ??
+      options.find((row) => row.is_base);
+    appliedReloadRef.current = catalogReloadKey;
+    if (current) onCatalogReprice?.(current);
+  }, [catalogReloadKey, onCatalogReprice, options, pending, readOnly, value]);
 
   const selectValue = useMemo(() => {
     if (value != null && value !== SI_BASE_UOM) return value;
@@ -198,7 +233,7 @@ function SalesInvoiceLineLotField({ itemId, warehouseId, value, trackLots, readO
  * @param {{
  *   lines: import("../../utils/salesInvoiceDrawerUtils").SalesInvoiceLineFormRow[];
  *   readOnly: boolean;
- *   itemOptions: { value: string; label: string; track_inventory?: boolean; track_lots?: boolean; vat_percentage?: number }[];
+ *   itemOptions?: { value: string; label: string; track_inventory?: boolean; track_lots?: boolean; vat_percentage?: number }[];
  *   taxContext: {
  *     taxEnabled: boolean;
  *     pricesIncludeTax: boolean;
@@ -206,13 +241,14 @@ function SalesInvoiceLineLotField({ itemId, warehouseId, value, trackLots, readO
  *     settings: { priceDecimalPlaces?: number; priceRoundingMode?: string };
  *   };
  *   warehouseOptions: { value: number; label: string }[];
- *   itemsPending: boolean;
  *   headerWarehouseId?: number;
  *   canAddLine: boolean;
  *   canViewItem?: boolean;
  *   onPatchLine: (index: number, patch: Partial<import("../../utils/salesInvoiceDrawerUtils").SalesInvoiceLineFormRow>) => void;
  *   onClearLine: (index: number) => void;
  *   onRemoveLine: (index: number) => void;
+ *   onDuplicateLine?: (index: number) => void;
+ *   lineKeyboardActionsRef?: import("react").MutableRefObject<{ duplicateLine?: (index: number) => void }>;
  *   onAddLine: () => void;
  *   onViewItem?: (itemId: string) => void;
  *   t: (key: string) => string;
@@ -221,7 +257,7 @@ function SalesInvoiceLineLotField({ itemId, warehouseId, value, trackLots, readO
 export default function SalesInvoiceLineEditor({
   lines,
   readOnly,
-  itemOptions,
+  itemOptions = [],
   taxContext = {
     taxEnabled: true,
     pricesIncludeTax: false,
@@ -229,13 +265,14 @@ export default function SalesInvoiceLineEditor({
     settings: { priceDecimalPlaces: 2, priceRoundingMode: "half_up" },
   },
   warehouseOptions,
-  itemsPending,
   headerWarehouseId,
   canAddLine,
   canViewItem = true,
   onPatchLine,
   onClearLine,
   onRemoveLine,
+  onDuplicateLine,
+  lineKeyboardActionsRef,
   onAddLine,
   onViewItem,
   t,
@@ -244,33 +281,43 @@ export default function SalesInvoiceLineEditor({
   const { notification } = App.useApp();
   const [barcodePendingIndex, setBarcodePendingIndex] = useState(/** @type {number | null} */ (null));
   const [selectedLineIndexes, setSelectedLineIndexes] = useState(() => new Set());
+  const visibleSelectedLineIndexes = useMemo(() => {
+    let stale = false;
+    for (const index of selectedLineIndexes) {
+      if (index >= lines.length) {
+        stale = true;
+        break;
+      }
+    }
+    if (!stale) return selectedLineIndexes;
+    return new Set([...selectedLineIndexes].filter((index) => index < lines.length));
+  }, [selectedLineIndexes, lines.length]);
   /** Last barcode successfully applied per line — used so only a true rescan bumps qty. */
   const lastAppliedBarcodeRef = useRef(/** @type {Record<number, string>} */ ({}));
 
   useEffect(() => {
-    setSelectedLineIndexes((prev) => {
-      const next = new Set([...prev].filter((index) => index < lines.length));
-      return next.size === prev.size ? prev : next;
-    });
     const committed = lastAppliedBarcodeRef.current;
     for (const key of Object.keys(committed)) {
-      if (Number(key) >= lines.length) delete committed[Number(key)];
+      const index = Number(key);
+      if (index >= lines.length || isSalesInvoiceLineEmpty(lines[index])) {
+        delete committed[index];
+      }
     }
-  }, [lines.length]);
+  }, [lines]);
 
   const clearCommittedBarcode = (index) => {
     delete lastAppliedBarcodeRef.current[index];
   };
 
-  const noteBarcodeFieldEdit = (index, value) => {
+  const restoreCommittedBarcode = (index, currentValue) => {
     const committed = lastAppliedBarcodeRef.current[index];
-    if (committed != null && String(value ?? "").trim() !== committed) {
-      clearCommittedBarcode(index);
-    }
+    if (!committed) return;
+    if (String(currentValue ?? "").trim() !== "") return;
+    onPatchLine(index, { barcode: committed });
   };
 
-  const allLinesSelected = lines.length > 0 && selectedLineIndexes.size === lines.length;
-  const someLinesSelected = selectedLineIndexes.size > 0 && !allLinesSelected;
+  const allLinesSelected = lines.length > 0 && visibleSelectedLineIndexes.size === lines.length;
+  const someLinesSelected = visibleSelectedLineIndexes.size > 0 && !allLinesSelected;
 
   const toggleLineSelected = (index, checked) => {
     setSelectedLineIndexes((prev) => {
@@ -281,17 +328,55 @@ export default function SalesInvoiceLineEditor({
     });
   };
 
-  const toggleAllLinesSelected = (checked) => {
+  const toggleAllLinesSelected = useCallback((checked) => {
     setSelectedLineIndexes(
       checked ? new Set(Array.from({ length: lines.length }, (_, index) => index)) : new Set(),
     );
-  };
+  }, [lines.length]);
+
+  const handleDuplicateLine = useCallback(
+    (index) => {
+      if (readOnly || !onDuplicateLine) return;
+      const committed = lastAppliedBarcodeRef.current;
+      const nextCommitted = /** @type {Record<number, string>} */ ({});
+      for (const [key, value] of Object.entries(committed)) {
+        const at = Number(key);
+        if (at > index) nextCommitted[at + 1] = value;
+        else nextCommitted[at] = value;
+      }
+      if (committed[index]) nextCommitted[index + 1] = committed[index];
+      lastAppliedBarcodeRef.current = nextCommitted;
+      setSelectedLineIndexes((prev) => {
+        if (prev.size === 0) return prev;
+        const next = new Set();
+        for (const selected of prev) {
+          next.add(selected > index ? selected + 1 : selected);
+        }
+        return next;
+      });
+      onDuplicateLine(index);
+    },
+    [onDuplicateLine, readOnly],
+  );
+
+  useEffect(() => {
+    const actionsRef = lineKeyboardActionsRef;
+    if (!actionsRef) return;
+    const actions = actionsRef.current;
+    actions.duplicateLine = handleDuplicateLine;
+    return () => {
+      if (actions.duplicateLine === handleDuplicateLine) {
+        delete actions.duplicateLine;
+      }
+    };
+  }, [handleDuplicateLine, lineKeyboardActionsRef]);
 
   const getRowMenuItems = useCallback(
     (line, index) => {
       const row = /** @type {import("../../utils/salesInvoiceDrawerUtils").SalesInvoiceLineFormRow} */ (line);
       const hasItem = row.item_id != null && String(row.item_id).trim() !== "";
-      const isFirstRow = index === 0;
+      const lineEmpty = isSalesInvoiceLineEmpty(row);
+      const deleteBlocked = lines.length <= 1;
 
       return [
         {
@@ -305,12 +390,20 @@ export default function SalesInvoiceLineEditor({
           },
         },
         {
+          key: "duplicate-row",
+          icon: <CopyOutlined />,
+          label: t("lineMenuDuplicateRow"),
+          disabled: readOnly || !onDuplicateLine,
+          extra: t("lineMenuDuplicateShortcut"),
+          onClick: () => handleDuplicateLine(index),
+        },
+        {
           key: "clear-row",
           icon: <ClearOutlined />,
           label: t("lineMenuClearRow"),
-          disabled: readOnly,
+          disabled: readOnly || lineEmpty,
           onClick: () => {
-            if (readOnly) return;
+            if (readOnly || lineEmpty) return;
             setSelectedLineIndexes((prev) => {
               if (!prev.has(index)) return prev;
               const next = new Set(prev);
@@ -327,10 +420,10 @@ export default function SalesInvoiceLineEditor({
           icon: <DeleteOutlined />,
           danger: true,
           label: t("lineMenuDeleteRow"),
-          disabled: readOnly || isFirstRow,
-          title: isFirstRow ? t("lineMenuDeleteFirstDisabled") : undefined,
+          disabled: readOnly || deleteBlocked,
+          title: deleteBlocked ? t("lineMenuDeleteFirstDisabled") : undefined,
           onClick: () => {
-            if (readOnly || isFirstRow) return;
+            if (readOnly || deleteBlocked) return;
             setSelectedLineIndexes((prev) => {
               const next = new Set();
               for (const selected of prev) {
@@ -352,20 +445,40 @@ export default function SalesInvoiceLineEditor({
         },
       ];
     },
-    [canViewItem, onClearLine, onRemoveLine, onViewItem, readOnly, t],
+    [
+      canViewItem,
+      handleDuplicateLine,
+      lines.length,
+      onClearLine,
+      onDuplicateLine,
+      onRemoveLine,
+      onViewItem,
+      readOnly,
+      t,
+    ],
   );
 
   const resolvedItemOptions = useMemo(() => {
-    const byId = new Map(itemOptions.map((option) => [String(option.value), option]));
+    const byId = new Map();
+    for (const option of itemOptions) {
+      if (option?.value == null || option.value === "") continue;
+      byId.set(String(option.value), option);
+    }
     for (const line of lines) {
       const id = line.item_id != null ? String(line.item_id) : "";
-      if (!id || byId.has(id)) continue;
+      if (!id) continue;
+      const existing = byId.get(id);
       byId.set(id, {
         value: id,
-        label: line.item_label?.trim() || id,
-        track_inventory: Boolean(line.track_inventory),
-        track_lots: Boolean(line.track_lots),
-        vat_percentage: line.vat_percentage != null ? Number(line.vat_percentage) : undefined,
+        label: line.item_label?.trim() || existing?.label || id,
+        track_inventory: Boolean(line.track_inventory ?? existing?.track_inventory),
+        track_lots: Boolean(line.track_lots ?? existing?.track_lots),
+        vat_percentage:
+          line.vat_percentage != null
+            ? Number(line.vat_percentage)
+            : existing?.vat_percentage,
+        name: existing?.name,
+        description: line.description || existing?.description,
       });
     }
     return [...byId.values()];
@@ -381,6 +494,7 @@ export default function SalesInvoiceLineEditor({
               checked={allLinesSelected}
               indeterminate={someLinesSelected}
               disabled={readOnly || lines.length === 0}
+              tabIndex={-1}
               aria-label={t("lineSelectAll")}
               onChange={(event) => toggleAllLinesSelected(event.target.checked)}
             />
@@ -401,7 +515,7 @@ export default function SalesInvoiceLineEditor({
       { key: "tax_rate", label: t("lineTaxRate"), width: "40px" },
       { key: "line_total", label: t("lineTotal"), width: "110px" },
     ],
-    [allLinesSelected, lines.length, readOnly, someLinesSelected, t],
+    [allLinesSelected, lines.length, readOnly, someLinesSelected, t, toggleAllLinesSelected],
   );
 
   const handleLineBarcodeSearch = async (index, rawCode, row) => {
@@ -430,6 +544,8 @@ export default function SalesInvoiceLineEditor({
       if (patch) {
         onPatchLine(index, patch);
         lastAppliedBarcodeRef.current[index] = code;
+        const recent = mapSalesInvoiceItemOption(item);
+        if (recent) rememberRecentSelectorOption(SALES_INVOICE_ITEM_RECENT_KIND, recent);
       }
     } catch (err) {
       notification.error({
@@ -458,8 +574,9 @@ export default function SalesInvoiceLineEditor({
             return (
               <span className="item-lines-readonly-uom item-lines-line-no">
                 <Checkbox
-                  checked={selectedLineIndexes.has(index)}
+                  checked={visibleSelectedLineIndexes.has(index)}
                   disabled={readOnly}
+                  tabIndex={-1}
                   aria-label={t("lineSelect", { n: index + 1 })}
                   onChange={(event) => toggleLineSelected(index, event.target.checked)}
                 />
@@ -476,104 +593,130 @@ export default function SalesInvoiceLineEditor({
               );
             }
             return (
-              <Input
-                allowClear
-                className="w-full"
-                placeholder={t("lineBarcodePlaceholder")}
-                value={row.barcode ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  noteBarcodeFieldEdit(index, value);
-                  onPatchLine(index, { barcode: value });
-                }}
-                onPressEnter={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  void handleLineBarcodeSearch(index, event.currentTarget.value, row);
-                }}
-              />
+              <SiFocusStop field="barcode" line={index}>
+                <Input
+                  allowClear
+                  className="w-full"
+                  placeholder={t("lineBarcodePlaceholder")}
+                  value={row.barcode ?? ""}
+                  onChange={(event) => {
+                    onPatchLine(index, { barcode: event.target.value });
+                  }}
+                  onBlur={(event) => restoreCommittedBarcode(index, event.currentTarget.value)}
+                  onPressEnter={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const code = event.currentTarget.value;
+                    if (!String(code ?? "").trim()) {
+                      restoreCommittedBarcode(index, code);
+                      return;
+                    }
+                    void handleLineBarcodeSearch(index, code, row);
+                  }}
+                />
+              </SiFocusStop>
             );
           }
           if (columnKey === "item") {
+            const selectedOption = resolvedItemOptions.find(
+              (item) => row.item_id != null && String(item.value) === String(row.item_id),
+            );
             return (
-              <Select
-                showSearch
-                optionFilterProp="label"
-                filterOption={salesInvoiceSelectFilter}
-                className="w-full"
-                placeholder={t("lineItemPlaceholder")}
-                value={row.item_id != null ? String(row.item_id) : undefined}
-                options={resolvedItemOptions}
-                loading={itemsPending}
-                disabled={readOnly}
-                getPopupContainer={drawerSelectGetPopup}
-                onChange={(value) => {
-                  const option = resolvedItemOptions.find((item) => String(item.value) === String(value));
-                  clearCommittedBarcode(index);
-                  onPatchLine(index, {
-                    item_id: value != null ? String(value) : undefined,
-                    item_label: option?.label ?? "",
-                    barcode: "",
-                    item_uom_id: SI_BASE_UOM,
-                    lot_id: undefined,
-                    warehouse_id: option?.track_inventory ? headerWarehouseId : undefined,
-                    unit_price: undefined,
-                    conversion_factor: 1,
-                    track_inventory: Boolean(option?.track_inventory),
-                    track_lots: Boolean(option?.track_lots),
-                    vat_percentage: option?.vat_percentage ?? 0,
-                    tax_rate: undefined,
-                    line_total: undefined,
-                  });
-                }}
-              />
+              <SiFocusStop field="item" line={index}>
+                <ServerSearchSelect
+                  className="w-full"
+                  placeholder={t("lineItemPlaceholder")}
+                  value={row.item_id != null ? String(row.item_id) : undefined}
+                  disabled={readOnly}
+                  fetchPage={fetchSalesInvoiceItemSelectorPage}
+                  queryKey={ITEMS_LIST_QUERY_KEY}
+                  queryParams={SALES_INVOICE_ITEM_SELECTOR_PARAMS}
+                  recentKind={SALES_INVOICE_ITEM_RECENT_KIND}
+                  seedOptions={selectedOption ? [selectedOption] : []}
+                  recentLabel={t("selectorRecent")}
+                  clearRecentLabel={t("selectorClearRecent")}
+                  resultsLabel={t("selectorResults")}
+                  loadMoreLabel={t("selectorLoadMore")}
+                  emptyLabel={t("selectorEmpty")}
+                  typeToSearchLabel={t("selectorTypeToSearch")}
+                  getPopupContainer={drawerSelectGetPopup}
+                  onChange={(value, option) => {
+                    const picked =
+                      option && typeof option === "object"
+                        ? option
+                        : resolvedItemOptions.find((item) => String(item.value) === String(value));
+                    clearCommittedBarcode(index);
+                    onPatchLine(
+                      index,
+                      salesInvoiceLinePatchFromItemPick(
+                        value == null || value === "" ? null : picked,
+                        headerWarehouseId,
+                      ),
+                    );
+                  }}
+                />
+              </SiFocusStop>
             );
           }
           if (columnKey === "uom") {
             return (
-              <SalesInvoiceLineUomField
-                itemId={row.item_id}
-                value={row.item_uom_id}
-                readOnly={readOnly}
-                t={t}
-                onCatalogDefaults={(option) => {
-                  /** @type {Partial<import("../../utils/salesInvoiceDrawerUtils").SalesInvoiceLineFormRow>} */
-                  const patch = {};
-                  if (
-                    (row.item_uom_id == null || row.item_uom_id === SI_BASE_UOM) &&
-                    option?.value != null
-                  ) {
-                    patch.item_uom_id = /** @type {number} */ (option.value);
-                    if (option.conversion_factor != null) {
-                      patch.conversion_factor = option.conversion_factor;
-                    }
-                    if (typeof option.barcode === "string") {
+              <SiFocusStop field="uom" line={index}>
+                <SalesInvoiceLineUomField
+                  itemId={row.item_id}
+                  value={row.item_uom_id}
+                  catalogReloadKey={row.catalogReloadKey ?? 0}
+                  readOnly={readOnly}
+                  t={t}
+                  onCatalogDefaults={(option) => {
+                    /** @type {Partial<import("../../utils/salesInvoiceDrawerUtils").SalesInvoiceLineFormRow>} */
+                    const patch = {};
+                    if (
+                      (row.item_uom_id == null || row.item_uom_id === SI_BASE_UOM) &&
+                      option?.value != null
+                    ) {
+                      patch.item_uom_id = /** @type {number} */ (option.value);
+                      if (option.conversion_factor != null) {
+                        patch.conversion_factor = option.conversion_factor;
+                      }
+                      if (typeof option.barcode === "string") {
+                        patch.barcode = option.barcode;
+                      }
+                    } else if (!row.barcode && typeof option?.barcode === "string" && option.barcode) {
                       patch.barcode = option.barcode;
                     }
-                  } else if (!row.barcode && typeof option?.barcode === "string" && option.barcode) {
-                    patch.barcode = option.barcode;
-                  }
-                  if (row.unit_price == null && option?.selling_price != null) {
-                    patch.unit_price = Number(option.selling_price);
-                  }
-                  if (Object.keys(patch).length > 0) onPatchLine(index, patch);
-                }}
-                onChange={(value, option) => {
-                  const nextBarcode = typeof option?.barcode === "string" ? option.barcode : "";
-                  if (nextBarcode.trim()) {
-                    lastAppliedBarcodeRef.current[index] = nextBarcode.trim();
-                  } else {
-                    clearCommittedBarcode(index);
-                  }
-                  onPatchLine(index, {
-                    item_uom_id: value,
-                    conversion_factor: option?.conversion_factor ?? 1,
-                    unit_price:
-                      option?.selling_price != null ? Number(option.selling_price) : row.unit_price,
-                    barcode: nextBarcode,
-                  });
-                }}
-              />
+                    if (row.unit_price == null && option?.selling_price != null) {
+                      patch.unit_price = Number(option.selling_price);
+                    }
+                    if (Object.keys(patch).length > 0) onPatchLine(index, patch);
+                    const nextBarcode = typeof patch.barcode === "string" ? patch.barcode.trim() : "";
+                    if (nextBarcode) lastAppliedBarcodeRef.current[index] = nextBarcode;
+                  }}
+                  onCatalogReprice={(option) => {
+                    onPatchLine(index, {
+                      unit_price:
+                        option?.selling_price != null ? Number(option.selling_price) : undefined,
+                      discount_percent: 0,
+                      tax_rate: undefined,
+                      line_total: undefined,
+                    });
+                  }}
+                  onChange={(value, option) => {
+                    const nextBarcode = typeof option?.barcode === "string" ? option.barcode : "";
+                    if (nextBarcode.trim()) {
+                      lastAppliedBarcodeRef.current[index] = nextBarcode.trim();
+                    } else {
+                      clearCommittedBarcode(index);
+                    }
+                    onPatchLine(index, {
+                      item_uom_id: value,
+                      conversion_factor: option?.conversion_factor ?? 1,
+                      unit_price:
+                        option?.selling_price != null ? Number(option.selling_price) : row.unit_price,
+                      barcode: nextBarcode,
+                    });
+                  }}
+                />
+              </SiFocusStop>
             );
           }
           if (columnKey === "conversion") {
@@ -587,21 +730,23 @@ export default function SalesInvoiceLineEditor({
           }
           if (columnKey === "warehouse") {
             return (
-              <SalesInvoiceLineWarehouseField
-                itemId={row.item_id}
-                warehouseId={row.warehouse_id}
-                value={row.warehouse_id}
-                trackInventory={row.track_inventory}
-                headerWarehouseId={headerWarehouseId}
-                warehouseOptions={warehouseOptions}
-                readOnly={readOnly}
-                t={t}
-                onChange={(value) => onPatchLine(index, { warehouse_id: value, lot_id: undefined })}
-              />
+              <SiFocusStop field="warehouse" line={index}>
+                <SalesInvoiceLineWarehouseField
+                  itemId={row.item_id}
+                  warehouseId={row.warehouse_id}
+                  value={row.warehouse_id}
+                  trackInventory={row.track_inventory}
+                  headerWarehouseId={headerWarehouseId}
+                  warehouseOptions={warehouseOptions}
+                  readOnly={readOnly}
+                  t={t}
+                  onChange={(value) => onPatchLine(index, { warehouse_id: value, lot_id: undefined })}
+                />
+              </SiFocusStop>
             );
           }
           if (columnKey === "lot") {
-            return (
+            const lotField = (
               <SalesInvoiceLineLotField
                 itemId={row.item_id}
                 warehouseId={row.warehouse_id}
@@ -612,32 +757,42 @@ export default function SalesInvoiceLineEditor({
                 onChange={(value) => onPatchLine(index, { lot_id: value ?? null })}
               />
             );
+            if (!row.track_lots || readOnly) return lotField;
+            return (
+              <SiFocusStop field="lot" line={index}>
+                {lotField}
+              </SiFocusStop>
+            );
           }
           if (columnKey === "unit_price") {
             return (
-              <TenantNumberInput
-                kind="money"
-                className="w-full"
-                min={0}
-                placeholder={t("lineUnitPricePlaceholder")}
-                value={row.unit_price}
-                disabled={readOnly}
-                onChange={(value) => onPatchLine(index, { unit_price: value ?? undefined })}
-              />
+              <SiFocusStop field="unit_price" line={index}>
+                <TenantNumberInput
+                  kind="money"
+                  className="w-full"
+                  min={0}
+                  placeholder={t("lineUnitPricePlaceholder")}
+                  value={row.unit_price}
+                  disabled={readOnly}
+                  onChange={(value) => onPatchLine(index, { unit_price: value ?? undefined })}
+                />
+              </SiFocusStop>
             );
           }
           if (columnKey === "discount_percent") {
             return (
-              <TenantNumberInput
-                kind="quantity"
-                className="w-full"
-                min={0}
-                max={100}
-                placeholder="0"
-                value={row.discount_percent}
-                disabled={readOnly}
-                onChange={(value) => onPatchLine(index, { discount_percent: value ?? 0 })}
-              />
+              <SiFocusStop field="discount" line={index}>
+                <TenantNumberInput
+                  kind="quantity"
+                  className="w-full"
+                  min={0}
+                  max={100}
+                  placeholder="0"
+                  value={row.discount_percent}
+                  disabled={readOnly}
+                  onChange={(value) => onPatchLine(index, { discount_percent: value ?? 0 })}
+                />
+              </SiFocusStop>
             );
           }
           if (columnKey === "tax_rate") {
@@ -692,15 +847,17 @@ export default function SalesInvoiceLineEditor({
             );
           }
           return (
-            <TenantNumberInput
-              kind="quantity"
-              className="w-full"
-              min={0.000001}
-              placeholder={t("lineQtyPlaceholder")}
-              value={row.quantity}
-              disabled={readOnly}
-              onChange={(value) => onPatchLine(index, { quantity: value ?? undefined })}
-            />
+            <SiFocusStop field="quantity" line={index}>
+              <TenantNumberInput
+                kind="quantity"
+                className="w-full"
+                min={0.000001}
+                placeholder={t("lineQtyPlaceholder")}
+                value={row.quantity}
+                disabled={readOnly}
+                onChange={(value) => onPatchLine(index, { quantity: value ?? undefined })}
+              />
+            </SiFocusStop>
           );
         }}
       />

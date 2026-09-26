@@ -1,12 +1,22 @@
-/** @typedef {"draft" | "in_transit" | "received" | "cancelled"} StockTransferStatus */
+/** @typedef {"draft" | "in_transit" | "partially_received" | "received" | "cancelled"} StockTransferStatus */
 
 export const STOCK_TRANSFER_STATUS_VALUES = /** @type {const} */ ([
   "draft",
   "in_transit",
+  "partially_received",
   "received",
   "cancelled",
 ]);
 
+/**
+ * @param {string | null | undefined} status
+ */
+export function getStockTransferStatusTagColor(status) {
+  if (status === "received") return "success";
+  if (status === "in_transit" || status === "partially_received") return "warning";
+  if (status === "cancelled") return "default";
+  return "processing";
+}
 /**
  * @param {(key: string) => string} t
  * @param {string | null | undefined} status
@@ -14,6 +24,7 @@ export const STOCK_TRANSFER_STATUS_VALUES = /** @type {const} */ ([
 export function getStockTransferStatusLabel(t, status) {
   if (status === "draft") return t("transferStatusDraft");
   if (status === "in_transit") return t("transferStatusInTransit");
+  if (status === "partially_received") return t("transferStatusPartiallyReceived");
   if (status === "received") return t("transferStatusReceived");
   if (status === "cancelled") return t("transferStatusCancelled");
   return status ? String(status) : "\u2014";
@@ -37,7 +48,7 @@ export function isStockTransferInTransit(status) {
  * @param {string | null | undefined} status
  */
 export function isStockTransferReceivable(status) {
-  return status === "in_transit";
+  return status === "in_transit" || status === "partially_received";
 }
 
 /**
@@ -51,5 +62,5 @@ export function isStockTransferDispatchable(status) {
  * @param {string | null | undefined} status
  */
 export function isStockTransferCancellable(status) {
-  return status === "draft" || status === "in_transit";
+  return status === "in_transit";
 }

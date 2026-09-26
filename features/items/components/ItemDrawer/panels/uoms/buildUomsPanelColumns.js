@@ -207,7 +207,7 @@ export function buildUomsPanelColumns(ctx) {
       render: (_v, r) => {
         const draft = getInlineValues(r);
         if (draft) {
-          return <Radio checked={draft.is_base} onChange={() => patchDraft({ is_base: true })} />;
+          return <Radio checked={draft.is_base} onChange={() => patchDraft({ is_base: true, conversion_factor: 1 })} />;
         }
         return (
           <Radio

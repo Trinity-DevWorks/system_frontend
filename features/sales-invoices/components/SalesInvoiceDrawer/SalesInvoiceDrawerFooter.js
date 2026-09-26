@@ -2,6 +2,7 @@
 
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import { postedByDisplayName } from "./SalesInvoiceDrawerHeaderMeta";
+import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import { Button, Space } from "antd";
 
 /**
@@ -40,11 +41,13 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   saveDisabled: boolean;
  *   postDisabled: boolean;
  *   showDelete: boolean;
+ *   showReverse?: boolean;
  *   postedBy?: unknown;
  *   postedAt?: string | null;
  *   onSave: () => void;
  *   onPost: () => void;
  *   onDelete: () => void;
+ *   onReverse?: () => void;
  * }} props
  */
 export default function SalesInvoiceDrawerFooter({
@@ -56,12 +59,23 @@ export default function SalesInvoiceDrawerFooter({
   saveDisabled,
   postDisabled,
   showDelete,
+  showReverse = false,
   postedBy = null,
   postedAt = null,
   onSave,
   onPost,
   onDelete,
+  onReverse,
 }) {
+  useDrawerSubmitShortcut({
+    enabled: !readOnly,
+    submitting,
+    onSave,
+    saveDisabled,
+    onPost,
+    postDisabled,
+  });
+
   if (readOnly) {
     return (
       <div className="flex w-full min-w-0 items-center gap-3">
@@ -69,6 +83,11 @@ export default function SalesInvoiceDrawerFooter({
         <Button className="shrink-0" onClick={forceClose}>
           {t("drawerClose")}
         </Button>
+        {showReverse ? (
+          <Button className="shrink-0" danger disabled={submitting} loading={submitting} onClick={onReverse}>
+            {t("actionReverse")}
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -85,7 +104,12 @@ export default function SalesInvoiceDrawerFooter({
         <Button onClick={requestClose} disabled={submitting}>
           {t("drawerCancel")}
         </Button>
-        <Button disabled={saveDisabled || submitting} loading={submitting} onClick={onSave}>
+        <Button
+          disabled={saveDisabled || submitting}
+          loading={submitting}
+          onClick={onSave}
+          title={`${t("drawerSave")} (Ctrl+Enter)`}
+        >
           {t("drawerSave")}
         </Button>
         <Button
@@ -93,6 +117,7 @@ export default function SalesInvoiceDrawerFooter({
           disabled={postDisabled || submitting}
           loading={submitting}
           onClick={onPost}
+          title={`${t("actionPost")} (Ctrl+Shift+Enter)`}
         >
           {t("actionPost")}
         </Button>

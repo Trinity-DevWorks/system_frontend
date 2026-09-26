@@ -67,6 +67,11 @@ export function postSalesInvoice(invoiceId) {
   return tenantRequest("POST", `sales-invoices/${invoiceId}/post`);
 }
 
+/** @param {string} invoiceId */
+export function reverseSalesInvoice(invoiceId) {
+  return tenantRequest("POST", `sales-invoices/${invoiceId}/reverse`);
+}
+
 /**
  * Warehouses (and lots) that currently hold the item.
  * @param {string} itemId

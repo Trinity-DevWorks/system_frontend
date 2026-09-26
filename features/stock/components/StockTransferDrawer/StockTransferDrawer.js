@@ -3,28 +3,32 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 /**
- * Stock transfer drawer — draft header/lines, save, dispatch, receive, cancel, delete.
+ * Stock transfer drawer — draft header/lines, save, dispatch, receive, leftover close, cancel, delete.
  */
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
-import { STOCK_TRANSFER_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
+import { STOCK_ADJUSTMENT_REASONS_QUERY_KEY, STOCK_TRANSFER_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import { fetchStockAdjustmentReasons } from "../../api/stockAdjustmentReasons.api";
 import { fetchStockTransfer } from "../../api/stockTransfers.api";
 import { useQuery } from "@tanstack/react-query";
-import { App, Form } from "antd";
+import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  isStockTransferCancellable,
+  getStockTransferStatusLabel,
+  getStockTransferStatusTagColor,
   isStockTransferDraft,
   isStockTransferInTransit,
-  isStockTransferReceivable,
 } from "../../utils/stockTransferStatuses";
+import StockTransferCloseOpenModal from "./StockTransferCloseOpenModal";
 import StockTransferDrawerFooter from "./StockTransferDrawerFooter";
 import StockTransferDrawerForm from "./StockTransferDrawerForm";
+import StockTransferHistoryPanel from "./StockTransferHistoryPanel";
 import StockTransferLineEditor from "./StockTransferLineEditor";
+import StockTransferReceiveModal from "./StockTransferReceiveModal";
 import {
   areTransferLinesDirty,
   canAddTransferLine,
@@ -67,7 +71,11 @@ export default function StockTransferDrawer({
   const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
   const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
   const [loadedDispatchedAt, setLoadedDispatchedAt] = useState(/** @type {string | null} */ (null));
+  const [loadedDispatchedBy, setLoadedDispatchedBy] = useState(/** @type {unknown} */ (null));
   const [loadedReceivedAt, setLoadedReceivedAt] = useState(/** @type {string | null} */ (null));
+  const [loadedReceivedBy, setLoadedReceivedBy] = useState(/** @type {unknown} */ (null));
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
 
   const defaults = useMemo(() => getStockTransferDefaults(), []);
   const loadedDetailVersionRef = useRef(0);
@@ -95,7 +103,9 @@ export default function StockTransferDrawer({
       setLoadedStatus(typeof record.status === "string" ? record.status : null);
       setLoadedNumber(typeof record.transfer_number === "string" ? record.transfer_number : null);
       setLoadedDispatchedAt(typeof record.dispatched_at === "string" ? record.dispatched_at : null);
+      setLoadedDispatchedBy(record.dispatched_by ?? null);
       setLoadedReceivedAt(typeof record.received_at === "string" ? record.received_at : null);
+      setLoadedReceivedBy(record.received_by ?? null);
       form.setFieldsValue(mapTransferRecordToForm(record));
     },
     [form],
@@ -110,7 +120,9 @@ export default function StockTransferDrawer({
     setLoadedStatus("draft");
     setLoadedNumber(null);
     setLoadedDispatchedAt(null);
+    setLoadedDispatchedBy(null);
     setLoadedReceivedAt(null);
+    setLoadedReceivedBy(null);
     loadedDetailVersionRef.current = 0;
   }, [form, defaults]);
 
@@ -129,6 +141,14 @@ export default function StockTransferDrawer({
           ? tableSeedRecord.transfer_number
           : null,
       );
+      setLoadedDispatchedAt(
+        typeof tableSeedRecord.dispatched_at === "string" ? tableSeedRecord.dispatched_at : null,
+      );
+      setLoadedDispatchedBy(tableSeedRecord.dispatched_by ?? null);
+      setLoadedReceivedAt(
+        typeof tableSeedRecord.received_at === "string" ? tableSeedRecord.received_at : null,
+      );
+      setLoadedReceivedBy(tableSeedRecord.received_by ?? null);
     }
   }, [open, mode, tableSeedRecord, resetCreateDraftState]);
 
@@ -201,7 +221,7 @@ export default function StockTransferDrawer({
     [onCreated, syncBaselinesFromRecordAndBump],
   );
 
-  const { saveMutation, dispatchMutation, receiveMutation, cancelMutation, deleteMutation, submitting } =
+  const { saveMutation, dispatchMutation, receiveMutation, closeOpenMutation, cancelMutation, deleteMutation, submitting } =
     useStockTransferDrawerMutations({
       form,
       message,
@@ -213,7 +233,14 @@ export default function StockTransferDrawer({
       onCreated: handleCreated,
       onSaved: syncBaselinesFromRecordAndBump,
       onDispatched: syncBaselinesFromRecordAndBump,
-      onReceived: syncBaselinesFromRecordAndBump,
+      onReceived: (record) => {
+        syncBaselinesFromRecordAndBump(record);
+        setReceiveOpen(false);
+      },
+      onClosedOpen: (record) => {
+        syncBaselinesFromRecordAndBump(record);
+        setCloseOpen(false);
+      },
       onCancelled: syncBaselinesFromRecordAndBump,
       onDeleted: forceClose,
       onClose: forceClose,
@@ -258,14 +285,12 @@ export default function StockTransferDrawer({
   }, [form, modal, t, dispatchMutation]);
 
   const handleReceive = useCallback(() => {
-    modal.confirm({
-      title: t("transferReceiveConfirmTitle"),
-      content: t("transferReceiveConfirmContent"),
-      okText: t("actionReceiveTransfer"),
-      cancelText: t("drawerCancel"),
-      onOk: () => closeConfirmOnError(receiveMutation.mutateAsync()),
-    });
-  }, [modal, t, receiveMutation]);
+    setReceiveOpen(true);
+  }, []);
+
+  const handleCloseOpen = useCallback(() => {
+    setCloseOpen(true);
+  }, []);
 
   const handleCancelTransfer = useCallback(() => {
     modal.confirm({
@@ -316,14 +341,55 @@ export default function StockTransferDrawer({
         : t("transferDrawerTitleEdit");
 
   const showDetailLoading = fetchRemoteDetail && detailQuery.isLoading;
-  const showLifecycleActions = isStockTransferInTransit(effectiveStatus);
-  const canReceive = isStockTransferReceivable(effectiveStatus);
-  const canCancelInTransit = isStockTransferInTransit(effectiveStatus);
+  const detailRecord =
+    detailQuery.data && typeof detailQuery.data === "object"
+      ? /** @type {Record<string, unknown>} */ (detailQuery.data)
+      : tableSeedRecord && typeof tableSeedRecord === "object"
+        ? tableSeedRecord
+        : null;
+  const canReceive = detailRecord?.can_receive === true;
+  const canCancelInTransit = detailRecord?.can_cancel_transit === true;
+  const canCloseOpen =
+    typeof detailRecord?.can_close_open === "boolean" ? detailRecord.can_close_open : false;
+  const apiLines = Array.isArray(detailRecord?.lines)
+    ? /** @type {Array<Record<string, unknown>>} */ (detailRecord.lines)
+    : [];
+  const receipts = Array.isArray(detailRecord?.receipts)
+    ? /** @type {Array<Record<string, unknown>>} */ (detailRecord.receipts)
+    : [];
+  const closures = Array.isArray(detailRecord?.closures)
+    ? /** @type {Array<Record<string, unknown>>} */ (detailRecord.closures)
+    : [];
+
+  const reasonsQuery = useQuery({
+    queryKey: [...STOCK_ADJUSTMENT_REASONS_QUERY_KEY, "close-open"],
+    queryFn: () => fetchStockAdjustmentReasons({ per_page: 100 }),
+    enabled: open && closeOpen,
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+  const reasonOptions = useMemo(
+    () =>
+      (reasonsQuery.data?.rows ?? [])
+        .filter((row) => row && typeof row === "object" && row.is_active !== false)
+        .map((row) => ({
+          value: Number(row.id),
+          label: String(row.name ?? row.code ?? row.id),
+        }))
+        .filter((row) => Number.isFinite(row.value)),
+    [reasonsQuery.data],
+  );
 
   return (
     <ResourceCrudDrawer
       title={title}
       recordName={loadedNumber}
+      titleExtra={
+        effectiveStatus ? (
+          <Tag className="m-0" color={getStockTransferStatusTagColor(effectiveStatus)}>
+            {getStockTransferStatusLabel(t, effectiveStatus)}
+          </Tag>
+        ) : null
+      }
       open={open}
       requestClose={requestClose}
       submitting={submitting}
@@ -332,7 +398,7 @@ export default function StockTransferDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      size={1100}
+      size={1200}
       footer={
         <StockTransferDrawerFooter
           readOnly={readOnly}
@@ -343,17 +409,19 @@ export default function StockTransferDrawer({
           saveDisabled={!canSubmitRequired}
           dispatchDisabled={!canSubmitRequired}
           showDelete={!readOnly && transferId != null}
-          showCancelTransfer={
-            !readOnly && transferId != null && isStockTransferCancellable(effectiveStatus)
-          }
-          showLifecycleActions={showLifecycleActions}
           canReceive={canReceive}
           canCancelInTransit={canCancelInTransit}
+          canCloseOpen={canCloseOpen}
           onSave={handleSave}
           onDispatch={handleDispatch}
           onReceive={handleReceive}
+          onCloseOpen={handleCloseOpen}
           onCancelTransfer={handleCancelTransfer}
           onDelete={handleDelete}
+          dispatchedBy={loadedDispatchedBy}
+          dispatchedAt={loadedDispatchedAt}
+          receivedBy={loadedReceivedBy}
+          receivedAt={loadedReceivedAt}
         />
       }
     >
@@ -363,11 +431,6 @@ export default function StockTransferDrawer({
         t={t}
         warehouseOptions={drawerData.warehouseOptions}
         warehousesPending={drawerData.warehousesPending}
-        transferNumber={loadedNumber}
-        transferStatus={effectiveStatus}
-        dispatchedAt={loadedDispatchedAt}
-        receivedAt={loadedReceivedAt}
-        showMeta={mode !== "create"}
       />
       <StockTransferLineEditor
         lines={lines}
@@ -381,6 +444,25 @@ export default function StockTransferDrawer({
         onRemoveLine={removeLine}
         onAddLine={addLine}
         t={t}
+      />
+      <StockTransferHistoryPanel receipts={receipts} closures={closures} t={t} />
+      <StockTransferReceiveModal
+        open={receiveOpen}
+        lines={apiLines}
+        submitting={receiveMutation.isPending}
+        t={t}
+        onCancel={() => setReceiveOpen(false)}
+        onSubmit={(body) => receiveMutation.mutate(body)}
+      />
+      <StockTransferCloseOpenModal
+        open={closeOpen}
+        lines={apiLines}
+        reasonOptions={reasonOptions}
+        reasonsPending={reasonsQuery.isPending}
+        submitting={closeOpenMutation.isPending}
+        t={t}
+        onCancel={() => setCloseOpen(false)}
+        onSubmit={(body) => closeOpenMutation.mutate(body)}
       />
     </ResourceCrudDrawer>
   );

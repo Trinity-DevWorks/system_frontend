@@ -3,9 +3,8 @@
  */
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
-import { formatUomLabel } from "../utils/formatStockQuantity";
-import { STOCK_TRANSFER_BASE_UOM } from "../utils/stockTransferDrawerUtils";
 import { formatLotOptionLabel, formatLotOptionTooltip } from "../utils/stockLotUtils";
+import { mapItemUomsToLineSelectOptions } from "../utils/itemLineUomOptions";
 import { fetchStockLots } from "../api/stock.api";
 import { stockLotsQueryKey } from "./stockQueryKeys";
 import { fetchItemNames } from "@/features/items/index";
@@ -89,17 +88,10 @@ export function useTransferLineUomOptions({ itemId, t, enabled = true }) {
     staleTime: QUERY_STALE_TIME.default,
   });
 
-  const options = useMemo(() => {
-    const rows = itemUomsQuery.data ?? [];
-    const result = [
-      { value: STOCK_TRANSFER_BASE_UOM, label: t("transferBaseUomOption") },
-    ];
-    for (const row of rows) {
-      const label = formatUomLabel(row?.uom) || `UOM #${row?.uom_id ?? row?.id}`;
-      result.push({ value: row.id, label });
-    }
-    return result;
-  }, [itemUomsQuery.data, t]);
+  const options = useMemo(
+    () => mapItemUomsToLineSelectOptions(itemUomsQuery.data, t),
+    [itemUomsQuery.data, t],
+  );
 
   return {
     options,

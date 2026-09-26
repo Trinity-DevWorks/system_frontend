@@ -69,3 +69,8 @@ export function loadStockCountBalances(documentId) {
 export function postStockCount(documentId) {
   return tenantRequest("POST", `stock/stock-counts/${documentId}/post`);
 }
+
+/** @param {string} documentId */
+export function reverseStockCount(documentId) {
+  return tenantRequest("POST", `stock/stock-counts/${documentId}/reverse`);
+}

@@ -133,6 +133,7 @@ export default function CustomerDrawer({
   const defaults = useMemo(
     () => ({
       name: "",
+      account_number: "",
       email: "",
       phone: "",
       customer_group_id: undefined,
@@ -158,6 +159,7 @@ export default function CustomerDrawer({
     return {
       customer_code: r.customer_code,
       name: r.name,
+      account_number: r.account_number ?? "",
       email: r.email ?? "",
       phone: r.phone ?? "",
       customer_group_id: r.customer_group_id ?? undefined,

@@ -11,7 +11,6 @@ import dayjs from "dayjs";
  *   t: (key: string) => string;
  *   warehouseOptions: { value: unknown; label: string }[];
  *   warehousesPending: boolean;
- *   osNumber?: string | null;
  * }} props
  */
 export default function OpeningStockDrawerForm({
@@ -20,16 +19,9 @@ export default function OpeningStockDrawerForm({
   t,
   warehouseOptions,
   warehousesPending,
-  osNumber,
 }) {
   return (
     <Form form={form} layout="vertical" disabled={readOnly}>
-      {osNumber ? (
-        <Form.Item label={t("osFieldNumber")}>
-          <Input value={osNumber} disabled />
-        </Form.Item>
-      ) : null}
-
       <Row gutter={[24, 0]}>
         <Col xs={24} md={12}>
           <Form.Item

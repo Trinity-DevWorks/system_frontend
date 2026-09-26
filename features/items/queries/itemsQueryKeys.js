@@ -17,4 +17,9 @@ export function itemDetailQueryKey(id) {
   return [...ITEMS_LIST_QUERY_KEY, id];
 }
 
+/** @param {number | string} id */
+export function itemInvoiceLineSetupQueryKey(id) {
+  return [...itemDetailQueryKey(id), "invoice-line-setup"];
+}
+
 export const ITEM_TYPES_QUERY_KEY = /** @type {const} */ (["tenant", "item-types"]);

@@ -1,6 +1,6 @@
-/** @typedef {"draft" | "posted"} BundleExplosionStatus */
+/** @typedef {"draft" | "posted" | "reversed"} BundleExplosionStatus */
 
-export const BUNDLE_EXPLOSION_STATUS_VALUES = /** @type {const} */ (["draft", "posted"]);
+export const BUNDLE_EXPLOSION_STATUS_VALUES = /** @type {const} */ (["draft", "posted", "reversed"]);
 
 /**
  * @param {(key: string) => string} t
@@ -9,6 +9,7 @@ export const BUNDLE_EXPLOSION_STATUS_VALUES = /** @type {const} */ (["draft", "p
 export function getBundleExplosionStatusLabel(t, status) {
   if (status === "draft") return t("bexStatusDraft");
   if (status === "posted") return t("bexStatusPosted");
+  if (status === "reversed") return t("bexStatusReversed");
   return status ? String(status) : "\u2014";
 }
 

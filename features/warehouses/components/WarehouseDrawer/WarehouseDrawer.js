@@ -85,27 +85,36 @@ export default function WarehouseDrawer({
   const branchIdWatch = Form.useWatch("branch_id", form);
 
   const userOptions = useMemo(() => {
-    const users = Array.isArray(usersQuery.data) ? usersQuery.data : [];
+    const raw = usersQuery.data;
+    const users = Array.isArray(raw)
+      ? raw
+      : raw && typeof raw === "object" && Array.isArray(/** @type {{ rows?: unknown }} */ (raw).rows)
+        ? /** @type {{ rows: unknown[] }} */ (raw).rows
+        : [];
     const isBranchType = typeWatch === "branch";
     const branchId =
       branchIdWatch == null || branchIdWatch === "" ? null : Number(branchIdWatch);
 
     return users
       .filter((u) => {
-        if (u?.id == null) return false;
+        if (!u || typeof u !== "object" || /** @type {{ id?: unknown }} */ (u).id == null) return false;
         if (!isBranchType) return true;
-        if (branchId == null) return false;
-        const ids = Array.isArray(u.branch_ids)
-          ? u.branch_ids.map(Number)
-          : Array.isArray(u.branches)
-            ? u.branches.map((b) => Number(b?.id)).filter((id) => !Number.isNaN(id))
+        if (branchId == null || Number.isNaN(branchId)) return false;
+        const row = /** @type {{ branch_ids?: unknown; branches?: unknown }} */ (u);
+        const ids = Array.isArray(row.branch_ids)
+          ? row.branch_ids.map(Number)
+          : Array.isArray(row.branches)
+            ? row.branches.map((b) => Number(/** @type {{ id?: unknown }} */ (b)?.id)).filter((id) => !Number.isNaN(id))
             : [];
         return ids.includes(branchId);
       })
-      .map((u) => ({
-        value: String(u.id),
-        label: typeof u.name === "string" && u.name.trim() ? u.name : String(u.email ?? u.id),
-      }));
+      .map((u) => {
+        const row = /** @type {{ id: unknown; name?: unknown; email?: unknown }} */ (u);
+        return {
+          value: String(row.id),
+          label: typeof row.name === "string" && row.name.trim() ? row.name : String(row.email ?? row.id),
+        };
+      });
   }, [usersQuery.data, typeWatch, branchIdWatch]);
 
   const defaults = useMemo(
@@ -162,12 +171,13 @@ export default function WarehouseDrawer({
 
   const nameWatch = Form.useWatch("name", form);
   const shortcutNameWatch = Form.useWatch("shortcut_name", form);
+  const managerIdWatch = Form.useWatch("manager_id", form);
 
   const canSubmitRequired = useMemo(() => {
     const name = typeof nameWatch === "string" ? nameWatch : "";
     const shortcutName = typeof shortcutNameWatch === "string" ? shortcutNameWatch : "";
-    return requiredFieldsValid(name, shortcutName, typeWatch, branchIdWatch);
-  }, [nameWatch, shortcutNameWatch, typeWatch, branchIdWatch]);
+    return requiredFieldsValid(name, shortcutName, typeWatch, branchIdWatch, managerIdWatch);
+  }, [nameWatch, shortcutNameWatch, typeWatch, branchIdWatch, managerIdWatch]);
 
   const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
     open,

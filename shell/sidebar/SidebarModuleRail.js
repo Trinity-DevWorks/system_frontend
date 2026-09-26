@@ -49,6 +49,7 @@ function RailButton({
  * Narrow always-visible rail of top-level modules.
  *
  * Hover shows the module name only. Click opens that module's pages in the panel.
+ * When collapsed, clicking empty rail chrome also peeks the active module's pages.
  *
  * @param {{
  *   modules: import("antd").MenuProps["items"],
@@ -56,6 +57,7 @@ function RailButton({
  *   activeModuleKey: string | null,
  *   previewModuleKey: string | null,
  *   onSelectModule: (module: any) => void,
+ *   onRailBodyClick?: () => void,
  *   brand: string,
  *   brandLogo?: object | null,
  *   onBrandClick: () => void,
@@ -69,6 +71,7 @@ export default function SidebarModuleRail({
   activeModuleKey,
   previewModuleKey,
   onSelectModule,
+  onRailBodyClick,
   brand,
   brandLogo,
   onBrandClick,
@@ -76,7 +79,15 @@ export default function SidebarModuleRail({
   ariaLabel,
 }) {
   return (
-    <nav className="shell-rail" aria-label={ariaLabel}>
+    <nav
+      className="shell-rail"
+      aria-label={ariaLabel}
+      onClick={(event) => {
+        if (!onRailBodyClick) return;
+        if (event.target.closest("button")) return;
+        onRailBodyClick();
+      }}
+    >
       <div
         className="shell-rail-brand"
         style={{ height: SHELL_CHROME_HEIGHT_PX, minHeight: SHELL_CHROME_HEIGHT_PX }}

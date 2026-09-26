@@ -10,6 +10,7 @@ import {
   deleteSalesInvoice,
   fetchSalesInvoice,
   postSalesInvoice,
+  reverseSalesInvoice,
   syncSalesInvoiceLines,
   updateSalesInvoice,
 } from "../api/salesInvoices.api";
@@ -33,6 +34,7 @@ import {
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onSaved?: (record: Record<string, unknown>) => void;
  *   onPosted?: (record: Record<string, unknown>) => void;
+ *   onReversed?: (record: Record<string, unknown>) => void;
  *   onDeleted?: () => void;
  *   onClose?: () => void;
  * }} args
@@ -48,6 +50,7 @@ export function useSalesInvoiceDrawerMutations({
   onCreated,
   onSaved,
   onPosted,
+  onReversed,
   onDeleted,
   onClose,
 }) {
@@ -139,6 +142,26 @@ export function useSalesInvoiceDrawerMutations({
     },
   });
 
+  const reverseMutation = useMutation({
+    mutationFn: async () => {
+      if (invoiceId == null) throw new Error("Missing sales invoice id");
+      return reverseSalesInvoice(invoiceId);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("reverseError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (record) => {
+      message.success(t("reverseSuccess"));
+      invalidateAfterPost();
+      const id = normalizeEntityId(record?.id ?? invoiceId);
+      if (id != null) cacheDetail(id, record);
+      onReversed?.(/** @type {Record<string, unknown>} */ (record));
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => {
       if (invoiceId == null) throw new Error("Missing sales invoice id");
@@ -158,11 +181,12 @@ export function useSalesInvoiceDrawerMutations({
     },
   });
 
-  const submitting = saveMutation.isPending || postMutation.isPending || deleteMutation.isPending;
+  const submitting = saveMutation.isPending || postMutation.isPending || reverseMutation.isPending || deleteMutation.isPending;
 
   return {
     saveMutation,
     postMutation,
+    reverseMutation,
     deleteMutation,
     submitting,
   };

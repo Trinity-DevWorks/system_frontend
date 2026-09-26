@@ -66,3 +66,8 @@ export async function syncBundleExplosionLines(documentId, body) {
 export function postBundleExplosion(documentId) {
   return tenantRequest("POST", `stock/bundle-explosions/${documentId}/post`);
 }
+
+/** @param {string} documentId */
+export function reverseBundleExplosion(documentId) {
+  return tenantRequest("POST", `stock/bundle-explosions/${documentId}/reverse`);
+}

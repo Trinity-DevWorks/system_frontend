@@ -15,7 +15,6 @@ import InboundLotFields from "../InboundLotFields";
  *   warehousesPending: boolean;
  *   itemOptions: { value: string; label: string; track_lots?: boolean }[];
  *   itemsPending: boolean;
- *   prdNumber?: string | null;
  *   produceTrackLots: boolean;
  *   recipeUom?: string;
  *   recipePending: boolean;
@@ -32,7 +31,6 @@ export default function ProductionDrawerForm({
   warehousesPending,
   itemOptions,
   itemsPending,
-  prdNumber,
   produceTrackLots,
   recipeUom,
   recipePending,
@@ -48,12 +46,6 @@ export default function ProductionDrawerForm({
 
   return (
     <Form form={form} layout="vertical" disabled={readOnly}>
-      {prdNumber ? (
-        <Form.Item label={t("prdFieldNumber")}>
-          <Input value={prdNumber} disabled />
-        </Form.Item>
-      ) : null}
-
       <Row gutter={[24, 0]}>
         <Col xs={24} md={12}>
           <Form.Item

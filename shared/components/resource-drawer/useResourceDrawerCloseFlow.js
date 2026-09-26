@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { withConfirmKeyboard } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 
 /**
  * Standard close: view closes immediately; edit/create confirm if dirty.
@@ -26,14 +27,16 @@ export function useResourceDrawerCloseFlow({ readOnly, modal, t, onClose, should
       forceClose();
       return;
     }
-    modal.confirm({
-      title: t("unsavedTitle"),
-      content: t("unsavedContent"),
-      okText: t("unsavedLeave"),
-      cancelText: t("unsavedStay"),
-      okButtonProps: { danger: true },
-      onOk: () => forceClose(),
-    });
+    modal.confirm(
+      withConfirmKeyboard({
+        title: t("unsavedTitle"),
+        content: t("unsavedContent"),
+        okText: t("unsavedLeave"),
+        cancelText: t("unsavedStay"),
+        okButtonProps: { danger: true },
+        onOk: () => forceClose(),
+      }),
+    );
   }, [readOnly, shouldConfirmDiscard, forceClose, modal, t]);
 
   return { forceClose, requestClose };

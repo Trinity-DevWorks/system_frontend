@@ -41,11 +41,24 @@ import {
   Typography,
 } from "antd";
 import { useTranslations } from "next-intl";
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ColumnDragShell, SortableTableBodyCell, SortableTableHeaderCell } from "@/shared/components/tables/AppDataTableColumnDrag";
 
 const DEFAULT_SCROLL_X = 1000;
 const PICKER_SKIP = new Set(["actions"]);
+
+/** Client snapshot differs from SSR so the selection column is omitted until hydration. */
+function subscribeMounted() {
+  return () => {};
+}
+
+function getClientMounted() {
+  return true;
+}
+
+function getServerMounted() {
+  return false;
+}
 
 /** Ant Design Space treats `null`/`false` children as items on the client (hydration mismatch). */
 function spaceChildren(nodes) {
@@ -175,7 +188,7 @@ function AppDataTable({
   /** Avoid SSR/client hydration mismatch: @dnd-kit aria-describedby ids differ pre/post mount. */
   const [columnDndReady, setColumnDndReady] = useState(false);
   /** Permissions/token are client-only; checkbox column must not appear in SSR HTML. */
-  const [hasMounted, setHasMounted] = useState(false);
+  const hasMounted = useSyncExternalStore(subscribeMounted, getClientMounted, getServerMounted);
 
   /** `null` on first mount so we treat as table change and load `columnOrder` from localStorage. */
   const lastPrefsScopeRef = useRef(null);
@@ -195,10 +208,6 @@ function AppDataTable({
   useEffect(() => {
     onSearchChangeRef.current = onSearchChange;
   }, [onSearchChange]);
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
