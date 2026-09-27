@@ -40,6 +40,7 @@ import {
 } from "../../utils/customerDrawerUtils";
 import { useCustomerDrawerMutations } from "../../queries/useCustomerMutations";
 import { CUSTOMERS_LIST_QUERY_KEY } from "../../queries/customersQueryKeys";
+import { useCompanySettings } from "@/lib/company-settings";
 import { CUSTOMER_GROUPS_LIST_QUERY_KEY } from "@/features/customer-groups";
 import { PAYMENT_METHODS_LIST_QUERY_KEY } from "@/features/payment-methods";
 import { PAYMENT_TERMS_LIST_QUERY_KEY } from "@/features/payment-terms";
@@ -73,6 +74,8 @@ export default function CustomerDrawer({
   const t = useTranslations("Customers");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
+  const { settings } = useCompanySettings();
+  const showWalletAddress = Boolean(settings.invoiceProofsEnabled);
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [nestedCreate, setNestedCreate] = useState(
@@ -148,6 +151,7 @@ export default function CustomerDrawer({
       is_vat_registered: false,
       vat_number: "",
       notes: "",
+      wallet_address: "",
       addresses: [],
     }),
     [],
@@ -172,6 +176,7 @@ export default function CustomerDrawer({
       is_vat_registered: r.is_vat_registered === true,
       vat_number: r.vat_number ?? "",
       notes: r.notes ?? "",
+      wallet_address: r.wallet_address ?? "",
       addresses: Array.isArray(r.addresses)
         ? r.addresses.map((row) => ({
             id: row.id,
@@ -335,6 +340,7 @@ export default function CustomerDrawer({
     defaults,
     customerGroupsData,
     currenciesData,
+    includeWalletAddress: showWalletAddress,
   });
 
   const isSystemCustomer = Boolean(
@@ -481,6 +487,7 @@ export default function CustomerDrawer({
         currencies={currenciesData ?? []}
         currenciesPending={currenciesQuery.isPending}
         isSystem={isSystemCustomer}
+        showWalletAddress={showWalletAddress}
       />
       {!readOnly ? (
         <>

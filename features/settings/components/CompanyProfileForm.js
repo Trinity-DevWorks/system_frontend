@@ -1,6 +1,7 @@
 "use client";
 
 import { Form, Input } from "antd";
+import { isOptionalWalletAddress } from "@/lib/wallet-address";
 
 /**
  * @param {{
@@ -9,6 +10,8 @@ import { Form, Input } from "antd";
  *   onFinish: (values: Record<string, unknown>) => void;
  *   disabled?: boolean;
  *   onValuesChange?: () => void;
+ *   showWalletAddress?: boolean;
+ *   blockchainNetwork?: string | null;
  * }} props
  */
 export default function CompanyProfileForm({
@@ -17,7 +20,11 @@ export default function CompanyProfileForm({
   onFinish,
   disabled = false,
   onValuesChange,
+  showWalletAddress = false,
+  blockchainNetwork = null,
 }) {
+  const blockchainNetworkLabel =
+    blockchainNetwork === "sepolia" ? t("networkSepolia") : t("networkAnvil");
   return (
     <Form
       form={form}
@@ -89,6 +96,45 @@ export default function CompanyProfileForm({
       <Form.Item name="address" label={t("fieldAddress")}>
         <Input.TextArea rows={3} autoComplete="street-address" />
       </Form.Item>
+      {showWalletAddress ? (
+        <>
+          {blockchainNetwork ? (
+            <p className="mb-3 text-sm text-neutral-500">
+              {t("fieldWalletActiveNetwork", { network: blockchainNetworkLabel })}
+            </p>
+          ) : null}
+          <Form.Item
+            name="wallet_address_anvil"
+            label={t("fieldWalletAddressAnvil")}
+            extra={t("fieldWalletAddressAnvilHelp")}
+            rules={[
+              {
+                validator: async (_, value) => {
+                  if (isOptionalWalletAddress(value)) return;
+                  throw new Error(t("fieldWalletAddressInvalid"));
+                },
+              },
+            ]}
+          >
+            <Input autoComplete="off" placeholder="0x…" className="font-mono" />
+          </Form.Item>
+          <Form.Item
+            name="wallet_address_sepolia"
+            label={t("fieldWalletAddressSepolia")}
+            extra={t("fieldWalletAddressSepoliaHelp")}
+            rules={[
+              {
+                validator: async (_, value) => {
+                  if (isOptionalWalletAddress(value)) return;
+                  throw new Error(t("fieldWalletAddressInvalid"));
+                },
+              },
+            ]}
+          >
+            <Input autoComplete="off" placeholder="0x…" className="font-mono" />
+          </Form.Item>
+        </>
+      ) : null}
     </Form>
   );
 }

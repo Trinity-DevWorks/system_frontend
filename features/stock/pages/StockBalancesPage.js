@@ -7,7 +7,7 @@ import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useResourceAccess } from "@/lib/permissions";
 import { App, Checkbox, Form, Select, Space, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { stockFilterFieldRowClassName, useStockTableFilters } from "../components/StockTableFilters/StockTableFilters";
 import {
   StockWarehouseViewSwitch,
@@ -29,6 +29,12 @@ function StockBalancesTable() {
   const [warehouseFilter, setWarehouseFilter] = useState(/** @type {number | undefined} */ (undefined));
   const [onlyWithStock, setOnlyWithStock] = useState(true);
   const [viewMode, setViewMode] = useState(/** @type {"list" | "warehouse"} */ ("warehouse"));
+  /** Permissions are client-only; the actions column must not appear in SSR HTML. */
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = useStockBalancesTableQuery({
     t,
@@ -100,18 +106,19 @@ function StockBalancesTable() {
   const columns = useMemo(
     () =>
       getStockBalanceTableColumns(t, {
-        onAdjust: access.canAdd
-          ? (record) =>
-              openAdjustment({
-                warehouse_id: record?.warehouse_id != null ? Number(record.warehouse_id) : undefined,
-                item_id: record?.item_id != null ? String(record.item_id) : undefined,
-                item_label: typeof record?.item?.name === "string" ? record.item.name : undefined,
-                lot_id: record?.lot_id != null ? Number(record.lot_id) : undefined,
-                track_lots: Boolean(record?.item?.track_lots || record?.lot_id),
-              })
-          : undefined,
+        onAdjust:
+          hasMounted && access.canAdd
+            ? (record) =>
+                openAdjustment({
+                  warehouse_id: record?.warehouse_id != null ? Number(record.warehouse_id) : undefined,
+                  item_id: record?.item_id != null ? String(record.item_id) : undefined,
+                  item_label: typeof record?.item?.name === "string" ? record.item.name : undefined,
+                  lot_id: record?.lot_id != null ? Number(record.lot_id) : undefined,
+                  track_lots: Boolean(record?.item?.track_lots || record?.lot_id),
+                })
+            : undefined,
       }),
-    [t, access.canAdd, openAdjustment],
+    [t, hasMounted, access.canAdd, openAdjustment],
   );
 
   const grouped = useWarehouseGroupedTable({

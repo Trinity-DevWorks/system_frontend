@@ -2,7 +2,12 @@
 
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import { postedByDisplayName } from "./SalesInvoiceDrawerHeaderMeta";
-import { Button, Space } from "antd";
+import {
+  getInvoiceProofStatusLabel,
+  invoiceProofStatusTagColor,
+} from "../../utils/invoiceProofStatuses";
+import { Button, Space, Tag, Tooltip } from "antd";
+import SalesInvoiceBuyerLinkButton from "./SalesInvoiceBuyerLinkButton";
 
 /**
  * @param {{
@@ -11,6 +16,55 @@ import { Button, Space } from "antd";
  *   postedAt?: string | null;
  * }} props
  */
+/**
+ * @param {unknown} address
+ */
+function shortAddress(address) {
+  const raw = String(address ?? "").trim();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(raw)) return "";
+  return `${raw.slice(0, 6)}…${raw.slice(-4)}`;
+}
+
+function FooterChainTimes({
+  t,
+  registeredAt,
+  supplierApprovedAt,
+  buyerApprovedAt,
+  supplierWallet,
+  buyerWallet,
+}) {
+  const items = [
+    [registeredAt, "chainRegisteredAt", ""],
+    [supplierApprovedAt, "chainSupplierApprovedAt", supplierWallet],
+    [buyerApprovedAt, "chainBuyerApprovedAt", buyerWallet],
+  ].filter(([value]) => typeof value === "string" && value !== "");
+  if (items.length === 0) return null;
+
+  return (
+    <div className="sales-invoice-drawer-footer-posted">
+      {items.map(([value, key, wallet]) => {
+        const when = formatTenantDateTime(value) || "\u2014";
+        const who = shortAddress(wallet);
+        return (
+          <span key={key} className="sales-invoice-drawer-footer-posted-item">
+            <span className="sales-invoice-drawer-footer-posted-label">{t(key)}</span>
+            <span className="sales-invoice-drawer-footer-posted-value">
+              {when}
+              {who ? (
+                <Tooltip title={String(wallet)}>
+                  <span className="ms-1 cursor-help font-mono text-xs" dir="ltr">
+                    {who}
+                  </span>
+                </Tooltip>
+              ) : null}
+            </span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function FooterPostedMeta({ t, postedBy, postedAt }) {
   return (
     <div className="sales-invoice-drawer-footer-posted">
@@ -42,9 +96,24 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   showDelete: boolean;
  *   postedBy?: unknown;
  *   postedAt?: string | null;
+ *   showVerify?: boolean;
+ *   verifying?: boolean;
+ *   proofStatus?: string | null;
+ *   chainRegisteredAt?: string | null;
+ *   chainSupplierApprovedAt?: string | null;
+ *   chainBuyerApprovedAt?: string | null;
+ *   chainSupplierWallet?: string | null;
+ *   chainBuyerWallet?: string | null;
+ *   showApproveCompany?: boolean;
+ *   approvingCompany?: boolean;
+ *   showBuyerLink?: boolean;
+ *   buyerLinkInvoiceId?: string | null;
+ *   buyerLinkInvoiceNumber?: string | null;
  *   onSave: () => void;
  *   onPost: () => void;
  *   onDelete: () => void;
+ *   onVerify?: () => void;
+ *   onApproveCompany?: () => void;
  * }} props
  */
 export default function SalesInvoiceDrawerFooter({
@@ -58,24 +127,101 @@ export default function SalesInvoiceDrawerFooter({
   showDelete,
   postedBy = null,
   postedAt = null,
+  showVerify = false,
+  verifying = false,
+  proofStatus = null,
+  chainRegisteredAt = null,
+  chainSupplierApprovedAt = null,
+  chainBuyerApprovedAt = null,
+  chainSupplierWallet = null,
+  chainBuyerWallet = null,
+  showApproveCompany = false,
+  approvingCompany = false,
+  showBuyerLink = false,
+  buyerLinkInvoiceId = null,
+  buyerLinkInvoiceNumber = null,
   onSave,
   onPost,
   onDelete,
+  onVerify,
+  onApproveCompany,
 }) {
+  const verifyControls =
+    showVerify || showApproveCompany ? (
+      <>
+        {showVerify && proofStatus ? (
+          <Tag className="shrink-0" color={invoiceProofStatusTagColor(proofStatus)}>
+            {getInvoiceProofStatusLabel(t, proofStatus)}
+          </Tag>
+        ) : null}
+        {showVerify ? (
+          <Button className="shrink-0" loading={verifying} disabled={submitting} onClick={onVerify}>
+            {t("actionVerify")}
+          </Button>
+        ) : null}
+        {showApproveCompany ? (
+          <Button
+            className="shrink-0"
+            type="primary"
+            loading={approvingCompany}
+            disabled={submitting}
+            onClick={onApproveCompany}
+          >
+            {t("actionApproveAsCompany")}
+          </Button>
+        ) : null}
+        {showVerify && showBuyerLink && buyerLinkInvoiceId ? (
+          <SalesInvoiceBuyerLinkButton
+            invoiceId={buyerLinkInvoiceId}
+            invoiceNumber={buyerLinkInvoiceNumber}
+            disabled={submitting}
+            t={t}
+          />
+        ) : null}
+      </>
+    ) : null;
+
   if (readOnly) {
     return (
       <div className="flex w-full min-w-0 items-center gap-3">
-        <FooterPostedMeta t={t} postedBy={postedBy} postedAt={postedAt} />
-        <Button className="shrink-0" onClick={forceClose}>
-          {t("drawerClose")}
-        </Button>
+        <div className="flex min-w-0 flex-col gap-1">
+          <FooterPostedMeta t={t} postedBy={postedBy} postedAt={postedAt} />
+          {showVerify ? (
+            <FooterChainTimes
+              t={t}
+              registeredAt={chainRegisteredAt}
+              supplierApprovedAt={chainSupplierApprovedAt}
+              buyerApprovedAt={chainBuyerApprovedAt}
+              supplierWallet={chainSupplierWallet}
+              buyerWallet={chainBuyerWallet}
+            />
+          ) : null}
+        </div>
+        <div className="ms-auto flex shrink-0 items-center gap-3">
+          {verifyControls}
+          <Button className="shrink-0" onClick={forceClose}>
+            {t("drawerClose")}
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex w-full min-w-0 items-center gap-3">
-      <FooterPostedMeta t={t} postedBy={postedBy} postedAt={postedAt} />
+      <div className="flex min-w-0 flex-col gap-1">
+        <FooterPostedMeta t={t} postedBy={postedBy} postedAt={postedAt} />
+        {showVerify ? (
+          <FooterChainTimes
+            t={t}
+            registeredAt={chainRegisteredAt}
+            supplierApprovedAt={chainSupplierApprovedAt}
+            buyerApprovedAt={chainBuyerApprovedAt}
+            supplierWallet={chainSupplierWallet}
+            buyerWallet={chainBuyerWallet}
+          />
+        ) : null}
+      </div>
       {showDelete ? (
         <Button className="shrink-0" danger disabled={submitting} onClick={onDelete}>
           {t("actionDelete")}

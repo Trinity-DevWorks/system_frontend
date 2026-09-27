@@ -174,7 +174,7 @@ function AppDataTable({
   });
   /** Avoid SSR/client hydration mismatch: @dnd-kit aria-describedby ids differ pre/post mount. */
   const [columnDndReady, setColumnDndReady] = useState(false);
-  /** Permissions/token are client-only; checkbox column must not appear in SSR HTML. */
+  /** Permissions/token are client-only; checkbox column and Add must not appear in SSR HTML. */
   const [hasMounted, setHasMounted] = useState(false);
 
   /** `null` on first mount so we treat as table change and load `columnOrder` from localStorage. */
@@ -666,7 +666,7 @@ function AppDataTable({
                     </Button>
                   </Dropdown>
                 ) : null,
-                showAdd && onAdd ? (
+                hasMounted && showAdd && onAdd ? (
                   <Button key="add" type="primary" icon={<PlusOutlined />} onClick={onAdd}>
                     {addLabel ?? t("add")}
                   </Button>

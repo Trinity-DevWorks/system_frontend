@@ -23,6 +23,11 @@ import { useMemo } from "react";
  * @property {string | null} tax_number
  * @property {string | null} registration_number
  * @property {string | null} address
+ * @property {string | null} wallet_address
+ * @property {string | null} wallet_address_anvil
+ * @property {string | null} wallet_address_sepolia
+ * @property {string | null} blockchain_network
+ * @property {number | null} blockchain_chain_id
  * @property {CompanyLogoBrief | null} logo
  * @property {string | null} created_at
  * @property {string | null} updated_at
@@ -39,6 +44,11 @@ export const DEFAULT_COMPANY_PROFILE = {
   tax_number: null,
   registration_number: null,
   address: null,
+  wallet_address: null,
+  wallet_address_anvil: null,
+  wallet_address_sepolia: null,
+  blockchain_network: null,
+  blockchain_chain_id: null,
   logo: null,
   created_at: null,
   updated_at: null,
@@ -107,6 +117,14 @@ export function normalizeCompanyProfile(payload) {
     tax_number: nullableString(raw.tax_number),
     registration_number: nullableString(raw.registration_number),
     address: nullableString(raw.address),
+    wallet_address: nullableString(raw.wallet_address),
+    wallet_address_anvil: nullableString(raw.wallet_address_anvil),
+    wallet_address_sepolia: nullableString(raw.wallet_address_sepolia),
+    blockchain_network: nullableString(raw.blockchain_network),
+    blockchain_chain_id:
+      typeof raw.blockchain_chain_id === "number" && Number.isFinite(raw.blockchain_chain_id)
+        ? raw.blockchain_chain_id
+        : null,
     logo,
     created_at: nullableString(raw.created_at),
     updated_at: nullableString(raw.updated_at),

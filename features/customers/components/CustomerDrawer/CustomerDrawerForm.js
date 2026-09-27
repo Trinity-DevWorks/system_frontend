@@ -13,6 +13,7 @@ import {
   CUSTOMER_LOOKUP_ADD_SALESMAN,
   CUSTOMER_LOOKUP_ADD_VAT_GROUP,
 } from "../../utils/customerDrawerUtils";
+import { isOptionalWalletAddress } from "@/lib/wallet-address";
 
 const PHONE_MAX = 32;
 
@@ -63,6 +64,7 @@ function currencyOptionsForRow(currencies, currentRows, currentRowIndex, t) {
  *   currencies: unknown[];
  *   currenciesPending: boolean;
  *   isSystem?: boolean;
+ *   showWalletAddress?: boolean;
  * }} props
  */
 export default function CustomerDrawerForm({
@@ -88,6 +90,7 @@ export default function CustomerDrawerForm({
   currencies,
   currenciesPending,
   isSystem = false,
+  showWalletAddress = false,
 }) {
   const showCode = mode !== "create";
   const creditRowsWatch = Form.useWatch("currency_credit_limits", form);
@@ -625,6 +628,29 @@ export default function CustomerDrawerForm({
           ) : null
         }
       </Form.Item>
+
+      {showWalletAddress ? (
+        <>
+          <Divider titlePlacement="start" className="!mt-6">
+            {t("drawerSectionInvoiceProofs")}
+          </Divider>
+          <Form.Item
+            name="wallet_address"
+            label={t("fieldWalletAddress")}
+            extra={t("fieldWalletAddressHelp")}
+            rules={[
+              {
+                validator: async (_, value) => {
+                  if (isOptionalWalletAddress(value)) return;
+                  throw new Error(t("fieldWalletAddressInvalid"));
+                },
+              },
+            ]}
+          >
+            <Input placeholder="0x…" allowClear className="font-mono" autoComplete="off" />
+          </Form.Item>
+        </>
+      ) : null}
 
       <Divider titlePlacement="start" className="!mt-6">
         {t("drawerSectionNotes")}

@@ -92,22 +92,29 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
     [itemsQuery.data],
   );
 
-  const warehouseOptions = useMemo(
-    () =>
-      (warehousesQuery.data ?? [])
-        .filter((w) => w?.is_active !== false)
-        .map((w) => {
-          const code = salesInvoiceWarehouseCodeLabel(w);
-          return {
-            value: w.id,
-            label: code || String(w.id),
-            searchText: `${w.shortcut_name ?? ""} ${w.name ?? ""}`,
-            is_default_sales: Boolean(w.is_default_sales),
-            is_default: Boolean(w.is_default),
-          };
-        }),
-    [warehousesQuery.data],
-  );
+  const warehouseOptions = useMemo(() => {
+    const options = (warehousesQuery.data ?? [])
+      .filter((w) => w?.is_active !== false)
+      .map((w) => {
+        const code = salesInvoiceWarehouseCodeLabel(w);
+        return {
+          value: w.id,
+          label: code || String(w.id),
+          searchText: `${w.shortcut_name ?? ""} ${w.name ?? ""}`,
+          is_default_sales: Boolean(w.is_default_sales),
+          is_default: Boolean(w.is_default),
+        };
+      });
+    const sealed = invoiceLookups?.preferSealed ? invoiceLookups.warehouse : null;
+    if (!sealed || typeof sealed !== "object" || sealed.id == null) return options;
+    const label = salesInvoiceWarehouseCodeLabel(sealed);
+    if (!label) return options;
+    const index = options.findIndex((row) => Number(row.value) === Number(sealed.id));
+    if (index >= 0) {
+      options[index] = { ...options[index], label };
+    }
+    return options;
+  }, [warehousesQuery.data, invoiceLookups]);
 
   const defaultWarehouseId = useMemo(() => {
     const salesDefault = warehouseOptions.find((w) => w.is_default_sales);
@@ -116,20 +123,30 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
     return general?.value ?? warehouseOptions[0]?.value;
   }, [warehouseOptions]);
 
-  const customerOptions = useMemo(
-    () =>
-      (customersQuery.data ?? [])
-        .filter((c) => c?.status !== "blacklisted")
-        .map((c) => {
-          const code = typeof c.customer_code === "string" ? c.customer_code.trim() : "";
-          const name = String(c.name ?? c.id);
-          return {
-            value: c.id,
-            label: code ? `${code} — ${name}` : name,
-          };
-        }),
-    [customersQuery.data],
-  );
+  const customerOptions = useMemo(() => {
+    const options = (customersQuery.data ?? [])
+      .filter((c) => c?.status !== "blacklisted")
+      .map((c) => {
+        const code = typeof c.customer_code === "string" ? c.customer_code.trim() : "";
+        const name = String(c.name ?? c.id);
+        return {
+          value: c.id,
+          label: code ? `${code} — ${name}` : name,
+        };
+      });
+    const sealed = invoiceLookups?.preferSealed ? invoiceLookups.customer : null;
+    if (!sealed || typeof sealed !== "object" || sealed.id == null) return options;
+    const code = typeof sealed.customer_code === "string" ? sealed.customer_code.trim() : "";
+    const name = typeof sealed.name === "string" ? sealed.name.trim() : "";
+    if (!name) return options;
+    const label = code ? `${code} — ${name}` : name;
+    const index = options.findIndex((row) => String(row.value) === String(sealed.id));
+    if (index >= 0) {
+      options[index] = { ...options[index], label };
+      return options;
+    }
+    return [{ value: sealed.id, label }, ...options];
+  }, [customersQuery.data, invoiceLookups]);
 
   const itemOptions = useMemo(
     () =>
@@ -172,32 +189,42 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
   const customerDetail = customerDetailQuery.data ?? null;
   const customerLookupsPending = customerDetailEnabled && customerDetailQuery.isPending;
 
-  const paymentMethodOptions = useMemo(
-    () =>
-      mergeLookupOptions(
-        salesInvoicePaymentMethodOption(/** @type {Record<string, unknown> | null} */ (customerDetail?.payment_method)),
-        salesInvoicePaymentMethodOption(/** @type {Record<string, unknown> | null} */ (invoiceLookups?.payment_method)),
-      ),
-    [customerDetail?.payment_method, invoiceLookups?.payment_method],
-  );
+  const preferSealed = Boolean(invoiceLookups?.preferSealed);
+  const paymentMethodOptions = useMemo(() => {
+    const customerOption = salesInvoicePaymentMethodOption(
+      /** @type {Record<string, unknown> | null} */ (customerDetail?.payment_method),
+    );
+    const invoiceOption = salesInvoicePaymentMethodOption(
+      /** @type {Record<string, unknown> | null} */ (invoiceLookups?.payment_method),
+    );
+    return mergeLookupOptions(
+      ...(preferSealed ? [invoiceOption, customerOption] : [customerOption, invoiceOption]),
+    );
+  }, [customerDetail?.payment_method, invoiceLookups?.payment_method, preferSealed]);
 
-  const paymentTermOptions = useMemo(
-    () =>
-      mergeLookupOptions(
-        salesInvoicePaymentTermOption(/** @type {Record<string, unknown> | null} */ (customerDetail?.payment_term)),
-        salesInvoicePaymentTermOption(/** @type {Record<string, unknown> | null} */ (invoiceLookups?.payment_term)),
-      ),
-    [customerDetail?.payment_term, invoiceLookups?.payment_term],
-  );
+  const paymentTermOptions = useMemo(() => {
+    const customerOption = salesInvoicePaymentTermOption(
+      /** @type {Record<string, unknown> | null} */ (customerDetail?.payment_term),
+    );
+    const invoiceOption = salesInvoicePaymentTermOption(
+      /** @type {Record<string, unknown> | null} */ (invoiceLookups?.payment_term),
+    );
+    return mergeLookupOptions(
+      ...(preferSealed ? [invoiceOption, customerOption] : [customerOption, invoiceOption]),
+    );
+  }, [customerDetail?.payment_term, invoiceLookups?.payment_term, preferSealed]);
 
-  const salesmanOptions = useMemo(
-    () =>
-      mergeLookupOptions(
-        salesInvoiceSalesmanOption(/** @type {Record<string, unknown> | null} */ (customerDetail?.salesman)),
-        salesInvoiceSalesmanOption(/** @type {Record<string, unknown> | null} */ (invoiceLookups?.salesman)),
-      ),
-    [customerDetail?.salesman, invoiceLookups?.salesman],
-  );
+  const salesmanOptions = useMemo(() => {
+    const customerOption = salesInvoiceSalesmanOption(
+      /** @type {Record<string, unknown> | null} */ (customerDetail?.salesman),
+    );
+    const invoiceOption = salesInvoiceSalesmanOption(
+      /** @type {Record<string, unknown> | null} */ (invoiceLookups?.salesman),
+    );
+    return mergeLookupOptions(
+      ...(preferSealed ? [invoiceOption, customerOption] : [customerOption, invoiceOption]),
+    );
+  }, [customerDetail?.salesman, invoiceLookups?.salesman, preferSealed]);
 
   /**
    * @param {number | null | undefined} fromCurrencyId

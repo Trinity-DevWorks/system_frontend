@@ -64,24 +64,19 @@ export default function AntdAppProvider({
   const direction = isRtlLocale(locale) ? "rtl" : "ltr";
   const antdLocale = antdLocales[locale] ?? enUS;
 
-  const [colorMode, setColorModeState] = useState(() => {
-    if (typeof window === "undefined") return initialColorMode;
-    return loadColorMode();
-  });
-  const [systemPrefersDark, setSystemPrefersDark] = useState(() => {
-    if (typeof window === "undefined") {
-      return initialResolvedColorMode === COLOR_MODE_DARK;
-    }
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+  const [colorMode, setColorModeState] = useState(initialColorMode);
+  const [systemPrefersDark, setSystemPrefersDark] = useState(
+    () => initialResolvedColorMode === COLOR_MODE_DARK,
+  );
 
   useEffect(() => {
     dayjs.locale(dayjsLocales[locale] ?? "en");
   }, [locale]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return undefined;
+    setColorModeState(loadColorMode());
     const media = window.matchMedia("(prefers-color-scheme: dark)");
+    setSystemPrefersDark(media.matches);
     const sync = () => {
       setSystemPrefersDark(media.matches);
     };

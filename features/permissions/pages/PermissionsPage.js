@@ -40,6 +40,7 @@ import {
 } from "../queries/permissionsQueryKeys";
 import { ROLES_LIST_QUERY_KEY } from "@/features/roles";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
+import { useCompanySettings } from "@/lib/company-settings";
 
 export default function PermissionsPage() {
   const t = useTranslations("PermissionsPage");
@@ -47,6 +48,8 @@ export default function PermissionsPage() {
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const access = useResourceAccess("permissions");
+  const { settings, isReady: settingsReady } = useCompanySettings();
+  const invoiceProofsLocked = settingsReady && !settings.invoiceProofsEnabled;
 
   /** null = use default role from the loaded list */
   const [selectedRoleId, setSelectedRoleId] = useState(/** @type {number | null} */ (null));
@@ -292,6 +295,7 @@ export default function PermissionsPage() {
             rows={matrixRows}
             readOnly={readOnly}
             search={search}
+            invoiceProofsLocked={invoiceProofsLocked}
             onChange={handleMatrixChange}
             t={t}
           />

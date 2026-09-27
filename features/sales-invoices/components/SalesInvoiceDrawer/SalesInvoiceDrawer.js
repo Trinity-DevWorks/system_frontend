@@ -3,13 +3,13 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
-import { SALES_INVOICE_DETAIL_QUERY_PREFIX } from "../../queries/salesInvoicesQueryKeys";
+import { SALES_INVOICE_DETAIL_QUERY_PREFIX, salesInvoiceProofQueryKey } from "../../queries/salesInvoicesQueryKeys";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
-import { fetchSalesInvoice } from "../../api/salesInvoices.api";
+import { fetchSalesInvoice, verifySalesInvoice } from "../../api/salesInvoices.api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import CustomerDrawer from "@/features/customers/components/CustomerDrawer/CustomerDrawer";
@@ -18,7 +18,7 @@ import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isSalesInvoiceDraft } from "../../utils/salesInvoiceStatuses";
+import { isSalesInvoiceDraft, isSalesInvoicePosted } from "../../utils/salesInvoiceStatuses";
 import SalesInvoiceDrawerFooter from "./SalesInvoiceDrawerFooter";
 import SalesInvoiceDrawerForm from "./SalesInvoiceDrawerForm";
 import SalesInvoiceDrawerHeaderMeta from "./SalesInvoiceDrawerHeaderMeta";
@@ -44,7 +44,6 @@ import {
 import { useSalesInvoiceDrawerData } from "../../queries/useSalesInvoiceDrawerData";
 import { useSalesInvoiceDrawerMutations } from "../../queries/useSalesInvoiceDrawerMutations";
 import { tenantPricesIncludeTax, useCompanySettings } from "@/lib/company-settings";
-
 /**
  * @param {{
  *   open: boolean;
@@ -69,6 +68,7 @@ export default function SalesInvoiceDrawer({
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal, notification } = App.useApp();
   const access = useResourceAccess("sales_invoices");
+  const invoiceProofAccess = useResourceAccess("invoice_proofs");
   const customerAccess = useResourceAccess("customers");
   const itemAccess = useResourceAccess("items");
   const queryClient = useQueryClient();
@@ -91,6 +91,7 @@ export default function SalesInvoiceDrawer({
   const prevCustomerIdRef = useRef(/** @type {unknown} */ (undefined));
   const hydrateCustomerRef = useRef(true);
   const loadedDetailVersionRef = useRef(0);
+  const tamperedToastKeyRef = useRef(/** @type {string | null} */ (null));
 
   const defaults = useMemo(() => {
     void open;
@@ -212,6 +213,38 @@ export default function SalesInvoiceDrawer({
     (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
   const readOnly = mode === "view" || !isSalesInvoiceDraft(effectiveStatus) || (mode === "edit" && !access.canEdit);
 
+  const proofEnabled =
+    open &&
+    invoiceId != null &&
+    isSalesInvoicePosted(effectiveStatus) &&
+    Boolean(settings.invoiceProofsEnabled) &&
+    access.canView &&
+    (invoiceProofAccess.canView || invoiceProofAccess.canEdit);
+  const showProofView = proofEnabled && invoiceProofAccess.canView;
+
+  const proofQuery = useQuery({
+    queryKey: salesInvoiceProofQueryKey(invoiceId),
+    queryFn: () => verifySalesInvoice(/** @type {string} */ (invoiceId)),
+    enabled: proofEnabled,
+    staleTime: QUERY_STALE_TIME.ledger,
+    refetchOnWindowFocus: false,
+  });
+  const proofResult = proofEnabled && proofQuery.data && typeof proofQuery.data === "object" ? proofQuery.data : null;
+
+  useEffect(() => {
+    if (!open) {
+      tamperedToastKeyRef.current = null;
+      return;
+    }
+    if (!invoiceProofAccess.canView || invoiceId == null || proofResult?.status !== "tampered") return;
+    if (tamperedToastKeyRef.current === invoiceId) return;
+    tamperedToastKeyRef.current = invoiceId;
+    notification.error({
+      title: t("proofStatusTampered"),
+      description: t("verifySuccessTampered"),
+    });
+  }, [open, invoiceId, invoiceProofAccess.canView, proofResult?.status, notification, t]);
+
   const formValuesWatch = Form.useWatch([], form);
   const customerId = formValuesWatch?.customer_id ?? null;
   const customerReady = customerId != null && customerId !== "";
@@ -225,6 +258,9 @@ export default function SalesInvoiceDrawer({
       salesman: record.salesman ?? null,
       payment_method: record.payment_method ?? null,
       payment_term: record.payment_term ?? null,
+      customer: record.customer ?? null,
+      warehouse: record.warehouse ?? null,
+      preferSealed: isSalesInvoicePosted(record.status),
     };
   }, [detailQuery.data, tableSeedRecord]);
 
@@ -404,20 +440,21 @@ export default function SalesInvoiceDrawer({
     [form, queryClient],
   );
 
-  const { saveMutation, postMutation, deleteMutation, submitting } = useSalesInvoiceDrawerMutations({
-    form,
-    message,
-    notification,
-    t,
-    tApiErrors,
-    invoiceId,
-    lines,
-    onCreated: handleCreated,
-    onSaved: syncBaselinesFromRecordAndBump,
-    onPosted: syncBaselinesFromRecordAndBump,
-    onDeleted: forceClose,
-    onClose: forceClose,
-  });
+  const { saveMutation, postMutation, deleteMutation, verifyMutation, approveCompanyMutation, submitting } =
+    useSalesInvoiceDrawerMutations({
+      form,
+      message,
+      notification,
+      t,
+      tApiErrors,
+      invoiceId,
+      lines,
+      onCreated: handleCreated,
+      onSaved: syncBaselinesFromRecordAndBump,
+      onPosted: syncBaselinesFromRecordAndBump,
+      onDeleted: forceClose,
+      onClose: forceClose,
+    });
 
   const currentValues = useMemo(
     () => ({
@@ -621,9 +658,30 @@ export default function SalesInvoiceDrawer({
           showDelete={!readOnly && invoiceId != null && access.canDelete}
           postedBy={loadedPostedBy}
           postedAt={loadedPostedAt}
+          showVerify={showProofView}
+          verifying={verifyMutation.isPending || (proofQuery.isFetching && !proofResult)}
+          proofStatus={typeof proofResult?.status === "string" ? proofResult.status : null}
+          chainRegisteredAt={typeof proofResult?.registered_at === "string" ? proofResult.registered_at : null}
+          chainSupplierApprovedAt={
+            typeof proofResult?.supplier_approved_at === "string" ? proofResult.supplier_approved_at : null
+          }
+          chainBuyerApprovedAt={
+            typeof proofResult?.buyer_approved_at === "string" ? proofResult.buyer_approved_at : null
+          }
+          chainSupplierWallet={typeof proofResult?.supplier_wallet === "string" ? proofResult.supplier_wallet : null}
+          chainBuyerWallet={typeof proofResult?.buyer_wallet === "string" ? proofResult.buyer_wallet : null}
+          showApproveCompany={Boolean(
+            invoiceProofAccess.canEdit && proofResult?.can_approve_as_company,
+          )}
+          approvingCompany={approveCompanyMutation.isPending}
+          showBuyerLink={showProofView}
+          buyerLinkInvoiceId={invoiceId}
+          buyerLinkInvoiceNumber={loadedNumber}
           onSave={handleSave}
           onPost={handlePost}
           onDelete={handleDelete}
+          onVerify={() => verifyMutation.mutate()}
+          onApproveCompany={() => approveCompanyMutation.mutate(proofResult)}
         />
       }
     >

@@ -10,7 +10,7 @@
     "lint": "eslint",
     "check:i18n": "node scripts/check-i18n-keys.mjs",
     "check:registry": "node scripts/check-registry.mjs",
-    "check": "npm run check:i18n && npm run check:registry && npm run lint"
+    "check": "pnpm run check:i18n && pnpm run check:registry && pnpm run lint"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.1",
@@ -19,6 +19,8 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@safe-global/api-kit": "^5.0.3",
+    "@safe-global/protocol-kit": "^8.0.7",
     "@swc/helpers": "^0.5.23",
     "@tanstack/react-query": "^5.96.2",
     "antd": "^6.3.5",
@@ -31,6 +33,7 @@
     "pusher-js": "^8.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "viem": "^2.56.5",
     "yet-another-react-lightbox": "^3.32.0",
     "zod": "^4.3.6"
   },
@@ -39,5 +42,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "tailwindcss": "^4"
-  }
+  },
+  "packageManager": "pnpm@11.12.0"
 }

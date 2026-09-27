@@ -56,6 +56,7 @@ function mergeCurrencyBalancesForCache(oldRow, patchBalances) {
  *   defaults: Record<string, unknown>;
  *   customerGroupsData: unknown[] | undefined;
  *   currenciesData: unknown[] | undefined;
+ *   includeWalletAddress?: boolean;
  * }} args
  */
 export function useCustomerDrawerMutations({
@@ -70,11 +71,18 @@ export function useCustomerDrawerMutations({
   defaults,
   customerGroupsData,
   currenciesData,
+  includeWalletAddress = false,
 }) {
   const queryClient = useQueryClient();
 
-  const toCreatePayload = useCallback((values) => customerFormValuesToPayload(values, "create"), []);
-  const toUpdatePayload = useCallback((values) => customerFormValuesToPayload(values, "edit"), []);
+  const toCreatePayload = useCallback(
+    (values) => customerFormValuesToPayload(values, "create", { includeWallet: includeWalletAddress }),
+    [includeWalletAddress],
+  );
+  const toUpdatePayload = useCallback(
+    (values) => customerFormValuesToPayload(values, "edit", { includeWallet: includeWalletAddress }),
+    [includeWalletAddress],
+  );
 
   const createMutation = useMutation({
     mutationFn: ({ payload }) => createCustomer(payload),
@@ -112,6 +120,7 @@ export function useCustomerDrawerMutations({
         is_vat_registered: Boolean(payload.is_vat_registered),
         vat_number: payload.vat_number,
         notes: payload.notes,
+        wallet_address: payload.wallet_address ?? null,
         balance: snap.balance,
         created_at: now,
         updated_at: now,

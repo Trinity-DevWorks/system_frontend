@@ -3,9 +3,10 @@ This is a [Next.js](https://nextjs.org) ERP frontend for Trinity-DevWorks.
 ## Getting Started
 
 ```bash
-npm ci
+npm install -g pnpm@11.12.0
+pnpm install --frozen-lockfile
 cp .env.example .env.local
-npm run dev
+pnpm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).

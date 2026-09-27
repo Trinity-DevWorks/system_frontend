@@ -150,6 +150,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (isVat !== Boolean(defaults.is_vat_registered)) return true;
   if (vat !== String(defaults.vat_number ?? "").trim()) return true;
   if (notes !== String(defaults.notes ?? "").trim()) return true;
+  if (String(v.wallet_address ?? "").trim() !== String(defaults.wallet_address ?? "").trim()) return true;
   if (addressesFingerprint(v.addresses) !== addressesFingerprint(defaults.addresses)) return true;
   if (currencyBalancesFingerprint(
     mergeCreditAndOpeningRows(/** @type {unknown[]} */ (v.currency_credit_limits ?? []), /** @type {unknown[]} */ (v.currency_opening_balances ?? [])),
@@ -196,6 +197,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (isVat !== Boolean(row.is_vat_registered)) return true;
   if (vat !== String(row.vat_number ?? "").trim()) return true;
   if (notes !== String(row.notes ?? "").trim()) return true;
+  if (String(v.wallet_address ?? "").trim() !== String(row.wallet_address ?? "").trim()) return true;
   if (addressesFingerprint(v.addresses) !== addressesFingerprint(row.addresses)) return true;
   if (
     currencyBalancesFingerprint(
@@ -242,6 +244,7 @@ export function toCustomerCacheRow(row) {
     is_vat_registered: Boolean(row.is_vat_registered),
     vat_number: row.vat_number ?? null,
     notes: row.notes ?? null,
+    wallet_address: row.wallet_address ?? null,
     addresses: Array.isArray(row.addresses) ? row.addresses : [],
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -348,8 +351,9 @@ function mapAddressesToPayload(rows) {
 /**
  * @param {Record<string, unknown>} values
  * @param {"create" | "edit"} mode
+ * @param {{ includeWallet?: boolean }} [options]
  */
-export function customerFormValuesToPayload(values, mode) {
+export function customerFormValuesToPayload(values, mode, options = {}) {
   const name = String(values.name ?? "").trim();
   const emailRaw = String(values.email ?? "").trim();
   const phoneRaw = String(values.phone ?? "").trim();
@@ -387,6 +391,11 @@ export function customerFormValuesToPayload(values, mode) {
     notes: notesRaw === "" ? null : notesRaw,
     addresses: mapAddressesToPayload(/** @type {unknown[]} */ (values.addresses ?? [])),
   };
+
+  if (options.includeWallet) {
+    const walletRaw = String(values.wallet_address ?? "").trim();
+    base.wallet_address = walletRaw === "" ? null : walletRaw;
+  }
 
   if (mode === "create") {
     return base;

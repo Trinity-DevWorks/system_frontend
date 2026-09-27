@@ -194,6 +194,7 @@ export default async function proxy(request) {
     barePath.startsWith("/forgot-password/");
   const isResetPasswordPath =
     barePath === "/reset-password" || barePath.startsWith("/reset-password/");
+  const isProofsPath = barePath === "/proofs" || barePath.startsWith("/proofs/");
   const isAuthGuestPath =
     isLoginPath || isForgotPasswordPath || isResetPasswordPath;
   const isMainCentralPath =
@@ -232,8 +233,8 @@ export default async function proxy(request) {
   const isTenantShellPath =
     barePath === "/main" || barePath.startsWith("/main/");
 
-  /** Central hosts (e.g. `www.localhost`, `app.localhost`) must not load tenant shell routes. */
-  if (isCentralHost && isTenantShellPath) {
+  /** Central hosts (e.g. `www.localhost`, `app.localhost`) must not load tenant shell or buyer portal. */
+  if (isCentralHost && (isTenantShellPath || isProofsPath)) {
     const hasCentralToken = request.cookies.get(CENTRAL_TOKEN_KEY)?.value;
     const url = request.nextUrl.clone();
     url.pathname = withLocalePrefix(
@@ -291,6 +292,7 @@ export default async function proxy(request) {
 
   const isRootPath = barePath === "/" || barePath === "";
   const isPublicPath = isAuthGuestPath || isNotFoundPath;
+  const isTenantPublicPath = isPublicPath || isProofsPath;
 
   if (isMainCentralPath) {
     if (!hasCentralToken && !isPublicPath) {
@@ -299,7 +301,7 @@ export default async function proxy(request) {
       return NextResponse.redirect(url);
     }
   } else if (tenantFromHost) {
-    if (!hasTenantToken && !isPublicPath) {
+    if (!hasTenantToken && !isTenantPublicPath) {
       const url = request.nextUrl.clone();
       url.pathname = withLocalePrefix(currentLocale, "/login");
       return NextResponse.redirect(url);

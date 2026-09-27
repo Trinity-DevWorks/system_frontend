@@ -1,5 +1,7 @@
 import { isOwnerRoleName } from "@/features/roles/index";
 
+export const INVOICE_PROOFS_RESOURCE_KEY = "invoice_proofs";
+
 /** @typedef {"can_view" | "can_add" | "can_edit" | "can_delete" | "can_import" | "can_export"} PermFlag */
 /** @typedef {"view" | "add" | "edit" | "delete" | "import" | "export"} PermAction */
 

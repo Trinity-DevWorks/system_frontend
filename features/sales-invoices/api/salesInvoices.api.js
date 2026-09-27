@@ -68,6 +68,141 @@ export function postSalesInvoice(invoiceId) {
 }
 
 /**
+ * @param {string} invoiceId
+ * @returns {Promise<{
+ *   status?: string;
+ *   snapshot_intact?: boolean | null;
+ *   live_invoice_matches?: boolean | null; // diagnostic; does not change status
+ *   chain_matches?: boolean | null;
+ *   chain_id?: number | null;
+ *   contract_address?: string | null;
+ *   supplier_wallet?: string | null;
+ *   buyer_wallet?: string | null;
+ *   proof_id?: string | null;
+ *   eip712?: {
+ *     domain?: { name?: string; version?: string; chain_id?: number; verifying_contract?: string };
+ *     primary_type?: string;
+ *     types?: Record<string, Array<{ name: string, type: string }>>;
+ *     message?: { proof_id?: string; content_hash?: string; invoice_number?: string; statement?: string };
+ *   } | null;
+ *   can_approve_as_company?: boolean;
+ *   can_approve_as_buyer?: boolean;
+ *   blockchain_network?: string | null;
+ *   safe_tx_service_url?: string | null;
+ *   safe_api_key?: string | null;
+ *   registered_at?: string | null;
+ *   supplier_approved_at?: string | null;
+ *   buyer_approved_at?: string | null;
+ * }>}
+ */
+export function verifySalesInvoice(invoiceId) {
+  return tenantRequest("GET", `sales-invoices/${invoiceId}/verify`);
+}
+
+/**
+ * Public buyer portal (no ERP session). Tenant host + invoice UUID + HMAC stamp.
+ * GET returns a locked personal_sign challenge. POST unlock returns the sealed snapshot.
+ * @param {string} invoiceId
+ * @param {{ exp?: unknown; sig?: unknown }} [link]
+ * @returns {Promise<{
+ *   locked?: boolean;
+ *   chain_id?: number | null;
+ *   buyer_wallet?: string | null;
+ *   nonce?: string;
+ *   message?: string;
+ *   id?: string;
+ *   company_name?: string;
+ *   customer_name?: string | null;
+ *   invoice_number?: string | null;
+ *   invoice_date?: string | null;
+ *   due_on?: string | null;
+ *   subtotal?: string;
+ *   discount_total?: string;
+ *   tax_total?: string;
+ *   adjustment?: string;
+ *   grand_total?: string;
+ *   net_to_pay?: string;
+ *   currency_code?: string | null;
+ *   currency_symbol?: string | null;
+ *   status?: string;
+ *   content_hash?: string | null;
+ *   lines?: Array<{
+ *     item_name?: string | null;
+ *     description?: string | null;
+ *     item_code?: string | null;
+ *     quantity?: string;
+ *     uom?: string | null;
+ *     unit_price?: string;
+ *     discount_percent?: string;
+ *     tax_rate?: string;
+ *     line_total?: string;
+ *   }>;
+ *   chain_id?: number | null;
+ *   contract_address?: string | null;
+ *   buyer_wallet?: string | null;
+ *   proof_id?: string | null;
+ *   eip712?: {
+ *     domain?: { name?: string; version?: string; chain_id?: number; verifying_contract?: string };
+ *     primary_type?: string;
+ *     types?: { BuyerApproval?: Array<{ name: string, type: string }> };
+ *     message?: { proof_id?: string; content_hash?: string; invoice_number?: string; statement?: string };
+ *   } | null;
+ *   can_approve_as_buyer?: boolean;
+ *   registered_at?: string | null;
+ *   supplier_approved_at?: string | null;
+ *   buyer_approved_at?: string | null;
+ * }>}
+ */
+export function fetchBuyerInvoiceHistoryChallenge() {
+  return tenantRequest("GET", "proofs/history");
+}
+
+/**
+ * @param {{ address: string; signature: string; nonce: string }} body
+ */
+export function unlockBuyerInvoiceHistory(body) {
+  return tenantRequest("POST", "proofs/history", body);
+}
+
+export function fetchInvoiceProofPortal(invoiceId, link = {}) {
+  const qs = new URLSearchParams();
+  if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));
+  if (typeof link.sig === "string" && link.sig.trim() !== "") qs.set("sig", link.sig.trim());
+  const query = qs.toString();
+  return tenantRequest("GET", query ? `proofs/${invoiceId}?${query}` : `proofs/${invoiceId}`);
+}
+
+/**
+ * Unlock the buyer portal with personal_sign of the GET challenge.
+ * @param {string} invoiceId
+ * @param {{ exp?: unknown; sig?: unknown }} [link]
+ * @param {{ address: string; signature: string }} body
+ */
+export function unlockInvoiceProofPortal(invoiceId, link = {}, body) {
+  const qs = new URLSearchParams();
+  if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));
+  if (typeof link.sig === "string" && link.sig.trim() !== "") qs.set("sig", link.sig.trim());
+  const query = qs.toString();
+  return tenantRequest(
+    "POST",
+    query ? `proofs/${invoiceId}/unlock?${query}` : `proofs/${invoiceId}/unlock`,
+    {
+      address: body.address,
+      signature: body.signature,
+    },
+  );
+}
+
+/**
+ * Clerk-issued HMAC buyer-portal URL (relative `/proofs/{id}?exp=&sig=`).
+ * @param {string} invoiceId
+ * @returns {Promise<{ url?: string; exp?: number; sig?: string }>}
+ */
+export function createBuyerPortalLink(invoiceId) {
+  return tenantRequest("POST", `sales-invoices/${invoiceId}/buyer-portal-link`);
+}
+
+/**
  * Warehouses (and lots) that currently hold the item.
  * @param {string} itemId
  * @returns {Promise<Array<Record<string, unknown>>>}

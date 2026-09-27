@@ -82,6 +82,7 @@ function SalesInvoiceLineUomField({ itemId, value, readOnly, t, onChange, onCata
  *   value?: number;
  *   trackInventory?: boolean;
  *   headerWarehouseId?: number;
+ *   sealedLabel?: string;
  *   warehouseOptions: { value: number; label: string }[];
  *   readOnly: boolean;
  *   t: (key: string) => string;
@@ -94,6 +95,7 @@ function SalesInvoiceLineWarehouseField({
   value,
   trackInventory,
   headerWarehouseId,
+  sealedLabel = "",
   warehouseOptions,
   readOnly,
   t,
@@ -105,8 +107,15 @@ function SalesInvoiceLineWarehouseField({
   });
 
   const options = useMemo(() => {
+    const applySealed = (list) => {
+      const sealed = sealedLabel.trim();
+      if (!sealed || warehouseId == null) return list;
+      return list.map((row) =>
+        Number(row.value) === Number(warehouseId) ? { ...row, label: sealed } : row,
+      );
+    };
     if (!trackInventory) {
-      return warehouseOptions;
+      return applySealed(warehouseOptions);
     }
     const byId = new Map();
     for (const row of rows) {
@@ -128,8 +137,8 @@ function SalesInvoiceLineWarehouseField({
       const current = warehouseOptions.find((w) => Number(w.value) === Number(warehouseId));
       if (current) byId.set(Number(warehouseId), current);
     }
-    return [...byId.values()];
-  }, [trackInventory, rows, warehouseOptions, headerWarehouseId, warehouseId]);
+    return applySealed([...byId.values()]);
+  }, [trackInventory, rows, warehouseOptions, headerWarehouseId, warehouseId, sealedLabel]);
 
   return (
     <Select
@@ -154,13 +163,14 @@ function SalesInvoiceLineWarehouseField({
  *   itemId?: string;
  *   warehouseId?: number;
  *   value?: number;
+ *   sealedLabel?: string;
  *   trackLots?: boolean;
  *   readOnly: boolean;
  *   t: (key: string) => string;
  *   onChange: (value: number | undefined) => void;
  * }} props
  */
-function SalesInvoiceLineLotField({ itemId, warehouseId, value, trackLots, readOnly, t, onChange }) {
+function SalesInvoiceLineLotField({ itemId, warehouseId, value, sealedLabel = "", trackLots, readOnly, t, onChange }) {
   const { rows, pending } = useSalesInvoiceItemAvailability({
     itemId,
     enabled: Boolean(trackLots) && isPersistedEntityId(itemId),
@@ -168,11 +178,19 @@ function SalesInvoiceLineLotField({ itemId, warehouseId, value, trackLots, readO
 
   const options = useMemo(() => {
     const warehouse = rows.find((row) => Number(row.warehouse_id) === Number(warehouseId));
-    return (warehouse?.lots ?? []).map((lot) => ({
+    const options = (warehouse?.lots ?? []).map((lot) => ({
       value: lot.id,
       label: lot.expiry_date ? `${lot.lot_number} (${lot.expiry_date})` : String(lot.lot_number ?? lot.id),
     }));
-  }, [rows, warehouseId]);
+    const sealed = sealedLabel.trim();
+    if (!sealed || value == null) return options;
+    const index = options.findIndex((row) => Number(row.value) === Number(value));
+    if (index >= 0) {
+      options[index] = { ...options[index], label: sealed };
+      return options;
+    }
+    return [{ value, label: sealed }, ...options];
+  }, [rows, warehouseId, sealedLabel, value]);
 
   if (!trackLots) {
     return <span className="item-lines-readonly-uom">{"\u2014"}</span>;
@@ -359,10 +377,26 @@ export default function SalesInvoiceLineEditor({
     const byId = new Map(itemOptions.map((option) => [String(option.value), option]));
     for (const line of lines) {
       const id = line.item_id != null ? String(line.item_id) : "";
-      if (!id || byId.has(id)) continue;
+      const label = line.item_label?.trim() || "";
+      if (!id) continue;
+      if (label) {
+        const existing = byId.get(id);
+        byId.set(id, {
+          value: id,
+          label,
+          track_inventory: existing?.track_inventory ?? Boolean(line.track_inventory),
+          track_lots: existing?.track_lots ?? Boolean(line.track_lots),
+          vat_percentage:
+            existing?.vat_percentage ??
+            (line.vat_percentage != null ? Number(line.vat_percentage) : undefined),
+          searchText: existing?.searchText,
+        });
+        continue;
+      }
+      if (byId.has(id)) continue;
       byId.set(id, {
         value: id,
-        label: line.item_label?.trim() || id,
+        label: id,
         track_inventory: Boolean(line.track_inventory),
         track_lots: Boolean(line.track_lots),
         vat_percentage: line.vat_percentage != null ? Number(line.vat_percentage) : undefined,
@@ -594,6 +628,7 @@ export default function SalesInvoiceLineEditor({
                 trackInventory={row.track_inventory}
                 headerWarehouseId={headerWarehouseId}
                 warehouseOptions={warehouseOptions}
+                sealedLabel={row.warehouse_label ?? ""}
                 readOnly={readOnly}
                 t={t}
                 onChange={(value) => onPatchLine(index, { warehouse_id: value, lot_id: undefined })}
@@ -606,6 +641,7 @@ export default function SalesInvoiceLineEditor({
                 itemId={row.item_id}
                 warehouseId={row.warehouse_id}
                 value={row.lot_id ?? undefined}
+                sealedLabel={row.lot_label ?? ""}
                 trackLots={row.track_lots}
                 readOnly={readOnly}
                 t={t}

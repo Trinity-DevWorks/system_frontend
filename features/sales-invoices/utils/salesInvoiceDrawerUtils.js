@@ -94,6 +94,16 @@ export function salesInvoiceWarehouseCodeLabel(warehouse) {
 }
 
 /**
+ * @param {{ lot_number?: unknown; expiry_date?: unknown } | null | undefined} lot
+ */
+export function salesInvoiceLotLabel(lot) {
+  const number = typeof lot?.lot_number === "string" ? lot.lot_number.trim() : "";
+  const expiry = typeof lot?.expiry_date === "string" ? lot.expiry_date.trim() : "";
+  if (!number) return "";
+  return expiry ? `${number} (${expiry})` : number;
+}
+
+/**
  * Match select search against displayed code and hidden name.
  * @param {string} input
  * @param {{ label?: unknown; searchText?: unknown } | undefined} option
@@ -113,7 +123,9 @@ export function salesInvoiceSelectFilter(input, option) {
  *   quantity?: number;
  *   item_uom_id?: number | string;
  *   warehouse_id?: number;
+ *   warehouse_label?: string;
  *   lot_id?: number | null;
+ *   lot_label?: string;
  *   unit_price?: number;
  *   discount_percent?: number;
  *   description?: string;
@@ -300,7 +312,16 @@ export function mapSalesInvoiceLinesFromApi(lines) {
     quantity: line.quantity != null ? Number(line.quantity) : undefined,
     item_uom_id: line.item_uom_id != null ? Number(line.item_uom_id) : SI_BASE_UOM,
     warehouse_id: line.warehouse_id != null ? Number(line.warehouse_id) : undefined,
+    warehouse_label: salesInvoiceWarehouseCodeLabel(
+      line.warehouse && typeof line.warehouse === "object"
+        ? /** @type {{ shortcut_name?: unknown; name?: unknown }} */ (line.warehouse)
+        : null,
+    ),
     lot_id: line.lot_id != null ? Number(line.lot_id) : undefined,
+    lot_label:
+      line.lot && typeof line.lot === "object"
+        ? salesInvoiceLotLabel(/** @type {{ lot_number?: unknown; expiry_date?: unknown }} */ (line.lot))
+        : "",
     unit_price: line.unit_price != null ? Number(line.unit_price) : undefined,
     discount_percent: line.discount_percent != null ? Number(line.discount_percent) : 0,
     description: typeof line.description === "string" ? line.description : "",

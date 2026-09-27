@@ -1,8 +1,10 @@
 "use client";
 
-import { Checkbox, Table, Typography } from "antd";
+import { QuestionCircleOutlined } from "@ant-design/icons";
+import { Checkbox, Table, Tooltip, Typography } from "antd";
 import { useMemo } from "react";
 import {
+  INVOICE_PROOFS_RESOURCE_KEY,
   PERM_FLAGS,
   allRowsCheckState,
   applyAllFlagsToRow,
@@ -17,11 +19,19 @@ import {
  *   rows: Array<Record<string, unknown>>;
  *   readOnly: boolean;
  *   search: string;
+ *   invoiceProofsLocked?: boolean;
  *   onChange: (next: Array<Record<string, unknown>>) => void;
  *   t: (key: string, values?: Record<string, unknown>) => string;
  * }} props
  */
-export default function PermissionMatrixTable({ rows, readOnly, search, onChange, t }) {
+export default function PermissionMatrixTable({
+  rows,
+  readOnly,
+  search,
+  invoiceProofsLocked = false,
+  onChange,
+  t,
+}) {
   const filteredRows = useMemo(() => {
     const q = String(search ?? "").trim().toLowerCase();
     if (!q) return rows;
@@ -37,8 +47,24 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
     [filteredRows],
   );
 
+  const lockedIdSet = useMemo(() => {
+    if (!invoiceProofsLocked) return new Set();
+    return new Set(
+      rows
+        .filter((row) => String(row.resource_key ?? "") === INVOICE_PROOFS_RESOURCE_KEY)
+        .map((row) => Number(row.permission_id)),
+    );
+  }, [invoiceProofsLocked, rows]);
+
+  const editableFilteredRows = useMemo(
+    () => filteredRows.filter((row) => !lockedIdSet.has(Number(row.permission_id))),
+    [filteredRows, lockedIdSet],
+  );
+
+  const isRowLocked = (record) => lockedIdSet.has(Number(record.permission_id));
+
   const setFlag = (permissionId, flag, checked) => {
-    if (readOnly) return;
+    if (readOnly || lockedIdSet.has(Number(permissionId))) return;
     onChange(
       rows.map((row) =>
         Number(row.permission_id) === Number(permissionId)
@@ -51,7 +77,7 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
   const setFlagForFiltered = (flag, checked) => {
     if (readOnly) return;
     const next = rows.map((row) =>
-      filteredIdSet.has(Number(row.permission_id))
+      filteredIdSet.has(Number(row.permission_id)) && !lockedIdSet.has(Number(row.permission_id))
         ? applyFlagToRow(row, flag, checked)
         : row,
     );
@@ -59,7 +85,7 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
   };
 
   const setAllForRow = (permissionId, checked) => {
-    if (readOnly) return;
+    if (readOnly || lockedIdSet.has(Number(permissionId))) return;
     onChange(
       rows.map((row) =>
         Number(row.permission_id) === Number(permissionId)
@@ -73,14 +99,14 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
     if (readOnly) return;
     onChange(
       rows.map((row) =>
-        filteredIdSet.has(Number(row.permission_id))
+        filteredIdSet.has(Number(row.permission_id)) && !lockedIdSet.has(Number(row.permission_id))
           ? applyAllFlagsToRow(row, checked)
           : row,
       ),
     );
   };
 
-  const allHeaderState = allRowsCheckState(filteredRows);
+  const allHeaderState = allRowsCheckState(editableFilteredRows);
 
   /** @type {import("antd").TableProps<Record<string, unknown>>["columns"]} */
   const columns = [
@@ -90,16 +116,29 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
       key: "resource",
       fixed: "start",
       width: 260,
-      render: (label, record) => (
-        <div className="min-w-0 py-0.5">
-          <div className="truncate font-medium text-[var(--ant-color-text)]">
-            {String(label ?? record.resource_key ?? "")}
+      render: (label, record) => {
+        const locked = isRowLocked(record);
+        return (
+          <div className="min-w-0 py-0.5">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate font-medium text-[var(--ant-color-text)]">
+                {String(label ?? record.resource_key ?? "")}
+              </span>
+              {locked ? (
+                <Tooltip title={t("invoiceProofsLockedHint")}>
+                  <QuestionCircleOutlined
+                    className="shrink-0 text-[var(--ant-color-text-secondary)]"
+                    aria-label={t("invoiceProofsLockedHint")}
+                  />
+                </Tooltip>
+              ) : null}
+            </div>
+            <Typography.Text type="secondary" className="text-xs">
+              {String(record.resource_key ?? "")}
+            </Typography.Text>
           </div>
-          <Typography.Text type="secondary" className="text-xs">
-            {String(record.resource_key ?? "")}
-          </Typography.Text>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: (
@@ -130,7 +169,7 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
           <Checkbox
             checked={state.checked}
             indeterminate={state.indeterminate}
-            disabled={readOnly}
+            disabled={readOnly || isRowLocked(record)}
             aria-label={t("selectAllRow", {
               resource: String(record.resource_label ?? record.resource_key ?? ""),
             })}
@@ -140,7 +179,7 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
       },
     },
     ...PERM_FLAGS.map((flag) => {
-      const state = columnCheckState(filteredRows, flag);
+      const state = columnCheckState(editableFilteredRows, flag);
       return {
         title: (
           <div className="flex flex-col items-center gap-1">
@@ -164,7 +203,7 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
           rowAllowsFlag(record, flag) ? (
             <Checkbox
               checked={Boolean(value)}
-              disabled={readOnly}
+              disabled={readOnly || isRowLocked(record)}
               aria-label={`${String(record.resource_label ?? record.resource_key)} — ${t(`action_${flag}`)}`}
               onChange={(e) =>
                 setFlag(Number(record.permission_id), flag, e.target.checked)

@@ -20,11 +20,20 @@ const shellIconBtnClass =
 
 /**
  * Shared auth chrome (login / forgot / reset) matching the previous hero + card layout.
+ * @param {{
+ *   isCentral: boolean;
+ *   tenantLabel: string;
+ *   children: import("react").ReactNode;
+ *   scrollable?: boolean;
+ *   documentLayout?: boolean;
+ * }} props
  */
 export default function AuthSplitShell({
   isCentral,
   tenantLabel,
   children,
+  scrollable = false,
+  documentLayout = false,
 }) {
   const t = useTranslations("Login");
   const tShell = useTranslations("Shell");
@@ -47,7 +56,8 @@ export default function AuthSplitShell({
 
   const onLanguageMenuClick = ({ key }) => {
     markUiLocaleOverride();
-    router.replace(pathname, { locale: key });
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    router.replace(`${pathname}${search}`, { locale: key });
   };
 
   const themeMenuItems = useMemo(
@@ -87,7 +97,13 @@ export default function AuthSplitShell({
   const displayName = isCentral ? t("leftBadgeCentral") : tenantLabel;
 
   return (
-    <div className="login-page relative flex min-h-dvh flex-1 flex-col overflow-hidden">
+    <div
+      className={
+        scrollable
+          ? "login-page relative flex min-h-dvh flex-1 flex-col overflow-x-hidden overflow-y-auto"
+          : "login-page relative flex min-h-dvh flex-1 flex-col overflow-hidden"
+      }
+    >
       <AuthCanvasBackground
         isDark={isDark}
         className="pointer-events-none fixed inset-0 z-0"
@@ -129,7 +145,33 @@ export default function AuthSplitShell({
         </Space>
       </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-center gap-8 px-4 py-16 md:grid-cols-[1fr_1.22fr] md:py-8">
+      <div
+        className={
+          documentLayout
+            ? "relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-16 sm:px-6"
+            : scrollable
+              ? "relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-start gap-8 px-4 py-8 md:grid-cols-[1fr_1.22fr]"
+              : "relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-center gap-8 px-4 py-16 md:grid-cols-[1fr_1.22fr] md:py-8"
+        }
+      >
+        {documentLayout ? (
+        <div className="login-anim-in mb-6">
+          <div className="login-brand-wordmark" dir="ltr" lang="en">
+            <div className="login-brand-wordmark-row">
+              <span className="login-brand-mark" aria-hidden>
+                <span />
+                <span />
+              </span>
+              <span className="login-brand-mena">{t("brandMena")}</span>
+              <span className="login-brand-solutions">{t("brandSolutions")}</span>
+            </div>
+            <span className="login-brand-wordmark-rule" aria-hidden />
+          </div>
+          <p className="m-0 mt-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {displayName}
+          </p>
+        </div>
+        ) : (
         <div className="login-anim-in hidden md:block">
           <div className="space-y-6">
             <h1 className="m-0 text-4xl font-bold leading-tight text-gray-900 dark:text-gray-100">
@@ -163,8 +205,9 @@ export default function AuthSplitShell({
             </div>
           </div>
         </div>
+        )}
 
-        <div className="login-card-enter login-form-card relative z-10 w-full overflow-hidden rounded-2xl bg-[var(--ant-color-bg-container)] px-8 py-6 shadow-xl dark:shadow-black/40 md:ms-8 sm:px-9 sm:py-6">
+        <div className={`login-card-enter login-form-card relative z-10 w-full overflow-hidden rounded-2xl bg-[var(--ant-color-bg-container)] shadow-xl dark:shadow-black/40 ${documentLayout ? "px-5 py-6 sm:px-8" : "px-8 py-6 md:ms-8 sm:px-9 sm:py-6"}`}>
           {children}
         </div>
       </div>

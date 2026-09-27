@@ -16,6 +16,7 @@ import { Alert, App, Button, Card, Form, Space, Spin, Tag, Typography } from "an
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
+import { useCompanySettings } from "@/lib/company-settings";
 
 const PROFILE_FIELD_KEYS = [
   "company_name",
@@ -26,6 +27,8 @@ const PROFILE_FIELD_KEYS = [
   "tax_number",
   "registration_number",
   "address",
+  "wallet_address_anvil",
+  "wallet_address_sepolia",
 ];
 
 function emptyToNull(value) {
@@ -45,6 +48,8 @@ function profileToFormValues(profile) {
     tax_number: profile.tax_number,
     registration_number: profile.registration_number,
     address: profile.address,
+    wallet_address_anvil: profile.wallet_address_anvil ?? "",
+    wallet_address_sepolia: profile.wallet_address_sepolia ?? "",
   };
 }
 
@@ -55,6 +60,8 @@ export default function CompanyProfilePage() {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const { profile, isLoading, isError, isReady, queryKey } = useCompanyProfile();
+  const { settings } = useCompanySettings();
+  const showWalletAddress = Boolean(settings.invoiceProofsEnabled);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editBaseline, setEditBaseline] = useState(
@@ -81,7 +88,7 @@ export default function CompanyProfilePage() {
   useEffect(() => {
     if (!isReady || isEditing || !serverBaseline) return;
     form.setFieldsValue(serverBaseline);
-  }, [form, isEditing, isReady, serverBaseline]);
+  }, [form, isEditing, isReady, serverBaseline, showWalletAddress]);
 
   const saveMutation = useMutation({
     mutationFn: (values) =>
@@ -94,6 +101,12 @@ export default function CompanyProfilePage() {
         tax_number: emptyToNull(values.tax_number),
         registration_number: emptyToNull(values.registration_number),
         address: emptyToNull(values.address),
+        ...(showWalletAddress
+          ? {
+              wallet_address_anvil: emptyToNull(values.wallet_address_anvil),
+              wallet_address_sepolia: emptyToNull(values.wallet_address_sepolia),
+            }
+          : {}),
       }),
     onSuccess: (data) => {
       const hostname =
@@ -237,6 +250,10 @@ export default function CompanyProfilePage() {
           form={form}
           t={t}
           disabled={!isEditing}
+          showWalletAddress={showWalletAddress}
+          blockchainNetwork={
+            typeof profile.blockchain_network === "string" ? profile.blockchain_network : null
+          }
           onValuesChange={recomputeDirty}
           onFinish={(values) => saveMutation.mutate(values)}
         />

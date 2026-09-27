@@ -4,9 +4,9 @@ Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 
 | Step | Command |
 |------|---------|
-| Install | `npm ci` |
-| Lint | `npm run lint` |
-| Build | `npm run build` |
+| Install | `pnpm install --frozen-lockfile` |
+| Lint | `pnpm run lint` |
+| Build | `pnpm run build` |
 
 CI supplies safe `NEXT_PUBLIC_*` placeholders so the production build does not need private secrets.
 

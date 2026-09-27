@@ -230,6 +230,17 @@ export default function CompanySettingsForm({
           unCheckedChildren={t("switchOff")}
         />
       </Form.Item>
+      <Form.Item
+        name="invoice_proofs_enabled"
+        label={t("fieldInvoiceProofsEnabled")}
+        extra={t("fieldInvoiceProofsEnabledHelp")}
+        valuePropName="checked"
+      >
+        <Switch
+          checkedChildren={t("switchOn")}
+          unCheckedChildren={t("switchOff")}
+        />
+      </Form.Item>
     </Form>
   );
 }
