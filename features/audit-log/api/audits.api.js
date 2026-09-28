@@ -27,6 +27,7 @@ function toAuditQuery(params = {}) {
  *   page?: number;
  *   per_page?: number;
  * }} [params]
+ * @param {typeof tenantRequest} [request]
  * @returns {Promise<{
  *   rows: Record<string, unknown>[];
  *   total: number;
@@ -36,10 +37,10 @@ function toAuditQuery(params = {}) {
  *   to: number | null;
  * }>}
  */
-export async function fetchAudits(params = {}) {
+export async function fetchAudits(params = {}, request = tenantRequest) {
   const qs = toAuditQuery(params).toString();
   const endpoint = qs ? `audits?${qs}` : "audits";
-  const payload = await tenantRequest("GET", endpoint);
+  const payload = await request("GET", endpoint);
 
   const rows = Array.isArray(payload?.data)
     ? payload.data
@@ -59,10 +60,11 @@ export async function fetchAudits(params = {}) {
 
 /**
  * @param {number|string} auditId
+ * @param {typeof tenantRequest} [request]
  * @returns {Promise<Record<string, unknown>>}
  */
-export function fetchAudit(auditId) {
-  return tenantRequest("GET", `audits/${auditId}`);
+export function fetchAudit(auditId, request = tenantRequest) {
+  return request("GET", `audits/${auditId}`);
 }
 
 /**
@@ -108,11 +110,12 @@ function filenameFromContentDisposition(contentDisposition) {
  *   from?: string;
  *   to?: string;
  * }} [params]
+ * @param {typeof tenantApiClient} [client]
  */
-export async function downloadAuditsCsv(params = {}) {
+export async function downloadAuditsCsv(params = {}, client = tenantApiClient) {
   const query = toAuditQuery({ ...params, format: "csv" });
   try {
-    const res = await tenantApiClient.get(`audits/export?${query.toString()}`, {
+    const res = await client.get(`audits/export?${query.toString()}`, {
       responseType: "blob",
       timeout: 120_000,
     });

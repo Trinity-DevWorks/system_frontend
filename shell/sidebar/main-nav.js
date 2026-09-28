@@ -104,15 +104,19 @@ function toNavLeaf(t, feature) {
  * @param {{
  *   moduleSet?: Set<string> | null,
  *   can?: (resource: string, action: string) => boolean,
- * }} [options]
+ *   sections?: ReadonlyArray<import("@/features/registry").NavSection>,
+ *   features?: ReadonlyArray<import("@/features/registry").FeatureEntry>,
+ * }} [options] `sections` / `features` default to the tenant registry (central passes its own)
  * @returns {import("antd").MenuProps["items"]}
  */
 export function buildMainNavItems(t, options = {}) {
+  const sections = options.sections ?? NAV_SECTIONS;
+  const features = options.features ?? FEATURES;
   /** @type {import("antd").MenuProps["items"]} */
   const items = [];
 
-  for (const section of NAV_SECTIONS) {
-    const pages = FEATURES.filter((f) => f.section === section.id && f.nav !== false);
+  for (const section of sections) {
+    const pages = features.filter((f) => f.section === section.id && f.nav !== false);
     if (!pages.length) continue;
 
     if (section.leaf) {
