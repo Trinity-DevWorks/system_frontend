@@ -2,6 +2,8 @@
 
 import { DownOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Space } from "antd";
+import { useCallback } from "react";
+import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 
 /** @typedef {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent} DrawerSaveIntent */
 
@@ -47,21 +49,54 @@ export default function ResourceDrawerFooter({
   detailEnabled,
   detailQueryError,
 }) {
+  const splitSaveMode = mode === "create" || (mode === "edit" && Boolean(runEdit));
+  const plainEditMode = mode === "edit" && !runEdit && Boolean(handleEditSubmit);
+
+  const saveDisabled = splitSaveMode
+    ? mode === "create"
+      ? createSaveDisabled
+      : editSaveDisabled || !canSubmitRequired || (fetchRemoteDetail && detailEnabled && detailQueryError)
+    : plainEditMode
+      ? editSaveDisabled || submitting
+      : true;
+
+  const onSaveShortcut = useCallback(() => {
+    if (readOnly || saveDisabled || submitting) return;
+    if (splitSaveMode) {
+      const runSave = mode === "create" ? runCreate : /** @type {(intent: DrawerSaveIntent) => void} */ (runEdit);
+      runSave(lastCreateIntent);
+      return;
+    }
+    if (plainEditMode) handleEditSubmit?.();
+  }, [
+    handleEditSubmit,
+    lastCreateIntent,
+    mode,
+    plainEditMode,
+    readOnly,
+    runCreate,
+    runEdit,
+    saveDisabled,
+    splitSaveMode,
+    submitting,
+  ]);
+
+  useDrawerSubmitShortcut({
+    enabled: !readOnly && (splitSaveMode || plainEditMode),
+    submitting,
+    onSave: onSaveShortcut,
+    saveDisabled,
+  });
+
   if (readOnly) {
     return (
-      <div className="flex justify-end">
+      <div className="flex justify-start">
         <Button onClick={forceClose}>{t("drawerClose")}</Button>
       </div>
     );
   }
 
-  const saveMenuItems = createSaveMenuItems;
-  const saveDisabled =
-    mode === "create"
-      ? createSaveDisabled
-      : editSaveDisabled || !canSubmitRequired || (fetchRemoteDetail && detailEnabled && detailQueryError);
-
-  if (mode === "create" || (mode === "edit" && runEdit)) {
+  if (splitSaveMode) {
     const runSave = mode === "create" ? runCreate : /** @type {(intent: DrawerSaveIntent) => void} */ (runEdit);
 
     return (
@@ -75,6 +110,7 @@ export default function ResourceDrawerFooter({
             loading={submitting}
             disabled={saveDisabled}
             onClick={() => runSave(lastCreateIntent)}
+            title={`${createIntentLabel(lastCreateIntent)} (Ctrl+Enter)`}
           >
             {createIntentLabel(lastCreateIntent)}
           </Button>
@@ -82,7 +118,7 @@ export default function ResourceDrawerFooter({
             trigger={["click"]}
             disabled={saveDisabled}
             menu={{
-              items: saveMenuItems,
+              items: createSaveMenuItems,
               onClick: ({ key }) => runSave(/** @type {DrawerSaveIntent} */ (key)),
             }}
           >
@@ -99,7 +135,7 @@ export default function ResourceDrawerFooter({
     );
   }
 
-  if (mode === "edit") {
+  if (plainEditMode) {
     return (
       <div className="flex justify-end gap-2">
         <Button onClick={requestClose} disabled={submitting}>
@@ -110,6 +146,7 @@ export default function ResourceDrawerFooter({
           onClick={handleEditSubmit}
           loading={submitting}
           disabled={editSaveDisabled || submitting}
+          title={`${t("drawerSaveUpdate")} (Ctrl+Enter)`}
         >
           {t("drawerSaveUpdate")}
         </Button>

@@ -3,14 +3,15 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
-import { SALES_INVOICES_QUERY_KEY } from "../queries/salesInvoicesQueryKeys";
+import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY } from "../queries/salesInvoicesQueryKeys";
+import { STOCK_BALANCES_QUERY_KEY, STOCK_MOVEMENTS_QUERY_KEY } from "@/features/stock/queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { deleteSalesInvoice } from "../api/salesInvoices.api";
+import { deleteSalesInvoice, reverseSalesInvoice } from "../api/salesInvoices.api";
 import { fetchCustomerNames } from "@/features/customers/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
@@ -124,6 +125,39 @@ function SalesInvoicesTable() {
     [modal, t, deleteMutation],
   );
 
+  const reverseMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => reverseSalesInvoice(id),
+    onSuccess: () => {
+      message.success(t("reverseSuccess"));
+      queryClient.invalidateQueries({ queryKey: SALES_INVOICES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: SALES_INVOICE_DETAIL_QUERY_PREFIX });
+      queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("reverseError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
+  const handleReverse = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("reverseConfirmTitle"),
+        content: t("reverseConfirmContent"),
+        okText: t("actionReverse"),
+        okButtonProps: { danger: true },
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(reverseMutation.mutateAsync(id)),
+      });
+    },
+    [modal, t, reverseMutation],
+  );
+
   const statusLabel = useMemo(() => {
     if (!statusFilter) return null;
     return statusFilterOptions.find((o) => o.value === statusFilter)?.label ?? statusFilter;
@@ -160,8 +194,9 @@ function SalesInvoicesTable() {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
+        onReverse: access.canReverse ? handleReverse : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, handleDelete],
+    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({

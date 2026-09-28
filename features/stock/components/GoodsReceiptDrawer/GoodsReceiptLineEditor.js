@@ -3,51 +3,20 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
-import { isPersistedEntityId } from "@/lib/entityId";
 import { Input, Select } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
-import { usePurchaseOrderLineUomOptions } from "../../queries/usePurchaseOrderDrawerData";
+import StockLineUomField from "../StockLineUomField";
 import InboundLotFields from "../InboundLotFields";
-
-/**
- * @param {{
- *   itemId?: string;
- *   value?: number | string;
- *   readOnly: boolean;
- *   t: (key: string) => string;
- *   onChange: (value: number | string) => void;
- * }} props
- */
-function GrnLineUomField({ itemId, value, readOnly, t, onChange }) {
-  const { options, pending } = usePurchaseOrderLineUomOptions({
-    itemId,
-    t,
-    enabled: !readOnly && isPersistedEntityId(itemId),
-  });
-
-  return (
-    <Select
-      showSearch
-      optionFilterProp="label"
-      className="w-full"
-      placeholder={t("poBaseUomOption")}
-      value={value ?? PO_BASE_UOM}
-      options={options}
-      loading={pending}
-      disabled={readOnly || itemId == null}
-      getPopupContainer={drawerSelectGetPopup}
-      onChange={onChange}
-    />
-  );
-}
+import InboundSuggestedUnitCostSync from "../InboundSuggestedUnitCostSync";
 
 /**
  * @param {{
  *   lines: import("../../utils/goodsReceiptDrawerUtils").GrnLineFormRow[];
  *   readOnly: boolean;
  *   warehouseId?: number;
+ *   supplierId?: string | null;
  *   hasPurchaseOrder: boolean;
  *   itemOptions?: { value: string; label: string; track_lots?: boolean }[];
  *   itemsPending?: boolean;
@@ -62,6 +31,7 @@ export default function GoodsReceiptLineEditor({
   lines,
   readOnly,
   warehouseId,
+  supplierId = null,
   hasPurchaseOrder,
   itemOptions = [],
   itemsPending = false,
@@ -128,6 +98,7 @@ export default function GoodsReceiptLineEditor({
                     lot_id: undefined,
                     lot_number: "",
                     expiry_date: "",
+                    unit_cost: undefined,
                   });
                 }}
               />
@@ -135,12 +106,13 @@ export default function GoodsReceiptLineEditor({
           }
           if (columnKey === "uom") {
             return (
-              <GrnLineUomField
+              <StockLineUomField
                 itemId={row.item_id}
-                value={row.item_uom_id ?? PO_BASE_UOM}
+                value={row.item_uom_id}
                 readOnly={readOnly}
                 t={t}
-                onChange={(value) => onPatchLine(index, { item_uom_id: value })}
+                prefer="purchase"
+                onChange={(value) => onPatchLine(index, { item_uom_id: value, unit_cost: undefined })}
               />
             );
           }
@@ -163,14 +135,27 @@ export default function GoodsReceiptLineEditor({
           }
           if (columnKey === "unit_cost") {
             return (
-              <TenantNumberInput
-                kind="money"
-                className="w-full"
-                min={0}
-                value={row.unit_cost}
-                disabled={readOnly}
-                onChange={(value) => onPatchLine(index, { unit_cost: value ?? undefined })}
-              />
+              <>
+                {!readOnly && !hasPurchaseOrder ? (
+                  <InboundSuggestedUnitCostSync
+                    itemId={row.item_id}
+                    warehouseId={warehouseId}
+                    supplierId={supplierId}
+                    itemUomId={row.item_uom_id}
+                    lotId={row.lot_id}
+                    unitCost={row.unit_cost}
+                    onApply={(cost) => onPatchLine(index, { unit_cost: cost })}
+                  />
+                ) : null}
+                <TenantNumberInput
+                  kind="money"
+                  className="w-full"
+                  min={0}
+                  value={row.unit_cost}
+                  disabled={readOnly}
+                  onChange={(value) => onPatchLine(index, { unit_cost: value ?? undefined })}
+                />
+              </>
             );
           }
           return (

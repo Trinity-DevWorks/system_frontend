@@ -126,6 +126,7 @@ export function currencyBalancesFingerprint(rows) {
 export function isCreateDirtyVsDefaults(form, defaults) {
   const v = form.getFieldsValue(true);
   const name = String(v.name ?? "").trim();
+  const accountNumber = String(v.account_number ?? "").trim();
   const email = String(v.email ?? "").trim();
   const phone = String(v.phone ?? "").trim();
   const groupId = v.customer_group_id;
@@ -137,6 +138,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   const notes = String(v.notes ?? "").trim();
 
   if (name !== String(defaults.name ?? "").trim()) return true;
+  if (accountNumber !== String(defaults.account_number ?? "").trim()) return true;
   if (email !== String(defaults.email ?? "").trim()) return true;
   if (phone !== String(defaults.phone ?? "").trim()) return true;
   if (optionalRelationId(groupId) !== optionalRelationId(defaults.customer_group_id)) return true;
@@ -173,6 +175,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
 export function isEditDirtyVsLoaded(form, row) {
   const v = form.getFieldsValue(true);
   const name = String(v.name ?? "").trim();
+  const accountNumber = String(v.account_number ?? "").trim();
   const email = String(v.email ?? "").trim();
   const phone = String(v.phone ?? "").trim();
   const groupId = v.customer_group_id;
@@ -184,6 +187,7 @@ export function isEditDirtyVsLoaded(form, row) {
   const notes = String(v.notes ?? "").trim();
 
   if (name !== String(row.name ?? "").trim()) return true;
+  if (accountNumber !== String(row.account_number ?? "").trim()) return true;
   if (email !== String(row.email ?? "").trim()) return true;
   if (phone !== String(row.phone ?? "").trim()) return true;
   if (optionalRelationId(groupId) !== optionalRelationId(row.customer_group_id)) return true;
@@ -224,6 +228,7 @@ export function toCustomerCacheRow(row) {
   return {
     id: row.id,
     customer_code: row.customer_code,
+    account_number: row.account_number ?? null,
     name: row.name,
     email: row.email ?? null,
     phone: row.phone ?? null,
@@ -355,6 +360,7 @@ function mapAddressesToPayload(rows) {
  */
 export function customerFormValuesToPayload(values, mode, options = {}) {
   const name = String(values.name ?? "").trim();
+  const accountNumberRaw = String(values.account_number ?? "").trim();
   const emailRaw = String(values.email ?? "").trim();
   const phoneRaw = String(values.phone ?? "").trim();
   const vatNumRaw = String(values.vat_number ?? "").trim();
@@ -375,6 +381,7 @@ export function customerFormValuesToPayload(values, mode, options = {}) {
   /** @type {Record<string, unknown>} */
   const base = {
     name,
+    account_number: accountNumberRaw === "" ? null : accountNumberRaw.slice(0, 128),
     email: emailRaw === "" ? null : emailRaw,
     phone: phoneRaw === "" ? null : phoneRaw,
     customer_group_id: optionalRelationId(values.customer_group_id),

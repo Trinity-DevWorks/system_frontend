@@ -28,6 +28,7 @@ import SidebarNavRow from "@/shell/sidebar/SidebarNavRow";
  *   addBookmarkAria: string,
  *   removeBookmarkAria: string,
  *   ariaLabel: string,
+ *   searchInputRef?: import("react").Ref<import("antd").InputRef>,
  * }} props
  */
 export default function SidebarPagePanel({
@@ -45,6 +46,7 @@ export default function SidebarPagePanel({
   addBookmarkAria,
   removeBookmarkAria,
   ariaLabel,
+  searchInputRef,
 }) {
   return (
     <div className="shell-panel">
@@ -59,6 +61,7 @@ export default function SidebarPagePanel({
 
       <div className="shell-panel-search">
         <Input
+          ref={searchInputRef}
           allowClear
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}

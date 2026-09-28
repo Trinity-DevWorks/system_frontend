@@ -11,6 +11,35 @@ export async function fetchStockBalances(params = {}) {
 }
 
 /**
+ * @param {{
+ *   item_id: string | number;
+ *   warehouse_id?: number | null;
+ *   supplier_id?: string | null;
+ *   item_uom_id?: number | string | null;
+ *   lot_id?: number | string | null;
+ * }} params
+ * @returns {Promise<{ unit_cost?: string | number | null; source?: string | null }>}
+ */
+export function fetchSuggestedUnitCost(params) {
+  const query = new URLSearchParams({
+    item_id: String(params.item_id),
+  });
+  if (params.warehouse_id != null && params.warehouse_id !== "") {
+    query.set("warehouse_id", String(params.warehouse_id));
+  }
+  if (params.supplier_id != null && params.supplier_id !== "") {
+    query.set("supplier_id", String(params.supplier_id));
+  }
+  if (params.item_uom_id != null && params.item_uom_id !== "") {
+    query.set("item_uom_id", String(params.item_uom_id));
+  }
+  if (params.lot_id != null && params.lot_id !== "") {
+    query.set("lot_id", String(params.lot_id));
+  }
+  return tenantRequest("GET", `stock/suggested-unit-cost?${query.toString()}`);
+}
+
+/**
  * @param {string | number} itemId
  * @param {number} warehouseId
  * @param {number | string | null} [lotId]

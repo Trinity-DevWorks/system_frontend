@@ -1,6 +1,7 @@
 "use client";
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { useResourceAccess } from "@/lib/permissions";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { BUNDLE_EXPLOSION_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -10,10 +11,10 @@ import { fetchBundleExplosion } from "../../api/bundleExplosions.api";
 import { formatItemOptionLabel } from "@/features/items/utils/formatItemLabel";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useQuery } from "@tanstack/react-query";
-import { App, Form } from "antd";
+import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isBundleExplosionDraft } from "../../utils/bundleExplosionStatuses";
+import { getBundleExplosionStatusLabel, isBundleExplosionDraft } from "../../utils/bundleExplosionStatuses";
 import BundleExplosionDrawerFooter from "./BundleExplosionDrawerFooter";
 import BundleExplosionDrawerForm from "./BundleExplosionDrawerForm";
 import BundleExplosionLineEditor from "./BundleExplosionLineEditor";
@@ -58,6 +59,7 @@ export default function BundleExplosionDrawer({
 }) {
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
+  const access = useResourceAccess("stock");
   const { message, modal, notification } = App.useApp();
   const [form] = Form.useForm();
 
@@ -225,7 +227,7 @@ export default function BundleExplosionDrawer({
     [onCreated, syncBaselinesFromRecordAndBump],
   );
 
-  const { saveMutation, postMutation, deleteMutation, submitting } = useBundleExplosionDrawerMutations({
+  const { saveMutation, postMutation, reverseMutation, deleteMutation, submitting } = useBundleExplosionDrawerMutations({
     form,
     message,
     notification,
@@ -236,6 +238,7 @@ export default function BundleExplosionDrawer({
     onCreated: handleCreated,
     onSaved: syncBaselinesFromRecordAndBump,
     onPosted: syncBaselinesFromRecordAndBump,
+    onReversed: syncBaselinesFromRecordAndBump,
     onDeleted: forceClose,
     onClose: forceClose,
   });
@@ -284,6 +287,17 @@ export default function BundleExplosionDrawer({
       .catch(() => {});
   }, [form, modal, t, postMutation]);
 
+  const handleReverse = useCallback(() => {
+    modal.confirm({
+      title: t("reverseConfirmTitle"),
+      content: t("reverseConfirmContent"),
+      okText: t("actionReverse"),
+      okButtonProps: { danger: true },
+      cancelText: t("drawerCancel"),
+      onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
+    });
+  }, [modal, t, reverseMutation]);
+
   const handleDelete = useCallback(() => {
     modal.confirm({
       title: t("bexDeleteConfirmTitle"),
@@ -310,6 +324,13 @@ export default function BundleExplosionDrawer({
     <ResourceCrudDrawer
       title={title}
       recordName={loadedNumber}
+      titleExtra={
+        effectiveStatus ? (
+          <Tag className="m-0" color={effectiveStatus === "posted" ? "green" : effectiveStatus === "reversed" ? "warning" : "default"}>
+            {getBundleExplosionStatusLabel(t, effectiveStatus)}
+          </Tag>
+        ) : null
+      }
       open={open}
       requestClose={requestClose}
       submitting={submitting}
@@ -332,6 +353,8 @@ export default function BundleExplosionDrawer({
           showPost={!readOnly}
           onSave={handleSave}
           onPost={handlePost}
+          showReverse={effectiveStatus === "posted" && documentId != null && access.canReverse}
+          onReverse={handleReverse}
           onDelete={handleDelete}
         />
       }
@@ -344,7 +367,6 @@ export default function BundleExplosionDrawer({
         warehousesPending={drawerData.warehousesPending}
         itemOptions={itemOptions}
         itemsPending={drawerData.itemsPending}
-        bexNumber={loadedNumber}
         componentsPending={Boolean(watchedItemId) && componentsQuery.isFetching}
         componentsEmpty={componentsEmpty}
       />

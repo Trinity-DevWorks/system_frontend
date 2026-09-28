@@ -7,7 +7,7 @@ import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useResourceAccess } from "@/lib/permissions";
 import { App, Checkbox, Form, Select, Space, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { stockFilterFieldRowClassName, useStockTableFilters } from "../components/StockTableFilters/StockTableFilters";
 import {
   StockWarehouseViewSwitch,
@@ -18,6 +18,18 @@ import { useStockBalancesTableQuery } from "../queries/useStockBalancesTableQuer
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useQuery } from "@tanstack/react-query";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+
+function subscribeMounted() {
+  return () => {};
+}
+
+function getClientMounted() {
+  return true;
+}
+
+function getServerMounted() {
+  return false;
+}
 
 function StockBalancesTable() {
   const t = useTranslations("Stock");
@@ -30,11 +42,7 @@ function StockBalancesTable() {
   const [onlyWithStock, setOnlyWithStock] = useState(true);
   const [viewMode, setViewMode] = useState(/** @type {"list" | "warehouse"} */ ("warehouse"));
   /** Permissions are client-only; the actions column must not appear in SSR HTML. */
-  const [hasMounted, setHasMounted] = useState(false);
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+  const hasMounted = useSyncExternalStore(subscribeMounted, getClientMounted, getServerMounted);
 
   const { tableData: rawTableData, isPending, isFetching, refetch, pagination, onSearchChange } = useStockBalancesTableQuery({
     t,

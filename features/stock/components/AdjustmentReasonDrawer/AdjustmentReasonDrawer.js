@@ -5,6 +5,7 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { STOCK_ADJUSTMENT_REASON_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import { fetchStockAdjustmentReason } from "../../api/stockAdjustmentReasons.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Button, Form, Input, Select, Switch } from "antd";
@@ -185,6 +186,13 @@ export default function AdjustmentReasonDrawer({
       .catch(() => {});
   }, [form, mode, reasonId, systemLocked, createMutation, updateMutation]);
 
+  useDrawerSubmitShortcut({
+    enabled: !readOnly,
+    submitting,
+    onSave: handleSave,
+    saveDisabled: !canSubmit,
+  });
+
   const directionOptions = useMemo(
     () =>
       STOCK_ADJUSTMENT_REASON_DIRECTIONS.map((value) => ({
@@ -221,7 +229,13 @@ export default function AdjustmentReasonDrawer({
             <Button onClick={requestClose} disabled={submitting}>
               {t("drawerCancel")}
             </Button>
-            <Button type="primary" disabled={!canSubmit || submitting} loading={submitting} onClick={handleSave}>
+            <Button
+              type="primary"
+              disabled={!canSubmit || submitting}
+              loading={submitting}
+              onClick={handleSave}
+              title={`${t("drawerSave")} (Ctrl+Enter)`}
+            >
               {t("drawerSave")}
             </Button>
           </div>

@@ -7,6 +7,7 @@ import {
   invalidatePurchasingAlertsQueries,
   STOCK_BALANCES_QUERY_KEY,
   STOCK_MOVEMENTS_QUERY_KEY,
+  STOCK_TRANSFER_DETAIL_QUERY_PREFIX,
   STOCK_TRANSFERS_QUERY_KEY,
 } from "../queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
@@ -19,6 +20,7 @@ import {
   cancelStockTransfer,
   deleteStockTransfer,
   dispatchStockTransfer,
+  fetchStockTransfer,
   receiveStockTransfer,
 } from "../api/stockTransfers.api";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
@@ -35,6 +37,7 @@ import {
   useStockTableFilters,
 } from "../components/StockTableFilters/StockTableFilters";
 import { getStockTransferTableColumns } from "../components/StockTransfersTable/getStockTransferTableColumns";
+import StockTransferReceiveModal from "../components/StockTransferDrawer/StockTransferReceiveModal";
 import { useStockTransfersTableQuery } from "../queries/useStockTransfersTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
 
@@ -55,6 +58,7 @@ function StockTransfersTable() {
   const [dateRange, setDateRange] = useState(
     /** @type {[import("dayjs").Dayjs, import("dayjs").Dayjs] | null} */ (null),
   );
+  const [receiveTransferId, setReceiveTransferId] = useState(/** @type {string | null} */ (null));
 
   const fromIso = dateRange?.[0]?.startOf("day").toISOString();
   const toIso = dateRange?.[1]?.endOf("day").toISOString();
@@ -150,20 +154,6 @@ function StockTransfersTable() {
     },
   });
 
-  const receiveMutation = useMutation({
-    mutationFn: (/** @type {string} */ id) => receiveStockTransfer(id),
-    onSuccess: () => {
-      message.success(t("transferReceiveSuccess"));
-      invalidateStockLedger();
-    },
-    onError: (err) => {
-      notification.error({
-        title: t("transferReceiveError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-    },
-  });
-
   const cancelMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => cancelStockTransfer(id),
     onSuccess: () => {
@@ -177,6 +167,43 @@ function StockTransfersTable() {
       });
     },
   });
+
+  const receiveDetailQuery = useQuery({
+    queryKey: [...STOCK_TRANSFER_DETAIL_QUERY_PREFIX, receiveTransferId],
+    queryFn: () => fetchStockTransfer(/** @type {string} */ (receiveTransferId)),
+    enabled: receiveTransferId != null,
+    staleTime: QUERY_STALE_TIME.default,
+  });
+
+  const receiveMutation = useMutation({
+    mutationFn: (/** @type {{ lines: Array<{ stock_transfer_line_id: number; quantity: number; notes?: string }> }} */ body) => {
+      if (receiveTransferId == null) throw new Error("Missing transfer id");
+      return receiveStockTransfer(receiveTransferId, body);
+    },
+    onSuccess: () => {
+      message.success(t("transferReceiveSuccess"));
+      const id = receiveTransferId;
+      setReceiveTransferId(null);
+      invalidateStockLedger();
+      if (id != null) {
+        queryClient.invalidateQueries({
+          queryKey: [...STOCK_TRANSFER_DETAIL_QUERY_PREFIX, id],
+        });
+      }
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("transferReceiveError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
+  const receiveLines = useMemo(() => {
+    const record = receiveDetailQuery.data;
+    if (!record || typeof record !== "object" || !Array.isArray(record.lines)) return [];
+    return /** @type {Array<Record<string, unknown>>} */ (record.lines);
+  }, [receiveDetailQuery.data]);
 
   const handleDispatch = useCallback(
     (record) => {
@@ -197,15 +224,16 @@ function StockTransfersTable() {
     (record) => {
       const id = normalizeEntityId(record?.id);
       if (id == null) return;
-      modal.confirm({
-        title: t("transferReceiveConfirmTitle"),
-        content: t("transferReceiveConfirmContent"),
-        okText: t("actionReceiveTransfer"),
-        cancelText: t("drawerCancel"),
-        onOk: () => closeConfirmOnError(receiveMutation.mutateAsync(id)),
-      });
+      setReceiveTransferId(id);
     },
-    [modal, t, receiveMutation],
+    [],
+  );
+
+  const handleCloseOpen = useCallback(
+    (record) => {
+      openViewDrawer(record);
+    },
+    [openViewDrawer],
   );
 
   const handleCancel = useCallback(
@@ -293,6 +321,7 @@ function StockTransfersTable() {
         onDelete: access.canDelete ? handleDelete : undefined,
         onDispatch: access.canEdit ? handleDispatch : undefined,
         onReceive: access.canEdit ? handleReceive : undefined,
+        onCloseOpen: access.canEdit ? handleCloseOpen : undefined,
         onCancel: access.canEdit ? handleCancel : undefined,
       }),
     [
@@ -305,6 +334,7 @@ function StockTransfersTable() {
       handleDelete,
       handleDispatch,
       handleReceive,
+      handleCloseOpen,
       handleCancel,
     ],
   );
@@ -403,6 +433,14 @@ function StockTransfersTable() {
         stickyHeader
         scrollX={1200}
         pagination={pagination}
+      />
+      <StockTransferReceiveModal
+        open={receiveTransferId != null}
+        lines={receiveLines}
+        submitting={receiveMutation.isPending || receiveDetailQuery.isFetching}
+        t={t}
+        onCancel={() => setReceiveTransferId(null)}
+        onSubmit={(body) => receiveMutation.mutate(body)}
       />
     </div>
   );

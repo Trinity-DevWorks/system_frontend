@@ -6,6 +6,13 @@ import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawer
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { SI_LOOKUP_ADD_CUSTOMER, salesInvoiceSelectFilter } from "../../utils/salesInvoiceDrawerUtils";
+import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
+import {
+  fetchSalesInvoiceCustomerSelectorPage,
+  SALES_INVOICE_CUSTOMER_RECENT_KIND,
+  SALES_INVOICE_CUSTOMER_SELECTOR_PARAMS,
+} from "../../api/salesInvoiceSelectors.api";
+import { SiFocusStop } from "./salesInvoiceDrawerKeyboard";
 import { DownOutlined } from "@ant-design/icons";
 import { AutoComplete, Button, Col, ConfigProvider, DatePicker, Form, Input, Popover, Row, Select } from "antd";
 import dayjs from "dayjs";
@@ -61,7 +68,7 @@ function InvoiceAddressInfoPopover({
   return (
     <Form.Item label={<ResourceDrawerFieldLabel text={title} optional />}>
       <Form.Item name={addressIdName} hidden>
-        <Input />
+        <Input tabIndex={-1} />
       </Form.Item>
       <ConfigProvider componentDisabled={false}>
         <Popover
@@ -147,7 +154,7 @@ function InvoiceCustomerBoundValue({ name, label, options, placeholder, empty, e
   return (
     <Form.Item label={label}>
       <Form.Item name={name} hidden noStyle>
-        <Input />
+        <Input tabIndex={-1} />
       </Form.Item>
       <Input
         readOnly
@@ -164,13 +171,12 @@ function InvoiceCustomerBoundValue({ name, label, options, placeholder, empty, e
  *   form: import("antd").FormInstance;
  *   readOnly: boolean;
  *   t: (key: string) => string;
- *   customerOptions: { value: string; label: string }[];
+ *   customerSeedOptions?: { value: unknown; label: string }[];
  *   warehouseOptions: { value: number; label: string }[];
  *   currencyOptions: { value: number; label: string }[];
  *   salesmanOptions: { value: string; label: string }[];
  *   paymentMethodOptions: { value: number; label: string }[];
  *   paymentTermOptions: { value: number; label: string }[];
- *   customersPending: boolean;
  *   warehousesPending: boolean;
  *   currenciesPending: boolean;
  *   salesmenPending: boolean;
@@ -181,6 +187,7 @@ function InvoiceCustomerBoundValue({ name, label, options, placeholder, empty, e
  *   shippingAddressOptions: { value: number; label: string; phone?: string; address?: Record<string, unknown> }[];
  *   onOpenCustomerDrawer?: () => void;
  *   onValuesChange?: (changed: Record<string, unknown>, all: Record<string, unknown>) => void;
+ *   keyboardRootRef?: import("react").Ref<HTMLDivElement>;
  *   children?: import("react").ReactNode;
  * }} props
  */
@@ -188,13 +195,12 @@ export default function SalesInvoiceDrawerForm({
   form,
   readOnly,
   t,
-  customerOptions,
+  customerSeedOptions = [],
   warehouseOptions,
   currencyOptions,
   salesmanOptions,
   paymentMethodOptions,
   paymentTermOptions,
-  customersPending,
   warehousesPending,
   currenciesPending,
   salesmenPending,
@@ -205,13 +211,15 @@ export default function SalesInvoiceDrawerForm({
   shippingAddressOptions = [],
   onOpenCustomerDrawer,
   onValuesChange,
+  keyboardRootRef,
   children,
 }) {
   const customerId = Form.useWatch("customer_id", form);
   const customerReady = customerId != null && customerId !== "";
 
   return (
-    <Form
+    <div ref={keyboardRootRef} className="sales-invoice-keyboard-root">
+      <Form
       form={form}
       layout="vertical"
       requiredMark={false}
@@ -223,94 +231,115 @@ export default function SalesInvoiceDrawerForm({
         <div className="sales-invoice-header-pane">
           <Row gutter={[12, 8]}>
             <Col xs={24} sm={12} md={8}>
-              <LookupSelectWithCreate
-                form={form}
-                name="customer_id"
-                label={<ResourceDrawerFieldLabel text={t("fieldCustomer")} required />}
-                rules={[{ required: true, message: t("customerRequired") }]}
-                readOnly={readOnly}
-                addNewSentinel={SI_LOOKUP_ADD_CUSTOMER}
-                addNewLabel={t("fieldCustomerAddNew")}
-                onAddNew={onOpenCustomerDrawer}
-                options={customerOptions}
-                loading={customersPending}
-                placeholder={t("customerPlaceholder")}
-                getPopupContainer={drawerSelectGetPopup}
-              />
+              <SiFocusStop field="customer">
+                <LookupSelectWithCreate
+                  form={form}
+                  name="customer_id"
+                  label={<ResourceDrawerFieldLabel text={t("fieldCustomer")} required />}
+                  rules={[{ required: true, message: t("customerRequired") }]}
+                  readOnly={readOnly}
+                  addNewSentinel={SI_LOOKUP_ADD_CUSTOMER}
+                  addNewLabel={t("fieldCustomerAddNew")}
+                  onAddNew={onOpenCustomerDrawer}
+                  fetchPage={fetchSalesInvoiceCustomerSelectorPage}
+                  queryKey={CUSTOMERS_LIST_QUERY_KEY}
+                  queryParams={SALES_INVOICE_CUSTOMER_SELECTOR_PARAMS}
+                  recentKind={SALES_INVOICE_CUSTOMER_RECENT_KIND}
+                  seedOptions={customerSeedOptions}
+                  recentLabel={t("selectorRecent")}
+                  clearRecentLabel={t("selectorClearRecent")}
+                  resultsLabel={t("selectorResults")}
+                  loadMoreLabel={t("selectorLoadMore")}
+                  emptyLabel={t("selectorEmpty")}
+                  typeToSearchLabel={t("selectorTypeToSearch")}
+                  placeholder={t("customerPlaceholder")}
+                  getPopupContainer={drawerSelectGetPopup}
+                />
+              </SiFocusStop>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <Form.Item
-                name="invoice_date"
-                label={<ResourceDrawerFieldLabel text={t("fieldInvoiceDate")} required />}
-                rules={[{ required: true, message: t("invoiceDateRequired") }]}
-                getValueProps={(value) => ({
-                  value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
-                })}
-              >
-                <DatePicker className="w-full" format={dayjsDatePattern()} />
-              </Form.Item>
+              <SiFocusStop field="invoice_date">
+                <Form.Item
+                  name="invoice_date"
+                  label={<ResourceDrawerFieldLabel text={t("fieldInvoiceDate")} required />}
+                  rules={[{ required: true, message: t("invoiceDateRequired") }]}
+                  getValueProps={(value) => ({
+                    value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
+                  })}
+                >
+                  <DatePicker className="w-full" format={dayjsDatePattern()} />
+                </Form.Item>
+              </SiFocusStop>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <InvoiceCustomerBoundValue
-                name="salesman_id"
-                label={<ResourceDrawerFieldLabel text={t("fieldSalesman")} optional />}
-                options={salesmanOptions}
-                placeholder={t("salesmanPlaceholder")}
-                empty={"\u2014"}
-                enabled={customerReady}
-                loading={salesmenPending}
-              />
+              <SiFocusStop field="salesman">
+                <InvoiceCustomerBoundValue
+                  name="salesman_id"
+                  label={<ResourceDrawerFieldLabel text={t("fieldSalesman")} optional />}
+                  options={salesmanOptions}
+                  placeholder={t("salesmanPlaceholder")}
+                  empty={"\u2014"}
+                  enabled={customerReady}
+                  loading={salesmenPending}
+                />
+              </SiFocusStop>
             </Col>
           </Row>
 
           <Row gutter={[12, 8]}>
             <Col xs={24} sm={12} md={8}>
-              <InvoiceAddressInfoPopover
-                form={form}
-                t={t}
-                title={t("sectionBillingInfo")}
-                addressIdName="billing_address_id"
-                addressPrefix="billing_address"
-                addressLabel={t("fieldBillingAddress")}
-                phoneLabel={t("fieldBillingPhone")}
-                addressPlaceholder={t("billingAddressPlaceholder")}
-                phonePlaceholder={t("phonePlaceholder")}
-                options={billingAddressOptions}
-                disabled={!customerReady}
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8}>
-              <InvoiceAddressInfoPopover
-                form={form}
-                t={t}
-                title={t("sectionShippingInfo")}
-                addressIdName="shipping_address_id"
-                addressPrefix="shipping_address"
-                addressLabel={t("fieldShippingAddress")}
-                phoneLabel={t("fieldShippingPhone")}
-                addressPlaceholder={t("shippingAddressPlaceholder")}
-                phonePlaceholder={t("phonePlaceholder")}
-                options={shippingAddressOptions}
-                disabled={!customerReady}
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8}>
-              <Form.Item
-                name="warehouse_id"
-                label={<ResourceDrawerFieldLabel text={t("fieldWarehouse")} required />}
-                rules={[{ required: true, message: t("warehouseRequired") }]}
-              >
-                <Select
-                  showSearch
-                  optionFilterProp="label"
-                  filterOption={salesInvoiceSelectFilter}
-                  className="w-full"
-                  placeholder={t("warehousePlaceholder")}
-                  options={warehouseOptions}
-                  loading={warehousesPending}
-                  getPopupContainer={drawerSelectGetPopup}
+              <SiFocusStop field="billing">
+                <InvoiceAddressInfoPopover
+                  form={form}
+                  t={t}
+                  title={t("sectionBillingInfo")}
+                  addressIdName="billing_address_id"
+                  addressPrefix="billing_address"
+                  addressLabel={t("fieldBillingAddress")}
+                  phoneLabel={t("fieldBillingPhone")}
+                  addressPlaceholder={t("billingAddressPlaceholder")}
+                  phonePlaceholder={t("phonePlaceholder")}
+                  options={billingAddressOptions}
+                  disabled={!customerReady}
                 />
-              </Form.Item>
+              </SiFocusStop>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <SiFocusStop field="shipping">
+                <InvoiceAddressInfoPopover
+                  form={form}
+                  t={t}
+                  title={t("sectionShippingInfo")}
+                  addressIdName="shipping_address_id"
+                  addressPrefix="shipping_address"
+                  addressLabel={t("fieldShippingAddress")}
+                  phoneLabel={t("fieldShippingPhone")}
+                  addressPlaceholder={t("shippingAddressPlaceholder")}
+                  phonePlaceholder={t("phonePlaceholder")}
+                  options={shippingAddressOptions}
+                  disabled={!customerReady}
+                />
+              </SiFocusStop>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <SiFocusStop field="warehouse">
+                <Form.Item
+                  name="warehouse_id"
+                  label={<ResourceDrawerFieldLabel text={t("fieldWarehouse")} required />}
+                  rules={[{ required: true, message: t("warehouseRequired") }]}
+                >
+                  <Select
+                    showSearch
+                    optionFilterProp="label"
+                    filterOption={salesInvoiceSelectFilter}
+                    className="w-full"
+                    placeholder={t("warehousePlaceholder")}
+                    options={warehouseOptions}
+                    loading={warehousesPending}
+                    getPopupContainer={drawerSelectGetPopup}
+                  />
+                </Form.Item>
+              </SiFocusStop>
             </Col>
           </Row>
         </div>
@@ -318,92 +347,105 @@ export default function SalesInvoiceDrawerForm({
         <div className="sales-invoice-header-pane">
           <Row gutter={[12, 8]}>
             <Col xs={24} sm={12} md={8}>
-              <InvoiceCustomerBoundValue
-                name="payment_terms_id"
-                label={<ResourceDrawerFieldLabel text={t("fieldPaymentTerms")} optional />}
-                options={paymentTermOptions}
-                placeholder={t("paymentTermsPlaceholder")}
-                empty={"\u2014"}
-                enabled={customerReady}
-                loading={paymentTermsPending}
-              />
+              <SiFocusStop field="payment_terms">
+                <InvoiceCustomerBoundValue
+                  name="payment_terms_id"
+                  label={<ResourceDrawerFieldLabel text={t("fieldPaymentTerms")} optional />}
+                  options={paymentTermOptions}
+                  placeholder={t("paymentTermsPlaceholder")}
+                  empty={"\u2014"}
+                  enabled={customerReady}
+                  loading={paymentTermsPending}
+                />
+              </SiFocusStop>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <Form.Item
-                name="due_on"
-                label={<ResourceDrawerFieldLabel text={t("fieldDueOn")} />}
-                getValueProps={(value) => ({
-                  value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
-                })}
-              >
-                <DatePicker className="w-full" format={dayjsDatePattern()} allowClear />
-              </Form.Item>
+              <SiFocusStop field="due_on">
+                <Form.Item
+                  name="due_on"
+                  label={<ResourceDrawerFieldLabel text={t("fieldDueOn")} />}
+                  getValueProps={(value) => ({
+                    value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
+                  })}
+                >
+                  <DatePicker className="w-full" format={dayjsDatePattern()} allowClear />
+                </Form.Item>
+              </SiFocusStop>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <Form.Item name="reference_2" label={<ResourceDrawerFieldLabel text={t("fieldReference2")} optional />}>
-                <Input maxLength={128} />
-              </Form.Item>
+              <SiFocusStop field="reference_2">
+                <Form.Item name="reference_2" label={<ResourceDrawerFieldLabel text={t("fieldReference2")} optional />}>
+                  <Input maxLength={128} />
+                </Form.Item>
+              </SiFocusStop>
             </Col>
           </Row>
 
           <Row gutter={[12, 8]}>
             <Col xs={24} sm={12} md={8}>
-              <Form.Item name="currency_id" label={<ResourceDrawerFieldLabel text={t("fieldCurrency")} />}>
-                <Select
-                  showSearch
-                  filterOption={salesInvoiceSelectFilter}
-                  className="w-full"
-                  placeholder={t("currencyPlaceholder")}
-                  options={currencyOptions}
-                  loading={currenciesPending}
-                  getPopupContainer={drawerSelectGetPopup}
-                />
-              </Form.Item>
+              <SiFocusStop field="currency">
+                <Form.Item name="currency_id" label={<ResourceDrawerFieldLabel text={t("fieldCurrency")} />}>
+                  <Select
+                    showSearch
+                    filterOption={salesInvoiceSelectFilter}
+                    className="w-full"
+                    placeholder={t("currencyPlaceholder")}
+                    options={currencyOptions}
+                    loading={currenciesPending}
+                    getPopupContainer={drawerSelectGetPopup}
+                  />
+                </Form.Item>
+              </SiFocusStop>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <Form.Item
-                className="sales-invoice-exchange-rate"
-                label={
-                  <span className="invisible" aria-hidden="true">
+              <SiFocusStop field="exchange_rate">
+                <Form.Item
+                  className="sales-invoice-exchange-rate"
+                  label={
+                    <span className="invisible" aria-hidden="true">
+                      <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
+                    </span>
+                  }
+                >
+                  <div className="sales-invoice-exchange-rate-inline">
                     <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
-                  </span>
-                }
-              >
-                <div className="sales-invoice-exchange-rate-inline">
-                  <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
-                  <Form.Item
-                    name="exchange_rate"
-                    noStyle
-                    rules={[{ required: true, message: t("exchangeRateRequired") }]}
-                  >
-                    <TenantNumberInput
-                      kind="rate"
-                      className="w-full"
-                      style={{ width: "100%" }}
-                      min={0.000001}
-                      readOnly={exchangeRateLocked}
-                      aria-label={t("fieldExchangeRate")}
-                    />
-                  </Form.Item>
-                </div>
-              </Form.Item>
+                    <Form.Item
+                      name="exchange_rate"
+                      noStyle
+                      rules={[{ required: true, message: t("exchangeRateRequired") }]}
+                    >
+                      <TenantNumberInput
+                        kind="rate"
+                        className="w-full"
+                        style={{ width: "100%" }}
+                        min={0.000001}
+                        readOnly={exchangeRateLocked}
+                        aria-label={t("fieldExchangeRate")}
+                      />
+                    </Form.Item>
+                  </div>
+                </Form.Item>
+              </SiFocusStop>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <InvoiceCustomerBoundValue
-                name="payment_method_id"
-                label={<ResourceDrawerFieldLabel text={t("fieldPaymentMethod")} optional />}
-                options={paymentMethodOptions}
-                placeholder={t("paymentMethodPlaceholder")}
-                empty={"\u2014"}
-                enabled={customerReady}
-                loading={paymentMethodsPending}
-              />
+              <SiFocusStop field="payment_method">
+                <InvoiceCustomerBoundValue
+                  name="payment_method_id"
+                  label={<ResourceDrawerFieldLabel text={t("fieldPaymentMethod")} optional />}
+                  options={paymentMethodOptions}
+                  placeholder={t("paymentMethodPlaceholder")}
+                  empty={"\u2014"}
+                  enabled={customerReady}
+                  loading={paymentMethodsPending}
+                />
+              </SiFocusStop>
             </Col>
           </Row>
         </div>
       </div>
 
       {children}
-    </Form>
+      </Form>
+    </div>
   );
 }

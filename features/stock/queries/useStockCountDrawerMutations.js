@@ -17,6 +17,7 @@ import {
   fetchStockCount,
   loadStockCountBalances,
   postStockCount,
+  reverseStockCount,
   syncStockCountLines,
   updateStockCount,
 } from "../api/stockCounts.api";
@@ -40,6 +41,7 @@ import {
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onSaved?: (record: Record<string, unknown>) => void;
  *   onPosted?: (record: Record<string, unknown>) => void;
+ *   onReversed?: (record: Record<string, unknown>) => void;
  *   onDeleted?: () => void;
  *   onClose?: () => void;
  * }} args
@@ -55,6 +57,7 @@ export function useStockCountDrawerMutations({
   onCreated,
   onSaved,
   onPosted,
+  onReversed,
   onDeleted,
   onClose,
 }) {
@@ -181,6 +184,25 @@ export function useStockCountDrawerMutations({
     },
   });
 
+  const reverseMutation = useMutation({
+    mutationFn: async () => {
+      if (documentId == null) throw new Error("missing document");
+      return reverseStockCount(documentId);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("reverseError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (record) => {
+      cacheDetail(normalizeEntityId(record?.id), record);
+      invalidateLedger();
+      message.success(t("reverseSuccess"));
+      onReversed?.(/** @type {Record<string, unknown>} */ (record));
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (documentId == null) throw new Error("missing document");
@@ -204,11 +226,13 @@ export function useStockCountDrawerMutations({
     saveMutation,
     loadBalancesMutation,
     postMutation,
+    reverseMutation,
     deleteMutation,
     submitting:
       saveMutation.isPending ||
       loadBalancesMutation.isPending ||
       postMutation.isPending ||
+      reverseMutation.isPending ||
       deleteMutation.isPending,
   };
 }

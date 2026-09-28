@@ -2,9 +2,8 @@
 
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
-import { getPurchaseOrderStatusLabel, isPurchaseOrderPrintable, purchaseOrderStatusTagColor } from "../../utils/purchaseOrderStatuses";
-import { dayjsDatePattern, formatTenantDateTime } from "@/lib/tenant-format";
-import { Col, DatePicker, Form, Input, Row, Select, Tag } from "antd";
+import { dayjsDatePattern } from "@/lib/tenant-format";
+import { Col, DatePicker, Form, Input, Row, Select } from "antd";
 
 /**
  * @param {{
@@ -15,10 +14,6 @@ import { Col, DatePicker, Form, Input, Row, Select, Tag } from "antd";
  *   warehouseOptions: { value: number; label: string }[];
  *   suppliersPending: boolean;
  *   warehousesPending: boolean;
- *   poNumber?: string | null;
- *   poStatus?: string | null;
- *   sentAt?: string | null;
- *   showMeta?: boolean;
  *   onValuesChange?: (changed: Record<string, unknown>) => void;
  * }} props
  */
@@ -30,10 +25,6 @@ export default function PurchaseOrderDrawerForm({
   warehouseOptions,
   suppliersPending,
   warehousesPending,
-  poNumber = null,
-  poStatus = null,
-  sentAt = null,
-  showMeta = false,
   onValuesChange,
 }) {
   return (
@@ -45,37 +36,6 @@ export default function PurchaseOrderDrawerForm({
       disabled={readOnly}
       onValuesChange={onValuesChange}
     >
-      {showMeta ? (
-        <Row gutter={[16, 0]}>
-          <Col xs={24} sm={12}>
-            <Form.Item label={<ResourceDrawerFieldLabel text={t("poFieldNumber")} />}>
-              <Input value={poNumber ?? "\u2014"} readOnly disabled />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item label={<ResourceDrawerFieldLabel text={t("poFieldStatus")} />}>
-              {poStatus ? (
-                <Tag color={purchaseOrderStatusTagColor(poStatus)}>
-                  {getPurchaseOrderStatusLabel(t, poStatus)}
-                </Tag>
-              ) : (
-                "\u2014"
-              )}
-            </Form.Item>
-          </Col>
-        </Row>
-      ) : null}
-
-      {showMeta && isPurchaseOrderPrintable(poStatus) ? (
-        <Row gutter={[16, 0]}>
-          <Col xs={24} sm={12}>
-            <Form.Item label={<ResourceDrawerFieldLabel text={t("poFieldSentAt")} />}>
-              <Input value={formatTenantDateTime(sentAt) || t("poNotSentYet")} readOnly disabled />
-            </Form.Item>
-          </Col>
-        </Row>
-      ) : null}
-
       <Row gutter={[16, 0]}>
         <Col xs={24} sm={12}>
           <Form.Item

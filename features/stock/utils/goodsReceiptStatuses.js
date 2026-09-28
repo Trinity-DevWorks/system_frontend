@@ -1,6 +1,6 @@
-/** @typedef {"draft" | "posted"} GoodsReceiptStatus */
+/** @typedef {"draft" | "posted" | "reversed"} GoodsReceiptStatus */
 
-export const GOODS_RECEIPT_STATUS_VALUES = /** @type {const} */ (["draft", "posted"]);
+export const GOODS_RECEIPT_STATUS_VALUES = /** @type {const} */ (["draft", "posted", "reversed"]);
 
 /**
  * @param {(key: string) => string} t
@@ -9,6 +9,7 @@ export const GOODS_RECEIPT_STATUS_VALUES = /** @type {const} */ (["draft", "post
 export function getGoodsReceiptStatusLabel(t, status) {
   if (status === "draft") return t("grnStatusDraft");
   if (status === "posted") return t("grnStatusPosted");
+  if (status === "reversed") return t("grnStatusReversed");
   return status ? String(status) : "\u2014";
 }
 

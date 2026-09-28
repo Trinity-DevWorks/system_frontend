@@ -1,6 +1,7 @@
 "use client";
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { useResourceAccess } from "@/lib/permissions";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { GOODS_RECEIPT_DETAIL_QUERY_PREFIX, PURCHASE_ORDER_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -11,10 +12,10 @@ import { fetchGoodsReceipt } from "../../api/goodsReceipts.api";
 import { fetchPurchaseOrder } from "../../api/purchaseOrders.api";
 import { mapPurchaseOrderToGrnCreateSeed } from "../../utils/goodsReceiptFromPurchaseOrder";
 import { useQuery } from "@tanstack/react-query";
-import { App, Form } from "antd";
+import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isGoodsReceiptDraft } from "../../utils/goodsReceiptStatuses";
+import { getGoodsReceiptStatusLabel, isGoodsReceiptDraft } from "../../utils/goodsReceiptStatuses";
 import GoodsReceiptDrawerFooter from "./GoodsReceiptDrawerFooter";
 import GoodsReceiptDrawerForm from "./GoodsReceiptDrawerForm";
 import GoodsReceiptLineEditor from "./GoodsReceiptLineEditor";
@@ -53,6 +54,7 @@ export default function GoodsReceiptDrawer({
 }) {
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
+  const access = useResourceAccess("stock");
   const { message, modal, notification } = App.useApp();
   const [form] = Form.useForm();
 
@@ -183,6 +185,7 @@ export default function GoodsReceiptDrawer({
   const formValuesWatch = Form.useWatch([], form);
   const watchedPoId = Form.useWatch("purchase_order_id", form);
   const watchedWarehouseId = Form.useWatch("warehouse_id", form);
+  const watchedSupplierId = Form.useWatch("supplier_id", form);
   const hasPurchaseOrder = watchedPoId != null && watchedPoId !== "";
   const poSeedEnabled = open && mode === "create" && isPersistedEntityId(watchedPoId);
 
@@ -255,7 +258,7 @@ export default function GoodsReceiptDrawer({
     [onCreated, syncBaselinesFromRecordAndBump],
   );
 
-  const { saveMutation, postMutation, deleteMutation, submitting } = useGoodsReceiptDrawerMutations({
+  const { saveMutation, postMutation, reverseMutation, deleteMutation, submitting } = useGoodsReceiptDrawerMutations({
     form,
     message,
     notification,
@@ -266,6 +269,7 @@ export default function GoodsReceiptDrawer({
     onCreated: handleCreated,
     onSaved: syncBaselinesFromRecordAndBump,
     onPosted: syncBaselinesFromRecordAndBump,
+    onReversed: syncBaselinesFromRecordAndBump,
     onDeleted: forceClose,
     onClose: forceClose,
   });
@@ -294,6 +298,17 @@ export default function GoodsReceiptDrawer({
       })
       .catch(() => {});
   }, [form, modal, t, postMutation]);
+
+  const handleReverse = useCallback(() => {
+    modal.confirm({
+      title: t("reverseConfirmTitle"),
+      content: t("reverseConfirmContent"),
+      okText: t("actionReverse"),
+      okButtonProps: { danger: true },
+      cancelText: t("drawerCancel"),
+      onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
+    });
+  }, [modal, t, reverseMutation]);
 
   const handleDelete = useCallback(() => {
     modal.confirm({
@@ -353,6 +368,13 @@ export default function GoodsReceiptDrawer({
     <ResourceCrudDrawer
       title={title}
       recordName={loadedNumber}
+      titleExtra={
+        effectiveStatus ? (
+          <Tag className="m-0" color={effectiveStatus === "posted" ? "green" : effectiveStatus === "reversed" ? "warning" : "default"}>
+            {getGoodsReceiptStatusLabel(t, effectiveStatus)}
+          </Tag>
+        ) : null
+      }
       open={open}
       requestClose={requestClose}
       submitting={submitting}
@@ -380,6 +402,8 @@ export default function GoodsReceiptDrawer({
           showPost={!readOnly}
           onSave={handleSave}
           onPost={handlePost}
+          showReverse={effectiveStatus === "posted" && receiptId != null && access.canReverse}
+          onReverse={handleReverse}
           onDelete={handleDelete}
         />
       }
@@ -396,7 +420,6 @@ export default function GoodsReceiptDrawer({
         warehousesPending={drawerData.warehousesPending}
         supplierOptions={drawerData.supplierOptions}
         suppliersPending={drawerData.suppliersPending}
-        grnNumber={loadedNumber}
         warehouseName={loadedWarehouseName}
         supplierName={loadedSupplierName}
         purchaseOrderNumber={loadedPoNumber}
@@ -406,6 +429,7 @@ export default function GoodsReceiptDrawer({
         lines={lines.length > 0 ? lines : [getEmptyGrnLine()]}
         readOnly={readOnly || submitting}
         warehouseId={effectiveWarehouseId}
+        supplierId={typeof watchedSupplierId === "string" ? watchedSupplierId : null}
         hasPurchaseOrder={hasPurchaseOrder}
         itemOptions={drawerData.itemOptions}
         itemsPending={drawerData.itemsPending}

@@ -63,3 +63,8 @@ export async function syncProductionLines(documentId, body) {
 export function postProduction(documentId) {
   return tenantRequest("POST", `stock/productions/${documentId}/post`);
 }
+
+/** @param {string} documentId */
+export function reverseProduction(documentId) {
+  return tenantRequest("POST", `stock/productions/${documentId}/reverse`);
+}

@@ -103,6 +103,7 @@ export function useCustomerDrawerMutations({
       const optimisticRow = {
         id: optimisticId,
         customer_code: "",
+        account_number: payload.account_number ?? null,
         name: payload.name,
         email: payload.email,
         phone: payload.phone,

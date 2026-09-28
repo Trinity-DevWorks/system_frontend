@@ -162,6 +162,7 @@ export const FEATURES = [
 
   { id: "supplierGroups", path: "/main/supplier-groups", section: "purchasing", labelKey: "navSupplierGroups", icon: ClusterOutlined, module: "purchasing", permission: "supplier_groups" },
   { id: "suppliers", path: "/main/suppliers", section: "purchasing", labelKey: "navSuppliers", icon: SolutionOutlined, module: "purchasing", permission: "suppliers" },
+  { id: "purchaseInvoices", path: "/main/purchase-invoices", section: "purchasing", labelKey: "navPurchaseInvoices", icon: FileDoneOutlined, module: "purchasing", permission: "purchase_invoices" },
 
   { id: "branches", path: "/main/branches", section: "administration", labelKey: "navBranches", icon: ApartmentOutlined, module: CORE_MODULE, permission: "branches" },
   { id: "users", path: "/main/users", section: "administration", labelKey: "navUsers", icon: TeamOutlined, module: CORE_MODULE, permission: "users" },

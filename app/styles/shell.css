@@ -65,6 +65,10 @@ html[data-shell-sidebar-collapsed] .shell-nav {
   padding-top: 8px;
 }
 
+.shell-nav.is-collapsed .shell-rail {
+  cursor: pointer;
+}
+
 .shell-rail-footer {
   display: flex;
   width: 100%;

@@ -226,7 +226,7 @@ export default function PermissionMatrixTable({
       dataSource={filteredRows}
       pagination={false}
       sticky
-      scroll={{ x: 980, y: "calc(100dvh - 14rem)" }}
+      scroll={{ x: 1100, y: "calc(100dvh - 14rem)" }}
       locale={{ emptyText: t("emptyMatrix") }}
       className="permissions-matrix-table min-w-0"
     />

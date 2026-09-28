@@ -90,15 +90,26 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
   const saveMutation = useMutation({
     mutationFn: (/** @type {{ id?: number; body: Record<string, unknown> }} */ { id, body }) =>
       id != null ? updateItemUom(itemId, id, body) : createItemUom(itemId, body),
-    onSuccess: (saved) => {
-      if (isItemUomRow(saved)) {
+    onSuccess: (saved, variables) => {
+      const body = variables?.body;
+      const editingId = variables?.id;
+      const previousList = queryClient.getQueryData(itemUomsQueryKeyValue);
+      const previousRow =
+        editingId != null && Array.isArray(previousList)
+          ? previousList.find((row) => row?.id === editingId)
+          : null;
+      const rebased = body?.is_base === true && previousRow != null && !previousRow.is_base;
+
+      if (rebased || body?.is_base === true) {
+        void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
+      } else if (isItemUomRow(saved)) {
         setItemUomInCache(queryClient, itemId, saved);
       } else {
         void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
       }
       void queryClient.invalidateQueries({ queryKey: itemDetailQueryKey(itemId) });
       void invalidateTenantListQueries(queryClient, ITEMS_LIST_QUERY_KEY);
-      message.success(t("panelSaveSuccess"));
+      message.success(rebased ? t("uomBaseRebaseSuccess") : t("panelSaveSuccess"));
       setInlineEdit(null);
     },
     onError: (err) => message.error(getLocalizedApiErrorMessage(tApiErrors, err)),
@@ -118,6 +129,15 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     mutationFn: (/** @type {{ id: number; body: Record<string, unknown> }} */ { id, body }) =>
       updateItemUom(itemId, id, body),
     onMutate: async ({ id, body }) => {
+      // Base change rebases every conversion factor — skip optimistic UI and refetch.
+      if (body?.is_base === true) {
+        const current = queryClient.getQueryData(itemUomsQueryKeyValue);
+        const source = Array.isArray(current) ? current.find((row) => row?.id === id) : null;
+        const rebased = source != null && !source.is_base;
+        if (rebased) {
+          return { previous: undefined, rebased: true };
+        }
+      }
       await queryClient.cancelQueries({ queryKey: itemUomsQueryKeyValue });
       const previous = queryClient.getQueryData(itemUomsQueryKeyValue);
       const list = Array.isArray(previous) ? previous : [];
@@ -125,9 +145,16 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
       if (source && typeof source === "object") {
         setItemUomInCache(queryClient, itemId, { ...source, ...body });
       }
-      return { previous };
+      return { previous, rebased: false };
     },
-    onSuccess: (saved) => {
+    onSuccess: (saved, variables, context) => {
+      if (context?.rebased) {
+        void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
+        void queryClient.invalidateQueries({ queryKey: itemDetailQueryKey(itemId) });
+        void invalidateTenantListQueries(queryClient, ITEMS_LIST_QUERY_KEY);
+        message.success(t("uomBaseRebaseSuccess"));
+        return;
+      }
       if (isItemUomRow(saved)) {
         setItemUomInCache(queryClient, itemId, saved);
       }
@@ -259,7 +286,11 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
 
   const patchFlag = (id, body) => {
     if (readOnly || inlineEdit) return;
-    patchMutation.mutate({ id, body });
+    const nextBody =
+      body?.is_base === true
+        ? { ...body, conversion_factor: 1 }
+        : body;
+    patchMutation.mutate({ id, body: nextBody });
   };
 
   const requestDelete = (row) => {

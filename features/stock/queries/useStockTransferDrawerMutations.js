@@ -17,6 +17,7 @@ import { normalizeEntityId } from "@/lib/entityId";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import {
   cancelStockTransfer,
+  closeStockTransferOpen,
   createStockTransfer,
   deleteStockTransfer,
   dispatchStockTransfer,
@@ -46,6 +47,7 @@ import {
  *   onSaved?: (record: Record<string, unknown>) => void;
  *   onDispatched?: (record: Record<string, unknown>) => void;
  *   onReceived?: (record: Record<string, unknown>) => void;
+ *   onClosedOpen?: (record: Record<string, unknown>) => void;
  *   onCancelled?: (record: Record<string, unknown>) => void;
  *   onDeleted?: () => void;
  *   onClose?: () => void;
@@ -63,6 +65,7 @@ export function useStockTransferDrawerMutations({
   onSaved,
   onDispatched,
   onReceived,
+  onClosedOpen,
   onCancelled,
   onDeleted,
   onClose,
@@ -152,9 +155,9 @@ export function useStockTransferDrawerMutations({
   });
 
   const receiveMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (/** @type {Record<string, unknown>} */ body = {}) => {
       if (transferId == null) throw new Error("Missing transfer id");
-      return receiveStockTransfer(transferId);
+      return receiveStockTransfer(transferId, body);
     },
     onError: (err) => {
       notification.error({
@@ -167,7 +170,25 @@ export function useStockTransferDrawerMutations({
       invalidateStockLedger();
       cacheTransferDetail(transferId, record);
       onReceived?.(/** @type {Record<string, unknown>} */ (record));
-      onClose?.();
+    },
+  });
+
+  const closeOpenMutation = useMutation({
+    mutationFn: (/** @type {Record<string, unknown>} */ body) => {
+      if (transferId == null) throw new Error("Missing transfer id");
+      return closeStockTransferOpen(transferId, body);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("transferCloseOpenError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (record) => {
+      message.success(t("transferCloseOpenSuccess"));
+      invalidateStockLedger();
+      cacheTransferDetail(transferId, record);
+      onClosedOpen?.(/** @type {Record<string, unknown>} */ (record));
     },
   });
 
@@ -214,6 +235,7 @@ export function useStockTransferDrawerMutations({
     saveMutation.isPending ||
     dispatchMutation.isPending ||
     receiveMutation.isPending ||
+    closeOpenMutation.isPending ||
     cancelMutation.isPending ||
     deleteMutation.isPending;
 
@@ -221,6 +243,7 @@ export function useStockTransferDrawerMutations({
     saveMutation,
     dispatchMutation,
     receiveMutation,
+    closeOpenMutation,
     cancelMutation,
     deleteMutation,
     submitting,

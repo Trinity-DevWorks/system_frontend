@@ -1,5 +1,5 @@
 import { tenantRequest } from "@/lib/axios";
-import { fetchPaginatedResource, fetchResourceNames } from "@/lib/tables/paginatedList";
+import { fetchPaginatedResource, fetchResourceNames, parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
 
 /** @param {Record<string, string | number | undefined>} [params] */
 export function fetchItems(params = {}) {
@@ -9,6 +9,35 @@ export function fetchItems(params = {}) {
 /** @returns {Promise<unknown[]>} */
 export function fetchItemNames() {
   return fetchResourceNames("items");
+}
+
+/**
+ * Slim paginated items for invoice line typeahead.
+ *
+ * @param {{
+ *   context: "sale" | "purchase";
+ *   search?: string;
+ *   page?: number;
+ *   per_page?: number;
+ * }} params
+ */
+export async function fetchItemsForInvoice(params) {
+  const qs = toListQuery({
+    section: "for-invoice",
+    ...params,
+  }).toString();
+  const payload = await tenantRequest("GET", qs ? `items?${qs}` : "items?section=for-invoice");
+  return parsePaginatedList(payload, params);
+}
+
+/**
+ * UOMs + barcodes + prices for one selected invoice line item (single round-trip).
+ *
+ * @param {number | string} itemId
+ * @returns {Promise<{ item_id?: string; item_uoms?: Array<Record<string, unknown>> }>}
+ */
+export function fetchItemInvoiceLineSetup(itemId) {
+  return tenantRequest("GET", `items/${itemId}/invoice-line-setup`);
 }
 
 /**

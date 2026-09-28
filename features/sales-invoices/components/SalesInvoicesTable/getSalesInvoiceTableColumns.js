@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
 import { getSalesInvoiceStatusLabel, isSalesInvoiceDraft, salesInvoiceStatusTagColor } from "../../utils/salesInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import dayjs from "dayjs";
@@ -12,10 +12,11 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
+ *   onReverse?: (record: unknown) => void;
  * }} [actions]
  */
 export function getSalesInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete } = actions;
+  const { onView, onEdit, onDelete, onReverse } = actions;
 
   return [
     {
@@ -114,6 +115,17 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                   danger: true,
                   label: t("actionDelete"),
                   onClick: () => onDelete?.(record),
+                },
+              ]
+            : []),
+          ...(onReverse && record?.status === "posted"
+            ? [
+                {
+                  key: "reverse",
+                  icon: <RollbackOutlined />,
+                  danger: true,
+                  label: t("actionReverse"),
+                  onClick: () => onReverse(record),
                 },
               ]
             : []),

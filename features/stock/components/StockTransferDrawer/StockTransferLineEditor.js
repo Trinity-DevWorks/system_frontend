@@ -7,41 +7,12 @@ import { Select, Typography } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import { STOCK_TRANSFER_BASE_UOM } from "../../utils/stockTransferDrawerUtils";
+import { formatStockQuantity } from "../../utils/formatStockQuantity";
 import { isPersistedEntityId } from "@/lib/entityId";
 import StockLotSelect from "../StockLotSelect";
-import { useTransferLineLotOptions, useTransferLineUomOptions } from "../../queries/useStockTransferDrawerData";
-
-/**
- * @param {{
- *   itemId?: string;
- *   value?: number | string;
- *   readOnly: boolean;
- *   t: (key: string) => string;
- *   onChange: (value: number | string) => void;
- * }} props
- */
-function TransferLineUomField({ itemId, value, readOnly, t, onChange }) {
-  const { options, pending } = useTransferLineUomOptions({
-    itemId,
-    t,
-    enabled: !readOnly && isPersistedEntityId(itemId),
-  });
-
-  return (
-    <Select
-      showSearch
-      optionFilterProp="label"
-      className="w-full"
-      placeholder={t("transferBaseUomOption")}
-      value={value ?? STOCK_TRANSFER_BASE_UOM}
-      options={options}
-      loading={pending}
-      disabled={readOnly || itemId == null}
-      getPopupContainer={drawerSelectGetPopup}
-      onChange={onChange}
-    />
-  );
-}
+import StockLineUomField from "../StockLineUomField";
+import { useTransferLineLotOptions } from "../../queries/useStockTransferDrawerData";
+import { useStockBalanceOnHand } from "../../queries/useStockBalanceOnHand";
 
 /**
  * @param {{
@@ -70,6 +41,43 @@ function TransferLineLotField({ itemId, warehouseId, value, readOnly, t, onChang
       disabled={readOnly || itemId == null || warehouseId == null}
       onChange={onChange}
     />
+  );
+}
+
+/**
+ * @param {{
+ *   itemId?: string;
+ *   warehouseId?: number;
+ *   lotId?: number;
+ *   trackLots?: boolean;
+ *   t: (key: string) => string;
+ * }} props
+ */
+function TransferLineOnHandCell({ itemId, warehouseId, lotId, trackLots, t }) {
+  const { quantity, waitingOnWarehouse, waitingOnLot, pending } = useStockBalanceOnHand({
+    itemId,
+    warehouseId,
+    lotId,
+    trackLots,
+  });
+
+  let label = "—";
+  if (!itemId) {
+    label = "—";
+  } else if (waitingOnWarehouse) {
+    label = t("transferLineOnHandNeedWarehouse");
+  } else if (waitingOnLot) {
+    label = t("transferLineOnHandNeedLot");
+  } else if (pending) {
+    label = "…";
+  } else if (quantity != null && Number.isFinite(quantity)) {
+    label = formatStockQuantity(quantity);
+  }
+
+  return (
+    <Typography.Text type="secondary" className="block truncate tabular-nums">
+      {label}
+    </Typography.Text>
   );
 }
 
@@ -108,14 +116,26 @@ export default function StockTransferLineEditor({
     [stockableItems, lines],
   );
 
+  const showProgressColumns = useMemo(
+    () => readOnly && lines.some((line) => line.open_quantity != null || line.received_quantity != null),
+    [readOnly, lines],
+  );
+
   const columns = useMemo(
     () => [
       { key: "item", label: t("transferLineItem"), width: "minmax(240px, 1fr)" },
       ...(showLotColumn ? [{ key: "lot", label: t("transferLineLot"), width: "220px" }] : []),
+      ...(!readOnly ? [{ key: "on_hand", label: t("transferLineOnHand"), width: "110px" }] : []),
       { key: "quantity", label: t("transferLineQuantity"), width: "120px" },
+      ...(showProgressColumns
+        ? [
+            { key: "received", label: t("transferLineReceived"), width: "100px" },
+            { key: "open", label: t("transferLineOpen"), width: "100px" },
+          ]
+        : []),
       { key: "uom", label: t("transferLineUom"), width: "160px" },
     ],
-    [t, showLotColumn],
+    [t, showLotColumn, showProgressColumns, readOnly],
   );
 
   return (
@@ -175,16 +195,34 @@ export default function StockTransferLineEditor({
               />
             );
           }
+          if (columnKey === "on_hand") {
+            return (
+              <TransferLineOnHandCell
+                itemId={row.item_id}
+                warehouseId={fromWarehouseId}
+                lotId={row.lot_id}
+                trackLots={row.track_lots}
+                t={t}
+              />
+            );
+          }
           if (columnKey === "uom") {
             return (
-              <TransferLineUomField
+              <StockLineUomField
                 itemId={row.item_id}
                 value={row.item_uom_id}
                 readOnly={readOnly}
                 t={t}
+                prefer="base"
                 onChange={(value) => onPatchLine(index, { item_uom_id: value })}
               />
             );
+          }
+          if (columnKey === "received") {
+            return formatStockQuantity(row.received_quantity ?? 0);
+          }
+          if (columnKey === "open") {
+            return formatStockQuantity(row.open_quantity ?? row.quantity);
           }
           return (
             <TenantNumberInput

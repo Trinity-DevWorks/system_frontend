@@ -80,6 +80,90 @@ export function salesInvoiceItemCodeLabel(item) {
 }
 
 /**
+ * @param {Record<string, unknown> | null | undefined} customer
+ * @returns {string | undefined}
+ */
+export function salesInvoiceCustomerHoverTitle(customer) {
+  if (!customer || typeof customer !== "object") return undefined;
+  const name = String(customer.name ?? "").trim();
+  const phone = typeof customer.phone === "string" ? customer.phone.trim() : "";
+  if (name && phone) return `${name} - ${phone}`;
+  return name || phone || undefined;
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} customer
+ * @returns {{ value: unknown; label: string; status?: unknown } | null}
+ */
+export function mapSalesInvoiceCustomerOption(customer) {
+  if (!customer || customer.id == null || customer.id === "") return null;
+  if (customer.status === "blacklisted") return null;
+  const code = typeof customer.customer_code === "string" ? customer.customer_code.trim() : "";
+  const name = String(customer.name ?? customer.id);
+  const phone = typeof customer.phone === "string" ? customer.phone.trim() : "";
+  const email = typeof customer.email === "string" ? customer.email.trim() : "";
+  const title = salesInvoiceCustomerHoverTitle({ name, phone });
+  return {
+    value: customer.id,
+    label: code || name,
+    title,
+    status: customer.status,
+    customer_code: code || undefined,
+    name,
+    phone: phone || undefined,
+    email: email || undefined,
+    searchText: [code, name, phone, email].filter(Boolean).join(" "),
+  };
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} item
+ */
+export function salesInvoiceItemDescription(item) {
+  if (!item || typeof item !== "object") return "";
+  if (typeof item.description === "string" && item.description.trim()) return item.description.trim();
+  if (typeof item.name === "string" && item.name.trim()) return item.name.trim();
+  return "";
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} item
+ * @returns {{
+ *   value: string;
+ *   label: string;
+ *   name: string;
+ *   searchText: string;
+ *   track_inventory: boolean;
+ *   track_lots: boolean;
+ *   vat_percentage: number;
+ *   description?: string;
+ * } | null}
+ */
+export function mapSalesInvoiceItemOption(item) {
+  if (!item || item.id == null || item.id === "") return null;
+  if (item.allow_sale === false || item.is_active === false) return null;
+  const code = typeof item.item_code === "string" ? item.item_code.trim() : "";
+  const name = typeof item.name === "string" ? item.name.trim() : "";
+  const label = code || name || String(item.id);
+  const vatFromGroup =
+    item.vat_group && typeof item.vat_group === "object" && item.vat_group.percentage != null
+      ? Number(item.vat_group.percentage)
+      : null;
+  const vatDirect = item.vat_percentage != null ? Number(item.vat_percentage) : null;
+  const description = salesInvoiceItemDescription(item);
+  return {
+    value: String(item.id),
+    label,
+    name,
+    description,
+    searchText: `${item.sku ?? ""} ${item.item_code ?? ""} ${item.plu_code ?? ""} ${item.name ?? ""}`,
+    track_inventory: Boolean(item.track_inventory),
+    track_lots: Boolean(item.track_lots),
+    vat_percentage: Number.isFinite(vatFromGroup) ? vatFromGroup : Number.isFinite(vatDirect) ? vatDirect : 0,
+  };
+}
+
+/**
  * @param {{ code?: unknown; name?: unknown } | null | undefined} uom
  */
 export function salesInvoiceUomCodeLabel(uom) {
@@ -116,6 +200,22 @@ export function salesInvoiceSelectFilter(input, option) {
 }
 
 /**
+ * Resolve a typed item code (or unique search text) to a catalog option.
+ * @param {{ value: unknown; label?: string; searchText?: string }[]} options
+ * @param {unknown} raw
+ */
+export function findSalesInvoiceItemOptionByCode(options, raw) {
+  const query = String(raw ?? "").trim().toLowerCase();
+  if (!query) return null;
+  const exact = options.find((row) => String(row.label ?? "").trim().toLowerCase() === query);
+  if (exact) return exact;
+  const starts = options.filter((row) => String(row.label ?? "").trim().toLowerCase().startsWith(query));
+  if (starts.length === 1) return starts[0];
+  const matches = options.filter((row) => salesInvoiceSelectFilter(query, row));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/**
  * @typedef {{
  *   item_id?: string;
  *   item_label?: string;
@@ -139,6 +239,7 @@ export function salesInvoiceSelectFilter(input, option) {
  *   line_total?: string | number;
  *   track_inventory?: boolean;
  *   track_lots?: boolean;
+ *   catalogReloadKey?: number;
  * }} SalesInvoiceLineFormRow
  */
 
@@ -339,50 +440,87 @@ export function mapSalesInvoiceLinesFromApi(lines) {
 }
 
 /**
- * @param {SalesInvoiceLineFormRow[]} lines
+ * @param {SalesInvoiceLineFormRow | null | undefined} line
  */
-export function getValidSalesInvoiceLines(lines) {
-  return lines
-    .filter((line) => line.item_id != null && line.quantity != null && Number(line.quantity) > 0)
-    .map((line) => {
-      /** @type {Record<string, unknown>} */
-      const row = {
-        item_id: String(line.item_id),
-        quantity: Number(line.quantity),
-        unit_price: Number(line.unit_price ?? 0),
-      };
-      if (line.item_uom_id != null && line.item_uom_id !== SI_BASE_UOM) {
-        row.item_uom_id = Number(line.item_uom_id);
-      }
-      if (line.warehouse_id != null) {
-        row.warehouse_id = Number(line.warehouse_id);
-      }
-      if (line.lot_id != null) {
-        row.lot_id = Number(line.lot_id);
-      }
-      if (line.discount_percent != null) {
-        row.discount_percent = Number(line.discount_percent);
-      }
-      const description = typeof line.description === "string" ? line.description.trim() : "";
-      if (description) row.description = description;
-      const notes = typeof line.notes === "string" ? line.notes.trim() : "";
-      if (notes) row.notes = notes;
-      return row;
-    });
+export function salesInvoiceLineHasUnitPrice(line) {
+  if (line == null || line.unit_price == null || line.unit_price === "") return false;
+  const price = Number(line.unit_price);
+  return Number.isFinite(price) && price >= 0;
 }
 
 /**
+ * @param {SalesInvoiceLineFormRow[]} lines
+ */
+export function getValidSalesInvoiceLines(lines) {
+  return lines.filter(isSalesInvoiceLineComplete).map((line) => {
+    /** @type {Record<string, unknown>} */
+    const row = {
+      item_id: String(line.item_id),
+      quantity: Number(line.quantity),
+      unit_price: Number(line.unit_price),
+    };
+    if (line.item_uom_id != null && line.item_uom_id !== SI_BASE_UOM) {
+      row.item_uom_id = Number(line.item_uom_id);
+    }
+    if (line.warehouse_id != null) {
+      row.warehouse_id = Number(line.warehouse_id);
+    }
+    if (line.lot_id != null) {
+      row.lot_id = Number(line.lot_id);
+    }
+    if (line.discount_percent != null) {
+      row.discount_percent = Number(line.discount_percent);
+    }
+    const description = typeof line.description === "string" ? line.description.trim() : "";
+    if (description) row.description = description;
+    const notes = typeof line.notes === "string" ? line.notes.trim() : "";
+    if (notes) row.notes = notes;
+    return row;
+  });
+}
+
+/**
+ * Line has item, qty, price, and stock/lot fields required for save or post.
  * @param {SalesInvoiceLineFormRow} line
  */
 export function isSalesInvoiceLineComplete(line) {
-  return (
-    line.item_id != null &&
-    line.item_id !== "" &&
-    line.quantity != null &&
-    Number(line.quantity) > 0 &&
-    line.unit_price != null &&
-    Number(line.unit_price) >= 0
-  );
+  if (
+    line.item_id == null ||
+    line.item_id === "" ||
+    line.quantity == null ||
+    line.quantity === "" ||
+    !Number.isFinite(Number(line.quantity)) ||
+    Number(line.quantity) <= 0 ||
+    !salesInvoiceLineHasUnitPrice(line)
+  ) {
+    return false;
+  }
+  if (line.track_inventory && (line.warehouse_id == null || line.warehouse_id === "")) {
+    return false;
+  }
+  if (line.track_lots && (line.lot_id == null || line.lot_id === "")) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * True when the line has no user-entered content (same state as after Clear row).
+ * @param {SalesInvoiceLineFormRow | null | undefined} line
+ */
+export function isSalesInvoiceLineEmpty(line) {
+  if (!line || typeof line !== "object") return true;
+  if (line.item_id != null && String(line.item_id).trim() !== "") return false;
+  if (typeof line.barcode === "string" && line.barcode.trim() !== "") return false;
+  if (typeof line.item_label === "string" && line.item_label.trim() !== "") return false;
+  if (line.quantity != null && line.quantity !== "" && Number(line.quantity) !== 0) return false;
+  if (line.unit_price != null && line.unit_price !== "") return false;
+  if (line.discount_percent != null && Number(line.discount_percent) !== 0) return false;
+  if (line.warehouse_id != null && line.warehouse_id !== "") return false;
+  if (line.lot_id != null && line.lot_id !== "") return false;
+  if (typeof line.description === "string" && line.description.trim() !== "") return false;
+  if (typeof line.notes === "string" && line.notes.trim() !== "") return false;
+  return true;
 }
 
 /**
@@ -410,12 +548,7 @@ export function salesInvoiceLinePatchFromBarcodeLookup(
   const itemId = String(item.id);
   const sameItem = row.item_id != null && String(row.item_id) === itemId;
   const trackInventory = Boolean(item.track_inventory);
-  const description =
-    typeof item.description === "string" && item.description.trim()
-      ? item.description
-      : typeof item.name === "string"
-        ? item.name
-        : "";
+  const description = salesInvoiceItemDescription(item);
   const incrementQuantity = Boolean(options.incrementQuantity);
   return {
     barcode: scannedBarcode,
@@ -439,6 +572,58 @@ export function salesInvoiceLinePatchFromBarcodeLookup(
       incrementQuantity && row.quantity != null && Number(row.quantity) > 0
         ? Number(row.quantity) + 1
         : 1,
+    discount_percent: incrementQuantity ? row.discount_percent ?? 0 : 0,
+    tax_rate: undefined,
+    line_total: undefined,
+  };
+}
+
+/**
+ * Item-derived fields when the user picks or clears an item. Quantity and notes stay.
+ *
+ * @param {Record<string, unknown> | null | undefined} picked
+ * @param {number | undefined} headerWarehouseId
+ * @returns {Partial<SalesInvoiceLineFormRow>}
+ */
+export function salesInvoiceLinePatchFromItemPick(picked, headerWarehouseId) {
+  if (!picked || picked.value == null || picked.value === "") {
+    return {
+      item_id: undefined,
+      item_label: "",
+      barcode: "",
+      item_uom_id: SI_BASE_UOM,
+      lot_id: undefined,
+      warehouse_id: undefined,
+      unit_price: undefined,
+      conversion_factor: 1,
+      track_inventory: false,
+      track_lots: false,
+      vat_percentage: 0,
+      tax_rate: undefined,
+      line_total: undefined,
+      discount_percent: 0,
+      description: "",
+      catalogReloadKey: 0,
+    };
+  }
+  const trackInventory = Boolean(picked.track_inventory);
+  return {
+    item_id: String(picked.value),
+    item_label: String(picked.label ?? ""),
+    barcode: "",
+    item_uom_id: SI_BASE_UOM,
+    lot_id: undefined,
+    warehouse_id: trackInventory ? headerWarehouseId : undefined,
+    unit_price: undefined,
+    conversion_factor: 1,
+    track_inventory: trackInventory,
+    track_lots: Boolean(picked.track_lots),
+    vat_percentage: picked.vat_percentage ?? 0,
+    tax_rate: undefined,
+    line_total: undefined,
+    discount_percent: 0,
+    description: salesInvoiceItemDescription(picked),
+    catalogReloadKey: 0,
   };
 }
 
@@ -546,7 +731,16 @@ export function salesInvoiceHeaderRequiredFieldsValid(values) {
  */
 export function canSaveSalesInvoiceDraft(values, lines) {
   if (!salesInvoiceHeaderRequiredFieldsValid(values)) return false;
-  return getValidSalesInvoiceLines(lines).length > 0;
+  const candidates = lines.filter(
+    (line) =>
+      line.item_id != null &&
+      line.item_id !== "" &&
+      line.quantity != null &&
+      Number(line.quantity) > 0,
+  );
+  if (candidates.length === 0) return false;
+  // Block save/post when any stock line is missing warehouse or required lot.
+  return candidates.every(isSalesInvoiceLineComplete);
 }
 
 /**

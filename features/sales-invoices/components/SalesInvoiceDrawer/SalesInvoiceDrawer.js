@@ -18,12 +18,16 @@ import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useSalesInvoiceDrawerKeyboard,
+} from "./salesInvoiceDrawerKeyboard";
 import { isSalesInvoiceDraft, isSalesInvoicePosted } from "../../utils/salesInvoiceStatuses";
 import SalesInvoiceDrawerFooter from "./SalesInvoiceDrawerFooter";
 import SalesInvoiceDrawerForm from "./SalesInvoiceDrawerForm";
 import SalesInvoiceDrawerHeaderMeta from "./SalesInvoiceDrawerHeaderMeta";
 import SalesInvoiceLineEditor from "./SalesInvoiceLineEditor";
 import SalesInvoiceTotals from "./SalesInvoiceTotals";
+import { rememberRecentSelectorOption } from "@/lib/recentSelectorOptions";
 import {
   areSalesInvoiceLinesDirty,
   canAddSalesInvoiceLine,
@@ -31,7 +35,9 @@ import {
   getEmptySalesInvoiceLine,
   getSalesInvoiceDefaults,
   isSalesInvoiceHeaderDirtyVsBaseline,
+  isSalesInvoiceLineEmpty,
   mapAddressSnapshot,
+  mapSalesInvoiceCustomerOption,
   mapSalesInvoiceLinesFromApi,
   mapSalesInvoiceRecordToForm,
   suggestedDueOn,
@@ -44,6 +50,9 @@ import {
 import { useSalesInvoiceDrawerData } from "../../queries/useSalesInvoiceDrawerData";
 import { useSalesInvoiceDrawerMutations } from "../../queries/useSalesInvoiceDrawerMutations";
 import { tenantPricesIncludeTax, useCompanySettings } from "@/lib/company-settings";
+import { withConfirmKeyboard } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
+import { SALES_INVOICE_CUSTOMER_RECENT_KIND } from "../../api/salesInvoiceSelectors.api";
+
 /**
  * @param {{
  *   open: boolean;
@@ -76,6 +85,11 @@ export default function SalesInvoiceDrawer({
   const [form] = Form.useForm();
   const [customerCreateOpen, setCustomerCreateOpen] = useState(false);
   const [itemViewId, setItemViewId] = useState(/** @type {string | null} */ (null));
+  const [itemViewDrawerOpen, setItemViewDrawerOpen] = useState(open);
+  if (open !== itemViewDrawerOpen) {
+    setItemViewDrawerOpen(open);
+    if (!open) setItemViewId(null);
+  }
 
   const [lines, setLines] = useState(() => [getEmptySalesInvoiceLine()]);
   const [linesBaseline, setLinesBaseline] = useState(() => [getEmptySalesInvoiceLine()]);
@@ -92,6 +106,11 @@ export default function SalesInvoiceDrawer({
   const hydrateCustomerRef = useRef(true);
   const loadedDetailVersionRef = useRef(0);
   const tamperedToastKeyRef = useRef(/** @type {string | null} */ (null));
+  const keyboardRootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const linesRef = useRef(lines);
+  useEffect(() => {
+    linesRef.current = lines;
+  }, [lines]);
 
   const defaults = useMemo(() => {
     void open;
@@ -166,14 +185,11 @@ export default function SalesInvoiceDrawer({
   }, [form, defaults]);
 
   useLayoutEffect(() => {
-    if (!open) {
-      setItemViewId(null);
-      return;
-    }
+    if (!open) return;
     dueOnAutoRef.current = mode === "create";
     hydrateCustomerRef.current = true;
     if (mode === "create") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset create draft when the drawer opens
       resetCreateDraftState();
       if (createSeed && typeof createSeed === "object") {
         const header = createSeed.header ?? {};
@@ -322,6 +338,7 @@ export default function SalesInvoiceDrawer({
       addresses.find((row) => row.address_type === "shipping" && row.is_default) ??
       addresses.find((row) => row.address_type === "shipping");
 
+    const previousCustomerId = prevCustomerIdRef.current;
     prevCustomerIdRef.current = customerId;
     dueOnAutoRef.current = true;
     form.setFieldsValue({
@@ -333,7 +350,38 @@ export default function SalesInvoiceDrawer({
       billing_address: mapAddressSnapshot(billing),
       shipping_address: mapAddressSnapshot(shipping),
     });
-  }, [open, customerId, drawerData.customerDetail, drawerData.customerDetailPending, form, readOnly]);
+
+    const hadPreviousCustomer = previousCustomerId != null && previousCustomerId !== "";
+    const hasItemLines = linesRef.current.some(
+      (line) => line.item_id != null && String(line.item_id).trim() !== "",
+    );
+    if (!hadPreviousCustomer || !hasItemLines) return;
+    if (String(previousCustomerId) === String(customerId)) return;
+
+    modal.confirm(
+      withConfirmKeyboard({
+        title: t("customerChangeLinesTitle"),
+        content: t("customerChangeLinesContent"),
+        okText: t("customerChangeLinesOk"),
+        cancelText: t("customerChangeLinesKeep"),
+        onOk: () => {
+          setLines((prev) =>
+            prev.map((line) =>
+              line.item_id != null && String(line.item_id).trim() !== ""
+                ? {
+                    ...line,
+                    discount_percent: 0,
+                    tax_rate: undefined,
+                    line_total: undefined,
+                    catalogReloadKey: (line.catalogReloadKey ?? 0) + 1,
+                  }
+                : line,
+            ),
+          );
+        },
+      }),
+    );
+  }, [open, customerId, drawerData.customerDetail, drawerData.customerDetailPending, form, readOnly, modal, t]);
 
   const exchangeRateLocked =
     currencyId == null ||
@@ -434,27 +482,39 @@ export default function SalesInvoiceDrawer({
       const id = record?.id;
       if (id == null || id === "") return;
       form.setFieldValue("customer_id", id);
+      const recent = mapSalesInvoiceCustomerOption(
+        /** @type {Record<string, unknown>} */ (record),
+      );
+      if (recent) rememberRecentSelectorOption(SALES_INVOICE_CUSTOMER_RECENT_KIND, recent);
       invalidateTenantListQueries(queryClient, CUSTOMERS_LIST_QUERY_KEY);
       setCustomerCreateOpen(false);
     },
     [form, queryClient],
   );
 
-  const { saveMutation, postMutation, deleteMutation, verifyMutation, approveCompanyMutation, submitting } =
-    useSalesInvoiceDrawerMutations({
-      form,
-      message,
-      notification,
-      t,
-      tApiErrors,
-      invoiceId,
-      lines,
-      onCreated: handleCreated,
-      onSaved: syncBaselinesFromRecordAndBump,
-      onPosted: syncBaselinesFromRecordAndBump,
-      onDeleted: forceClose,
-      onClose: forceClose,
-    });
+  const {
+    saveMutation,
+    postMutation,
+    reverseMutation,
+    deleteMutation,
+    verifyMutation,
+    approveCompanyMutation,
+    submitting,
+  } = useSalesInvoiceDrawerMutations({
+    form,
+    message,
+    notification,
+    t,
+    tApiErrors,
+    invoiceId,
+    lines,
+    onCreated: handleCreated,
+    onSaved: syncBaselinesFromRecordAndBump,
+    onPosted: syncBaselinesFromRecordAndBump,
+    onReversed: syncBaselinesFromRecordAndBump,
+    onDeleted: forceClose,
+    onClose: forceClose,
+  });
 
   const currentValues = useMemo(
     () => ({
@@ -489,7 +549,18 @@ export default function SalesInvoiceDrawer({
     () =>
       previewInvoiceTotals({
         lines,
-        itemsById: drawerData.itemsById,
+        itemsById: new Map(
+          lines
+            .filter((line) => line.item_id != null && line.item_id !== "")
+            .map((line) => [
+              String(line.item_id),
+              {
+                vat_percentage: line.vat_percentage,
+                track_inventory: line.track_inventory,
+                track_lots: line.track_lots,
+              },
+            ]),
+        ),
         adjustment: formValuesWatch?.adjustment ?? 0,
         taxEnabled: taxContext.taxEnabled,
         pricesIncludeTax: taxContext.pricesIncludeTax,
@@ -498,7 +569,6 @@ export default function SalesInvoiceDrawer({
       }),
     [
       lines,
-      drawerData.itemsById,
       formValuesWatch?.adjustment,
       taxContext,
       settings,
@@ -537,27 +607,44 @@ export default function SalesInvoiceDrawer({
     form
       .validateFields()
       .then((values) => {
-        modal.confirm({
-          title: t("postConfirmTitle"),
-          content: t("postConfirmContent"),
-          okText: t("postConfirmOk"),
-          cancelText: t("drawerCancel"),
-          onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
-        });
+        modal.confirm(
+          withConfirmKeyboard({
+            title: t("postConfirmTitle"),
+            content: t("postConfirmContent"),
+            okText: t("postConfirmOk"),
+            cancelText: t("drawerCancel"),
+            onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
+          }),
+        );
       })
       .catch(() => {});
   }, [form, modal, t, postMutation]);
 
+  const handleReverse = useCallback(() => {
+    modal.confirm(
+      withConfirmKeyboard({
+        title: t("reverseConfirmTitle"),
+        content: t("reverseConfirmContent"),
+        okText: t("actionReverse"),
+        okButtonProps: { danger: true },
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
+      }),
+    );
+  }, [modal, t, reverseMutation]);
+
   const handleDelete = useCallback(() => {
     const name = loadedNumber ?? String(invoiceId ?? "");
-    modal.confirm({
-      title: t("deleteConfirmTitle"),
-      content: t("deleteConfirmContent", { name }),
-      okText: t("deleteConfirmOk"),
-      okButtonProps: { danger: true },
-      cancelText: t("drawerCancel"),
-      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
-    });
+    modal.confirm(
+      withConfirmKeyboard({
+        title: t("deleteConfirmTitle"),
+        content: t("deleteConfirmContent", { name }),
+        okText: t("deleteConfirmOk"),
+        okButtonProps: { danger: true },
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
+      }),
+    );
   }, [modal, t, deleteMutation, loadedNumber, invoiceId]);
 
   const patchLine = useCallback((index, patch) => {
@@ -569,15 +656,28 @@ export default function SalesInvoiceDrawer({
   }, []);
 
   const removeLine = useCallback((index) => {
-    if (index === 0) return;
     setLines((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      return next.length > 0 ? next : [getEmptySalesInvoiceLine()];
+      if (index < 0 || index >= prev.length) return prev;
+      // Always keep at least one row; any cleared/filled row (including first) may be removed otherwise.
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
     });
   }, []);
 
   const addLine = useCallback(() => {
     setLines((prev) => [...prev, getEmptySalesInvoiceLine()]);
+  }, []);
+
+  const duplicateLine = useCallback((index) => {
+    setLines((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const source = prev[index];
+      const copy = {
+        ...source,
+        catalogReloadKey: 0,
+      };
+      return [...prev.slice(0, index + 1), copy, ...prev.slice(index + 1)];
+    });
   }, []);
 
   const viewLineItem = useCallback((itemId) => {
@@ -625,6 +725,29 @@ export default function SalesInvoiceDrawer({
   const title = loadedNumber ? `${baseTitle} # ${loadedNumber}` : baseTitle;
 
   const showDetailLoading = fetchRemoteDetail && detailQuery.isLoading;
+  const keyboardEnabled = open && !readOnly && !submitting && !showDetailLoading;
+
+  const lineKeyboardActionsRef = useRef(
+    /** @type {{ duplicateLine?: (index: number) => void }} */ ({}),
+  );
+
+  useSalesInvoiceDrawerKeyboard({
+    enabled: keyboardEnabled,
+    rootRef: keyboardRootRef,
+    linesLength: lines.length,
+    customerReady,
+    onAddLine: addLine,
+    isLineEmpty: (index) => isSalesInvoiceLineEmpty(lines[index]),
+    onClearLine: clearLine,
+    onRemoveLine: removeLine,
+    onDuplicateLine: (index) => {
+      if (lineKeyboardActionsRef.current.duplicateLine) {
+        lineKeyboardActionsRef.current.duplicateLine(index);
+        return;
+      }
+      duplicateLine(index);
+    },
+  });
 
   return (
     <>
@@ -636,6 +759,7 @@ export default function SalesInvoiceDrawer({
       showExpand={false}
       placement="top"
       size="100%"
+      className="sales-invoice-crud-drawer"
       headerExtra={
         <SalesInvoiceDrawerHeaderMeta
           t={t}
@@ -656,6 +780,8 @@ export default function SalesInvoiceDrawer({
           saveDisabled={!canSubmitRequired}
           postDisabled={!canSubmitRequired || !access.canEdit}
           showDelete={!readOnly && invoiceId != null && access.canDelete}
+          showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
+          onReverse={handleReverse}
           postedBy={loadedPostedBy}
           postedAt={loadedPostedAt}
           showVerify={showProofView}
@@ -689,13 +815,12 @@ export default function SalesInvoiceDrawer({
         form={form}
         readOnly={readOnly || submitting}
         t={t}
-        customerOptions={drawerData.customerOptions}
+        customerSeedOptions={drawerData.customerSeedOptions}
         warehouseOptions={drawerData.warehouseOptions}
         currencyOptions={drawerData.currencyOptions}
         salesmanOptions={drawerData.salesmanOptions}
         paymentMethodOptions={drawerData.paymentMethodOptions}
         paymentTermOptions={drawerData.paymentTermOptions}
-        customersPending={drawerData.customersPending}
         warehousesPending={drawerData.warehousesPending}
         currenciesPending={drawerData.currenciesPending}
         salesmenPending={drawerData.salesmenPending}
@@ -708,20 +833,21 @@ export default function SalesInvoiceDrawer({
           !readOnly && customerAccess.canAdd ? () => setCustomerCreateOpen(true) : undefined
         }
         onValuesChange={handleHeaderValuesChange}
+        keyboardRootRef={keyboardRootRef}
       >
         <SalesInvoiceLineEditor
           lines={lines}
           readOnly={readOnly || submitting || !customerReady}
-          itemOptions={drawerData.itemOptions}
           taxContext={taxContext}
           warehouseOptions={drawerData.warehouseOptions}
-          itemsPending={drawerData.itemsPending}
           headerWarehouseId={warehouseId}
           canAddLine={canAddLine}
           canViewItem={itemAccess.canView}
           onPatchLine={patchLine}
           onClearLine={clearLine}
           onRemoveLine={removeLine}
+          onDuplicateLine={duplicateLine}
+          lineKeyboardActionsRef={lineKeyboardActionsRef}
           onAddLine={addLine}
           onViewItem={viewLineItem}
           t={t}

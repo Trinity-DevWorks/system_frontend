@@ -18,14 +18,16 @@ import {
   markPurchaseOrderAsSent,
 } from "../../api/purchaseOrders.api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Form } from "antd";
+import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  getPurchaseOrderStatusLabel,
   isPurchaseOrderCancellable,
   isPurchaseOrderConfirmed,
   isPurchaseOrderDraft,
   isPurchaseOrderPrintable,
+  purchaseOrderStatusTagColor,
 } from "../../utils/purchaseOrderStatuses";
 import PurchaseOrderDrawerFooter from "./PurchaseOrderDrawerFooter";
 import PurchaseOrderDrawerForm from "./PurchaseOrderDrawerForm";
@@ -82,6 +84,9 @@ export default function PurchaseOrderDrawer({
   const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
   const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
   const [loadedSentAt, setLoadedSentAt] = useState(/** @type {string | null} */ (null));
+  const [loadedSentBy, setLoadedSentBy] = useState(/** @type {unknown} */ (null));
+  const [loadedCreatedAt, setLoadedCreatedAt] = useState(/** @type {string | null} */ (null));
+  const [loadedCreatedBy, setLoadedCreatedBy] = useState(/** @type {unknown} */ (null));
   const [canReceive, setCanReceive] = useState(false);
 
   const queryClient = useQueryClient();
@@ -121,6 +126,9 @@ export default function PurchaseOrderDrawer({
       setLoadedStatus(typeof record.status === "string" ? record.status : null);
       setLoadedNumber(typeof record.po_number === "string" ? record.po_number : null);
       setLoadedSentAt(typeof record.sent_at === "string" ? record.sent_at : null);
+      setLoadedSentBy(record.sent_by ?? null);
+      setLoadedCreatedAt(typeof record.created_at === "string" ? record.created_at : null);
+      setLoadedCreatedBy(record.created_by ?? null);
       setCanReceive(Boolean(record.can_receive));
       form.setFieldsValue(mapPurchaseOrderRecordToForm(record));
       prevSupplierIdRef.current = record.supplier_id;
@@ -142,6 +150,9 @@ export default function PurchaseOrderDrawer({
     setLoadedStatus("draft");
     setLoadedNumber(null);
     setLoadedSentAt(null);
+    setLoadedSentBy(null);
+    setLoadedCreatedAt(null);
+    setLoadedCreatedBy(null);
     setCanReceive(false);
     loadedDetailVersionRef.current = 0;
   }, [form, defaults]);
@@ -174,6 +185,10 @@ export default function PurchaseOrderDrawer({
     if (tableSeedRecord && typeof tableSeedRecord === "object") {
       setLoadedStatus(typeof tableSeedRecord.status === "string" ? tableSeedRecord.status : null);
       setLoadedNumber(typeof tableSeedRecord.po_number === "string" ? tableSeedRecord.po_number : null);
+      setLoadedSentAt(typeof tableSeedRecord.sent_at === "string" ? tableSeedRecord.sent_at : null);
+      setLoadedSentBy(tableSeedRecord.sent_by ?? null);
+      setLoadedCreatedAt(typeof tableSeedRecord.created_at === "string" ? tableSeedRecord.created_at : null);
+      setLoadedCreatedBy(tableSeedRecord.created_by ?? null);
     }
   }, [open, mode, tableSeedRecord, createSeed, resetCreateDraftState, form, defaults]);
 
@@ -479,6 +494,13 @@ export default function PurchaseOrderDrawer({
     <ResourceCrudDrawer
       title={title}
       recordName={loadedNumber}
+      titleExtra={
+        effectiveStatus ? (
+          <Tag className="m-0" color={purchaseOrderStatusTagColor(effectiveStatus)}>
+            {getPurchaseOrderStatusLabel(t, effectiveStatus)}
+          </Tag>
+        ) : null
+      }
       open={open}
       requestClose={requestClose}
       submitting={submitting || supplierActionPending}
@@ -487,7 +509,7 @@ export default function PurchaseOrderDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      size={1100}
+      size={1200}
       footer={
         <PurchaseOrderDrawerFooter
           readOnly={readOnly}
@@ -510,6 +532,10 @@ export default function PurchaseOrderDrawer({
           onDownloadPdf={handleDownloadPdf}
           onMarkSent={handleMarkSent}
           onReceive={handleReceive}
+          createdBy={loadedCreatedBy}
+          createdAt={loadedCreatedAt}
+          sentBy={loadedSentBy}
+          sentAt={loadedSentAt}
         />
       }
     >
@@ -521,10 +547,6 @@ export default function PurchaseOrderDrawer({
         warehouseOptions={drawerData.warehouseOptions}
         suppliersPending={drawerData.suppliersPending}
         warehousesPending={drawerData.warehousesPending}
-        poNumber={loadedNumber}
-        poStatus={effectiveStatus}
-        sentAt={loadedSentAt}
-        showMeta={mode !== "create"}
         onValuesChange={handleHeaderValuesChange}
       />
       <PurchaseOrderLineEditor

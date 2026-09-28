@@ -20,6 +20,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
 import dayjs from "@/lib/dayjs";
 
@@ -34,6 +35,21 @@ const dayjsLocales = {
 };
 
 const ThemeModeContext = createContext(null);
+
+const PREFERS_DARK_QUERY = "(prefers-color-scheme: dark)";
+
+/** @param {() => void} onChange */
+function subscribeSystemPrefersDark(onChange) {
+  const media = window.matchMedia(PREFERS_DARK_QUERY);
+  media.addEventListener("change", onChange);
+  return () => {
+    media.removeEventListener("change", onChange);
+  };
+}
+
+function getSystemPrefersDark() {
+  return window.matchMedia(PREFERS_DARK_QUERY).matches;
+}
 
 /**
  * @param {"system" | "light" | "dark"} mode
@@ -65,8 +81,14 @@ export default function AntdAppProvider({
   const antdLocale = antdLocales[locale] ?? enUS;
 
   const [colorMode, setColorModeState] = useState(initialColorMode);
-  const [systemPrefersDark, setSystemPrefersDark] = useState(
+  const getServerPrefersDark = useCallback(
     () => initialResolvedColorMode === COLOR_MODE_DARK,
+    [initialResolvedColorMode],
+  );
+  const systemPrefersDark = useSyncExternalStore(
+    subscribeSystemPrefersDark,
+    getSystemPrefersDark,
+    getServerPrefersDark,
   );
 
   useEffect(() => {
@@ -74,16 +96,8 @@ export default function AntdAppProvider({
   }, [locale]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- adopt the localStorage preference after hydration
     setColorModeState(loadColorMode());
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    setSystemPrefersDark(media.matches);
-    const sync = () => {
-      setSystemPrefersDark(media.matches);
-    };
-    media.addEventListener("change", sync);
-    return () => {
-      media.removeEventListener("change", sync);
-    };
   }, []);
 
   const resolvedColorMode = resolveColorMode(colorMode, systemPrefersDark);

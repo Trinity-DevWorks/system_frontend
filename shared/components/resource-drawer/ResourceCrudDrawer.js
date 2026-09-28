@@ -5,8 +5,9 @@ import { useDrawerHostPresence } from "@/lib/drawer/DrawerHostPresence";
 import { isRtlLocale } from "@/i18n/constants";
 import { Drawer, Spin } from "antd";
 import { useLocale } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ResourceDrawerHeader from "@/shared/components/resource-drawer/ResourceDrawerHeader";
+import { focusFirstDrawerField } from "@/shared/components/resource-drawer/focusFirstDrawerField";
 
 /**
  * Shared drawer chrome: rich header, loading / detail error / body, same for every CRUD resource drawer.
@@ -30,7 +31,11 @@ import ResourceDrawerHeader from "@/shared/components/resource-drawer/ResourceDr
  *   size?: number | string | "default" | "large";
  *   zIndex?: number;
  *   placement?: "top" | "bottom" | "left" | "right";
+ *   titleExtra?: import("react").ReactNode;
  *   headerExtra?: import("react").ReactNode;
+ *   className?: string;
+ *   afterOpenChange?: (open: boolean) => void;
+ *   autoFocusFirstField?: boolean;
  * }} props
  */
 export default function ResourceCrudDrawer({
@@ -40,6 +45,7 @@ export default function ResourceCrudDrawer({
   statusActiveLabel,
   statusInactiveLabel,
   showExpand = true,
+  titleExtra = null,
   headerExtra = null,
   open,
   requestClose,
@@ -53,11 +59,15 @@ export default function ResourceCrudDrawer({
   size = 520,
   zIndex,
   placement: placementOverride,
+  className = undefined,
+  afterOpenChange: afterOpenChangeProp,
+  autoFocusFirstField = true,
 }) {
   const locale = useLocale();
   const placement = placementOverride ?? (isRtlLocale(locale) ? "left" : "right");
   const hostPresence = useDrawerHostPresence();
   const [expanded, setExpanded] = useState(false);
+  const bodyRef = useRef(/** @type {HTMLDivElement | null} */ (null));
 
   const handleToggleExpand = useCallback(() => {
     setExpanded((v) => !v);
@@ -67,6 +77,36 @@ export default function ResourceCrudDrawer({
     setExpanded(false);
     requestClose();
   }, [requestClose]);
+
+  const scheduleFocusFirstField = useCallback(() => {
+    if (!autoFocusFirstField) return;
+    window.setTimeout(() => {
+      focusFirstDrawerField(bodyRef.current);
+    }, 50);
+  }, [autoFocusFirstField]);
+
+  const handleAfterOpenChange = useCallback(
+    (nextOpen) => {
+      hostPresence?.afterOpenChange?.(nextOpen);
+      afterOpenChangeProp?.(nextOpen);
+      if (nextOpen && !showDetailLoading && !detailLoadFailed) {
+        scheduleFocusFirstField();
+      }
+    },
+    [
+      hostPresence,
+      afterOpenChangeProp,
+      showDetailLoading,
+      detailLoadFailed,
+      scheduleFocusFirstField,
+    ],
+  );
+
+  // When detail loading finishes after open, move focus into the first field.
+  useEffect(() => {
+    if (!open || !autoFocusFirstField || showDetailLoading || detailLoadFailed) return;
+    scheduleFocusFirstField();
+  }, [open, autoFocusFirstField, showDetailLoading, detailLoadFailed, scheduleFocusFirstField]);
 
   const isVertical = placement === "top" || placement === "bottom";
   const drawerSize = useMemo(() => {
@@ -86,6 +126,7 @@ export default function ResourceCrudDrawer({
       onClose={handleClose}
       closeDisabled={submitting}
       showExpand={showExpand}
+      titleExtra={titleExtra}
       headerExtra={headerExtra}
     />
   );
@@ -97,7 +138,7 @@ export default function ResourceCrudDrawer({
       placement={placement}
       open={open}
       onClose={handleClose}
-      afterOpenChange={hostPresence?.afterOpenChange}
+      afterOpenChange={handleAfterOpenChange}
       destroyOnClose
       maskClosable={!submitting}
       closable={false}
@@ -106,6 +147,7 @@ export default function ResourceCrudDrawer({
       className={[
         isVertical ? "resource-crud-drawer-top" : null,
         showDetailLoading ? "resource-crud-drawer-loading" : null,
+        className,
       ]
         .filter(Boolean)
         .join(" ") || undefined}
@@ -123,7 +165,7 @@ export default function ResourceCrudDrawer({
             <Spin size="large" />
           </div>
         ) : (
-          <div className="relative min-h-[120px]">{children}</div>
+          <div ref={bodyRef} className="relative min-h-[120px]">{children}</div>
         )
       )}
     </Drawer>
