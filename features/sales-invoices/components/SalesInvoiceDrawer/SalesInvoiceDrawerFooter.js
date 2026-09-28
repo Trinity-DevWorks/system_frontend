@@ -184,14 +184,21 @@ export default function SalesInvoiceDrawerFooter({
     postDisabled,
   });
 
+  let proofHint = null;
+  if (proofStatus === "waiting_company" && !chainSupplierWallet) proofHint = t("proofHintCompanyWalletMissing");
+  else if (proofStatus === "waiting_buyer" && !chainBuyerWallet) proofHint = t("proofHintBuyerWalletMissing");
+
+  let proofTag = proofStatus ? (
+    <Tag className={proofHint ? "shrink-0 cursor-help" : "shrink-0"} color={invoiceProofStatusTagColor(proofStatus)}>
+      {getInvoiceProofStatusLabel(t, proofStatus)}
+    </Tag>
+  ) : null;
+  if (proofTag && proofHint) proofTag = <Tooltip title={proofHint}>{proofTag}</Tooltip>;
+
   const verifyControls =
     showVerify || showApproveCompany ? (
       <>
-        {showVerify && proofStatus ? (
-          <Tag className="shrink-0" color={invoiceProofStatusTagColor(proofStatus)}>
-            {getInvoiceProofStatusLabel(t, proofStatus)}
-          </Tag>
-        ) : null}
+        {showVerify ? proofTag : null}
         {showVerify ? (
           <Button className="shrink-0" loading={verifying} disabled={submitting} onClick={onVerify}>
             {t("actionVerify")}

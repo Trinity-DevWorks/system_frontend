@@ -31,6 +31,23 @@ const PROFILE_MENU_LOGOUT_KEY = "logout";
 const LANGUAGE_SUBMENU_KEY = "__language__";
 const THEME_SUBMENU_KEY = "__theme__";
 
+/**
+ * Optional props default to the tenant shell; the central shell overrides them.
+ *
+ * @param {{
+ *   colorBgContainer: string,
+ *   colorSplit: string,
+ *   menuItems?: import("antd").MenuProps["items"],
+ *   companyName?: string,
+ *   onLogout?: () => void,
+ *   logoutLabel?: string,
+ *   actions?: import("react").ReactNode,
+ *   profilePath?: string,
+ *   identity?: import("react").ReactNode,
+ *   avatar?: import("react").ReactNode,
+ *   breadcrumb?: import("react").ReactNode,
+ * }} props
+ */
 export default function AppHeader({
   colorBgContainer,
   colorSplit,
@@ -38,6 +55,11 @@ export default function AppHeader({
   companyName,
   onLogout,
   logoutLabel,
+  actions,
+  profilePath = ROUTES.profile,
+  identity,
+  avatar,
+  breadcrumb,
 }) {
   const tLogin = useTranslations("Login");
   const tShell = useTranslations("Shell");
@@ -91,7 +113,7 @@ export default function AppHeader({
   const profileMenuItems = useMemo(
     () => [
       {
-        key: ROUTES.profile,
+        key: profilePath,
         label: tShell("profile"),
         icon: <UserOutlined />,
       },
@@ -116,12 +138,12 @@ export default function AppHeader({
         icon: <LogoutOutlined />,
       },
     ],
-    [languageMenuItems, logoutLabel, resolvedColorMode, tLogin, tShell, themeMenuItems],
+    [languageMenuItems, logoutLabel, profilePath, resolvedColorMode, tLogin, tShell, themeMenuItems],
   );
 
   const profileSelectedKeys = useMemo(
-    () => selectedKeysForPath(pathname, [{ key: ROUTES.profile }]),
-    [pathname],
+    () => selectedKeysForPath(pathname, [{ key: profilePath }]),
+    [pathname, profilePath],
   );
 
   const localeKeys = useMemo(() => new Set(routing.locales), []);
@@ -172,7 +194,9 @@ export default function AppHeader({
         </button>
       </Tooltip>
 
-      {menuItems?.length ? (
+      {breadcrumb !== undefined ? (
+        <div className="shell-header-breadcrumb">{breadcrumb}</div>
+      ) : menuItems?.length ? (
         <div className="shell-header-breadcrumb">
           <AppBreadcrumb menuItems={menuItems} />
         </div>
@@ -180,8 +204,14 @@ export default function AppHeader({
 
       <div className="shell-header-spacer" />
 
-      <BranchSwitcher companyName={companyName} />
-      <NotificationBell />
+      {actions !== undefined ? (
+        actions
+      ) : (
+        <>
+          <BranchSwitcher companyName={companyName} />
+          <NotificationBell />
+        </>
+      )}
 
       <Dropdown
         menu={{
@@ -193,7 +223,7 @@ export default function AppHeader({
         }}
         popupRender={(menu) => (
           <div className="shell-profile-popup">
-            <HeaderProfileMenuIdentity />
+            {identity !== undefined ? identity : <HeaderProfileMenuIdentity />}
             <div className="shell-profile-popup-divider" aria-hidden />
             {isValidElement(menu)
               ? cloneElement(menu, {
@@ -211,7 +241,7 @@ export default function AppHeader({
           aria-label={tShell("profileMenu")}
           title={tShell("profile")}
         >
-          <HeaderProfileAvatar size={28} />
+          {avatar !== undefined ? avatar : <HeaderProfileAvatar size={28} />}
         </button>
       </Dropdown>
     </Header>

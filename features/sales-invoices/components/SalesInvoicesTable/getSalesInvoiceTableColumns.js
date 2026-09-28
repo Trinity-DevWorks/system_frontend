@@ -1,8 +1,9 @@
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
 import { getSalesInvoiceStatusLabel, isSalesInvoiceDraft, salesInvoiceStatusTagColor } from "../../utils/salesInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
+import InvoiceChainIssueTag from "../InvoiceChainIssueTag";
 import dayjs from "dayjs";
-import { Button, Dropdown, Tag, Typography } from "antd";
+import { Button, Dropdown, Space, Tag, Typography } from "antd";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
@@ -54,10 +55,15 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
       title: t("colStatus"),
       dataIndex: "status",
       key: "status",
-      width: 110,
+      width: 190,
       sorter: (a, b) => String(a.status ?? "").localeCompare(String(b.status ?? "")),
-      render: (value) => (
-        <Tag color={salesInvoiceStatusTagColor(value)}>{getSalesInvoiceStatusLabel(t, value)}</Tag>
+      render: (value, record) => (
+        <Space size={4} wrap>
+          <Tag color={salesInvoiceStatusTagColor(value)} className="!m-0">
+            {getSalesInvoiceStatusLabel(t, value)}
+          </Tag>
+          <InvoiceChainIssueTag issue={record?.chain_issue} />
+        </Space>
       ),
     },
     {

@@ -8,11 +8,15 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
 /**
  * @param {(key: string) => string} t
- * @param {{ onView?: (record: Record<string, unknown>) => void }} [actions]
+ * @param {{
+ *   onView?: (record: Record<string, unknown>) => void;
+ *   eventLabel?: typeof getAuditEventLabel;
+ *   auditableTypeLabel?: typeof getAuditableTypeLabel;
+ * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
 export function getAuditLogTableColumns(t, actions = {}) {
-  const { onView } = actions;
+  const { onView, eventLabel = getAuditEventLabel, auditableTypeLabel = getAuditableTypeLabel } = actions;
 
   return [
     {
@@ -32,7 +36,7 @@ export function getAuditLogTableColumns(t, actions = {}) {
       dataIndex: "event",
       key: "event",
       width: 140,
-      render: (value) => getAuditEventLabel(t, value),
+      render: (value) => eventLabel(t, value),
     },
     {
       title: t("colUser"),
@@ -52,7 +56,7 @@ export function getAuditLogTableColumns(t, actions = {}) {
       key: "auditable_type",
       width: 160,
       ellipsis: true,
-      render: (_v, record) => getAuditableTypeLabel(t, record?.auditable?.type),
+      render: (_v, record) => auditableTypeLabel(t, record?.auditable?.type),
     },
     {
       title: t("colAuditableId"),

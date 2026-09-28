@@ -4,7 +4,7 @@ import AuthSplitShell from "@/features/auth/components/AuthSplitShell";
 import InvoiceProofAttestationsPanel from "@/features/sales-invoices/components/InvoiceProofVerify/InvoiceProofAttestationsPanel";
 import { readOnChainContentHash, verifyDisclosureBundle } from "@/lib/invoice-proof-merkle";
 import { resolveHostMode } from "@/lib/runtime-mode";
-import { App, Alert, Button, Descriptions, Tag, Typography, Upload } from "antd";
+import { App, Alert, Button, Descriptions, Steps, Tag, Typography, Upload } from "antd";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -26,6 +26,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   const [bundle, setBundle] = useState(/** @type {import("@/lib/invoice-proof-merkle").InvoiceProofDisclosureBundle | null} */ (null));
   const [result, setResult] = useState(/** @type {ReturnType<typeof verifyDisclosureBundle> | null} */ (null));
   const [chainState, setChainState] = useState(/** @type {"idle" | "checking" | "match" | "mismatch" | "missing"} */ ("idle"));
+  const [attestStage, setAttestStage] = useState(/** @type {"wallet" | "review" | "done"} */ ("wallet"));
 
   const mode = resolveHostMode(initialHost);
   const tenantLabel = mode.tenantSlug
@@ -70,6 +71,26 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   };
 
   const chainReady = Boolean(bundle?.chain_id && bundle?.contract_address && bundle?.proof_id);
+  const invoiceNumberField = result?.fields.find((field) => field.path === "invoice_number" && field.ok);
+  const invoiceNumber = typeof invoiceNumberField?.value === "string" ? invoiceNumberField.value : null;
+
+  let currentStep = 0;
+  /** @type {"process" | "error" | "finish"} */
+  let stepStatus = "process";
+  if (result && bundle) {
+    if (!result.valid) {
+      currentStep = 1;
+      stepStatus = "error";
+    } else if (chainState !== "match") {
+      currentStep = 2;
+      if (chainState === "mismatch" || chainState === "missing") stepStatus = "error";
+    } else if (attestStage === "done") {
+      currentStep = 4;
+      stepStatus = "finish";
+    } else {
+      currentStep = attestStage === "review" ? 4 : 3;
+    }
+  }
 
   return (
     <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout>
@@ -81,6 +102,20 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
           {t("verifySubtitle")}
         </Typography.Paragraph>
       </div>
+
+      <Steps
+        className="!mb-6"
+        size="small"
+        current={currentStep}
+        status={stepStatus}
+        items={[
+          { title: t("verifyStepFile") },
+          { title: t("verifyStepFields") },
+          { title: t("verifyStepChain") },
+          { title: t("verifyStepWallet"), content: t("verifyStepOptional") },
+          { title: t("verifyStepSign"), content: t("verifyStepOptional") },
+        ]}
+      />
 
       <Upload.Dragger accept=".json,application/json" multiple={false} showUploadList={false} beforeUpload={handleFile}>
         <p className="m-0 py-4">{t("verifyDrop")}</p>
@@ -147,6 +182,8 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
               contractAddress={String(bundle.contract_address ?? "")}
               proofId={String(bundle.proof_id ?? "")}
               contentHash={result.contentHash}
+              invoiceNumber={invoiceNumber}
+              onStageChange={setAttestStage}
             />
           ) : null}
           {chainState === "mismatch" ? <Alert type="error" showIcon title={t("verifyChainMismatch")} /> : null}

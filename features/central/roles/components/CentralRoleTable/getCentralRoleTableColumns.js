@@ -1,0 +1,137 @@
+import { formatTenantDate } from "@/lib/tenant-format";
+import { renderActiveInactiveStatus } from "@/shared/components/tables/ActiveStatusBadge";
+import { DeleteOutlined, EditOutlined, EyeOutlined, LockOutlined, MoreOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
+import { Button, Dropdown, Space, Tooltip, Typography } from "antd";
+import { isSystemCentralRole } from "../../utils/roleDrawerUtils";
+
+const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
+
+const normalizeText = (value) => (typeof value === "string" ? value.trim() : "");
+
+/**
+ * @param {(key: string) => string} t `useTranslations("CentralRoles")`
+ * @param {{
+ *   onEdit?: (record: unknown) => void;
+ *   onView?: (record: unknown) => void;
+ *   onDelete?: (record: unknown) => void;
+ * }} [actions]
+ * @returns {import("antd").TableProps["columns"]}
+ */
+export function getCentralRoleTableColumns(t, actions = {}) {
+  const { onEdit, onView, onDelete } = actions;
+  return [
+    {
+      title: t("colId"),
+      dataIndex: "id",
+      key: "id",
+      width: 56,
+      sorter: (a, b) => a.id - b.id,
+    },
+    {
+      title: t("colName"),
+      dataIndex: "name",
+      key: "name",
+      width: 180,
+      ellipsis: true,
+      sorter: (a, b) =>
+        normalizeText(a?.name).localeCompare(normalizeText(b?.name), undefined, { sensitivity: "base" }),
+      render: (value, record) => (
+        <Space size={6}>
+          <span>{value}</span>
+          {isSystemCentralRole(record) ? (
+            <Tooltip title={t("systemRoleTooltip")}>
+              <LockOutlined className="text-[var(--ant-color-text-tertiary)]" />
+            </Tooltip>
+          ) : null}
+        </Space>
+      ),
+    },
+    {
+      title: t("colDescription"),
+      dataIndex: "description",
+      key: "description",
+      width: 240,
+      ellipsis: true,
+      render: (value) => {
+        const v = normalizeText(value);
+        return v ? (
+          <Typography.Text ellipsis className="block">
+            {v}
+          </Typography.Text>
+        ) : (
+          "\u2014"
+        );
+      },
+    },
+    {
+      title: t("colUsers"),
+      dataIndex: "users_count",
+      key: "users_count",
+      width: 90,
+      align: "center",
+      sorter: (a, b) => Number(a.users_count ?? 0) - Number(b.users_count ?? 0),
+      render: (value) => (value == null ? "\u2014" : value),
+    },
+    {
+      title: t("colStatus"),
+      dataIndex: "is_active",
+      key: "is_active",
+      width: 96,
+      sorter: (a, b) => Number(b.is_active) - Number(a.is_active),
+      render: (value) => renderActiveInactiveStatus(value, t),
+    },
+    {
+      title: t("colCreatedAt"),
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 120,
+      sorter: (a, b) => toTime(a.created_at) - toTime(b.created_at),
+      render: (value) => formatTenantDate(value) || "\u2014",
+    },
+    {
+      title: t("colActions"),
+      key: "actions",
+      fixed: "end",
+      width: 72,
+      align: "center",
+      render: (_, record) => {
+        const systemRole = isSystemCentralRole(record);
+        return (
+          <Dropdown
+            trigger={["click"]}
+            menu={{
+              items: [
+                {
+                  key: "view",
+                  label: t("actionView"),
+                  icon: <EyeOutlined />,
+                  disabled: !onView,
+                  onClick: () => onView?.(record),
+                },
+                {
+                  key: "edit",
+                  label: t("actionEdit"),
+                  icon: <EditOutlined />,
+                  disabled: !onEdit || systemRole,
+                  onClick: () => onEdit?.(record),
+                },
+                { type: "divider" },
+                {
+                  key: "delete",
+                  label: t("actionDelete"),
+                  icon: <DeleteOutlined />,
+                  danger: true,
+                  disabled: !onDelete || systemRole,
+                  onClick: () => onDelete?.(record),
+                },
+              ],
+            }}
+          >
+            <Button type="text" size="small" icon={<MoreOutlined />} aria-label={t("actionMenu")} />
+          </Dropdown>
+        );
+      },
+    },
+  ];
+}

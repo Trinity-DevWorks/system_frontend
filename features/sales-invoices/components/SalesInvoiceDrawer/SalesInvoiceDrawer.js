@@ -764,6 +764,11 @@ export default function SalesInvoiceDrawer({
         <SalesInvoiceDrawerHeaderMeta
           t={t}
           invoiceStatus={effectiveStatus}
+          chainIssue={
+            mode === "create"
+              ? null
+              : ((detailQuery.data ? detailQuery.data.chain_issue : tableSeedRecord?.chain_issue) ?? null)
+          }
         />
       }
       showDetailLoading={showDetailLoading}

@@ -16,6 +16,7 @@ import { withConfirmKeyboard } from "@/shared/components/resource-drawer/useDraw
 import { DeleteOutlined, EditOutlined, PlusOutlined, SyncOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Alert, Button, Card, Form, Input, Modal, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 const ROLES = ["auditor", "tax_authority", "financier"];
@@ -41,13 +42,11 @@ function emptyToNull(value) {
 
 /**
  * Banks, auditors, and tax authorities that may attest this company's invoices on chain.
- * @param {{
- *   t: (key: string, values?: Record<string, unknown>) => string;
- *   tApiErrors: (key: string, values?: Record<string, unknown>) => string;
- *   canEdit: boolean;
- * }} props
+ * @param {{ canEdit: boolean }} props
  */
-export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
+export default function InvoiceVerifiersCard({ canEdit }) {
+  const t = useTranslations("InvoiceVerifiers");
+  const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
@@ -72,7 +71,7 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
   const rows = Array.isArray(listQuery.data) ? listQuery.data : [];
 
   const onMutationError = (err) => {
-    message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t("verifiersSaveError"));
+    message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t("saveError"));
   };
 
   const saveMutation = useMutation({
@@ -91,7 +90,7 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
             notes: emptyToNull(values.notes),
           }),
     onSuccess: () => {
-      message.success(t("verifiersSaveSuccess"));
+      message.success(t("saveSuccess"));
       setEditing(null);
       form.resetFields();
     },
@@ -103,7 +102,7 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => deleteInvoiceVerifier(id),
-    onSuccess: () => message.success(t("verifiersRemoveSuccess")),
+    onSuccess: () => message.success(t("removeSuccess")),
     onError: onMutationError,
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
@@ -128,9 +127,9 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
   const confirmRemove = (row) => {
     modal.confirm(
       withConfirmKeyboard({
-        title: t("verifiersRemoveConfirmTitle"),
-        content: t("verifiersRemoveConfirmContent", { name: row.name }),
-        okText: t("verifiersRemove"),
+        title: t("removeConfirmTitle"),
+        content: t("removeConfirmContent", { name: row.name }),
+        okText: t("remove"),
         cancelText: t("cancel"),
         okButtonProps: { danger: true },
         onOk: async () => {
@@ -146,7 +145,7 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
 
   const columns = [
     {
-      title: t("verifiersColumnName"),
+      title: t("columnName"),
       dataIndex: "name",
       key: "name",
       render: (_, row) => (
@@ -161,13 +160,13 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
       ),
     },
     {
-      title: t("verifiersColumnRole"),
+      title: t("columnRole"),
       dataIndex: "role",
       key: "role",
-      render: (role) => <Tag color={ROLE_COLORS[role]}>{t(`verifierRoles.${role}`)}</Tag>,
+      render: (role) => <Tag color={ROLE_COLORS[role]}>{t(`roles.${role}`)}</Tag>,
     },
     {
-      title: t("verifiersColumnWallet"),
+      title: t("columnWallet"),
       dataIndex: "wallet_address",
       key: "wallet_address",
       render: (wallet, row) => (
@@ -177,16 +176,16 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
               {shortAddress(wallet)}
             </Typography.Text>
           </Tooltip>
-          <Tag className="!m-0">{row.wallet_type === "safe" ? t("verifiersTypeSafe") : t("verifiersTypeWallet")}</Tag>
+          <Tag className="!m-0">{row.wallet_type === "safe" ? t("typeSafe") : t("typeWallet")}</Tag>
         </Space>
       ),
     },
     {
-      title: t("verifiersColumnStatus"),
+      title: t("columnStatus"),
       dataIndex: "chain_status",
       key: "chain_status",
       render: (status, row) => {
-        const tag = <Tag color={STATUS_COLORS[status]}>{t(`verifierStatuses.${status}`)}</Tag>;
+        const tag = <Tag color={STATUS_COLORS[status]}>{t(`statuses.${status}`)}</Tag>;
         return row.chain_error ? <Tooltip title={row.chain_error}>{tag}</Tooltip> : tag;
       },
     },
@@ -198,12 +197,12 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
             render: (_, row) =>
               row.chain_status === "removing" ? null : (
                 <Space size={4}>
-                  <Tooltip title={t("verifiersResync")}>
+                  <Tooltip title={t("resync")}>
                     <Button
                       type="text"
                       size="small"
                       icon={<SyncOutlined />}
-                      aria-label={t("verifiersResync")}
+                      aria-label={t("resync")}
                       loading={syncMutation.isPending && syncMutation.variables === row.id}
                       onClick={() => syncMutation.mutate(row.id)}
                     />
@@ -217,13 +216,13 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
                       onClick={() => openEdit(row)}
                     />
                   </Tooltip>
-                  <Tooltip title={t("verifiersRemove")}>
+                  <Tooltip title={t("remove")}>
                     <Button
                       type="text"
                       size="small"
                       danger
                       icon={<DeleteOutlined />}
-                      aria-label={t("verifiersRemove")}
+                      aria-label={t("remove")}
                       onClick={() => confirmRemove(row)}
                     />
                   </Tooltip>
@@ -238,24 +237,24 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
 
   return (
     <Card
-      title={t("verifiersTitle")}
+      title={t("title")}
       extra={
         canEdit ? (
           <Button icon={<PlusOutlined />} onClick={openCreate}>
-            {t("verifiersAdd")}
+            {t("add")}
           </Button>
         ) : null
       }
     >
       <Typography.Paragraph type="secondary" className="text-sm">
-        {t("verifiersHint")}
+        {t("hint")}
       </Typography.Paragraph>
 
       {listQuery.isError ? (
         <Alert
           type="error"
           showIcon
-          title={getLocalizedApiErrorMessage(tApiErrors, listQuery.error) || t("verifiersLoadError")}
+          title={getLocalizedApiErrorMessage(tApiErrors, listQuery.error) || t("loadError")}
         />
       ) : (
         <Table
@@ -265,14 +264,14 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
           dataSource={rows}
           loading={listQuery.isPending}
           pagination={false}
-          locale={{ emptyText: t("verifiersEmpty") }}
+          locale={{ emptyText: t("empty") }}
           scroll={{ x: true }}
         />
       )}
 
       <Modal
         open={editing !== null}
-        title={isCreate ? t("verifiersAdd") : t("verifiersEdit")}
+        title={isCreate ? t("add") : t("editTitle")}
         onCancel={() => setEditing(null)}
         cancelText={t("cancel")}
         cancelButtonProps={APP_DISMISS_BUTTON_PROPS}
@@ -284,32 +283,32 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
         <Form form={form} layout="vertical" onFinish={(values) => saveMutation.mutate(values)}>
           <Form.Item
             name="name"
-            label={t("verifiersFieldName")}
+            label={t("fieldName")}
             rules={[
-              { required: true, whitespace: true, message: t("verifiersFieldNameRequired") },
-              { max: 255, message: t("verifiersFieldNameMax") },
+              { required: true, whitespace: true, message: t("fieldNameRequired") },
+              { max: 255, message: t("fieldNameMax") },
             ]}
           >
             <Input autoComplete="off" maxLength={255} />
           </Form.Item>
           <Form.Item
             name="role"
-            label={t("verifiersFieldRole")}
-            rules={[{ required: true, message: t("verifiersFieldRoleRequired") }]}
+            label={t("fieldRole")}
+            rules={[{ required: true, message: t("fieldRoleRequired") }]}
           >
-            <Select options={ROLES.map((role) => ({ value: role, label: t(`verifierRoles.${role}`) }))} />
+            <Select options={ROLES.map((role) => ({ value: role, label: t(`roles.${role}`) }))} />
           </Form.Item>
           {isCreate ? (
             <WalletAddressField
               addressName="wallet_address"
               typeName="wallet_type"
-              label={t("verifiersFieldWallet")}
-              extra={t("verifiersFieldWalletHelp")}
-              invalidMessage={t("fieldWalletAddressInvalid")}
+              label={t("fieldWallet")}
+              extra={t("fieldWalletHelp")}
+              invalidMessage={t("fieldWalletInvalid")}
               required
             />
           ) : null}
-          <Form.Item name="notes" label={t("verifiersFieldNotes")}>
+          <Form.Item name="notes" label={t("fieldNotes")}>
             <Input.TextArea rows={3} maxLength={2000} />
           </Form.Item>
         </Form>

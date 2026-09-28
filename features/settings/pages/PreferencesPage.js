@@ -61,6 +61,10 @@ const PREFERENCE_GROUPS = [
       "stock_movement.posted",
     ],
   },
+  {
+    id: "invoice_proofs",
+    types: ["invoice_proof.chain_issues"],
+  },
 ];
 
 /**

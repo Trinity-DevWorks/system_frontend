@@ -502,6 +502,17 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
                 </p>
               ) : null}
             </div>
+            {formatTenantDateTime(proof.financed_at) ? (
+              <div>
+                <div className="flex items-center gap-1 text-[var(--ant-color-text-secondary)]">
+                  {t("financedAt")}
+                  <Tooltip title={t("financedHint")}>
+                    <QuestionCircleOutlined className="cursor-help" aria-label={t("financedHint")} />
+                  </Tooltip>
+                </div>
+                <div className="mt-0.5 font-medium">{formatTenantDateTime(proof.financed_at)}</div>
+              </div>
+            ) : null}
           </div>
           <div>
             <Typography.Text className="mb-2 block font-medium">{t("lines")}</Typography.Text>

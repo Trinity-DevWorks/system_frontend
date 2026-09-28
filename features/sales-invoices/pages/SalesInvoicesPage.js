@@ -24,6 +24,8 @@ import {
   useStockTableFilters,
 } from "@/features/stock/components/StockTableFilters/StockTableFilters";
 import { getSalesInvoiceTableColumns } from "../components/SalesInvoicesTable/getSalesInvoiceTableColumns";
+import InvoiceChainCheckButton from "../components/InvoiceChainCheckButton";
+import { useCompanySettings } from "@/lib/company-settings";
 import { useSalesInvoicesTableQuery } from "../queries/useSalesInvoicesTableQuery";
 import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
 
@@ -33,6 +35,9 @@ function SalesInvoicesTable() {
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const access = useResourceAccess("sales_invoices");
+  const invoiceProofsAccess = useResourceAccess("invoice_proofs");
+  const { settings } = useCompanySettings();
+  const showChainCheck = Boolean(settings.invoiceProofsEnabled) && invoiceProofsAccess.canView;
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [customerFilter, setCustomerFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -261,7 +266,17 @@ function SalesInvoicesTable() {
           showAdd: access.canAdd,
           onAdd: openCreateDrawer,
           addLabel: t("toolbarNew"),
-          extra: filterToggle,
+          extra: (
+            <>
+              {showChainCheck ? (
+                <InvoiceChainCheckButton
+                  canRun={invoiceProofsAccess.canEdit}
+                  onOpenInvoice={access.canView ? (id) => openViewDrawer({ id }) : undefined}
+                />
+              ) : null}
+              {filterToggle}
+            </>
+          ),
           filterBar,
         }}
         stickyHeader

@@ -2,7 +2,6 @@
 
 import CompanyProfileForm from "../components/CompanyProfileForm";
 import CompanyProfileLogoSection from "../components/CompanyProfileLogoSection";
-import InvoiceVerifiersCard from "../components/InvoiceVerifiersCard";
 import { areSettingsFormValuesDirty } from "../utils/settingsFormDirty";
 import {
   companyProfileQueryKey,
@@ -19,8 +18,6 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 import { useCompanySettings } from "@/lib/company-settings";
-import { useResourceAccess } from "@/lib/permissions";
-
 const PROFILE_FIELD_KEYS = [
   "company_name",
   "legal_name",
@@ -69,8 +66,6 @@ export default function CompanyProfilePage() {
   const { profile, isLoading, isError, isReady, queryKey } = useCompanyProfile();
   const { settings } = useCompanySettings();
   const showWalletAddress = Boolean(settings.invoiceProofsEnabled);
-  const invoiceProofsAccess = useResourceAccess("invoice_proofs");
-
   const [isEditing, setIsEditing] = useState(false);
   const [editBaseline, setEditBaseline] = useState(
     /** @type {Record<string, unknown> | null} */ (null),
@@ -268,10 +263,6 @@ export default function CompanyProfilePage() {
           onFinish={(values) => saveMutation.mutate(values)}
         />
       </Card>
-
-      {showWalletAddress && invoiceProofsAccess.canView ? (
-        <InvoiceVerifiersCard t={t} tApiErrors={tApiErrors} canEdit={invoiceProofsAccess.canEdit} />
-      ) : null}
     </div>
   );
 }
