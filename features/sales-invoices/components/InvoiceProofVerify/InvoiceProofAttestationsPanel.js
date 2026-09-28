@@ -7,7 +7,7 @@ import {
   sendAttestation,
 } from "@/lib/invoice-registry-attestations";
 import { useQuery } from "@tanstack/react-query";
-import { App, Alert, Button, Input, Tag, Typography } from "antd";
+import { App, Alert, Button, Checkbox, Input, Tag, Typography } from "antd";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -40,12 +40,17 @@ export default function InvoiceProofAttestationsPanel({ chainId, contractAddress
     /** @type {Awaited<ReturnType<typeof readVerifierEligibility>> | null} */ (null),
   );
   const [reference, setReference] = useState("");
+  const [throughSafe, setThroughSafe] = useState(false);
+  const [safeAddress, setSafeAddress] = useState("");
   const [busy, setBusy] = useState(/** @type {"connect" | "submit" | null} */ (null));
 
   const handleConnect = async () => {
     setBusy("connect");
     try {
-      const eligibility = await readVerifierEligibility({ chainId, contractAddress, proofId });
+      const eligibility = await readVerifierEligibility(
+        { chainId, contractAddress, proofId },
+        { safeAddress: throughSafe ? safeAddress : null },
+      );
       setVerifier(eligibility);
       if (eligibility.blocker) message.warning(t(`attestErrors.${eligibility.blocker}`));
     } catch (err) {
@@ -59,7 +64,20 @@ export default function InvoiceProofAttestationsPanel({ chainId, contractAddress
     if (!verifier || verifier.blocker) return;
     setBusy("submit");
     try {
-      await sendAttestation({ chainId, contractAddress, proofId, contentHash, account: verifier.account, reference });
+      const sent = await sendAttestation({
+        chainId,
+        contractAddress,
+        proofId,
+        contentHash,
+        account: verifier.account,
+        signer: verifier.signer,
+        safeAddress: verifier.safeAddress,
+        reference,
+      });
+      if (sent.status === "proposed") {
+        message.info(t("attestSafeProposed"));
+        return;
+      }
       message.success(t("attestSuccess"));
       setVerifier({ ...verifier, blocker: "already_attested" });
       setReference("");
@@ -115,7 +133,13 @@ export default function InvoiceProofAttestationsPanel({ chainId, contractAddress
       {verifier && !verifier.blocker && verifier.role ? (
         <div className="flex flex-col gap-2 rounded-lg border border-[var(--ant-color-border-secondary)] p-3">
           <Typography.Text className="text-sm">
-            {t("attestConnected", { role: t(`attestRoles.${verifier.role}`), wallet: verifier.account })}
+            {verifier.safeAddress
+              ? t("attestConnectedSafe", {
+                  role: t(`attestRoles.${verifier.role}`),
+                  safe: verifier.safeAddress,
+                  wallet: verifier.signer,
+                })
+              : t("attestConnected", { role: t(`attestRoles.${verifier.role}`), wallet: verifier.account })}
           </Typography.Text>
           <label className="text-sm" htmlFor="attestation-reference">
             {t("attestReferenceLabel")}
@@ -134,10 +158,28 @@ export default function InvoiceProofAttestationsPanel({ chainId, contractAddress
           </div>
         </div>
       ) : (
-        <div className="flex justify-end">
-          <Button loading={busy === "connect"} onClick={handleConnect}>
-            {t("attestConnect")}
-          </Button>
+        <div className="flex flex-col gap-2">
+          <Checkbox checked={throughSafe} onChange={(event) => setThroughSafe(event.target.checked)}>
+            {t("attestThroughSafe")}
+          </Checkbox>
+          {throughSafe ? (
+            <Input
+              aria-label={t("attestSafeLabel")}
+              value={safeAddress}
+              placeholder={t("attestSafePlaceholder")}
+              dir="ltr"
+              onChange={(event) => setSafeAddress(event.target.value)}
+            />
+          ) : null}
+          <div className="flex justify-end">
+            <Button
+              loading={busy === "connect"}
+              disabled={throughSafe && safeAddress.trim() === ""}
+              onClick={handleConnect}
+            >
+              {t("attestConnect")}
+            </Button>
+          </div>
         </div>
       )}
     </div>

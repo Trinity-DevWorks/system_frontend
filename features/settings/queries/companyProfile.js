@@ -26,6 +26,9 @@ import { useMemo } from "react";
  * @property {string | null} wallet_address
  * @property {string | null} wallet_address_anvil
  * @property {string | null} wallet_address_sepolia
+ * @property {"wallet" | "safe" | null} wallet_type
+ * @property {"wallet" | "safe" | null} wallet_type_anvil
+ * @property {"wallet" | "safe" | null} wallet_type_sepolia
  * @property {string | null} blockchain_network
  * @property {number | null} blockchain_chain_id
  * @property {CompanyLogoBrief | null} logo
@@ -47,6 +50,9 @@ export const DEFAULT_COMPANY_PROFILE = {
   wallet_address: null,
   wallet_address_anvil: null,
   wallet_address_sepolia: null,
+  wallet_type: null,
+  wallet_type_anvil: null,
+  wallet_type_sepolia: null,
   blockchain_network: null,
   blockchain_chain_id: null,
   logo: null,
@@ -79,6 +85,14 @@ function nullableString(value) {
   if (value == null) return null;
   const s = String(value).trim();
   return s === "" ? null : s;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {"wallet" | "safe" | null}
+ */
+function nullableWalletType(value) {
+  return value === "wallet" || value === "safe" ? value : null;
 }
 
 /**
@@ -120,6 +134,9 @@ export function normalizeCompanyProfile(payload) {
     wallet_address: nullableString(raw.wallet_address),
     wallet_address_anvil: nullableString(raw.wallet_address_anvil),
     wallet_address_sepolia: nullableString(raw.wallet_address_sepolia),
+    wallet_type: nullableWalletType(raw.wallet_type),
+    wallet_type_anvil: nullableWalletType(raw.wallet_type_anvil),
+    wallet_type_sepolia: nullableWalletType(raw.wallet_type_sepolia),
     blockchain_network: nullableString(raw.blockchain_network),
     blockchain_chain_id:
       typeof raw.blockchain_chain_id === "number" && Number.isFinite(raw.blockchain_chain_id)

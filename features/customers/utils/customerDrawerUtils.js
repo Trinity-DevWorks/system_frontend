@@ -4,6 +4,7 @@
 
 import dayjs from "dayjs";
 import { tenantMoneyFixed } from "@/lib/tenant-format";
+import { walletTypeForAddress } from "@/lib/wallet-address";
 
 /** @typedef {"keep" | "new" | "close"} CustomerCreateSaveIntent */
 
@@ -153,6 +154,12 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (vat !== String(defaults.vat_number ?? "").trim()) return true;
   if (notes !== String(defaults.notes ?? "").trim()) return true;
   if (String(v.wallet_address ?? "").trim() !== String(defaults.wallet_address ?? "").trim()) return true;
+  if (
+    walletTypeForAddress(v.wallet_address, v.wallet_type) !==
+    walletTypeForAddress(defaults.wallet_address, defaults.wallet_type)
+  ) {
+    return true;
+  }
   if (addressesFingerprint(v.addresses) !== addressesFingerprint(defaults.addresses)) return true;
   if (currencyBalancesFingerprint(
     mergeCreditAndOpeningRows(/** @type {unknown[]} */ (v.currency_credit_limits ?? []), /** @type {unknown[]} */ (v.currency_opening_balances ?? [])),
@@ -202,6 +209,9 @@ export function isEditDirtyVsLoaded(form, row) {
   if (vat !== String(row.vat_number ?? "").trim()) return true;
   if (notes !== String(row.notes ?? "").trim()) return true;
   if (String(v.wallet_address ?? "").trim() !== String(row.wallet_address ?? "").trim()) return true;
+  if (walletTypeForAddress(v.wallet_address, v.wallet_type) !== walletTypeForAddress(row.wallet_address, row.wallet_type)) {
+    return true;
+  }
   if (addressesFingerprint(v.addresses) !== addressesFingerprint(row.addresses)) return true;
   if (
     currencyBalancesFingerprint(
@@ -250,6 +260,7 @@ export function toCustomerCacheRow(row) {
     vat_number: row.vat_number ?? null,
     notes: row.notes ?? null,
     wallet_address: row.wallet_address ?? null,
+    wallet_type: row.wallet_type ?? null,
     addresses: Array.isArray(row.addresses) ? row.addresses : [],
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -402,6 +413,7 @@ export function customerFormValuesToPayload(values, mode, options = {}) {
   if (options.includeWallet) {
     const walletRaw = String(values.wallet_address ?? "").trim();
     base.wallet_address = walletRaw === "" ? null : walletRaw;
+    base.wallet_type = walletTypeForAddress(walletRaw, values.wallet_type);
   }
 
   if (mode === "create") {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Form, Input } from "antd";
-import { isOptionalWalletAddress } from "@/lib/wallet-address";
+import WalletAddressField from "@/shared/components/inputs/WalletAddressField";
 
 /**
  * @param {{
@@ -103,36 +103,22 @@ export default function CompanyProfileForm({
               {t("fieldWalletActiveNetwork", { network: blockchainNetworkLabel })}
             </p>
           ) : null}
-          <Form.Item
-            name="wallet_address_anvil"
+          <WalletAddressField
+            addressName="wallet_address_anvil"
+            typeName="wallet_type_anvil"
             label={t("fieldWalletAddressAnvil")}
             extra={t("fieldWalletAddressAnvilHelp")}
-            rules={[
-              {
-                validator: async (_, value) => {
-                  if (isOptionalWalletAddress(value)) return;
-                  throw new Error(t("fieldWalletAddressInvalid"));
-                },
-              },
-            ]}
-          >
-            <Input autoComplete="off" placeholder="0x…" className="font-mono" />
-          </Form.Item>
-          <Form.Item
-            name="wallet_address_sepolia"
+            invalidMessage={t("fieldWalletAddressInvalid")}
+            inspect={blockchainNetwork !== "sepolia"}
+          />
+          <WalletAddressField
+            addressName="wallet_address_sepolia"
+            typeName="wallet_type_sepolia"
             label={t("fieldWalletAddressSepolia")}
             extra={t("fieldWalletAddressSepoliaHelp")}
-            rules={[
-              {
-                validator: async (_, value) => {
-                  if (isOptionalWalletAddress(value)) return;
-                  throw new Error(t("fieldWalletAddressInvalid"));
-                },
-              },
-            ]}
-          >
-            <Input autoComplete="off" placeholder="0x…" className="font-mono" />
-          </Form.Item>
+            invalidMessage={t("fieldWalletAddressInvalid")}
+            inspect={blockchainNetwork === "sepolia"}
+          />
         </>
       ) : null}
     </Form>

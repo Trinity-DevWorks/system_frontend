@@ -13,7 +13,7 @@ import {
   CUSTOMER_LOOKUP_ADD_SALESMAN,
   CUSTOMER_LOOKUP_ADD_VAT_GROUP,
 } from "../../utils/customerDrawerUtils";
-import { isOptionalWalletAddress } from "@/lib/wallet-address";
+import WalletAddressField from "@/shared/components/inputs/WalletAddressField";
 
 const PHONE_MAX = 32;
 
@@ -642,21 +642,14 @@ export default function CustomerDrawerForm({
           <Divider titlePlacement="start" className="!mt-6">
             {t("drawerSectionInvoiceProofs")}
           </Divider>
-          <Form.Item
-            name="wallet_address"
+          <WalletAddressField
+            addressName="wallet_address"
+            typeName="wallet_type"
             label={t("fieldWalletAddress")}
             extra={t("fieldWalletAddressHelp")}
-            rules={[
-              {
-                validator: async (_, value) => {
-                  if (isOptionalWalletAddress(value)) return;
-                  throw new Error(t("fieldWalletAddressInvalid"));
-                },
-              },
-            ]}
-          >
-            <Input placeholder="0x…" allowClear className="font-mono" autoComplete="off" />
-          </Form.Item>
+            invalidMessage={t("fieldWalletAddressInvalid")}
+            allowClear
+          />
         </>
       ) : null}
 

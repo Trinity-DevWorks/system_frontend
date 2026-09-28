@@ -11,6 +11,7 @@ import { tenantRequest } from "@/lib/axios";
  *   name: string;
  *   role: "auditor" | "tax_authority" | "financier";
  *   wallet_address: string;
+ *   wallet_type: "wallet" | "safe";
  *   notes: string | null;
  *   chain_status: "pending" | "active" | "failed" | "removing";
  *   chain_company_wallet: string | null;
@@ -30,7 +31,7 @@ export function fetchInvoiceVerifiers() {
 }
 
 /**
- * @param {{ name: string; role: string; wallet_address: string; notes: string | null }} body
+ * @param {{ name: string; role: string; wallet_address: string; wallet_type: "wallet" | "safe"; notes: string | null }} body
  * @returns {Promise<InvoiceVerifier>}
  */
 export function createInvoiceVerifier(body) {

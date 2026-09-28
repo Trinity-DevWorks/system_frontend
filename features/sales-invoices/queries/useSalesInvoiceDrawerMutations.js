@@ -256,7 +256,6 @@ export function useSalesInvoiceDrawerMutations({
       if (code === "missing_wallet") description = t("approveCompanyWalletMissing");
       else if (code === "wallet_mismatch" || code === "not_safe_owner")
         description = t("approveCompanyWalletMismatch");
-      else if (code === "company_safe_required") description = t("approveCompanySafeRequired");
       else if (code === "wrong_network") description = t("approveCompanyWrongNetwork");
       else if (code === "rejected") description = t("approveCompanyRejected");
       else description = getLocalizedApiErrorMessage(tApiErrors, err) || t("approveCompanyError");

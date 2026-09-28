@@ -122,6 +122,7 @@ export function useCustomerDrawerMutations({
         vat_number: payload.vat_number,
         notes: payload.notes,
         wallet_address: payload.wallet_address ?? null,
+        wallet_type: payload.wallet_type ?? null,
         balance: snap.balance,
         created_at: now,
         updated_at: now,

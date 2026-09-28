@@ -10,6 +10,7 @@ import {
 } from "../queries/companyProfile";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { walletTypeForAddress } from "@/lib/wallet-address";
 import { updateCompanyProfile } from "../api/companyProfile.api";
 import { EditOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +32,8 @@ const PROFILE_FIELD_KEYS = [
   "address",
   "wallet_address_anvil",
   "wallet_address_sepolia",
+  "wallet_type_anvil",
+  "wallet_type_sepolia",
 ];
 
 function emptyToNull(value) {
@@ -52,6 +55,8 @@ function profileToFormValues(profile) {
     address: profile.address,
     wallet_address_anvil: profile.wallet_address_anvil ?? "",
     wallet_address_sepolia: profile.wallet_address_sepolia ?? "",
+    wallet_type_anvil: profile.wallet_type_anvil === "safe" ? "safe" : "wallet",
+    wallet_type_sepolia: profile.wallet_type_sepolia === "safe" ? "safe" : "wallet",
   };
 }
 
@@ -107,7 +112,9 @@ export default function CompanyProfilePage() {
         ...(showWalletAddress
           ? {
               wallet_address_anvil: emptyToNull(values.wallet_address_anvil),
+              wallet_type_anvil: walletTypeForAddress(values.wallet_address_anvil, values.wallet_type_anvil),
               wallet_address_sepolia: emptyToNull(values.wallet_address_sepolia),
+              wallet_type_sepolia: walletTypeForAddress(values.wallet_address_sepolia, values.wallet_type_sepolia),
             }
           : {}),
       }),

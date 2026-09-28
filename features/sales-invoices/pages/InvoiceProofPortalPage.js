@@ -6,6 +6,7 @@ import { useInvoiceProofPortalQuery } from "../queries/useInvoiceProofPortalQuer
 import { fetchInvoiceProofPortal, unlockInvoiceProofPortal } from "../api/salesInvoices.api";
 import { hasBuyerPortalLinkStamp } from "../utils/invoiceProofPortalUrl";
 import { BuyerApprovalError, sendBuyerApproval } from "@/lib/invoice-registry-buyer-approval";
+import { sendBuyerSafeApproval } from "@/lib/invoice-registry-buyer-safe";
 import { signProofPortalUnlock, watchProofPortalAccount } from "@/lib/invoice-proof-portal-unlock";
 import { getApiErrorCode, getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
@@ -223,6 +224,9 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
   const hasStamp = hasBuyerPortalLinkStamp(portalLink);
   const portalQuery = useInvoiceProofPortalQuery(validId, portalLink);
   const [invoice, setInvoice] = useState(null);
+  const [unlockedBy, setUnlockedBy] = useState(
+    /** @type {{ address: string; buyerIsSafe: boolean } | null} */ (null),
+  );
   const portalLinkKey = `${validId ?? ""}|${portalLink.exp ?? ""}|${portalLink.sig ?? ""}`;
   const [invoiceLinkKey, setInvoiceLinkKey] = useState(portalLinkKey);
   if (invoiceLinkKey !== portalLinkKey) {
@@ -239,14 +243,14 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
   useEffect(() => {
     if (!invoice || typeof invoice !== "object" || invoice.locked === true) return undefined;
 
-    return watchProofPortalAccount(invoice.buyer_wallet, () => {
+    return watchProofPortalAccount(unlockedBy?.address ?? invoice.buyer_wallet, () => {
       setInvoice(null);
       message.warning({
         content: accountSwitchedMessageRef.current,
         key: "invoice-proof-portal-account-switched",
       });
     });
-  }, [invoice, message]);
+  }, [invoice, unlockedBy, message]);
 
   const mode = useMemo(() => resolveHostMode(initialHost), [initialHost]);
   const tenantLabel = mode.tenantSlug
@@ -277,6 +281,8 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
     else if (code === "wallet_mismatch") description = t("walletMismatch");
     else if (code === "wrong_network") description = t("wrongNetwork");
     else if (code === "rejected") description = t("rejected");
+    else if (code === "not_safe_owner") description = t("notSafeOwner");
+    else if (code === "pending_confirmations") description = t("pendingConfirmations");
     else description = getLocalizedApiErrorMessage(tApiErrors, err) || fallback;
     notification.error({ title, description });
   }
@@ -295,11 +301,13 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
         chainId: Number(fresh?.chain_id),
         message: messageToSign,
       });
-      return unlockInvoiceProofPortal(validId, portalLink, signed);
+      const result = await unlockInvoiceProofPortal(validId, portalLink, signed);
+      return { result, signed };
     },
     onError: (err) => notifyWalletError(err, t("unlockError"), t("unlockError")),
-    onSuccess: (result) => {
+    onSuccess: ({ result, signed }) => {
       if (result && typeof result === "object" && result.locked !== true) {
+        setUnlockedBy({ address: signed.address, buyerIsSafe: signed.buyerIsSafe });
         setInvoice(result);
       }
     },
@@ -315,11 +323,20 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
       if (!Number.isFinite(chainId) || chainId <= 0 || contractAddress === "" || buyerWallet === "" || eip712 == null) {
         throw new BuyerApprovalError("failed");
       }
+      if (unlockedBy?.buyerIsSafe) {
+        const sent = await sendBuyerSafeApproval({ chainId, contractAddress, buyerWallet, eip712 });
+        if (sent.status === "proposed") return { proposed: true, buyerApprovedAt: null };
+        return { proposed: false, buyerApprovedAt: await buyerApprovedAtFromTx(sent.txHash) };
+      }
       const txHash = await sendBuyerApproval({ chainId, contractAddress, buyerWallet, eip712 });
-      return buyerApprovedAtFromTx(txHash);
+      return { proposed: false, buyerApprovedAt: await buyerApprovedAtFromTx(txHash) };
     },
     onError: (err) => notifyWalletError(err, t("approveError"), t("approveError")),
-    onSuccess: (buyerApprovedAt) => {
+    onSuccess: ({ proposed, buyerApprovedAt }) => {
+      if (proposed) {
+        message.info(t("approveSafeProposed"));
+        return;
+      }
       message.success(t("approveSuccess"));
       setInvoice((current) =>
         current && typeof current === "object"
@@ -397,6 +414,13 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
               <div className="text-[var(--ant-color-text-secondary)]">{t("expectedWallet")}</div>
               <div className="mt-1 break-all font-mono" dir="ltr">
                 {expectedWallet}
+              </div>
+              <div className="mt-1 text-xs text-[var(--ant-color-text-secondary)]">
+                {challenge?.buyer_wallet_type === "safe"
+                  ? t("buyerSafeHint")
+                  : challenge?.buyer_wallet_type === "wallet"
+                    ? t("buyerWalletHint")
+                    : t("safeOwnerHint")}
               </div>
             </div>
             <div className="mt-6 flex justify-end">

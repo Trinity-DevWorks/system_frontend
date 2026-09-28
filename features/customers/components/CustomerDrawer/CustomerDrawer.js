@@ -153,6 +153,7 @@ export default function CustomerDrawer({
       vat_number: "",
       notes: "",
       wallet_address: "",
+      wallet_type: "wallet",
       addresses: [],
     }),
     [],
@@ -179,6 +180,7 @@ export default function CustomerDrawer({
       vat_number: r.vat_number ?? "",
       notes: r.notes ?? "",
       wallet_address: r.wallet_address ?? "",
+      wallet_type: r.wallet_type === "safe" ? "safe" : "wallet",
       addresses: Array.isArray(r.addresses)
         ? r.addresses.map((row) => ({
             id: row.id,

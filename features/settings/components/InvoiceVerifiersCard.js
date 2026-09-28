@@ -10,8 +10,8 @@ import {
 import { invoiceVerifiersQueryKey } from "../queries/invoiceVerifiersQueryKeys";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { WALLET_ADDRESS_PATTERN } from "@/lib/wallet-address";
 import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
+import WalletAddressField from "@/shared/components/inputs/WalletAddressField";
 import { withConfirmKeyboard } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import { DeleteOutlined, EditOutlined, PlusOutlined, SyncOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -87,6 +87,7 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
             name: values.name.trim(),
             role: values.role,
             wallet_address: values.wallet_address.trim(),
+            wallet_type: values.wallet_type === "safe" ? "safe" : "wallet",
             notes: emptyToNull(values.notes),
           }),
     onSuccess: () => {
@@ -115,6 +116,7 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
 
   const openCreate = () => {
     form.resetFields();
+    form.setFieldsValue({ wallet_type: "wallet" });
     setEditing("new");
   };
 
@@ -168,12 +170,15 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
       title: t("verifiersColumnWallet"),
       dataIndex: "wallet_address",
       key: "wallet_address",
-      render: (wallet) => (
-        <Tooltip title={wallet}>
-          <Typography.Text copyable={{ text: wallet }} className="font-mono text-xs" dir="ltr">
-            {shortAddress(wallet)}
-          </Typography.Text>
-        </Tooltip>
+      render: (wallet, row) => (
+        <Space size={4} wrap>
+          <Tooltip title={wallet}>
+            <Typography.Text copyable={{ text: wallet }} className="font-mono text-xs" dir="ltr">
+              {shortAddress(wallet)}
+            </Typography.Text>
+          </Tooltip>
+          <Tag className="!m-0">{row.wallet_type === "safe" ? t("verifiersTypeSafe") : t("verifiersTypeWallet")}</Tag>
+        </Space>
       ),
     },
     {
@@ -295,22 +300,14 @@ export default function InvoiceVerifiersCard({ t, tApiErrors, canEdit }) {
             <Select options={ROLES.map((role) => ({ value: role, label: t(`verifierRoles.${role}`) }))} />
           </Form.Item>
           {isCreate ? (
-            <Form.Item
-              name="wallet_address"
+            <WalletAddressField
+              addressName="wallet_address"
+              typeName="wallet_type"
               label={t("verifiersFieldWallet")}
               extra={t("verifiersFieldWalletHelp")}
-              rules={[
-                { required: true, message: t("fieldWalletAddressInvalid") },
-                {
-                  validator: async (_, value) => {
-                    if (!value || WALLET_ADDRESS_PATTERN.test(String(value).trim())) return;
-                    throw new Error(t("fieldWalletAddressInvalid"));
-                  },
-                },
-              ]}
-            >
-              <Input autoComplete="off" placeholder="0x…" className="font-mono" />
-            </Form.Item>
+              invalidMessage={t("fieldWalletAddressInvalid")}
+              required
+            />
           ) : null}
           <Form.Item name="notes" label={t("verifiersFieldNotes")}>
             <Input.TextArea rows={3} maxLength={2000} />
