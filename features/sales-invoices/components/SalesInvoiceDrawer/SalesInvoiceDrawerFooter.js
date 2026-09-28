@@ -9,6 +9,7 @@ import {
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import { Button, Space, Tag, Tooltip } from "antd";
 import SalesInvoiceBuyerLinkButton from "./SalesInvoiceBuyerLinkButton";
+import SalesInvoiceProofDisclosureButton from "./SalesInvoiceProofDisclosureButton";
 
 /**
  * @param {{
@@ -26,6 +27,12 @@ function shortAddress(address) {
   return `${raw.slice(0, 6)}…${raw.slice(-4)}`;
 }
 
+const ATTESTATION_LABEL_KEYS = {
+  auditor: "chainAttestedAuditor",
+  tax_authority: "chainAttestedTaxAuthority",
+  financier: "chainAttestedFinancier",
+};
+
 function FooterChainTimes({
   t,
   registeredAt,
@@ -33,29 +40,44 @@ function FooterChainTimes({
   buyerApprovedAt,
   supplierWallet,
   buyerWallet,
+  attestations = [],
 }) {
   const items = [
-    [registeredAt, "chainRegisteredAt", ""],
-    [supplierApprovedAt, "chainSupplierApprovedAt", supplierWallet],
-    [buyerApprovedAt, "chainBuyerApprovedAt", buyerWallet],
+    [registeredAt, "chainRegisteredAt", "", "chainRegisteredAt"],
+    [supplierApprovedAt, "chainSupplierApprovedAt", supplierWallet, "chainSupplierApprovedAt"],
+    [buyerApprovedAt, "chainBuyerApprovedAt", buyerWallet, "chainBuyerApprovedAt"],
+    ...attestations
+      .filter((attestation) => ATTESTATION_LABEL_KEYS[attestation?.role])
+      .map((attestation) => [
+        attestation.attested_at,
+        ATTESTATION_LABEL_KEYS[attestation.role],
+        attestation.verifier,
+        `attestation-${attestation.verifier}`,
+        attestation.verifier_name,
+      ]),
   ].filter(([value]) => typeof value === "string" && value !== "");
   if (items.length === 0) return null;
 
   return (
     <div className="sales-invoice-drawer-footer-posted">
-      {items.map(([value, key, wallet]) => {
+      {items.map(([value, key, wallet, itemKey, name]) => {
         const when = formatTenantDateTime(value) || "\u2014";
-        const who = shortAddress(wallet);
+        const label = typeof name === "string" ? name.trim() : "";
+        const who = label || shortAddress(wallet);
         return (
-          <span key={key} className="sales-invoice-drawer-footer-posted-item">
+          <span key={itemKey} className="sales-invoice-drawer-footer-posted-item">
             <span className="sales-invoice-drawer-footer-posted-label">{t(key)}</span>
             <span className="sales-invoice-drawer-footer-posted-value">
               {when}
               {who ? (
                 <Tooltip title={String(wallet)}>
-                  <span className="ms-1 cursor-help font-mono text-xs" dir="ltr">
-                    {who}
-                  </span>
+                  {label ? (
+                    <span className="ms-1 cursor-help text-xs">{who}</span>
+                  ) : (
+                    <span className="ms-1 cursor-help font-mono text-xs" dir="ltr">
+                      {who}
+                    </span>
+                  )}
                 </Tooltip>
               ) : null}
             </span>
@@ -106,6 +128,7 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   chainBuyerApprovedAt?: string | null;
  *   chainSupplierWallet?: string | null;
  *   chainBuyerWallet?: string | null;
+ *   chainAttestations?: Array<{ verifier: string; role: string; attested_at: string | null }>;
  *   showApproveCompany?: boolean;
  *   approvingCompany?: boolean;
  *   showBuyerLink?: boolean;
@@ -139,6 +162,7 @@ export default function SalesInvoiceDrawerFooter({
   chainBuyerApprovedAt = null,
   chainSupplierWallet = null,
   chainBuyerWallet = null,
+  chainAttestations = [],
   showApproveCompany = false,
   approvingCompany = false,
   showBuyerLink = false,
@@ -192,6 +216,13 @@ export default function SalesInvoiceDrawerFooter({
             t={t}
           />
         ) : null}
+        {showVerify && showBuyerLink && buyerLinkInvoiceId ? (
+          <SalesInvoiceProofDisclosureButton
+            invoiceId={buyerLinkInvoiceId}
+            invoiceNumber={buyerLinkInvoiceNumber}
+            disabled={submitting}
+          />
+        ) : null}
       </>
     ) : null;
 
@@ -208,6 +239,7 @@ export default function SalesInvoiceDrawerFooter({
               buyerApprovedAt={chainBuyerApprovedAt}
               supplierWallet={chainSupplierWallet}
               buyerWallet={chainBuyerWallet}
+              attestations={chainAttestations}
             />
           ) : null}
         </div>
@@ -238,6 +270,7 @@ export default function SalesInvoiceDrawerFooter({
             buyerApprovedAt={chainBuyerApprovedAt}
             supplierWallet={chainSupplierWallet}
             buyerWallet={chainBuyerWallet}
+            attestations={chainAttestations}
           />
         ) : null}
       </div>

@@ -796,6 +796,7 @@ export default function SalesInvoiceDrawer({
           }
           chainSupplierWallet={typeof proofResult?.supplier_wallet === "string" ? proofResult.supplier_wallet : null}
           chainBuyerWallet={typeof proofResult?.buyer_wallet === "string" ? proofResult.buyer_wallet : null}
+          chainAttestations={Array.isArray(proofResult?.attestations) ? proofResult.attestations : []}
           showApproveCompany={Boolean(
             invoiceProofAccess.canEdit && proofResult?.can_approve_as_company,
           )}

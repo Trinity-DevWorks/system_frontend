@@ -223,12 +223,18 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
   const hasStamp = hasBuyerPortalLinkStamp(portalLink);
   const portalQuery = useInvoiceProofPortalQuery(validId, portalLink);
   const [invoice, setInvoice] = useState(null);
-  const accountSwitchedMessageRef = useRef(t("accountSwitched"));
-  accountSwitchedMessageRef.current = t("accountSwitched");
-
-  useEffect(() => {
+  const portalLinkKey = `${validId ?? ""}|${portalLink.exp ?? ""}|${portalLink.sig ?? ""}`;
+  const [invoiceLinkKey, setInvoiceLinkKey] = useState(portalLinkKey);
+  if (invoiceLinkKey !== portalLinkKey) {
+    setInvoiceLinkKey(portalLinkKey);
     setInvoice(null);
-  }, [validId, portalLink.exp, portalLink.sig]);
+  }
+
+  const accountSwitchedMessage = t("accountSwitched");
+  const accountSwitchedMessageRef = useRef(accountSwitchedMessage);
+  useEffect(() => {
+    accountSwitchedMessageRef.current = accountSwitchedMessage;
+  }, [accountSwitchedMessage]);
 
   useEffect(() => {
     if (!invoice || typeof invoice !== "object" || invoice.locked === true) return undefined;

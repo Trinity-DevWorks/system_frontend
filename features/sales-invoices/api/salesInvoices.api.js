@@ -98,6 +98,14 @@ export function reverseSalesInvoice(invoiceId) {
  *   registered_at?: string | null;
  *   supplier_approved_at?: string | null;
  *   buyer_approved_at?: string | null;
+ *   attestations?: Array<{
+ *     verifier: string;
+ *     verifier_name: string | null;
+ *     role: "auditor" | "tax_authority" | "financier";
+ *     reference_hash: string | null;
+ *     attested_at: string | null;
+ *   }>;
+ *   financed_by?: string | null;
  * }>}
  */
 export function verifySalesInvoice(invoiceId) {
@@ -205,6 +213,31 @@ export function unlockInvoiceProofPortal(invoiceId, link = {}, body) {
  */
 export function createBuyerPortalLink(invoiceId) {
   return tenantRequest("POST", `sales-invoices/${invoiceId}/buyer-portal-link`);
+}
+
+/**
+ * Every disclosable leaf of the sealed snapshot, in Merkle tree order.
+ * @param {string} invoiceId
+ * @returns {Promise<{
+ *   proof_id?: string;
+ *   content_hash?: string;
+ *   schema_version?: number;
+ *   leaf_count?: number;
+ *   fields?: Array<{ path: string; value: string | number | boolean | null | [] }>;
+ * }>}
+ */
+export function fetchSalesInvoiceProofFields(invoiceId) {
+  return tenantRequest("GET", `sales-invoices/${invoiceId}/proof-fields`);
+}
+
+/**
+ * Selective-disclosure bundle for the chosen leaf paths (`invoice-proof-disclosure`).
+ * @param {string} invoiceId
+ * @param {string[]} fields
+ * @returns {Promise<import("@/lib/invoice-proof-merkle").InvoiceProofDisclosureBundle>}
+ */
+export function createSalesInvoiceProofDisclosure(invoiceId, fields) {
+  return tenantRequest("POST", `sales-invoices/${invoiceId}/proof-disclosure`, { fields });
 }
 
 /**
