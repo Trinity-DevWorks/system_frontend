@@ -123,6 +123,7 @@ export const NAV_SECTIONS = [
  *   groupKey?: string;          sub-heading inside the section panel
  *   module?: string;            tenant entitlement code (config/modules.php)
  *   permission?: string;        RBAC resource_key (config/rbac.php)
+ *   createAction?: "add" | "edit";  RBAC action the create drawer needs (default "add")
  *   gateNav?: boolean;          false = route guard enforces `permission`, sidebar does not
  *   nav?: boolean;              false = routable but never listed in the sidebar
  * }} FeatureEntry
@@ -158,7 +159,7 @@ export const FEATURES = [
   { id: "stockTransfers", path: "/main/stock/transfers", section: "inventory", labelKey: "navStockTransfers", icon: RetweetOutlined, groupKey: "navGroupDocuments", module: "inventory", permission: "stock" },
 
   { id: "salesInvoices", path: "/main/sales-invoices", section: "sales", labelKey: "navSalesInvoices", icon: FileDoneOutlined, module: "sales", permission: "sales_invoices" },
-  { id: "invoiceVerifiers", path: "/main/invoice-verifiers", section: "sales", labelKey: "navInvoiceVerifiers", icon: AuditOutlined, module: "sales", permission: "invoice_proofs" },
+  { id: "invoiceVerifiers", path: "/main/invoice-verifiers", section: "sales", labelKey: "navInvoiceVerifiers", icon: AuditOutlined, module: "sales", permission: "invoice_proofs", createAction: "edit" },
   { id: "customerGroups", path: "/main/customer-groups", section: "sales", labelKey: "navCustomerGroups", icon: UsergroupAddOutlined, module: "sales", permission: "customer_groups" },
   { id: "customers", path: "/main/customers", section: "sales", labelKey: "navCustomers", icon: UserOutlined, module: "sales", permission: "customers" },
 

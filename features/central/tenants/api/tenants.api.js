@@ -43,6 +43,16 @@ export function updateCentralTenantStatus(id, body) {
 }
 
 /**
+ * Permanently delete a suspended tenant. `confirmation` must equal the tenant id.
+ * @param {string} id
+ * @param {string} confirmation
+ * @returns {Promise<unknown>}
+ */
+export function deleteCentralTenant(id, confirmation) {
+  return centralRequest("DELETE", `tenants/${encodeURIComponent(id)}`, { confirmation });
+}
+
+/**
  * Assigned module codes plus the full catalog (`available`).
  * @param {string} id
  * @returns {Promise<{ tenant_id: string; modules: string[]; available: Record<string, unknown>[] }>}

@@ -11,7 +11,7 @@ import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { deleteSalesInvoice, reverseSalesInvoice } from "../api/salesInvoices.api";
+import { deleteSalesInvoice, postSalesInvoice, reverseSalesInvoice } from "../api/salesInvoices.api";
 import { fetchCustomerNames } from "@/features/customers/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
@@ -25,6 +25,9 @@ import {
 } from "@/features/stock/components/StockTableFilters/StockTableFilters";
 import { getSalesInvoiceTableColumns } from "../components/SalesInvoicesTable/getSalesInvoiceTableColumns";
 import InvoiceChainCheckButton from "../components/InvoiceChainCheckButton";
+import SalesInvoiceBuyerLinkModal from "../components/SalesInvoiceDrawer/SalesInvoiceBuyerLinkModal";
+import SalesInvoiceProofDisclosureModal from "../components/SalesInvoiceDrawer/SalesInvoiceProofDisclosureModal";
+import { useSalesInvoiceProofMutations } from "../queries/useSalesInvoiceProofMutations";
 import { useCompanySettings } from "@/lib/company-settings";
 import { useSalesInvoicesTableQuery } from "../queries/useSalesInvoicesTableQuery";
 import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
@@ -130,14 +133,47 @@ function SalesInvoicesTable() {
     [modal, t, deleteMutation],
   );
 
+  const invalidateAfterStatusChange = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: SALES_INVOICES_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: SALES_INVOICE_DETAIL_QUERY_PREFIX });
+    queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
+    queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
+  }, [queryClient]);
+
+  const postMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => postSalesInvoice(id),
+    onSuccess: () => {
+      message.success(t("postSuccess"));
+      invalidateAfterStatusChange();
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("postError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
+  const handlePost = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("postConfirmTitle"),
+        content: t("postConfirmContent"),
+        okText: t("postConfirmOk"),
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(postMutation.mutateAsync(id)),
+      });
+    },
+    [modal, t, postMutation],
+  );
+
   const reverseMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => reverseSalesInvoice(id),
     onSuccess: () => {
       message.success(t("reverseSuccess"));
-      queryClient.invalidateQueries({ queryKey: SALES_INVOICES_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: SALES_INVOICE_DETAIL_QUERY_PREFIX });
-      queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
+      invalidateAfterStatusChange();
     },
     onError: (err) => {
       notification.error({
@@ -193,15 +229,75 @@ function SalesInvoicesTable() {
     return lines;
   }, [dateRangeLabel, statusLabel, customerLabel, t]);
 
+  const { refreshFromRow, approveFromRow } = useSalesInvoiceProofMutations({
+    message,
+    notification,
+    t,
+    tApiErrors,
+  });
+  const [buyerLinkRow, setBuyerLinkRow] = useState(/** @type {{ id: string; number: string | null } | null} */ (null));
+  const [shareProofRow, setShareProofRow] = useState(/** @type {{ id: string; number: string | null } | null} */ (null));
+
+  const proofRowTarget = useCallback((record) => {
+    const id = normalizeEntityId(record?.id);
+    if (id == null) return null;
+    return {
+      id: String(id),
+      number: typeof record?.invoice_number === "string" ? record.invoice_number : null,
+    };
+  }, []);
+
+  const handleRefreshProof = useCallback(
+    (record) => {
+      const target = proofRowTarget(record);
+      if (target) refreshFromRow(target.id);
+    },
+    [proofRowTarget, refreshFromRow],
+  );
+
+  const handleApproveProof = useCallback(
+    (record) => {
+      const target = proofRowTarget(record);
+      if (target) approveFromRow(target.id);
+    },
+    [proofRowTarget, approveFromRow],
+  );
+
+  const handleBuyerLink = useCallback((record) => setBuyerLinkRow(proofRowTarget(record)), [proofRowTarget]);
+  const handleShareProof = useCallback((record) => setShareProofRow(proofRowTarget(record)), [proofRowTarget]);
+
   const columns = useMemo(
     () =>
       getSalesInvoiceTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
+        onPost: access.canEdit ? handlePost : undefined,
         onReverse: access.canReverse ? handleReverse : undefined,
+        showChainStatus: showChainCheck,
+        onRefreshProof: showChainCheck ? handleRefreshProof : undefined,
+        onApproveProof: showChainCheck && invoiceProofsAccess.canEdit ? handleApproveProof : undefined,
+        onBuyerLink: showChainCheck ? handleBuyerLink : undefined,
+        onShareProof: showChainCheck ? handleShareProof : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
+    [
+      t,
+      access.canView,
+      access.canEdit,
+      access.canDelete,
+      access.canReverse,
+      openViewDrawer,
+      openEditDrawer,
+      handleDelete,
+      handlePost,
+      handleReverse,
+      showChainCheck,
+      invoiceProofsAccess.canEdit,
+      handleRefreshProof,
+      handleApproveProof,
+      handleBuyerLink,
+      handleShareProof,
+    ],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
@@ -283,6 +379,23 @@ function SalesInvoicesTable() {
         scrollX={1100}
         pagination={pagination}
       />
+      {showChainCheck ? (
+        <>
+          <SalesInvoiceBuyerLinkModal
+            open={buyerLinkRow != null}
+            invoiceId={buyerLinkRow?.id ?? null}
+            invoiceNumber={buyerLinkRow?.number ?? null}
+            onClose={() => setBuyerLinkRow(null)}
+            t={t}
+          />
+          <SalesInvoiceProofDisclosureModal
+            open={shareProofRow != null}
+            invoiceId={shareProofRow?.id ?? null}
+            invoiceNumber={shareProofRow?.number ?? null}
+            onClose={() => setShareProofRow(null)}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

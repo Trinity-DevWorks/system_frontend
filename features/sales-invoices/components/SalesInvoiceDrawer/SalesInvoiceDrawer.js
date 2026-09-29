@@ -14,6 +14,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import CustomerDrawer from "@/features/customers/components/CustomerDrawer/CustomerDrawer";
 import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
+import { ROUTES } from "@/features/registry";
+import { useCompanyProfile } from "@/features/settings/queries/companyProfile";
+import { useRouter } from "@/i18n/navigation";
 import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
@@ -80,15 +83,22 @@ export default function SalesInvoiceDrawer({
   const invoiceProofAccess = useResourceAccess("invoice_proofs");
   const customerAccess = useResourceAccess("customers");
   const itemAccess = useResourceAccess("items");
+  const companyProfileAccess = useResourceAccess("company_profile");
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { settings } = useCompanySettings();
+  const companyProfile = useCompanyProfile();
   const [form] = Form.useForm();
   const [customerCreateOpen, setCustomerCreateOpen] = useState(false);
+  const [customerEditOpen, setCustomerEditOpen] = useState(false);
   const [itemViewId, setItemViewId] = useState(/** @type {string | null} */ (null));
   const [itemViewDrawerOpen, setItemViewDrawerOpen] = useState(open);
   if (open !== itemViewDrawerOpen) {
     setItemViewDrawerOpen(open);
-    if (!open) setItemViewId(null);
+    if (!open) {
+      setItemViewId(null);
+      setCustomerEditOpen(false);
+    }
   }
 
   const [lines, setLines] = useState(() => [getEmptySalesInvoiceLine()]);
@@ -246,6 +256,17 @@ export default function SalesInvoiceDrawer({
     refetchOnWindowFocus: false,
   });
   const proofResult = proofEnabled && proofQuery.data && typeof proofQuery.data === "object" ? proofQuery.data : null;
+
+  const invoiceCustomer =
+    detailQuery.data?.customer && typeof detailQuery.data.customer === "object" ? detailQuery.data.customer : null;
+  const invoiceCustomerId = normalizeEntityId(invoiceCustomer?.id);
+  const buyerWalletSaved = invoiceCustomer ? Boolean(invoiceCustomer.wallet_address) : null;
+  const companyWalletSaved = companyProfile.isReady ? Boolean(companyProfile.profile.wallet_address) : null;
+
+  const closeCustomerEdit = useCallback(() => {
+    setCustomerEditOpen(false);
+    queryClient.invalidateQueries({ queryKey: [...SALES_INVOICE_DETAIL_QUERY_PREFIX, invoiceId] });
+  }, [queryClient, invoiceId]);
 
   useEffect(() => {
     if (!open) {
@@ -802,6 +823,14 @@ export default function SalesInvoiceDrawer({
           chainSupplierWallet={typeof proofResult?.supplier_wallet === "string" ? proofResult.supplier_wallet : null}
           chainBuyerWallet={typeof proofResult?.buyer_wallet === "string" ? proofResult.buyer_wallet : null}
           chainAttestations={Array.isArray(proofResult?.attestations) ? proofResult.attestations : []}
+          companyWalletSaved={companyWalletSaved}
+          buyerWalletSaved={buyerWalletSaved}
+          onOpenCompanyProfile={
+            companyProfileAccess.canEdit ? () => router.push(ROUTES.settingsCompanyProfile) : undefined
+          }
+          onOpenBuyer={
+            customerAccess.canEdit && invoiceCustomerId != null ? () => setCustomerEditOpen(true) : undefined
+          }
           showApproveCompany={Boolean(
             invoiceProofAccess.canEdit && proofResult?.can_approve_as_company,
           )}
@@ -812,8 +841,12 @@ export default function SalesInvoiceDrawer({
           onSave={handleSave}
           onPost={handlePost}
           onDelete={handleDelete}
-          onVerify={() => verifyMutation.mutate()}
-          onApproveCompany={() => approveCompanyMutation.mutate(proofResult)}
+          onVerify={() => {
+            if (invoiceId != null) verifyMutation.mutate(invoiceId);
+          }}
+          onApproveCompany={() => {
+            if (invoiceId != null) approveCompanyMutation.mutate({ invoiceId, proof: proofResult });
+          }}
         />
       }
     >
@@ -869,6 +902,15 @@ export default function SalesInvoiceDrawer({
         zIndex={1100}
         onClose={() => setCustomerCreateOpen(false)}
         onCreateSuccess={onCustomerCreated}
+      />
+    ) : null}
+    {customerAccess.canEdit && invoiceCustomerId != null ? (
+      <CustomerDrawer
+        open={open && customerEditOpen}
+        mode="edit"
+        customerId={String(invoiceCustomerId)}
+        zIndex={1100}
+        onClose={closeCustomerEdit}
       />
     ) : null}
     {itemAccess.canView ? (

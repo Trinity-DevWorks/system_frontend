@@ -1,8 +1,11 @@
 /**
- * Company verifiers list for the current tenant host.
- *
- * @param {string} hostname
+ * Invoice verifier cache keys. The list is a bare array (no pagination);
+ * details live under `[...list, id]`.
  */
-export function invoiceVerifiersQueryKey(hostname) {
-  return /** @type {const} */ (["tenant", "invoice-verifiers", hostname]);
+
+export const INVOICE_VERIFIERS_LIST_QUERY_KEY = /** @type {const} */ (["tenant", "invoice-verifiers"]);
+
+/** @param {string} id */
+export function invoiceVerifierDetailQueryKey(id) {
+  return [...INVOICE_VERIFIERS_LIST_QUERY_KEY, id];
 }

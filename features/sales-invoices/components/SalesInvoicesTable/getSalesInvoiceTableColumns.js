@@ -1,9 +1,20 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import {
+  CheckCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  MoreOutlined,
+  QrcodeOutlined,
+  ReloadOutlined,
+  RollbackOutlined,
+  SendOutlined,
+  ShareAltOutlined,
+} from "@ant-design/icons";
 import { getSalesInvoiceStatusLabel, isSalesInvoiceDraft, salesInvoiceStatusTagColor } from "../../utils/salesInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
-import InvoiceChainIssueTag from "../InvoiceChainIssueTag";
+import InvoiceChainStatusTag from "../InvoiceChainStatusTag";
 import dayjs from "dayjs";
-import { Button, Dropdown, Space, Tag, Typography } from "antd";
+import { Button, Dropdown, Tag, Typography } from "antd";
 
 const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
 
@@ -13,11 +24,67 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
+ *   onPost?: (record: unknown) => void;
  *   onReverse?: (record: unknown) => void;
+ *   showChainStatus?: boolean;
+ *   onRefreshProof?: (record: unknown) => void;
+ *   onApproveProof?: (record: unknown) => void;
+ *   onBuyerLink?: (record: unknown) => void;
+ *   onShareProof?: (record: unknown) => void;
  * }} [actions]
  */
 export function getSalesInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onReverse } = actions;
+  const {
+    onView,
+    onEdit,
+    onDelete,
+    onPost,
+    onReverse,
+    showChainStatus = false,
+    onRefreshProof,
+    onApproveProof,
+    onBuyerLink,
+    onShareProof,
+  } = actions;
+
+  /** @param {Record<string, any>} record */
+  const proofItems = (record) => {
+    if (!showChainStatus || record?.status !== "posted") return [];
+    const items = [];
+    if (onRefreshProof) {
+      items.push({
+        key: "proof-refresh",
+        icon: <ReloadOutlined />,
+        label: t("actionVerify"),
+        onClick: () => onRefreshProof(record),
+      });
+    }
+    if (onApproveProof && record?.chain_status?.status === "waiting_company") {
+      items.push({
+        key: "proof-approve",
+        icon: <CheckCircleOutlined />,
+        label: t("actionApproveAsCompany"),
+        onClick: () => onApproveProof(record),
+      });
+    }
+    if (onBuyerLink) {
+      items.push({
+        key: "proof-buyer-link",
+        icon: <QrcodeOutlined />,
+        label: t("actionBuyerLink"),
+        onClick: () => onBuyerLink(record),
+      });
+    }
+    if (onShareProof) {
+      items.push({
+        key: "proof-share",
+        icon: <ShareAltOutlined />,
+        label: t("actionShareProof"),
+        onClick: () => onShareProof(record),
+      });
+    }
+    return items.length > 0 ? [{ type: "divider" }, ...items] : [];
+  };
 
   return [
     {
@@ -55,17 +122,26 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
       title: t("colStatus"),
       dataIndex: "status",
       key: "status",
-      width: 190,
+      width: 110,
       sorter: (a, b) => String(a.status ?? "").localeCompare(String(b.status ?? "")),
-      render: (value, record) => (
-        <Space size={4} wrap>
-          <Tag color={salesInvoiceStatusTagColor(value)} className="!m-0">
-            {getSalesInvoiceStatusLabel(t, value)}
-          </Tag>
-          <InvoiceChainIssueTag issue={record?.chain_issue} />
-        </Space>
+      render: (value) => (
+        <Tag color={salesInvoiceStatusTagColor(value)} className="!m-0">
+          {getSalesInvoiceStatusLabel(t, value)}
+        </Tag>
       ),
     },
+    ...(showChainStatus
+      ? [
+          {
+            title: t("colBlockchain"),
+            key: "chain_status",
+            width: 170,
+            render: (_, record) => (
+              <InvoiceChainStatusTag status={record?.chain_status} issue={record?.chain_issue} />
+            ),
+          },
+        ]
+      : []),
     {
       title: t("colGrandTotal"),
       dataIndex: "grand_total",
@@ -115,6 +191,16 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                   label: t("actionEdit"),
                   onClick: () => onEdit?.(record),
                 },
+                ...(onPost
+                  ? [
+                      {
+                        key: "post",
+                        icon: <SendOutlined />,
+                        label: t("actionPost"),
+                        onClick: () => onPost(record),
+                      },
+                    ]
+                  : []),
                 {
                   key: "delete",
                   icon: <DeleteOutlined />,
@@ -135,6 +221,7 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                 },
               ]
             : []),
+          ...proofItems(record),
         ];
 
         return (

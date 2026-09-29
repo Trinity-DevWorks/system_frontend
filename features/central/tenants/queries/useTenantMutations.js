@@ -6,12 +6,14 @@ import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import {
   invalidateTenantListQueries,
   patchTenantListCache,
+  removeIdsFromTenantListCache,
 } from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CENTRAL_MODULES_QUERY_KEY } from "../../modules/queries/modulesQueryKeys";
 import { CENTRAL_OVERVIEW_QUERY_KEY } from "../../overview/queries/overviewQueryKeys";
 import {
   createCentralTenant,
+  deleteCentralTenant,
   updateCentralTenant,
   updateCentralTenantModules,
   updateCentralTenantStatus,
@@ -185,4 +187,43 @@ export function useTenantUpdateMutations({ tenantId, form, message, t, tApiError
   });
 
   return { renameMutation, statusMutation, modulesMutation };
+}
+
+/**
+ * Permanent delete (suspended tenants only). Not optimistic: the schema drop is server-side.
+ *
+ * @param {{
+ *   tenantId: string | null;
+ *   message: import("antd").MessageInstance;
+ *   t: (key: string) => string;
+ *   tApiErrors: (key: string) => string;
+ *   onDeleted: () => void;
+ * }} args
+ */
+export function useTenantDeleteMutation({ tenantId, message, t, tApiErrors, onDeleted }) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (/** @type {string} */ confirmation) =>
+      deleteCentralTenant(/** @type {string} */ (tenantId), confirmation),
+    onError: (err) => {
+      message.error(getLocalizedApiErrorMessage(tApiErrors, err));
+    },
+    onSuccess: () => {
+      if (tenantId != null) {
+        removeIdsFromTenantListCache(queryClient, CENTRAL_TENANTS_LIST_QUERY_KEY, [tenantId]);
+      }
+      message.success(t("deleteSuccess"));
+      onDeleted();
+      if (tenantId != null) {
+        queryClient.removeQueries({ queryKey: centralTenantDetailQueryKey(tenantId), exact: true });
+        queryClient.removeQueries({ queryKey: centralTenantModulesQueryKey(tenantId), exact: true });
+      }
+    },
+    onSettled: () => {
+      invalidateTenantListQueries(queryClient, CENTRAL_TENANTS_LIST_QUERY_KEY);
+      queryClient.invalidateQueries({ queryKey: CENTRAL_OVERVIEW_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: CENTRAL_MODULES_QUERY_KEY });
+    },
+  });
 }

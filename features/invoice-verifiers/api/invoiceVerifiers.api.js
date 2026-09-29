@@ -2,7 +2,7 @@ import { tenantRequest } from "@/lib/axios";
 
 /**
  * Company verifiers (banks, auditors, tax authorities) allowed to attest invoices on chain.
- * Aligns with GET/POST invoice-verifiers, PUT/DELETE invoice-verifiers/{id}, POST invoice-verifiers/{id}/sync.
+ * Aligns with GET/POST invoice-verifiers, GET/PUT/DELETE invoice-verifiers/{id}, POST invoice-verifiers/{id}/sync.
  */
 
 /**
@@ -12,6 +12,8 @@ import { tenantRequest } from "@/lib/axios";
  *   role: "auditor" | "tax_authority" | "financier";
  *   wallet_address: string;
  *   wallet_type: "wallet" | "safe";
+ *   email: string | null;
+ *   phone: string | null;
  *   notes: string | null;
  *   chain_status: "pending" | "active" | "failed" | "removing";
  *   chain_company_wallet: string | null;
@@ -31,7 +33,15 @@ export function fetchInvoiceVerifiers() {
 }
 
 /**
- * @param {{ name: string; role: string; wallet_address: string; wallet_type: "wallet" | "safe"; notes: string | null }} body
+ * @param {string} id
+ * @returns {Promise<InvoiceVerifier>}
+ */
+export function fetchInvoiceVerifier(id) {
+  return tenantRequest("GET", `invoice-verifiers/${encodeURIComponent(id)}`);
+}
+
+/**
+ * @param {{ name: string; role: string; wallet_address: string; wallet_type: "wallet" | "safe"; email: string | null; phone: string | null; notes: string | null }} body
  * @returns {Promise<InvoiceVerifier>}
  */
 export function createInvoiceVerifier(body) {
@@ -40,7 +50,7 @@ export function createInvoiceVerifier(body) {
 
 /**
  * @param {string} id
- * @param {{ name: string; role: string; notes: string | null }} body
+ * @param {{ name: string; role: string; email: string | null; phone: string | null; notes: string | null }} body
  * @returns {Promise<InvoiceVerifier>}
  */
 export function updateInvoiceVerifier(id, body) {

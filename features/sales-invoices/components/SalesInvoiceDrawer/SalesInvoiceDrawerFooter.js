@@ -7,7 +7,8 @@ import {
   invoiceProofStatusTagColor,
 } from "../../utils/invoiceProofStatuses";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
-import { Button, Space, Tag, Tooltip } from "antd";
+import { WarningOutlined } from "@ant-design/icons";
+import { Button, Space, Tag, Tooltip, Typography } from "antd";
 import SalesInvoiceBuyerLinkButton from "./SalesInvoiceBuyerLinkButton";
 import SalesInvoiceProofDisclosureButton from "./SalesInvoiceProofDisclosureButton";
 
@@ -88,6 +89,27 @@ function FooterChainTimes({
   );
 }
 
+/**
+ * @param {{ hint: { text: string; actionLabel?: string; onAction?: () => void } | null }} props
+ */
+function FooterProofHint({ hint }) {
+  if (!hint) return null;
+
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs">
+      <Typography.Text type="warning" className="min-w-0 text-xs">
+        <WarningOutlined className="me-1" />
+        {hint.text}
+      </Typography.Text>
+      {hint.onAction ? (
+        <Button size="small" type="link" className="shrink-0 !px-0 text-xs" onClick={hint.onAction}>
+          {hint.actionLabel}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 function FooterPostedMeta({ t, postedBy, postedAt }) {
   return (
     <div className="sales-invoice-drawer-footer-posted">
@@ -129,6 +151,10 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   chainSupplierWallet?: string | null;
  *   chainBuyerWallet?: string | null;
  *   chainAttestations?: Array<{ verifier: string; role: string; attested_at: string | null }>;
+ *   companyWalletSaved?: boolean | null;
+ *   buyerWalletSaved?: boolean | null;
+ *   onOpenCompanyProfile?: () => void;
+ *   onOpenBuyer?: () => void;
  *   showApproveCompany?: boolean;
  *   approvingCompany?: boolean;
  *   showBuyerLink?: boolean;
@@ -163,6 +189,10 @@ export default function SalesInvoiceDrawerFooter({
   chainSupplierWallet = null,
   chainBuyerWallet = null,
   chainAttestations = [],
+  companyWalletSaved = null,
+  buyerWalletSaved = null,
+  onOpenCompanyProfile,
+  onOpenBuyer,
   showApproveCompany = false,
   approvingCompany = false,
   showBuyerLink = false,
@@ -184,16 +214,31 @@ export default function SalesInvoiceDrawerFooter({
     postDisabled,
   });
 
+  // null "saved" flags mean still loading: no hint until the ERP side is known.
   let proofHint = null;
-  if (proofStatus === "waiting_company" && !chainSupplierWallet) proofHint = t("proofHintCompanyWalletMissing");
-  else if (proofStatus === "waiting_buyer" && !chainBuyerWallet) proofHint = t("proofHintBuyerWalletMissing");
+  if (proofStatus === "waiting_company" && !chainSupplierWallet && companyWalletSaved !== null) {
+    proofHint = companyWalletSaved
+      ? { text: t("proofHintCompanyWalletSyncing") }
+      : {
+          text: t("proofHintCompanyWalletMissing"),
+          actionLabel: t("proofActionOpenCompanyProfile"),
+          onAction: onOpenCompanyProfile,
+        };
+  } else if (proofStatus === "waiting_buyer" && !chainBuyerWallet && buyerWalletSaved !== null) {
+    proofHint = buyerWalletSaved
+      ? { text: t("proofHintBuyerWalletSyncing") }
+      : {
+          text: t("proofHintBuyerWalletMissing"),
+          actionLabel: t("proofActionAddBuyerAddress"),
+          onAction: onOpenBuyer,
+        };
+  }
 
-  let proofTag = proofStatus ? (
-    <Tag className={proofHint ? "shrink-0 cursor-help" : "shrink-0"} color={invoiceProofStatusTagColor(proofStatus)}>
+  const proofTag = proofStatus ? (
+    <Tag className="shrink-0" color={invoiceProofStatusTagColor(proofStatus)}>
       {getInvoiceProofStatusLabel(t, proofStatus)}
     </Tag>
   ) : null;
-  if (proofTag && proofHint) proofTag = <Tooltip title={proofHint}>{proofTag}</Tooltip>;
 
   const verifyControls =
     showVerify || showApproveCompany ? (
@@ -249,6 +294,7 @@ export default function SalesInvoiceDrawerFooter({
               attestations={chainAttestations}
             />
           ) : null}
+          {showVerify ? <FooterProofHint hint={proofHint} /> : null}
         </div>
         <div className="ms-auto flex shrink-0 items-center gap-3">
           {verifyControls}
@@ -280,6 +326,7 @@ export default function SalesInvoiceDrawerFooter({
             attestations={chainAttestations}
           />
         ) : null}
+        {showVerify ? <FooterProofHint hint={proofHint} /> : null}
       </div>
       {showDelete ? (
         <Button className="shrink-0" danger disabled={submitting} onClick={onDelete}>

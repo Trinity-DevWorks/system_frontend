@@ -1,12 +1,11 @@
 "use client";
 
-import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY, salesInvoiceProofQueryKey } from "./salesInvoicesQueryKeys";
+import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY } from "./salesInvoicesQueryKeys";
+import { useSalesInvoiceProofMutations } from "./useSalesInvoiceProofMutations";
 import { STOCK_BALANCES_QUERY_KEY, STOCK_MOVEMENTS_QUERY_KEY } from "@/features/stock/queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { normalizeEntityId } from "@/lib/entityId";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
-import { BuyerApprovalError } from "@/lib/invoice-registry-buyer-approval";
-import { sendSupplierApproval } from "@/lib/invoice-registry-supplier-safe";
 import {
   createSalesInvoice,
   deleteSalesInvoice,
@@ -15,7 +14,6 @@ import {
   reverseSalesInvoice,
   syncSalesInvoiceLines,
   updateSalesInvoice,
-  verifySalesInvoice,
 } from "../api/salesInvoices.api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
@@ -68,39 +66,6 @@ export function useSalesInvoiceDrawerMutations({
     queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
   }, [invalidateList, queryClient]);
-
-  const cacheProof = useCallback(
-    (id, result) => {
-      if (id == null || !result) return;
-      queryClient.setQueryData(salesInvoiceProofQueryKey(id), result);
-    },
-    [queryClient],
-  );
-
-  const notifyManualProofCheck = useCallback(
-    (result) => {
-      const status = result && typeof result === "object" ? result.status : null;
-      if (status === "verified") {
-        message.success(t("verifySuccessVerified"));
-      } else if (status === "tampered") {
-        notification.error({
-          title: t("proofStatusTampered"),
-          description: t("verifySuccessTampered"),
-        });
-      } else if (status === "pending_chain") {
-        message.warning(t("verifySuccessPendingChain"));
-      } else if (status === "waiting_company") {
-        message.info(t("verifySuccessWaitingCompany"));
-      } else if (status === "waiting_buyer") {
-        message.info(t("verifySuccessWaitingBuyer"));
-      } else if (status === "fully_approved") {
-        message.success(t("verifySuccessFullyApproved"));
-      } else {
-        message.warning(t("verifySuccessNotRegistered"));
-      }
-    },
-    [message, notification, t],
-  );
 
   const cacheDetail = useCallback(
     (id, record) => {
@@ -198,80 +163,11 @@ export function useSalesInvoiceDrawerMutations({
     },
   });
 
-  const verifyMutation = useMutation({
-    mutationFn: () => {
-      if (invoiceId == null) throw new Error("Missing sales invoice id");
-      return verifySalesInvoice(invoiceId);
-    },
-    onError: (err) => {
-      notification.error({
-        title: t("verifyError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-    },
-    onSuccess: (result) => {
-      notifyManualProofCheck(result);
-      cacheProof(invoiceId, result);
-    },
-  });
-
-  const approveCompanyMutation = useMutation({
-    mutationFn: async (proof) => {
-      if (invoiceId == null) throw new Error("Missing sales invoice id");
-      const chainId = Number(proof?.chain_id);
-      const contractAddress = typeof proof?.contract_address === "string" ? proof.contract_address : "";
-      const supplierWallet = typeof proof?.supplier_wallet === "string" ? proof.supplier_wallet : "";
-      const eip712 = proof?.eip712 && typeof proof.eip712 === "object" ? proof.eip712 : null;
-      if (
-        !Number.isFinite(chainId) ||
-        chainId <= 0 ||
-        contractAddress === "" ||
-        supplierWallet === "" ||
-        eip712 == null
-      ) {
-        throw new BuyerApprovalError("failed");
-      }
-      const blockchainNetwork =
-        typeof proof?.blockchain_network === "string" ? proof.blockchain_network : null;
-      const safeTxServiceUrl =
-        typeof proof?.safe_tx_service_url === "string" ? proof.safe_tx_service_url : null;
-      const safeApiKey = typeof proof?.safe_api_key === "string" ? proof.safe_api_key : null;
-      const result = await sendSupplierApproval({
-        chainId,
-        contractAddress,
-        supplierWallet,
-        eip712,
-        blockchainNetwork,
-        safeTxServiceUrl,
-        safeApiKey,
-      });
-      if (result.status === "proposed") {
-        return { ...((await verifySalesInvoice(invoiceId)) ?? {}), _companyApprovalProposed: true };
-      }
-      return verifySalesInvoice(invoiceId);
-    },
-    onError: (err) => {
-      const code = err instanceof BuyerApprovalError ? err.code : null;
-      let description = t("approveCompanyError");
-      if (code === "missing_wallet") description = t("approveCompanyWalletMissing");
-      else if (code === "wallet_mismatch" || code === "not_safe_owner")
-        description = t("approveCompanyWalletMismatch");
-      else if (code === "wrong_network") description = t("approveCompanyWrongNetwork");
-      else if (code === "rejected") description = t("approveCompanyRejected");
-      else description = getLocalizedApiErrorMessage(tApiErrors, err) || t("approveCompanyError");
-      notification.error({
-        title: t("approveCompanyError"),
-        description,
-      });
-    },
-    onSuccess: (result) => {
-      if (result && result._companyApprovalProposed) {
-        message.info(t("approveCompanyProposed"));
-      } else {
-        message.success(t("approveCompanySuccess"));
-      }
-      cacheProof(invoiceId, result);
-    },
+  const { verifyMutation, approveCompanyMutation } = useSalesInvoiceProofMutations({
+    message,
+    notification,
+    t,
+    tApiErrors,
   });
 
   const deleteMutation = useMutation({
