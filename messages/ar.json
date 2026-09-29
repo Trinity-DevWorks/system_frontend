@@ -3399,6 +3399,7 @@
       "TENANT_SUSPENDED": "حساب هذه الشركة موقوف. يرجى التواصل مع مسؤول المنصة.",
       "CENTRAL_SUPER_ADMIN_EDIT_FORBIDDEN": "لا يمكن تغيير دور المسؤول الأعلى أو صلاحياته.",
       "CENTRAL_LAST_SUPER_ADMIN_PROTECTED": "يجب أن يبقى مسؤول أعلى نشط واحد على الأقل.",
+      "TENANT_DELETE_REQUIRES_SUSPENSION": "أوقف المستأجر قبل حذفه.",
       "PASSWORD_RESET_FAILED": "تعذّر إعادة تعيين كلمة المرور. قد يكون الرابط غير صالح أو منتهي الصلاحية.",
       "CURRENT_PASSWORD_INVALID": "كلمة المرور الحالية غير صحيحة.",
       "PASSWORD_UNCHANGED": "يجب أن تختلف كلمة المرور الجديدة عن كلمة المرور الحالية.",
@@ -3869,7 +3870,16 @@
     "statusActivateConfirmContent": "سيتمكن \"{name}\" من الدخول مجددًا.",
     "statusConfirmCancel": "إلغاء",
     "statusSuspendSuccess": "تم إيقاف المستأجر.",
-    "statusActivateSuccess": "تمت إعادة تفعيل المستأجر."
+    "statusActivateSuccess": "تمت إعادة تفعيل المستأجر.",
+    "deleteSectionTitle": "حذف المستأجر",
+    "deleteHint": "يحذف نهائيًا قاعدة بيانات المستأجر وملفاته المرفوعة ونطاقاته ووحداته المعيّنة. لا يمكن التراجع عن ذلك.",
+    "deleteRequiresSuspensionHint": "أوقف المستأجر قبل حذفه.",
+    "deleteButton": "حذف المستأجر",
+    "deleteConfirmTitle": "حذف هذا المستأجر نهائيًا؟",
+    "deleteConfirmContent": "سيتم مسح جميع بيانات \"{name}\". سيفقد مستخدموه الوصول ولا يمكن استعادة أي شيء.",
+    "deleteConfirmLabel": "للتأكيد، اكتب معرّف المستأجر:",
+    "deleteConfirmOk": "حذف نهائي",
+    "deleteSuccess": "تم حذف المستأجر."
   },
   "CentralModules": {
     "colCode": "الرمز",

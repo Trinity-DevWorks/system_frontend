@@ -2,7 +2,7 @@
 
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import { withConfirmKeyboard } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
-import { Alert, Button, Descriptions, Input, Typography } from "antd";
+import { Alert, Button, Descriptions, Divider, Input, Typography } from "antd";
 import { useState } from "react";
 import {
   TENANT_STATUS_ACTIVE,
@@ -10,24 +10,41 @@ import {
   isTenantSuspended,
 } from "../../utils/tenantDrawerUtils";
 import { renderTenantStatus } from "../TenantTable/getTenantTableColumns";
+import TenantDeleteModal from "./TenantDeleteModal";
 
 /**
  * Suspend / activate a tenant. Suspending blocks every tenant API call
  * (`TENANT_SUSPENDED`) and revokes the workspace's tokens on the backend.
+ * Permanent delete is only offered once the tenant is suspended.
  *
  * @param {{
  *   record: Record<string, unknown> | null;
  *   canEdit: boolean;
+ *   canDelete: boolean;
  *   saving: boolean;
+ *   deleting: boolean;
  *   onChangeStatus: (body: { status: "active" | "suspended"; reason?: string | null }) => void;
+ *   onDelete: (confirmation: string) => void;
  *   modal: import("antd").ModalStaticFunctions;
  *   t: (key: string, values?: Record<string, unknown>) => string;
  * }} props
  */
-export default function TenantStatusTab({ record, canEdit, saving, onChangeStatus, modal, t }) {
+export default function TenantStatusTab({
+  record,
+  canEdit,
+  canDelete,
+  saving,
+  deleting,
+  onChangeStatus,
+  onDelete,
+  modal,
+  t,
+}) {
   const [reason, setReason] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const suspended = isTenantSuspended(record?.status);
   const name = String(record?.name ?? record?.id ?? "");
+  const tenantId = String(record?.id ?? "");
 
   const confirmSuspend = () => {
     modal.confirm(
@@ -108,6 +125,34 @@ export default function TenantStatusTab({ record, canEdit, saving, onChangeStatu
           </div>
         </div>
       )}
+
+      {canDelete && tenantId !== "" ? (
+        <>
+          <Divider className="!my-1" />
+          <div className="flex flex-col gap-3">
+            <Typography.Text strong type="danger">
+              {t("deleteSectionTitle")}
+            </Typography.Text>
+            <Typography.Paragraph type="secondary" className="!mb-0 text-sm">
+              {suspended ? t("deleteHint") : t("deleteRequiresSuspensionHint")}
+            </Typography.Paragraph>
+            <div className="flex justify-end">
+              <Button danger disabled={!suspended || saving} loading={deleting} onClick={() => setDeleteOpen(true)}>
+                {t("deleteButton")}
+              </Button>
+            </div>
+          </div>
+          <TenantDeleteModal
+            open={deleteOpen}
+            tenantId={tenantId}
+            tenantName={name}
+            deleting={deleting}
+            onCancel={() => setDeleteOpen(false)}
+            onConfirm={onDelete}
+            t={t}
+          />
+        </>
+      ) : null}
     </div>
   );
 }

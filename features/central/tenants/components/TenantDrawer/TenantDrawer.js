@@ -11,7 +11,11 @@ import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { fetchCentralTenant } from "../../api/tenants.api";
-import { useTenantCreateMutation, useTenantUpdateMutations } from "../../queries/useTenantMutations";
+import {
+  useTenantCreateMutation,
+  useTenantDeleteMutation,
+  useTenantUpdateMutations,
+} from "../../queries/useTenantMutations";
 import { CENTRAL_TENANTS_LIST_QUERY_KEY } from "../../queries/tenantsQueryKeys";
 import {
   TENANT_CREATE_DEFAULTS,
@@ -85,7 +89,9 @@ export default function TenantDrawer({ open, mode, tenantId, onClose, onCreated,
     tApiErrors,
   });
 
-  const submitting = createMutation.isPending || renameMutation.isPending;
+  const deleteMutation = useTenantDeleteMutation({ tenantId, message, t, tApiErrors, onDeleted: onClose });
+
+  const submitting = createMutation.isPending || renameMutation.isPending || deleteMutation.isPending;
 
   const shouldConfirmDiscard = useCallback(() => {
     if (readOnly) return false;
@@ -183,8 +189,11 @@ export default function TenantDrawer({ open, mode, tenantId, onClose, onCreated,
         <TenantStatusTab
           record={record}
           canEdit={tenantAccess.canEdit}
+          canDelete={tenantAccess.canDelete}
           saving={statusMutation.isPending}
+          deleting={deleteMutation.isPending}
           onChangeStatus={(body) => statusMutation.mutate(body)}
+          onDelete={(confirmation) => deleteMutation.mutate(confirmation)}
           modal={modal}
           t={t}
         />
@@ -203,7 +212,9 @@ export default function TenantDrawer({ open, mode, tenantId, onClose, onCreated,
     modulesAccess.canEdit,
     modulesMutation,
     tenantAccess.canEdit,
+    tenantAccess.canDelete,
     statusMutation,
+    deleteMutation,
     modal,
   ]);
 

@@ -3399,6 +3399,7 @@
       "TENANT_SUSPENDED": "This company account is suspended. Contact the platform administrator.",
       "CENTRAL_SUPER_ADMIN_EDIT_FORBIDDEN": "The Super Admin role and its permissions cannot be changed.",
       "CENTRAL_LAST_SUPER_ADMIN_PROTECTED": "At least one active Super Admin must remain.",
+      "TENANT_DELETE_REQUIRES_SUSPENSION": "Suspend the tenant before deleting it.",
       "PASSWORD_RESET_FAILED": "Unable to reset password. The link may be invalid or expired.",
       "CURRENT_PASSWORD_INVALID": "The current password is incorrect.",
       "PASSWORD_UNCHANGED": "The new password must be different from your current password.",
@@ -3869,7 +3870,16 @@
     "statusActivateConfirmContent": "\"{name}\" will be able to sign in again.",
     "statusConfirmCancel": "Cancel",
     "statusSuspendSuccess": "Tenant suspended.",
-    "statusActivateSuccess": "Tenant reactivated."
+    "statusActivateSuccess": "Tenant reactivated.",
+    "deleteSectionTitle": "Delete tenant",
+    "deleteHint": "Permanently erases the tenant's database, uploaded files, domains, and module assignments. This cannot be undone.",
+    "deleteRequiresSuspensionHint": "Suspend the tenant before deleting it.",
+    "deleteButton": "Delete tenant",
+    "deleteConfirmTitle": "Delete this tenant permanently?",
+    "deleteConfirmContent": "All data of \"{name}\" will be erased. Its users lose access and nothing can be recovered.",
+    "deleteConfirmLabel": "To confirm, type the tenant id:",
+    "deleteConfirmOk": "Delete permanently",
+    "deleteSuccess": "Tenant deleted."
   },
   "CentralModules": {
     "colCode": "Code",
