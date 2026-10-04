@@ -1,5 +1,6 @@
 "use client";
 
+import { usePlatformBranding } from "@/lib/platform-branding";
 import BrandLogo from "@/shared/components/brand/BrandLogo";
 import { viewCompanyProfileAttachmentBlob } from "../api/companyProfileAttachments.api";
 import { companyLogoPreviewQueryKey } from "../queries/companyProfile";
@@ -9,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Spin } from "antd";
 
 /**
- * Tenant workspace mark: company logo when set, otherwise ERP product logo.
+ * Tenant workspace mark: company logo when set, otherwise the platform logo.
  *
  * @param {{
  *   logo?: { id: string, file_name?: string, mime_type?: string } | null;
@@ -20,10 +21,11 @@ import { Spin } from "antd";
  */
 export default function WorkspaceBrandMark({
   logo = null,
-  alt = "ERP",
+  alt,
   size = 28,
   className = "",
 }) {
+  const { name: platformName } = usePlatformBranding();
   const logoId = logo?.id ? String(logo.id) : null;
 
   const previewQuery = useQuery({
@@ -60,7 +62,7 @@ export default function WorkspaceBrandMark({
     // eslint-disable-next-line @next/next/no-img-element -- blob preview URL
     <img
       src={objectUrl}
-      alt={alt}
+      alt={alt || platformName}
       width={size}
       height={size}
       className={`object-contain ${className}`.trim()}

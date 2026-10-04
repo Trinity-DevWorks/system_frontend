@@ -1,9 +1,9 @@
 import { Inter, Cairo } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { COLOR_MODE_BOOT_SCRIPT, resolvedColorModeFromCookieStore } from "@/lib/color-mode";
-import { SIDEBAR_COLLAPSE_BOOT_SCRIPT } from "@/lib/sidebar-collapse";
+import { resolvedColorModeFromCookieStore } from "@/lib/color-mode";
 import { cookies } from "next/headers";
 import "./globals.css";
+import DocumentBootScripts from "./document-boot-scripts";
 import Providers from "./providers";
 
 const inter = Inter({
@@ -28,12 +28,7 @@ export default async function RootLayout({ children }) {
   return (
     <html lang="en" className={isDark ? "dark" : undefined} suppressHydrationWarning>
       <head>
-        <script
-          dangerouslySetInnerHTML={{ __html: COLOR_MODE_BOOT_SCRIPT }}
-        />
-        <script
-          dangerouslySetInnerHTML={{ __html: SIDEBAR_COLLAPSE_BOOT_SCRIPT }}
-        />
+        <DocumentBootScripts />
       </head>
       <body
         className={`${inter.variable} ${cairo.variable} min-h-full flex flex-col antialiased`}

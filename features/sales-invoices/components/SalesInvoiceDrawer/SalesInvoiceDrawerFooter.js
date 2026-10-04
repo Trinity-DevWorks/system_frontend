@@ -7,8 +7,8 @@ import {
   invoiceProofStatusTagColor,
 } from "../../utils/invoiceProofStatuses";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
-import { WarningOutlined } from "@ant-design/icons";
-import { Button, Space, Tag, Tooltip, Typography } from "antd";
+import { DownOutlined, WarningOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Space, Tag, Tooltip, Typography } from "antd";
 import SalesInvoiceBuyerLinkButton from "./SalesInvoiceBuyerLinkButton";
 import SalesInvoiceProofDisclosureButton from "./SalesInvoiceProofDisclosureButton";
 
@@ -161,7 +161,10 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   buyerLinkInvoiceId?: string | null;
  *   buyerLinkInvoiceNumber?: string | null;
  *   onSave: () => void;
- *   onPost: () => void;
+ *   onPost: (intent?: import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent) => void;
+ *   lastPostIntent: import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent;
+ *   postIntentLabel: (intent: import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent) => string;
+ *   postMenuItems: { key: string; label: string }[];
  *   onDelete: () => void;
  *   onReverse?: () => void;
  *   onVerify?: () => void;
@@ -200,6 +203,9 @@ export default function SalesInvoiceDrawerFooter({
   buyerLinkInvoiceNumber = null,
   onSave,
   onPost,
+  lastPostIntent,
+  postIntentLabel,
+  postMenuItems,
   onDelete,
   onReverse,
   onVerify,
@@ -272,7 +278,8 @@ export default function SalesInvoiceDrawerFooter({
           <SalesInvoiceProofDisclosureButton
             invoiceId={buyerLinkInvoiceId}
             invoiceNumber={buyerLinkInvoiceNumber}
-            disabled={submitting}
+            disabled={submitting || proofStatus === "tampered"}
+            disabledReason={proofStatus === "tampered" ? t("shareProofDisabledTampered") : null}
           />
         ) : null}
       </>
@@ -345,15 +352,34 @@ export default function SalesInvoiceDrawerFooter({
         >
           {t("drawerSave")}
         </Button>
-        <Button
-          type="primary"
-          disabled={postDisabled || submitting}
-          loading={submitting}
-          onClick={onPost}
-          title={`${t("actionPost")} (Ctrl+Shift+Enter)`}
-        >
-          {t("actionPost")}
-        </Button>
+        <Space.Compact className="rounded-md shadow-sm ring-1 ring-black/10 dark:ring-white/15">
+          <Button
+            type="primary"
+            disabled={postDisabled || submitting}
+            loading={submitting}
+            onClick={() => onPost(lastPostIntent)}
+            title={`${postIntentLabel(lastPostIntent)} (Ctrl+Shift+Enter)`}
+          >
+            {postIntentLabel(lastPostIntent)}
+          </Button>
+          <Dropdown
+            trigger={["click"]}
+            disabled={postDisabled || submitting}
+            menu={{
+              items: postMenuItems,
+              onClick: ({ key }) =>
+                onPost(/** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent} */ (key)),
+            }}
+          >
+            <Button
+              type="primary"
+              icon={<DownOutlined />}
+              loading={submitting}
+              disabled={postDisabled || submitting}
+              aria-label={t("actionPostMenu")}
+            />
+          </Dropdown>
+        </Space.Compact>
       </Space>
     </div>
   );

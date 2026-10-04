@@ -7,6 +7,7 @@ import {
 } from "./lib/locale-path";
 import { CENTRAL_TOKEN_KEY, TENANT_TOKEN_KEY } from "./lib/auth-constants";
 import { resolveHostMode } from "./lib/runtime-mode";
+import { getServerCentralApiBase } from "./lib/server/centralApiBase";
 import { routing } from "./i18n/routing";
 
 const intlMiddleware = createMiddleware(routing);
@@ -167,16 +168,7 @@ export default async function proxy(request) {
   const currentLocale = getLocaleFromPathname(pathname);
   const barePath = pathnameWithoutLocalePrefix(pathname);
 
-  const isDevelopment = process.env.NODE_ENV === "development";
-  const EXPLICIT_BASE = process.env.NEXT_PUBLIC_CENTRAL_API_BASE;
-  const API_PORT = process.env.NEXT_PUBLIC_CENTRAL_API_PORT || "8000";
- const DEV_CENTRAL_DOMAIN = process.env.NEXT_PUBLIC_CENTRAL_DOMAIN || "app.localhost";
-  const centralApiBase =
-    EXPLICIT_BASE && EXPLICIT_BASE.trim().length > 0
-      ? EXPLICIT_BASE.replace(/\/$/, "")
-      : isDevelopment
-      ? `http://${DEV_CENTRAL_DOMAIN}:${API_PORT}/api`
-        : `http://backend:8000/api`;
+  const centralApiBase = getServerCentralApiBase();
 
   const hostMode = resolveHostMode(effectiveHost);
   /** Same reserved labels as `lib/runtime-mode.js` (e.g. `www.localhost` is central, not tenant `www`). */

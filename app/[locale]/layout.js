@@ -2,6 +2,9 @@ import {
   colorModeFromCookieStore,
   resolvedColorModeFromCookieStore,
 } from "@/lib/color-mode";
+import { PlatformBrandingProvider } from "@/lib/platform-branding";
+import { FALLBACK_PLATFORM_LOGO, platformLogoUrl } from "@/lib/platform-branding-shape";
+import { fetchPlatformBranding } from "@/lib/server/fetchPlatformBranding";
 import AntdAppProvider from "@/shared/components/AntdAppProvider";
 import LocaleHtmlLang from "@/shared/components/LocaleHtmlLang";
 import { routing } from "@/i18n/routing";
@@ -18,10 +21,12 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Metadata" });
+  const branding = await fetchPlatformBranding();
 
   return {
-    title: t("title"),
+    title: branding.name,
     description: t("description"),
+    icons: { icon: platformLogoUrl(branding) ?? FALLBACK_PLATFORM_LOGO },
   };
 }
 
@@ -37,16 +42,19 @@ export default async function LocaleLayout({ children, params }) {
   const jar = await cookies();
   const initialColorMode = colorModeFromCookieStore(jar);
   const initialResolvedColorMode = resolvedColorModeFromCookieStore(jar);
+  const branding = await fetchPlatformBranding();
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <AntdAppProvider
-        initialColorMode={initialColorMode}
-        initialResolvedColorMode={initialResolvedColorMode}
-      >
-        <LocaleHtmlLang />
-        {children}
-      </AntdAppProvider>
+      <PlatformBrandingProvider initialBranding={branding}>
+        <AntdAppProvider
+          initialColorMode={initialColorMode}
+          initialResolvedColorMode={initialResolvedColorMode}
+        >
+          <LocaleHtmlLang />
+          {children}
+        </AntdAppProvider>
+      </PlatformBrandingProvider>
     </NextIntlClientProvider>
   );
 }

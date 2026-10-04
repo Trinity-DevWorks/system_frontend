@@ -3,7 +3,7 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
-import { SALES_INVOICE_DETAIL_QUERY_PREFIX, salesInvoiceProofQueryKey } from "../../queries/salesInvoicesQueryKeys";
+import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY, salesInvoiceProofQueryKey } from "../../queries/salesInvoicesQueryKeys";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -25,6 +25,10 @@ import {
   useSalesInvoiceDrawerKeyboard,
 } from "./salesInvoiceDrawerKeyboard";
 import { isSalesInvoiceDraft, isSalesInvoicePosted } from "../../utils/salesInvoiceStatuses";
+import {
+  INVOICE_CHAIN_PENDING_POLL_MS,
+  isInvoiceChainPending,
+} from "../../utils/invoiceProofStatuses";
 import SalesInvoiceDrawerFooter from "./SalesInvoiceDrawerFooter";
 import SalesInvoiceDrawerForm from "./SalesInvoiceDrawerForm";
 import SalesInvoiceDrawerHeaderMeta from "./SalesInvoiceDrawerHeaderMeta";
@@ -54,7 +58,12 @@ import { useSalesInvoiceDrawerData } from "../../queries/useSalesInvoiceDrawerDa
 import { useSalesInvoiceDrawerMutations } from "../../queries/useSalesInvoiceDrawerMutations";
 import { tenantPricesIncludeTax, useCompanySettings } from "@/lib/company-settings";
 import { withConfirmKeyboard } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
+import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { SALES_INVOICE_CUSTOMER_RECENT_KIND } from "../../api/salesInvoiceSelectors.api";
+import {
+  SALES_INVOICE_POST_INTENT_EVENT,
+  SALES_INVOICE_POST_INTENT_KEY,
+} from "../../utils/salesInvoicePostIntent";
 
 /**
  * @param {{
@@ -65,6 +74,7 @@ import { SALES_INVOICE_CUSTOMER_RECENT_KIND } from "../../api/salesInvoiceSelect
  *   createSeed?: { header?: Record<string, unknown>; lines?: Array<Record<string, unknown>> } | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onPostAndNew?: () => void;
  * }} props
  */
 export default function SalesInvoiceDrawer({
@@ -75,6 +85,7 @@ export default function SalesInvoiceDrawer({
   createSeed = null,
   onClose,
   onCreated,
+  onPostAndNew,
 }) {
   const t = useTranslations("SalesInvoices");
   const tApiErrors = useTranslations("ApiErrors");
@@ -254,8 +265,23 @@ export default function SalesInvoiceDrawer({
     enabled: proofEnabled,
     staleTime: QUERY_STALE_TIME.ledger,
     refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const status = data && typeof data === "object" ? data.status : null;
+      return isInvoiceChainPending(status) ? INVOICE_CHAIN_PENDING_POLL_MS : false;
+    },
   });
   const proofResult = proofEnabled && proofQuery.data && typeof proofQuery.data === "object" ? proofQuery.data : null;
+  const proofStatus = typeof proofResult?.status === "string" ? proofResult.status : null;
+  const previousProofStatusRef = useRef(/** @type {string | null} */ (null));
+
+  useEffect(() => {
+    const previous = previousProofStatusRef.current;
+    previousProofStatusRef.current = proofStatus;
+    if (previous != null && isInvoiceChainPending(previous) && proofStatus && !isInvoiceChainPending(proofStatus)) {
+      queryClient.invalidateQueries({ queryKey: SALES_INVOICES_QUERY_KEY });
+    }
+  }, [proofStatus, queryClient]);
 
   const invoiceCustomer =
     detailQuery.data?.customer && typeof detailQuery.data.customer === "object" ? detailQuery.data.customer : null;
@@ -273,14 +299,14 @@ export default function SalesInvoiceDrawer({
       tamperedToastKeyRef.current = null;
       return;
     }
-    if (!invoiceProofAccess.canView || invoiceId == null || proofResult?.status !== "tampered") return;
+    if (!invoiceProofAccess.canView || invoiceId == null || proofStatus !== "tampered") return;
     if (tamperedToastKeyRef.current === invoiceId) return;
     tamperedToastKeyRef.current = invoiceId;
     notification.error({
       title: t("proofStatusTampered"),
       description: t("verifySuccessTampered"),
     });
-  }, [open, invoiceId, invoiceProofAccess.canView, proofResult?.status, notification, t]);
+  }, [open, invoiceId, invoiceProofAccess.canView, proofStatus, notification, t]);
 
   const formValuesWatch = Form.useWatch([], form);
   const customerId = formValuesWatch?.customer_id ?? null;
@@ -535,6 +561,7 @@ export default function SalesInvoiceDrawer({
     onReversed: syncBaselinesFromRecordAndBump,
     onDeleted: forceClose,
     onClose: forceClose,
+    onPostAndNew,
   });
 
   const currentValues = useMemo(
@@ -624,22 +651,52 @@ export default function SalesInvoiceDrawer({
       .catch(() => {});
   }, [form, saveMutation]);
 
-  const handlePost = useCallback(() => {
-    form
-      .validateFields()
-      .then((values) => {
-        modal.confirm(
-          withConfirmKeyboard({
-            title: t("postConfirmTitle"),
-            content: t("postConfirmContent"),
-            okText: t("postConfirmOk"),
-            cancelText: t("drawerCancel"),
-            onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
-          }),
-        );
-      })
-      .catch(() => {});
-  }, [form, modal, t, postMutation]);
+  const lastPostIntent = usePersistedSaveIntent(
+    SALES_INVOICE_POST_INTENT_KEY,
+    SALES_INVOICE_POST_INTENT_EVENT,
+  );
+
+  const postIntentLabel = useCallback(
+    (/** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent} */ intent) => {
+      if (intent === "keep") return t("actionPost");
+      if (intent === "new") return t("actionPostAndNew");
+      return t("actionPostAndClose");
+    },
+    [t],
+  );
+
+  const postMenuItems = useMemo(
+    () =>
+      /** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent[]} */ ([
+        "keep",
+        "new",
+        "close",
+      ])
+        .filter((key) => key !== lastPostIntent)
+        .map((key) => ({ key, label: postIntentLabel(key) })),
+    [lastPostIntent, postIntentLabel],
+  );
+
+  const handlePost = useCallback(
+    (/** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent} */ intent = lastPostIntent) => {
+      const postIntent = intent === "keep" || intent === "new" || intent === "close" ? intent : "close";
+      form
+        .validateFields()
+        .then((values) => {
+          modal.confirm(
+            withConfirmKeyboard({
+              title: t("postConfirmTitle"),
+              content: t("postConfirmContent"),
+              okText: t("postConfirmOk"),
+              cancelText: t("drawerCancel"),
+              onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values, intent: postIntent })),
+            }),
+          );
+        })
+        .catch(() => {});
+    },
+    [form, modal, t, postMutation, lastPostIntent],
+  );
 
   const handleReverse = useCallback(() => {
     modal.confirm(
@@ -812,7 +869,7 @@ export default function SalesInvoiceDrawer({
           postedAt={loadedPostedAt}
           showVerify={showProofView}
           verifying={verifyMutation.isPending || (proofQuery.isFetching && !proofResult)}
-          proofStatus={typeof proofResult?.status === "string" ? proofResult.status : null}
+          proofStatus={proofStatus}
           chainRegisteredAt={typeof proofResult?.registered_at === "string" ? proofResult.registered_at : null}
           chainSupplierApprovedAt={
             typeof proofResult?.supplier_approved_at === "string" ? proofResult.supplier_approved_at : null
@@ -840,6 +897,9 @@ export default function SalesInvoiceDrawer({
           buyerLinkInvoiceNumber={loadedNumber}
           onSave={handleSave}
           onPost={handlePost}
+          lastPostIntent={lastPostIntent}
+          postIntentLabel={postIntentLabel}
+          postMenuItems={postMenuItems}
           onDelete={handleDelete}
           onVerify={() => {
             if (invoiceId != null) verifyMutation.mutate(invoiceId);

@@ -44,6 +44,7 @@ function Mono({ value }) {
  *   proofId: string;
  *   contentHash: string;
  *   invoiceNumber?: string | null;
+ *   focus?: "wallet" | "sign";
  *   onStageChange?: (stage: "wallet" | "review" | "done") => void;
  * }} props
  */
@@ -53,6 +54,7 @@ export default function InvoiceProofAttestationsPanel({
   proofId,
   contentHash,
   invoiceNumber = null,
+  focus = "wallet",
   onStageChange,
 }) {
   const t = useTranslations("InvoiceProofDisclosure");
@@ -77,6 +79,14 @@ export default function InvoiceProofAttestationsPanel({
   const [outcome, setOutcome] = useState(
     /** @type {Awaited<ReturnType<typeof sendAttestation>> | null} */ (null),
   );
+
+  /**
+   * @param {"wallet" | "review" | "done"} next
+   */
+  const moveTo = (next) => {
+    setStage(next);
+    onStageChange?.(next);
+  };
 
   useEffect(() => {
     onStageChange?.(stage);
@@ -120,7 +130,7 @@ export default function InvoiceProofAttestationsPanel({
         onStage: setProgress,
       });
       setOutcome(sent);
-      setStage("done");
+      moveTo("done");
       if (sent.status === "executed") await attestationsQuery.refetch();
     } catch (err) {
       message.error(t(`attestErrors.${attestationErrorCode(err)}`));
@@ -133,7 +143,7 @@ export default function InvoiceProofAttestationsPanel({
   const resetWallet = () => {
     setVerifier(null);
     setSafeAddress("");
-    setStage("wallet");
+    moveTo("wallet");
   };
 
   const renderEligibility = () => {
@@ -204,7 +214,7 @@ export default function InvoiceProofAttestationsPanel({
         <div className="flex flex-wrap justify-end gap-2">
           <Button onClick={resetWallet}>{verifier.safeAddress ? t("attestUseWallet") : t("attestCheckAgain")}</Button>
           {!verifier.blocker ? (
-            <Button type="primary" onClick={() => setStage("review")}>
+            <Button type="primary" onClick={() => moveTo("review")}>
               {t("attestContinue")}
             </Button>
           ) : null}
@@ -275,7 +285,7 @@ export default function InvoiceProofAttestationsPanel({
               {t(`attestProgress.${progress}`)}
             </Typography.Text>
           ) : null}
-          <Button disabled={busy === "submit"} onClick={() => setStage("wallet")}>
+          <Button disabled={busy === "submit"} onClick={() => moveTo("wallet")}>
             {t("attestBack")}
           </Button>
           <Button type="primary" loading={busy === "submit"} onClick={handleSubmit}>
@@ -319,6 +329,15 @@ export default function InvoiceProofAttestationsPanel({
     );
   };
 
+  if (focus === "sign") {
+    return (
+      <div className="flex flex-col gap-3">
+        {stage === "done" ? renderOutcome() : null}
+        {stage === "review" ? renderReview() : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <Typography.Title level={5} className="!mb-0">
@@ -357,9 +376,7 @@ export default function InvoiceProofAttestationsPanel({
 
       <div className="flex flex-col gap-3 rounded-lg border border-[var(--ant-color-border-secondary)] p-4">
         <Typography.Text strong>{t("attestAsVerifier")}</Typography.Text>
-        {stage === "done" ? renderOutcome() : null}
-        {stage === "review" ? renderReview() : null}
-        {stage === "wallet" && verifier ? renderEligibility() : null}
+        {verifier ? renderEligibility() : null}
         {stage === "wallet" && !verifier ? (
           <>
             <Typography.Text type="secondary" className="text-sm">

@@ -22,6 +22,7 @@ import {
   salesInvoiceCreatePayload,
   salesInvoiceHeaderToPayload,
 } from "../utils/salesInvoiceDrawerUtils";
+import { persistSalesInvoicePostIntent } from "../utils/salesInvoicePostIntent";
 
 /**
  * @param {{
@@ -38,6 +39,7 @@ import {
  *   onReversed?: (record: Record<string, unknown>) => void;
  *   onDeleted?: () => void;
  *   onClose?: () => void;
+ *   onPostAndNew?: () => void;
  * }} args
  */
 export function useSalesInvoiceDrawerMutations({
@@ -54,6 +56,7 @@ export function useSalesInvoiceDrawerMutations({
   onReversed,
   onDeleted,
   onClose,
+  onPostAndNew,
 }) {
   const queryClient = useQueryClient();
 
@@ -130,15 +133,24 @@ export function useSalesInvoiceDrawerMutations({
         });
       }
     },
-    onSuccess: (record) => {
+    onSuccess: (record, variables) => {
+      const intent = variables?.intent === "keep" || variables?.intent === "new" ? variables.intent : "close";
+      persistSalesInvoicePostIntent(intent);
       message.success(t("postSuccess"));
       invalidateAfterPost();
       const id = normalizeEntityId(record?.id ?? invoiceId);
       if (id != null) cacheDetail(id, record);
-      if (invoiceId == null) {
-        onCreated?.(/** @type {Record<string, unknown>} */ (record));
-      }
       onPosted?.(/** @type {Record<string, unknown>} */ (record));
+      if (intent === "keep") {
+        if (invoiceId == null) {
+          onCreated?.(/** @type {Record<string, unknown>} */ (record));
+        }
+        return;
+      }
+      if (intent === "new") {
+        onPostAndNew?.();
+        return;
+      }
       onClose?.();
     },
   });

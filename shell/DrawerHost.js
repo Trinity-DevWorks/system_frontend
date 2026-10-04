@@ -193,6 +193,9 @@ export default function DrawerHost({ drawerRegistry, access }) {
     if (targetFeatureId === "items") {
       extras.onSaveAndNew = handleSaveAndNew;
     }
+    if (targetFeatureId === "salesInvoices") {
+      extras.onPostAndNew = handleSaveAndNew;
+    }
 
     const tableSeed =
       sessionMatches && parsed.mode !== "create" && session.seed && typeof session.seed === "object"

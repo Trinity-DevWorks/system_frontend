@@ -14,11 +14,14 @@
 
 import {
   AppstoreOutlined,
+  BankOutlined,
+  ControlOutlined,
   DashboardOutlined,
   HistoryOutlined,
   KeyOutlined,
   LockOutlined,
   SafetyCertificateOutlined,
+  SettingOutlined,
   ShopOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
@@ -30,6 +33,7 @@ export const CENTRAL_NAV_SECTIONS = [
   { id: "overview", labelKey: "navOverview", icon: DashboardOutlined, leaf: true },
   { id: "platform", labelKey: "navPlatform", icon: ShopOutlined },
   { id: "administration", labelKey: "navAdministration", icon: SafetyCertificateOutlined },
+  { id: "settings", labelKey: "navSettings", icon: SettingOutlined, placement: "footer", matchPath: "/central/settings" },
 ];
 
 /**
@@ -45,6 +49,9 @@ export const CENTRAL_FEATURES = [
   { id: "centralRoles", path: "/central/roles", section: "administration", labelKey: "navRoles", icon: KeyOutlined, permission: "roles" },
   { id: "centralPermissions", path: "/central/permissions", section: "administration", labelKey: "navPermissions", icon: LockOutlined, permission: "permissions" },
   { id: "centralAuditLog", path: "/central/audit-log", section: "administration", labelKey: "navAuditLog", icon: HistoryOutlined, permission: "audits" },
+
+  { id: "centralSettingsCompanyProfile", path: "/central/settings/company-profile", section: "settings", labelKey: "navCompanyProfile", icon: BankOutlined, permission: "platform_profile" },
+  { id: "centralSettingsCompanySettings", path: "/central/settings/company-settings", section: "settings", labelKey: "navCompanySettings", icon: ControlOutlined, permission: "platform_settings" },
 
   // Reached from the header avatar menu; every signed-in central user may edit their own profile.
   { id: "centralProfile", path: "/central/profile", section: "administration", nav: false },

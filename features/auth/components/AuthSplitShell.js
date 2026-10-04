@@ -10,6 +10,7 @@ import {
   SettingOutlined,
   SunOutlined,
 } from "@ant-design/icons";
+import { usePlatformBranding } from "@/lib/platform-branding";
 import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import { Button, Dropdown, Space, theme } from "antd";
 import { useLocale, useTranslations } from "next-intl";
@@ -26,6 +27,7 @@ const shellIconBtnClass =
  *   children: import("react").ReactNode;
  *   scrollable?: boolean;
  *   documentLayout?: boolean;
+ *   wide?: boolean;
  * }} props
  */
 export default function AuthSplitShell({
@@ -34,6 +36,7 @@ export default function AuthSplitShell({
   children,
   scrollable = false,
   documentLayout = false,
+  wide = false,
 }) {
   const t = useTranslations("Login");
   const tShell = useTranslations("Shell");
@@ -42,6 +45,7 @@ export default function AuthSplitShell({
   const router = useRouter();
   const { setColorMode, colorMode, resolvedColorMode } = useThemeMode();
   const { token } = theme.useToken();
+  const { name: platformName } = usePlatformBranding();
   const isDark = resolvedColorMode === "dark";
 
   const languageMenuItems = useMemo(
@@ -148,7 +152,7 @@ export default function AuthSplitShell({
       <div
         className={
           documentLayout
-            ? "relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-16 sm:px-6"
+            ? `relative z-10 mx-auto flex w-full flex-1 flex-col px-4 py-16 sm:px-6 ${wide ? "max-w-6xl" : "max-w-3xl"}`
             : scrollable
               ? "relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-start gap-8 px-4 py-8 md:grid-cols-[1fr_1.22fr]"
               : "relative z-10 mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-center gap-8 px-4 py-16 md:grid-cols-[1fr_1.22fr] md:py-8"
@@ -156,14 +160,13 @@ export default function AuthSplitShell({
       >
         {documentLayout ? (
         <div className="login-anim-in mb-6">
-          <div className="login-brand-wordmark" dir="ltr" lang="en">
+          <div className="login-brand-wordmark" dir="ltr">
             <div className="login-brand-wordmark-row">
               <span className="login-brand-mark" aria-hidden>
                 <span />
                 <span />
               </span>
-              <span className="login-brand-mena">{t("brandMena")}</span>
-              <span className="login-brand-solutions">{t("brandSolutions")}</span>
+              <span className="login-brand-name" dir="auto">{platformName}</span>
             </div>
             <span className="login-brand-wordmark-rule" aria-hidden />
           </div>
@@ -182,14 +185,13 @@ export default function AuthSplitShell({
                 ),
               })}
             </h1>
-            <div className="login-brand-wordmark" dir="ltr" lang="en">
+            <div className="login-brand-wordmark" dir="ltr">
               <div className="login-brand-wordmark-row">
                 <span className="login-brand-mark" aria-hidden>
                   <span />
                   <span />
                 </span>
-                <span className="login-brand-mena">{t("brandMena")}</span>
-                <span className="login-brand-solutions">{t("brandSolutions")}</span>
+                <span className="login-brand-name" dir="auto">{platformName}</span>
               </div>
               <span className="login-brand-wordmark-rule" aria-hidden />
             </div>

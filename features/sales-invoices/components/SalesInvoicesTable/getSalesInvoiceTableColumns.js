@@ -76,9 +76,12 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
       });
     }
     if (onShareProof) {
+      const shareBlocked = record?.chain_status?.status === "tampered";
       items.push({
         key: "proof-share",
         icon: <ShareAltOutlined />,
+        disabled: shareBlocked,
+        title: shareBlocked ? t("shareProofDisabledTampered") : undefined,
         label: t("actionShareProof"),
         onClick: () => onShareProof(record),
       });

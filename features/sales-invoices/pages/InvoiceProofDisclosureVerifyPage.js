@@ -6,7 +6,7 @@ import { readOnChainContentHash, verifyDisclosureBundle } from "@/lib/invoice-pr
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { App, Alert, Button, Descriptions, Steps, Tag, Typography, Upload } from "antd";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 /**
  * @param {unknown} value
@@ -27,6 +27,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   const [result, setResult] = useState(/** @type {ReturnType<typeof verifyDisclosureBundle> | null} */ (null));
   const [chainState, setChainState] = useState(/** @type {"idle" | "checking" | "match" | "mismatch" | "missing"} */ ("idle"));
   const [attestStage, setAttestStage] = useState(/** @type {"wallet" | "review" | "done"} */ ("wallet"));
+  const [screen, setScreen] = useState(0);
 
   const mode = resolveHostMode(initialHost);
   const tenantLabel = mode.tenantSlug
@@ -42,6 +43,8 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
       const parsed = JSON.parse(await file.text());
       setResult(verifyDisclosureBundle(parsed));
       setBundle(parsed);
+      setAttestStage("wallet");
+      setScreen(1);
     } catch {
       setBundle(null);
       setResult(null);
@@ -74,26 +77,19 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   const invoiceNumberField = result?.fields.find((field) => field.path === "invoice_number" && field.ok);
   const invoiceNumber = typeof invoiceNumberField?.value === "string" ? invoiceNumberField.value : null;
 
-  let currentStep = 0;
+  const handleAttestStage = useCallback((/** @type {"wallet" | "review" | "done"} */ stage) => {
+    setAttestStage(stage);
+    setScreen(stage === "wallet" ? 3 : 4);
+  }, []);
+
   /** @type {"process" | "error" | "finish"} */
   let stepStatus = "process";
-  if (result && bundle) {
-    if (!result.valid) {
-      currentStep = 1;
-      stepStatus = "error";
-    } else if (chainState !== "match") {
-      currentStep = 2;
-      if (chainState === "mismatch" || chainState === "missing") stepStatus = "error";
-    } else if (attestStage === "done") {
-      currentStep = 4;
-      stepStatus = "finish";
-    } else {
-      currentStep = attestStage === "review" ? 4 : 3;
-    }
-  }
+  if (screen === 1 && result && !result.valid) stepStatus = "error";
+  if (screen === 2 && (chainState === "mismatch" || chainState === "missing")) stepStatus = "error";
+  if (screen === 4 && attestStage === "done") stepStatus = "finish";
 
   return (
-    <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout>
+    <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout wide>
       <div className="mb-6">
         <Typography.Title level={3} className="!mb-1 !mt-0">
           {t("verifyTitle")}
@@ -106,7 +102,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
       <Steps
         className="!mb-6"
         size="small"
-        current={currentStep}
+        current={screen}
         status={stepStatus}
         items={[
           { title: t("verifyStepFile") },
@@ -117,12 +113,14 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
         ]}
       />
 
-      <Upload.Dragger accept=".json,application/json" multiple={false} showUploadList={false} beforeUpload={handleFile}>
-        <p className="m-0 py-4">{t("verifyDrop")}</p>
-      </Upload.Dragger>
+      {screen === 0 ? (
+        <Upload.Dragger accept=".json,application/json" multiple={false} showUploadList={false} beforeUpload={handleFile}>
+          <p className="m-0 py-4">{t("verifyDrop")}</p>
+        </Upload.Dragger>
+      ) : null}
 
-      {result && bundle ? (
-        <div className="mt-6 flex flex-col gap-4">
+      {screen === 1 && result && bundle ? (
+        <div className="flex flex-col gap-4">
           <Alert
             type={result.valid ? "success" : "error"}
             showIcon
@@ -161,6 +159,17 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
             ))}
           </div>
 
+          <div className="flex justify-between gap-2">
+            <Button onClick={() => setScreen(0)}>{t("verifyBack")}</Button>
+            <Button type="primary" disabled={!result.valid} onClick={() => setScreen(2)}>
+              {t("verifyContinue")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {screen === 2 && result && bundle ? (
+        <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
             <Typography.Text type="secondary" className="text-sm">
               {chainReady ? t("verifyChainHint") : t("verifyNoChain")}
@@ -176,18 +185,34 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
           </div>
 
           {chainState === "match" ? <Alert type="success" showIcon title={t("verifyChainMatch")} /> : null}
-          {chainState === "match" ? (
-            <InvoiceProofAttestationsPanel
-              chainId={Number(bundle.chain_id)}
-              contractAddress={String(bundle.contract_address ?? "")}
-              proofId={String(bundle.proof_id ?? "")}
-              contentHash={result.contentHash}
-              invoiceNumber={invoiceNumber}
-              onStageChange={setAttestStage}
-            />
-          ) : null}
           {chainState === "mismatch" ? <Alert type="error" showIcon title={t("verifyChainMismatch")} /> : null}
           {chainState === "missing" ? <Alert type="warning" showIcon title={t("verifyChainMissing")} /> : null}
+
+          <div className="flex justify-between gap-2">
+            <Button onClick={() => setScreen(1)}>{t("verifyBack")}</Button>
+            <Button type="primary" disabled={chainState !== "match"} onClick={() => setScreen(3)}>
+              {t("verifyContinue")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {screen >= 3 && result && bundle && chainState === "match" ? (
+        <div className="flex flex-col gap-4">
+          <InvoiceProofAttestationsPanel
+            chainId={Number(bundle.chain_id)}
+            contractAddress={String(bundle.contract_address ?? "")}
+            proofId={String(bundle.proof_id ?? "")}
+            contentHash={result.contentHash}
+            invoiceNumber={invoiceNumber}
+            focus={screen === 4 ? "sign" : "wallet"}
+            onStageChange={handleAttestStage}
+          />
+          {screen === 3 ? (
+            <div className="flex justify-start">
+              <Button onClick={() => setScreen(2)}>{t("verifyBack")}</Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </AuthSplitShell>
