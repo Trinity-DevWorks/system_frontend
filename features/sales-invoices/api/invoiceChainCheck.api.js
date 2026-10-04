@@ -16,6 +16,7 @@ import { tenantRequest } from "@/lib/axios";
  *     | "status_out_of_sync"
  *     | "registration_stuck"
  *     | "not_submitted"
+ *     | "not_revoked"
  *     | "unknown_on_chain";
  *   proof_id: string | null;
  *   chain_proof_id: string | null;

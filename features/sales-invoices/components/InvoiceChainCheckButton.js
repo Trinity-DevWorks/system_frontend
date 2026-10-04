@@ -86,7 +86,11 @@ export default function InvoiceChainCheckButton({ canRun, onOpenInvoice }) {
       key: "kind",
       render: (kind) => (
         <Tooltip title={t(`kinds.${kind}.hint`)}>
-          <Tag color={kind === "registration_stuck" || kind === "not_submitted" ? "warning" : "error"}>
+          <Tag
+            color={
+              kind === "registration_stuck" || kind === "not_submitted" || kind === "not_revoked" ? "warning" : "error"
+            }
+          >
             {t(`kinds.${kind}.label`)}
           </Tag>
         </Tooltip>

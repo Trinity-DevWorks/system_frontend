@@ -533,6 +533,10 @@
         "label": "Never sent",
         "hint": "The invoice was sealed but never sent to the blockchain. It was sent now."
       },
+      "not_revoked": {
+        "label": "Not cancelled on blockchain",
+        "hint": "The invoice was reversed in the ERP, but the blockchain still shows it as valid. The cancellation was sent again."
+      },
       "unknown_on_chain": {
         "label": "Unknown to ERP",
         "hint": "An invoice was registered on the blockchain for this company's wallet, but the ERP has no matching sealed invoice."
@@ -3212,6 +3216,7 @@
     "proofStatusWaitingCompany": "Needs your approval",
     "proofStatusWaitingBuyer": "Waiting for the buyer",
     "proofStatusFullyApproved": "Fully approved",
+    "proofStatusRevoked": "Revoked",
     "proofHintCompanyWalletMissing": "The company has no wallet or Safe address yet, so you can't approve this invoice.",
     "proofHintCompanyWalletSyncing": "The company address is saved and is being added to this invoice on the blockchain. Press Refresh in a moment.",
     "proofHintBuyerWalletMissing": "This customer has no wallet or Safe address yet, so the buyer can't approve this invoice.",
@@ -3345,6 +3350,7 @@
     "verifySuccessWaitingCompany": "Proof is on chain. Waiting for company approval.",
     "verifySuccessWaitingBuyer": "Company approved. Waiting for the buyer to approve.",
     "verifySuccessFullyApproved": "Company and buyer have both approved this invoice.",
+    "verifySuccessRevoked": "This invoice is cancelled on the blockchain. Its seal still matches, but it can no longer be approved or financed.",
     "verifyError": "Could not verify the invoice proof.",
     "approveCompanySuccess": "Invoice approved.",
     "approveCompanyProposed": "Proposed on the company Safe. Other owners must confirm before it executes.",
@@ -3402,6 +3408,8 @@
     "verifyChainMatch": "The seal matches the blockchain record.",
     "verifyChainMismatch": "The seal does not match the blockchain record.",
     "verifyChainMissing": "This proof is not registered on the blockchain.",
+    "verifyChainRevoked": "The supplier cancelled this invoice on the blockchain.",
+    "verifyChainRevokedHint": "The fields still match the sealed hash, but the invoice is no longer valid and cannot be approved or financed.",
     "verifyWalletMissing": "Connect a wallet in the browser to read the blockchain.",
     "verifyWrongNetwork": "Switch your wallet to the network in this file, then try again.",
     "verifyChainError": "Could not read the blockchain record.",
@@ -3437,7 +3445,8 @@
       "not_registered": "Not registered",
       "registered": "Registered",
       "supplier_approved": "Approved by the supplier",
-      "fully_approved": "Approved by the supplier and the buyer"
+      "fully_approved": "Approved by the supplier and the buyer",
+      "revoked": "Cancelled by the supplier"
     },
     "attestEligible": "You can attest this invoice as {role}.",
     "attestSafeIntro": "Not listed with this wallet? If the supplier listed a Safe you own, enter it here.",
@@ -3478,6 +3487,7 @@
       "already_attested": "Nothing more to do. Your attestation is listed above.",
       "already_financed": "Only one financier can finance an invoice.",
       "buyer_not_approved": "Come back after the buyer approves the invoice.",
+      "revoked": "Nothing to attest. Ask the supplier for the corrected invoice.",
       "invalid_safe": "Check the Safe address and the network.",
       "not_safe_owner": "Connect a wallet that owns this Safe.",
       "pending_confirmations": "Ask the other Safe owners to confirm.",
@@ -3493,6 +3503,7 @@
       "already_attested": "This wallet has already attested this invoice.",
       "already_financed": "This invoice is already financed by another financier.",
       "buyer_not_approved": "A financier can attest only after the buyer approves the invoice.",
+      "revoked": "The supplier cancelled this invoice, so it can no longer be attested.",
       "invalid_safe": "This address is not a Safe on this network.",
       "not_safe_owner": "The connected wallet is not an owner of this Safe.",
       "pending_confirmations": "You already approved. Waiting for other Safe owners to confirm.",
@@ -3522,6 +3533,8 @@
     "statusWaitingCompany": "Waiting for the company",
     "statusWaitingYou": "Needs your approval",
     "statusApproved": "Approved",
+    "statusRevoked": "Cancelled",
+    "revokedAt": "Cancelled on blockchain",
     "refresh": "Refresh",
     "approve": "Approve invoice",
     "bindingNotice": "You are approving {number} dated {date}.",
@@ -3563,6 +3576,7 @@
     "hintWaitingCompany": "Waiting for the company to approve. You can sign after that.",
     "hintWaitingBuyer": "Connect your wallet to approve this invoice.",
     "hintFullyApproved": "This invoice has been approved.",
+    "hintRevoked": "The company cancelled this invoice. It is no longer valid for payment or financing.",
     "hintTampered": "This invoice can no longer be approved.",
     "hintPendingChain": "This invoice is still being registered.",
     "hintNotRegistered": "This invoice is not ready for approval yet.",

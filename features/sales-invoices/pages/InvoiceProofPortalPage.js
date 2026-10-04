@@ -128,6 +128,7 @@ function statusHint(t, status) {
   if (status === "waiting_company") return t("hintWaitingCompany");
   if (status === "waiting_buyer") return t("hintWaitingBuyer");
   if (status === "fully_approved") return t("hintFullyApproved");
+  if (status === "revoked") return t("hintRevoked");
   if (status === "tampered") return t("hintTampered");
   if (status === "pending_chain") return t("hintPendingChain");
   if (status === "not_registered") return t("hintNotRegistered");
@@ -147,6 +148,7 @@ function portalStatusLabel(t, status) {
   if (status === "waiting_company") return t("statusWaitingCompany");
   if (status === "waiting_buyer") return t("statusWaitingYou");
   if (status === "fully_approved") return t("statusApproved");
+  if (status === "revoked") return t("statusRevoked");
   return status ? String(status) : "—";
 }
 
@@ -438,7 +440,13 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
     );
   } else {
     const alertType =
-      status === "tampered" ? "error" : status === "fully_approved" ? "success" : "info";
+      status === "tampered"
+        ? "error"
+        : status === "revoked"
+          ? "warning"
+          : status === "fully_approved"
+            ? "success"
+            : "info";
     const fullHash =
       typeof proof.content_hash === "string" ? proof.content_hash.toLowerCase() : "";
     const shortHash = shortContentHash(fullHash);
@@ -511,6 +519,12 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
                   </Tooltip>
                 </div>
                 <div className="mt-0.5 font-medium">{formatTenantDateTime(proof.financed_at)}</div>
+              </div>
+            ) : null}
+            {formatTenantDateTime(proof.revoked_at) ? (
+              <div>
+                <div className="text-[var(--ant-color-text-secondary)]">{t("revokedAt")}</div>
+                <div className="mt-0.5 font-medium">{formatTenantDateTime(proof.revoked_at)}</div>
               </div>
             ) : null}
           </div>

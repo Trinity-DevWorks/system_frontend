@@ -1,4 +1,4 @@
-/** @typedef {"verified" | "tampered" | "not_registered" | "pending_chain" | "waiting_company" | "waiting_buyer" | "fully_approved"} InvoiceProofVerificationStatus */
+/** @typedef {"verified" | "tampered" | "not_registered" | "pending_chain" | "waiting_company" | "waiting_buyer" | "fully_approved" | "revoked"} InvoiceProofVerificationStatus */
 
 /** How often to re-read chain status while registration is still pending. */
 export const INVOICE_CHAIN_PENDING_POLL_MS = 3000;
@@ -11,6 +11,7 @@ export const INVOICE_PROOF_STATUS_VALUES = /** @type {const} */ ([
   "waiting_company",
   "waiting_buyer",
   "fully_approved",
+  "revoked",
 ]);
 
 /**
@@ -25,6 +26,7 @@ export function getInvoiceProofStatusLabel(t, status) {
   if (status === "waiting_company") return t("proofStatusWaitingCompany");
   if (status === "waiting_buyer") return t("proofStatusWaitingBuyer");
   if (status === "fully_approved") return t("proofStatusFullyApproved");
+  if (status === "revoked") return t("proofStatusRevoked");
   return status ? String(status) : "\u2014";
 }
 
@@ -61,6 +63,7 @@ export function salesInvoiceListChainPollInterval(query) {
 export function invoiceProofStatusTagColor(status) {
   if (status === "verified" || status === "fully_approved") return "success";
   if (status === "tampered") return "error";
+  if (status === "revoked") return "default";
   if (status === "not_registered") return "warning";
   if (status === "pending_chain" || status === "waiting_company" || status === "waiting_buyer") {
     return "processing";

@@ -2,7 +2,7 @@
 
 import AuthSplitShell from "@/features/auth/components/AuthSplitShell";
 import InvoiceProofAttestationsPanel from "@/features/sales-invoices/components/InvoiceProofVerify/InvoiceProofAttestationsPanel";
-import { readOnChainContentHash, verifyDisclosureBundle } from "@/lib/invoice-proof-merkle";
+import { readOnChainSeal, verifyDisclosureBundle } from "@/lib/invoice-proof-merkle";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { App, Alert, Button, Descriptions, Steps, Tag, Typography, Upload } from "antd";
 import { useTranslations } from "next-intl";
@@ -25,7 +25,9 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   const { message } = App.useApp();
   const [bundle, setBundle] = useState(/** @type {import("@/lib/invoice-proof-merkle").InvoiceProofDisclosureBundle | null} */ (null));
   const [result, setResult] = useState(/** @type {ReturnType<typeof verifyDisclosureBundle> | null} */ (null));
-  const [chainState, setChainState] = useState(/** @type {"idle" | "checking" | "match" | "mismatch" | "missing"} */ ("idle"));
+  const [chainState, setChainState] = useState(
+    /** @type {"idle" | "checking" | "match" | "mismatch" | "missing" | "revoked"} */ ("idle"),
+  );
   const [attestStage, setAttestStage] = useState(/** @type {"wallet" | "review" | "done"} */ ("wallet"));
   const [screen, setScreen] = useState(0);
 
@@ -57,13 +59,14 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
     if (!bundle || !result) return;
     setChainState("checking");
     try {
-      const onChain = await readOnChainContentHash({
+      const onChain = await readOnChainSeal({
         chainId: Number(bundle.chain_id),
         contractAddress: String(bundle.contract_address ?? ""),
         proofId: String(bundle.proof_id ?? ""),
       });
-      if (onChain === null) setChainState("missing");
-      else setChainState(onChain === result.contentHash ? "match" : "mismatch");
+      if (onChain.contentHash === null) setChainState("missing");
+      else if (onChain.contentHash !== result.contentHash) setChainState("mismatch");
+      else setChainState(onChain.revoked ? "revoked" : "match");
     } catch (err) {
       setChainState("idle");
       const code = err instanceof Error ? err.message : "";
@@ -85,7 +88,9 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   /** @type {"process" | "error" | "finish"} */
   let stepStatus = "process";
   if (screen === 1 && result && !result.valid) stepStatus = "error";
-  if (screen === 2 && (chainState === "mismatch" || chainState === "missing")) stepStatus = "error";
+  if (screen === 2 && (chainState === "mismatch" || chainState === "missing" || chainState === "revoked")) {
+    stepStatus = "error";
+  }
   if (screen === 4 && attestStage === "done") stepStatus = "finish";
 
   return (
@@ -187,6 +192,9 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
           {chainState === "match" ? <Alert type="success" showIcon title={t("verifyChainMatch")} /> : null}
           {chainState === "mismatch" ? <Alert type="error" showIcon title={t("verifyChainMismatch")} /> : null}
           {chainState === "missing" ? <Alert type="warning" showIcon title={t("verifyChainMissing")} /> : null}
+          {chainState === "revoked" ? (
+            <Alert type="error" showIcon title={t("verifyChainRevoked")} description={t("verifyChainRevokedHint")} />
+          ) : null}
 
           <div className="flex justify-between gap-2">
             <Button onClick={() => setScreen(1)}>{t("verifyBack")}</Button>
