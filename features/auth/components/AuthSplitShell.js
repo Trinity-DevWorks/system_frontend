@@ -10,6 +10,7 @@ import {
   SettingOutlined,
   SunOutlined,
 } from "@ant-design/icons";
+import { usePlatformBranding } from "@/lib/platform-branding";
 import { markUiLocaleOverride } from "@/lib/ui-locale-preference";
 import { Button, Dropdown, Space, theme } from "antd";
 import { useLocale, useTranslations } from "next-intl";
@@ -42,6 +43,7 @@ export default function AuthSplitShell({
   const router = useRouter();
   const { setColorMode, colorMode, resolvedColorMode } = useThemeMode();
   const { token } = theme.useToken();
+  const { name: platformName } = usePlatformBranding();
   const isDark = resolvedColorMode === "dark";
 
   const languageMenuItems = useMemo(
@@ -156,14 +158,13 @@ export default function AuthSplitShell({
       >
         {documentLayout ? (
         <div className="login-anim-in mb-6">
-          <div className="login-brand-wordmark" dir="ltr" lang="en">
+          <div className="login-brand-wordmark" dir="ltr">
             <div className="login-brand-wordmark-row">
               <span className="login-brand-mark" aria-hidden>
                 <span />
                 <span />
               </span>
-              <span className="login-brand-mena">{t("brandMena")}</span>
-              <span className="login-brand-solutions">{t("brandSolutions")}</span>
+              <span className="login-brand-name" dir="auto">{platformName}</span>
             </div>
             <span className="login-brand-wordmark-rule" aria-hidden />
           </div>
@@ -182,14 +183,13 @@ export default function AuthSplitShell({
                 ),
               })}
             </h1>
-            <div className="login-brand-wordmark" dir="ltr" lang="en">
+            <div className="login-brand-wordmark" dir="ltr">
               <div className="login-brand-wordmark-row">
                 <span className="login-brand-mark" aria-hidden>
                   <span />
                   <span />
                 </span>
-                <span className="login-brand-mena">{t("brandMena")}</span>
-                <span className="login-brand-solutions">{t("brandSolutions")}</span>
+                <span className="login-brand-name" dir="auto">{platformName}</span>
               </div>
               <span className="login-brand-wordmark-rule" aria-hidden />
             </div>

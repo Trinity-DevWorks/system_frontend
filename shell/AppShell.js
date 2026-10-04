@@ -53,14 +53,15 @@ export default function AppShell({ children, initialCollapsed = false }) {
   const { can: canPermission } = usePermissions();
   const { settings, isReady: settingsReady } = useCompanySettings();
   const { profile } = useCompanyProfile();
+  const { name: platformName } = usePlatformBranding();
 
   const workspaceBrand = useMemo(() => {
     const name =
       typeof profile.company_name === "string"
         ? profile.company_name.trim()
         : "";
-    return name || t("brand");
-  }, [profile.company_name, t]);
+    return name || platformName;
+  }, [profile.company_name, platformName]);
 
   /** Apply tenant preferred_language once when user has not overridden UI locale. */
   useEffect(() => {

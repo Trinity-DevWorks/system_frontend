@@ -15,7 +15,9 @@ import { useCentralPermissions } from "@/lib/central-permissions";
 import { clearQueryCacheOnAuthChange } from "@/lib/clear-query-cache-on-auth";
 import { GlobalDrawerProvider } from "@/lib/drawer/GlobalDrawerContext";
 import { useLocalPreferenceUserId } from "@/lib/local-preference-user";
+import { usePlatformBranding } from "@/lib/platform-branding";
 import { clearAllSessionTokens } from "@/lib/session";
+import { getTenantFormatSettings, setTenantFormatSettings } from "@/lib/tenant-format-runtime";
 import {
   clearAllSidebarBookmarks,
   loadSidebarBookmarks,
@@ -63,6 +65,21 @@ export default function CentralShell({ children, initialCollapsed = false }) {
   } = antdTheme.useToken();
 
   const { can } = useCentralPermissions();
+  const { name: platformName, regional } = usePlatformBranding();
+
+  const formatSettings = useMemo(
+    () => ({
+      ...getTenantFormatSettings(),
+      preferredLanguage: regional.preferred_language,
+      timezone: regional.timezone,
+      dateFormat: regional.date_format,
+      numberFormat: regional.number_format,
+    }),
+    [regional],
+  );
+  // Applied during render (idempotent) so child pages format with the platform settings on first paint.
+  setTenantFormatSettings(formatSettings);
+  useEffect(() => () => setTenantFormatSettings(null), []);
 
   const menuItems = useMemo(
     () =>
@@ -180,7 +197,7 @@ export default function CentralShell({ children, initialCollapsed = false }) {
               onToggleBookmark={handleToggleBookmark}
               onClearBookmarks={handleClearBookmarks}
               onNavigate={handleNavigate}
-              brand={t("brand")}
+              brand={platformName}
               onBrandClick={handleBrandClick}
               isRtl={isRtlLocale(locale)}
               labels={sidebarLabels}
