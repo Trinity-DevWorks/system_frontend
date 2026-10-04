@@ -4,6 +4,7 @@
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { isPersistedEntityId } from "@/lib/entityId";
+import { rateFromPrimary } from "@/lib/currency/documentExchangeRate";
 import {
   mapPurchaseInvoiceSupplierOption,
   mergeLookupOptions,
@@ -145,27 +146,19 @@ export function usePurchaseInvoiceDrawerData({ open, t, supplierId = null, invoi
   );
 
   /**
-   * @param {number | null | undefined} fromCurrencyId
+   * @param {number | null | undefined} currencyId
    */
-  function pairRateToPrimary(fromCurrencyId) {
-    if (fromCurrencyId == null || primaryCurrencyId == null) return null;
-    if (Number(fromCurrencyId) === Number(primaryCurrencyId)) return 1;
-    const rows = pairRatesQuery.data ?? [];
-    const match = rows.find(
-      (row) =>
-        Number(row.from_currency_id) === Number(fromCurrencyId) &&
-        Number(row.to_currency_id) === Number(primaryCurrencyId),
-    );
-    if (match?.rate != null) return Number(match.rate);
-    const reversed = rows.find(
-      (row) =>
-        Number(row.from_currency_id) === Number(primaryCurrencyId) &&
-        Number(row.to_currency_id) === Number(fromCurrencyId),
-    );
-    if (reversed?.rate != null && Number(reversed.rate) > 0) {
-      return 1 / Number(reversed.rate);
-    }
-    return null;
+  function rateFromPrimaryFor(currencyId) {
+    return rateFromPrimary(pairRatesQuery.data ?? [], primaryCurrencyId, currencyId);
+  }
+
+  /**
+   * @param {number | null | undefined} currencyId
+   */
+  function currencyCode(currencyId) {
+    if (currencyId == null) return "";
+    const row = (currenciesQuery.data ?? []).find((c) => Number(c.id) === Number(currencyId));
+    return String(row?.code ?? row?.name ?? "");
   }
 
   return {
@@ -176,7 +169,8 @@ export function usePurchaseInvoiceDrawerData({ open, t, supplierId = null, invoi
     paymentMethodOptions,
     paymentTermOptions,
     primaryCurrencyId,
-    pairRateToPrimary,
+    rateFromPrimary: rateFromPrimaryFor,
+    currencyCode,
     supplierDetail,
     supplierDetailPending: supplierLookupsPending,
     warehousesPending: warehousesQuery.isPending,

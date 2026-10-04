@@ -8,6 +8,8 @@ import { formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { ClearOutlined, CopyOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { App, Checkbox, Input, Select } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import LinePriceInput from "@/shared/components/lines-grid/LinePriceInput";
+import { linePriceFromPrimary, manualLinePrice } from "@/lib/currency/documentExchangeRate";
 import ServerSearchSelect from "@/shared/components/selects/ServerSearchSelect";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
@@ -269,12 +271,15 @@ function SalesInvoiceLineLotField({ itemId, warehouseId, value, sealedLabel = ""
  *   lineKeyboardActionsRef?: import("react").MutableRefObject<{ duplicateLine?: (index: number) => void }>;
  *   onAddLine: () => void;
  *   onViewItem?: (itemId: string) => void;
- *   t: (key: string) => string;
+ *   pricing?: import("@/shared/components/lines-grid/LinePriceInput").LinePricing;
+ *   rateBanner?: import("react").ReactNode;
+ *   t: (key: string, values?: Record<string, unknown>) => string;
  * }} props
  */
 export default function SalesInvoiceLineEditor({
   lines,
   readOnly,
+  pricing = { rate: 1, foreign: false, primaryCode: "", currencyCode: "" },
   itemOptions = [],
   taxContext = {
     taxEnabled: true,
@@ -293,10 +298,13 @@ export default function SalesInvoiceLineEditor({
   lineKeyboardActionsRef,
   onAddLine,
   onViewItem,
+  rateBanner = null,
   t,
 }) {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification } = App.useApp();
+  const priceDecimals = taxContext.settings?.priceDecimalPlaces ?? 2;
+  const catalogPrice = (primaryPrice) => linePriceFromPrimary(primaryPrice, pricing.rate, priceDecimals);
   const [barcodePendingIndex, setBarcodePendingIndex] = useState(/** @type {number | null} */ (null));
   const [selectedLineIndexes, setSelectedLineIndexes] = useState(() => new Set());
   const visibleSelectedLineIndexes = useMemo(() => {
@@ -559,6 +567,8 @@ export default function SalesInvoiceLineEditor({
       const incrementQuantity = sameItem && committed != null && committed === code;
       const patch = salesInvoiceLinePatchFromBarcodeLookup(row, result, code, headerWarehouseId, {
         incrementQuantity,
+        rate: pricing.rate,
+        priceDecimals,
       });
       if (patch) {
         onPatchLine(index, patch);
@@ -704,7 +714,7 @@ export default function SalesInvoiceLineEditor({
                       patch.barcode = option.barcode;
                     }
                     if (row.unit_price == null && option?.selling_price != null) {
-                      patch.unit_price = Number(option.selling_price);
+                      Object.assign(patch, catalogPrice(option.selling_price));
                     }
                     if (Object.keys(patch).length > 0) onPatchLine(index, patch);
                     const nextBarcode = typeof patch.barcode === "string" ? patch.barcode.trim() : "";
@@ -712,8 +722,7 @@ export default function SalesInvoiceLineEditor({
                   }}
                   onCatalogReprice={(option) => {
                     onPatchLine(index, {
-                      unit_price:
-                        option?.selling_price != null ? Number(option.selling_price) : undefined,
+                      ...catalogPrice(option?.selling_price),
                       discount_percent: 0,
                       tax_rate: undefined,
                       line_total: undefined,
@@ -729,8 +738,7 @@ export default function SalesInvoiceLineEditor({
                     onPatchLine(index, {
                       item_uom_id: value,
                       conversion_factor: option?.conversion_factor ?? 1,
-                      unit_price:
-                        option?.selling_price != null ? Number(option.selling_price) : row.unit_price,
+                      ...(option?.selling_price != null ? catalogPrice(option.selling_price) : {}),
                       barcode: nextBarcode,
                     });
                   }}
@@ -788,14 +796,13 @@ export default function SalesInvoiceLineEditor({
           if (columnKey === "unit_price") {
             return (
               <SiFocusStop field="unit_price" line={index}>
-                <TenantNumberInput
-                  kind="money"
-                  className="w-full"
-                  min={0}
+                <LinePriceInput
+                  line={row}
+                  pricing={pricing}
                   placeholder={t("lineUnitPricePlaceholder")}
-                  value={row.unit_price}
                   disabled={readOnly}
-                  onChange={(value) => onPatchLine(index, { unit_price: value ?? undefined })}
+                  t={t}
+                  onChange={(value) => onPatchLine(index, manualLinePrice(value, pricing.rate))}
                 />
               </SiFocusStop>
             );
@@ -882,6 +889,7 @@ export default function SalesInvoiceLineEditor({
           );
         }}
       />
+      {rateBanner}
     </section>
   );
 }

@@ -275,7 +275,7 @@ function PurchaseInvoicesTable() {
           filterBar,
         }}
         stickyHeader
-        scrollX={1530}
+        scrollX={1760}
         pagination={pagination}
       />
     </div>

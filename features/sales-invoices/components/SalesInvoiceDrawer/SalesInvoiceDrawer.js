@@ -64,6 +64,14 @@ import {
   SALES_INVOICE_POST_INTENT_EVENT,
   SALES_INVOICE_POST_INTENT_KEY,
 } from "../../utils/salesInvoicePostIntent";
+import LinePriceRateBanner from "@/shared/components/lines-grid/LinePriceRateBanner";
+import { formatExchangeRate } from "@/shared/components/lines-grid/LinePriceInput";
+import {
+  lineAtRate,
+  lineAwaitsRateUpdate,
+  manualLineAtOtherRate,
+  positiveRate,
+} from "@/lib/currency/documentExchangeRate";
 
 /**
  * @param {{
@@ -168,6 +176,7 @@ export default function SalesInvoiceDrawer({
       if (!record || typeof record !== "object") return;
       const mappedLines = mapSalesInvoiceLinesFromApi(
         /** @type {Array<Record<string, unknown>>} */ (record.lines),
+        record.exchange_rate,
       );
       const nextLines = mappedLines.length > 0 ? mappedLines : [getEmptySalesInvoiceLine()];
       setLines(nextLines);
@@ -435,6 +444,42 @@ export default function SalesInvoiceDrawer({
     drawerData.primaryCurrencyId == null ||
     Number(currencyId) === Number(drawerData.primaryCurrencyId);
 
+  const headerRate = exchangeRateLocked ? 1 : positiveRate(formValuesWatch?.exchange_rate);
+  const primaryCode = drawerData.currencyCode(drawerData.primaryCurrencyId);
+  const documentCurrencyCode = drawerData.currencyCode(currencyId);
+  const linePricing = useMemo(
+    () => ({
+      rate: headerRate,
+      foreign: !exchangeRateLocked,
+      primaryCode,
+      currencyCode: documentCurrencyCode,
+    }),
+    [headerRate, exchangeRateLocked, primaryCode, documentCurrencyCode],
+  );
+  const exchangeRateHelp = exchangeRateLocked
+    ? undefined
+    : t("fieldExchangeRateHelp", {
+        primary: primaryCode,
+        rate: headerRate != null ? formatExchangeRate(headerRate) : "?",
+        currency: documentCurrencyCode,
+      });
+  const linesAwaitingRate = useMemo(
+    () => lines.filter((line) => lineAwaitsRateUpdate(line, headerRate)).length,
+    [lines, headerRate],
+  );
+  const manualLinesAtOtherRate = useMemo(
+    () => lines.filter((line) => manualLineAtOtherRate(line, headerRate)).length,
+    [lines, headerRate],
+  );
+  const updateLinePrices = useCallback(() => {
+    if (headerRate == null) return;
+    setLines((prev) =>
+      prev.map((line) =>
+        lineAwaitsRateUpdate(line, headerRate) ? lineAtRate(line, headerRate, settings.priceDecimalPlaces) : line,
+      ),
+    );
+  }, [headerRate, settings.priceDecimalPlaces]);
+
   useEffect(() => {
     if (readOnly || currencyId == null) return;
     if (exchangeRateLocked) {
@@ -445,7 +490,7 @@ export default function SalesInvoiceDrawer({
     }
     const current = form.getFieldValue("exchange_rate");
     if (current != null && Number(current) > 0 && Number(current) !== 1) return;
-    const rate = drawerData.pairRateToPrimary(currencyId);
+    const rate = drawerData.rateFromPrimary(currencyId);
     if (rate != null && rate > 0) {
       form.setFieldsValue({ exchange_rate: rate });
     }
@@ -789,7 +834,7 @@ export default function SalesInvoiceDrawer({
         form.setFieldsValue({ exchange_rate: 1 });
         return;
       }
-      const rate = drawerData.pairRateToPrimary(nextId);
+      const rate = drawerData.rateFromPrimary(nextId);
       form.setFieldsValue({ exchange_rate: rate != null && rate > 0 ? rate : undefined });
     }
   }, [drawerData, form]);
@@ -926,6 +971,7 @@ export default function SalesInvoiceDrawer({
         paymentMethodsPending={drawerData.paymentMethodsPending}
         paymentTermsPending={drawerData.paymentTermsPending}
         exchangeRateLocked={exchangeRateLocked}
+        exchangeRateHelp={exchangeRateHelp}
         billingAddressOptions={billingAddressOptions}
         shippingAddressOptions={shippingAddressOptions}
         onOpenCustomerDrawer={
@@ -936,6 +982,18 @@ export default function SalesInvoiceDrawer({
       >
         <SalesInvoiceLineEditor
           lines={lines}
+          pricing={linePricing}
+          rateBanner={
+            !readOnly ? (
+              <LinePriceRateBanner
+                count={linesAwaitingRate}
+                manualCount={manualLinesAtOtherRate}
+                disabled={submitting}
+                t={t}
+                onUpdate={updateLinePrices}
+              />
+            ) : null
+          }
           readOnly={readOnly || submitting || !customerReady}
           taxContext={taxContext}
           warehouseOptions={drawerData.warehouseOptions}

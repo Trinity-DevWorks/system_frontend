@@ -18,7 +18,7 @@ import {
   PURCHASE_INVOICE_SUPPLIER_RECENT_KIND,
 } from "../../api/purchaseInvoiceSelectors.api";
 import { PiFocusStop } from "./purchaseInvoiceDrawerKeyboard";
-import { Col, DatePicker, Form, Input, Row, Select } from "antd";
+import { Col, DatePicker, Form, Input, Row, Select, Tooltip } from "antd";
 import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 
@@ -69,6 +69,7 @@ function InvoiceSupplierBoundValue({ name, label, options, placeholder, empty, e
  *   paymentMethodsPending: boolean;
  *   paymentTermsPending: boolean;
  *   exchangeRateLocked: boolean;
+ *   exchangeRateHelp?: string;
  *   supplierLocked?: boolean;
  *   warehouseLocked?: boolean;
  *   grnDisabled?: boolean;
@@ -96,6 +97,7 @@ export default function PurchaseInvoiceDrawerForm({
   paymentMethodsPending,
   paymentTermsPending,
   exchangeRateLocked,
+  exchangeRateHelp,
   supplierLocked = false,
   warehouseLocked = false,
   grnDisabled = false,
@@ -381,20 +383,24 @@ export default function PurchaseInvoiceDrawerForm({
                   >
                     <div className="sales-invoice-exchange-rate-inline">
                       <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
-                      <Form.Item
-                        name="exchange_rate"
-                        noStyle
-                        rules={[{ required: true, message: t("exchangeRateRequired") }]}
-                      >
-                        <TenantNumberInput
-                          kind="rate"
-                          className="w-full"
-                          style={{ width: "100%" }}
-                          min={0.000001}
-                          readOnly={exchangeRateLocked}
-                          aria-label={t("fieldExchangeRate")}
-                        />
-                      </Form.Item>
+                      <Tooltip title={exchangeRateHelp}>
+                        <div className="sales-invoice-exchange-rate-input">
+                          <Form.Item
+                            name="exchange_rate"
+                            noStyle
+                            rules={[{ required: true, message: t("exchangeRateRequired") }]}
+                          >
+                            <TenantNumberInput
+                              kind="rate"
+                              className="w-full"
+                              style={{ width: "100%" }}
+                              min={0.000000000001}
+                              readOnly={exchangeRateLocked}
+                              aria-label={t("fieldExchangeRate")}
+                            />
+                          </Form.Item>
+                        </div>
+                      </Tooltip>
                     </div>
                   </Form.Item>
                 </PiFocusStop>

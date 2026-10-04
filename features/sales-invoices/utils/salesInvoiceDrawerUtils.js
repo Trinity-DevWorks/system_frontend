@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { normalizeEntityId } from "@/lib/entityId";
+import { UNTRACKED_LINE_PRICE, linePriceFromPrimary, positiveRate } from "@/lib/currency/documentExchangeRate";
 
 /** Select value when the line uses the item's base UOM (API omits item_uom_id). */
 export const SI_BASE_UOM = "__si_base_uom__";
@@ -240,6 +241,9 @@ export function findSalesInvoiceItemOptionByCode(options, raw) {
  *   track_inventory?: boolean;
  *   track_lots?: boolean;
  *   catalogReloadKey?: number;
+ *   price_base?: number;
+ *   price_rate?: number | null;
+ *   price_source?: "catalog" | "document" | "saved" | "manual";
  * }} SalesInvoiceLineFormRow
  */
 
@@ -399,10 +403,13 @@ export function mapSalesInvoiceRecordToForm(record) {
 
 /**
  * @param {Array<Record<string, unknown>> | undefined | null} lines
+ * @param {unknown} [exchangeRate] invoice rate the saved prices are expressed in
  * @returns {SalesInvoiceLineFormRow[]}
  */
-export function mapSalesInvoiceLinesFromApi(lines) {
+export function mapSalesInvoiceLinesFromApi(lines, exchangeRate = 1) {
   return (lines ?? []).map((line) => ({
+    price_rate: positiveRate(exchangeRate) ?? 1,
+    price_source: "saved",
     item_id: normalizeEntityId(line.item_id) ?? undefined,
     item_label: salesInvoiceItemCodeLabel(
       line.item && typeof line.item === "object"
@@ -532,7 +539,7 @@ export function isSalesInvoiceLineEmpty(line) {
  * @param {{ item?: Record<string, unknown>; item_uom?: Record<string, unknown> } | null | undefined} result
  * @param {string} scannedBarcode
  * @param {number | undefined} headerWarehouseId
- * @param {{ incrementQuantity?: boolean }} [options]
+ * @param {{ incrementQuantity?: boolean; rate?: number | null; priceDecimals?: number }} [options]
  * @returns {Partial<SalesInvoiceLineFormRow> | null}
  */
 export function salesInvoiceLinePatchFromBarcodeLookup(
@@ -556,7 +563,7 @@ export function salesInvoiceLinePatchFromBarcodeLookup(
     item_label: salesInvoiceItemCodeLabel(item),
     item_uom_id: itemUom?.id != null ? Number(itemUom.id) : SI_BASE_UOM,
     conversion_factor: itemUom?.conversion_factor != null ? itemUom.conversion_factor : 1,
-    unit_price: itemUom?.selling_price != null ? Number(itemUom.selling_price) : undefined,
+    ...linePriceFromPrimary(itemUom?.selling_price, options.rate ?? 1, options.priceDecimals ?? 2),
     description,
     track_inventory: trackInventory,
     track_lots: Boolean(item.track_lots),
@@ -595,6 +602,7 @@ export function salesInvoiceLinePatchFromItemPick(picked, headerWarehouseId) {
       lot_id: undefined,
       warehouse_id: undefined,
       unit_price: undefined,
+      ...UNTRACKED_LINE_PRICE,
       conversion_factor: 1,
       track_inventory: false,
       track_lots: false,
@@ -615,6 +623,7 @@ export function salesInvoiceLinePatchFromItemPick(picked, headerWarehouseId) {
     lot_id: undefined,
     warehouse_id: trackInventory ? headerWarehouseId : undefined,
     unit_price: undefined,
+    ...UNTRACKED_LINE_PRICE,
     conversion_factor: 1,
     track_inventory: trackInventory,
     track_lots: Boolean(picked.track_lots),

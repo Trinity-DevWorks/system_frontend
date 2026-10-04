@@ -14,7 +14,7 @@ import {
 } from "../../api/salesInvoiceSelectors.api";
 import { SiFocusStop } from "./salesInvoiceDrawerKeyboard";
 import { DownOutlined } from "@ant-design/icons";
-import { AutoComplete, Button, Col, ConfigProvider, DatePicker, Form, Input, Popover, Row, Select } from "antd";
+import { AutoComplete, Button, Col, ConfigProvider, DatePicker, Form, Input, Popover, Row, Select, Tooltip } from "antd";
 import dayjs from "dayjs";
 
 /**
@@ -183,6 +183,7 @@ function InvoiceCustomerBoundValue({ name, label, options, placeholder, empty, e
  *   paymentMethodsPending: boolean;
  *   paymentTermsPending: boolean;
  *   exchangeRateLocked: boolean;
+ *   exchangeRateHelp?: string;
  *   billingAddressOptions: { value: number; label: string; phone?: string; address?: Record<string, unknown> }[];
  *   shippingAddressOptions: { value: number; label: string; phone?: string; address?: Record<string, unknown> }[];
  *   onOpenCustomerDrawer?: () => void;
@@ -207,6 +208,7 @@ export default function SalesInvoiceDrawerForm({
   paymentMethodsPending,
   paymentTermsPending,
   exchangeRateLocked,
+  exchangeRateHelp,
   billingAddressOptions = [],
   shippingAddressOptions = [],
   onOpenCustomerDrawer,
@@ -409,20 +411,24 @@ export default function SalesInvoiceDrawerForm({
                 >
                   <div className="sales-invoice-exchange-rate-inline">
                     <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
-                    <Form.Item
-                      name="exchange_rate"
-                      noStyle
-                      rules={[{ required: true, message: t("exchangeRateRequired") }]}
-                    >
-                      <TenantNumberInput
-                        kind="rate"
-                        className="w-full"
-                        style={{ width: "100%" }}
-                        min={0.000001}
-                        readOnly={exchangeRateLocked}
-                        aria-label={t("fieldExchangeRate")}
-                      />
-                    </Form.Item>
+                    <Tooltip title={exchangeRateHelp}>
+                      <div className="sales-invoice-exchange-rate-input">
+                        <Form.Item
+                          name="exchange_rate"
+                          noStyle
+                          rules={[{ required: true, message: t("exchangeRateRequired") }]}
+                        >
+                          <TenantNumberInput
+                            kind="rate"
+                            className="w-full"
+                            style={{ width: "100%" }}
+                            min={0.000000000001}
+                            readOnly={exchangeRateLocked}
+                            aria-label={t("fieldExchangeRate")}
+                          />
+                        </Form.Item>
+                      </div>
+                    </Tooltip>
                   </div>
                 </Form.Item>
               </SiFocusStop>

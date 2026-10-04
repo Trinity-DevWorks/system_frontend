@@ -1,5 +1,7 @@
 import dayjs from "dayjs";
 import { normalizeEntityId } from "@/lib/entityId";
+import { UNTRACKED_LINE_PRICE, linePriceFromPrimary, positiveRate } from "@/lib/currency/documentExchangeRate";
+import { getTenantFormatSettings } from "@/lib/tenant-format-runtime";
 import {
   mergeLookupOptions,
   salesInvoiceCodeLabel,
@@ -188,6 +190,9 @@ export function mapPurchaseInvoiceItemOption(item) {
  *   track_inventory?: boolean;
  *   track_lots?: boolean;
  *   catalogReloadKey?: number;
+ *   price_base?: number;
+ *   price_rate?: number | null;
+ *   price_source?: "catalog" | "document" | "saved" | "manual";
  * }} PurchaseInvoiceLineFormRow
  */
 
@@ -251,8 +256,15 @@ export function computePurchaseInvoiceLineMismatchFlags(line) {
   const sourcePrice = poLinked ? line.po_unit_price : line.grn_unit_cost;
   const qtyMismatch =
     sourceQty != null && line.quantity != null && Number(line.quantity) !== Number(sourceQty);
+  const priceDecimals = getTenantFormatSettings().priceDecimalPlaces;
+  const expectedPrice =
+    sourcePrice != null
+      ? linePriceFromPrimary(sourcePrice, positiveRate(line.price_rate) ?? 1, priceDecimals, "document").unit_price
+      : undefined;
   const priceMismatch =
-    sourcePrice != null && line.unit_price != null && Number(line.unit_price) !== Number(sourcePrice);
+    expectedPrice != null &&
+    line.unit_price != null &&
+    Number(line.unit_price).toFixed(priceDecimals) !== Number(expectedPrice).toFixed(priceDecimals);
   return { qty_mismatch: qtyMismatch, price_mismatch: priceMismatch };
 }
 
@@ -288,11 +300,15 @@ export function mapPurchaseInvoiceRecordToForm(record) {
 
 /**
  * @param {Array<Record<string, unknown>> | undefined | null} lines
+ * @param {unknown} [exchangeRate] invoice rate the saved prices are expressed in
  * @returns {PurchaseInvoiceLineFormRow[]}
  */
-export function mapPurchaseInvoiceLinesFromApi(lines) {
+export function mapPurchaseInvoiceLinesFromApi(lines, exchangeRate = 1) {
+  const priceRate = positiveRate(exchangeRate) ?? 1;
   return (lines ?? []).map((line) => {
     const row = {
+      price_rate: priceRate,
+      price_source: "saved",
       item_id: normalizeEntityId(line.item_id) ?? undefined,
       item_label: purchaseInvoiceItemCodeLabel(
         line.item && typeof line.item === "object"
@@ -339,10 +355,13 @@ export function mapPurchaseInvoiceLinesFromApi(lines) {
 }
 
 /**
+ * GRN unit costs are in the primary currency; lines get them × the document rate.
+ *
  * @param {Record<string, unknown>} grn
+ * @param {{ rate?: number | null; priceDecimals?: number }} [pricing]
  * @returns {PurchaseInvoiceLineFormRow[]}
  */
-export function seedLinesFromGoodsReceipt(grn) {
+export function seedLinesFromGoodsReceipt(grn, pricing = {}) {
   const headerWarehouse =
     grn.warehouse_id != null ? Number(grn.warehouse_id) : undefined;
   const grnLines = Array.isArray(grn.lines) ? grn.lines : [];
@@ -363,7 +382,7 @@ export function seedLinesFromGoodsReceipt(grn) {
       ),
       quantity: grnLine.quantity != null ? Number(grnLine.quantity) : undefined,
       grn_quantity: grnLine.quantity != null ? Number(grnLine.quantity) : undefined,
-      unit_price: grnLine.unit_cost != null ? Number(grnLine.unit_cost) : undefined,
+      ...linePriceFromPrimary(grnLine.unit_cost, pricing.rate ?? 1, pricing.priceDecimals ?? 2, "document"),
       grn_unit_cost: grnLine.unit_cost != null ? Number(grnLine.unit_cost) : undefined,
       item_uom_id: grnLine.item_uom_id != null ? Number(grnLine.item_uom_id) : PI_BASE_UOM,
       warehouse_id: headerWarehouse,
@@ -382,10 +401,13 @@ export function seedLinesFromGoodsReceipt(grn) {
 }
 
 /**
+ * PO unit prices are in the primary currency; lines get them × the document rate.
+ *
  * @param {Record<string, unknown>} order
+ * @param {{ rate?: number | null; priceDecimals?: number }} [pricing]
  * @returns {PurchaseInvoiceLineFormRow[]}
  */
-export function seedLinesFromPurchaseOrder(order) {
+export function seedLinesFromPurchaseOrder(order, pricing = {}) {
   const headerWarehouse = order.warehouse_id != null ? Number(order.warehouse_id) : undefined;
   const orderLines = Array.isArray(order.lines) ? order.lines : [];
   if (orderLines.length === 0) return [getEmptyPurchaseInvoiceLine()];
@@ -401,7 +423,7 @@ export function seedLinesFromPurchaseOrder(order) {
       ),
       quantity: orderLine.quantity != null ? Number(orderLine.quantity) : undefined,
       po_quantity: orderLine.quantity != null ? Number(orderLine.quantity) : undefined,
-      unit_price: orderLine.unit_price != null ? Number(orderLine.unit_price) : undefined,
+      ...linePriceFromPrimary(orderLine.unit_price, pricing.rate ?? 1, pricing.priceDecimals ?? 2, "document"),
       po_unit_price: orderLine.unit_price != null ? Number(orderLine.unit_price) : undefined,
       item_uom_id: orderLine.item_uom_id != null ? Number(orderLine.item_uom_id) : PI_BASE_UOM,
       warehouse_id: headerWarehouse,
@@ -515,7 +537,7 @@ export function isPurchaseInvoiceLineEmpty(line) {
  * @param {{ item?: Record<string, unknown>; item_uom?: Record<string, unknown> } | null | undefined} result
  * @param {string} scannedBarcode
  * @param {number | undefined} headerWarehouseId
- * @param {{ incrementQuantity?: boolean }} [options]
+ * @param {{ incrementQuantity?: boolean; rate?: number | null; priceDecimals?: number }} [options]
  */
 export function purchaseInvoiceLinePatchFromBarcodeLookup(
   row,
@@ -539,7 +561,7 @@ export function purchaseInvoiceLinePatchFromBarcodeLookup(
     item_label: purchaseInvoiceItemCodeLabel(item),
     item_uom_id: itemUom?.id != null ? Number(itemUom.id) : PI_BASE_UOM,
     conversion_factor: itemUom?.conversion_factor != null ? itemUom.conversion_factor : 1,
-    unit_price: unitCost,
+    ...linePriceFromPrimary(unitCost, options.rate ?? 1, options.priceDecimals ?? 2),
     description,
     track_inventory: trackInventory,
     track_lots: Boolean(item.track_lots),
@@ -577,6 +599,7 @@ export function purchaseInvoiceLinePatchFromItemPick(picked, headerWarehouseId) 
       expiry_date: undefined,
       warehouse_id: undefined,
       unit_price: undefined,
+      ...UNTRACKED_LINE_PRICE,
       conversion_factor: 1,
       track_inventory: false,
       track_lots: false,
@@ -607,6 +630,7 @@ export function purchaseInvoiceLinePatchFromItemPick(picked, headerWarehouseId) 
     expiry_date: undefined,
     warehouse_id: trackInventory ? headerWarehouseId : undefined,
     unit_price: undefined,
+    ...UNTRACKED_LINE_PRICE,
     conversion_factor: 1,
     track_inventory: trackInventory,
     track_lots: Boolean(picked.track_lots),

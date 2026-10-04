@@ -9,7 +9,6 @@
 
 /** @typedef {{
  *   uom_id?: number;
- *   currency_id?: number;
  *   conversion_factor: number;
  *   barcode: string;
  *   selling_price?: number;
@@ -26,7 +25,6 @@
 export function defaultUomInlineValues() {
   return {
     uom_id: undefined,
-    currency_id: undefined,
     conversion_factor: 1,
     barcode: "",
     selling_price: undefined,
@@ -44,8 +42,6 @@ export function defaultUomInlineValues() {
 export function rowToUomInlineValues(row) {
   return {
     uom_id: row.uom?.id != null ? Number(row.uom.id) : row.uom_id != null ? Number(row.uom_id) : undefined,
-    currency_id:
-      row.currency?.id != null ? Number(row.currency.id) : row.currency_id != null ? Number(row.currency_id) : undefined,
     conversion_factor: Number(row.conversion_factor ?? 1),
     barcode: row.barcode != null ? String(row.barcode) : "",
     selling_price: row.selling_price != null ? Number(row.selling_price) : undefined,
@@ -63,7 +59,6 @@ export function rowToUomInlineValues(row) {
 export function uomInlineValuesToBody(values) {
   return {
     uom_id: values.uom_id,
-    currency_id: values.currency_id ?? null,
     conversion_factor: values.conversion_factor,
     barcode: null,
     selling_price: values.selling_price ?? null,
@@ -111,7 +106,6 @@ export function barcodeInlineValuesToBody(values) {
  *   supplier_id?: string;
  *   supplier_item_code: string;
  *   last_purchase_price?: number;
- *   currency_id?: number;
  *   lead_time_days?: number;
  *   is_preferred: boolean;
  * }} SupplierInlineValues */
@@ -122,7 +116,6 @@ export function defaultSupplierInlineValues() {
     supplier_id: undefined,
     supplier_item_code: "",
     last_purchase_price: undefined,
-    currency_id: undefined,
     lead_time_days: undefined,
     is_preferred: false,
   };
@@ -140,12 +133,6 @@ export function rowToSupplierInlineValues(row) {
     supplier_id: supplierId,
     supplier_item_code: row.supplier_item_code != null ? String(row.supplier_item_code) : "",
     last_purchase_price: row.last_purchase_price != null ? Number(row.last_purchase_price) : undefined,
-    currency_id:
-      row.currency?.id != null
-        ? Number(row.currency.id)
-        : row.currency_id != null
-          ? Number(row.currency_id)
-          : undefined,
     lead_time_days: row.lead_time_days != null ? Number(row.lead_time_days) : undefined,
     is_preferred: Boolean(row.is_preferred),
   };
@@ -156,7 +143,6 @@ export function supplierInlineValuesToBody(values) {
   return {
     supplier_item_code: values.supplier_item_code.trim() || null,
     last_purchase_price: values.last_purchase_price ?? null,
-    currency_id: values.currency_id ?? null,
     lead_time_days: values.lead_time_days ?? null,
     is_preferred: values.is_preferred,
   };

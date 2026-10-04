@@ -49,9 +49,7 @@ export function ItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors, ac
     resolvedUnitGroupId,
     addDisabledReason,
     uomOptions,
-    currencyOptions,
     uomsQueryPending,
-    currenciesQueryPending,
     saveMutationPending,
     patchMutationPending,
     startCreateRow,
@@ -139,9 +137,7 @@ export function ItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors, ac
                 readOnly={readOnly}
                 values={values}
                 uomOptions={uomOptions}
-                currencyOptions={currencyOptions}
                 uomsQueryPending={uomsQueryPending}
-                currenciesQueryPending={currenciesQueryPending}
                 barcodes={allBarcodes}
                 savePending={saveMutationPending}
                 patchPending={patchMutationPending}

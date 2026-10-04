@@ -17,7 +17,6 @@ export function buildSuppliersPanelColumns(ctx) {
     readOnly,
     inlineEdit,
     supplierOptions,
-    currencyOptions,
     getInlineValues,
     patchDraft,
     patchPreferred,
@@ -105,32 +104,6 @@ export function buildSuppliersPanelColumns(ctx) {
           );
         }
         return formatTenantMoney(r.last_purchase_price) || "—";
-      },
-    },
-    {
-      title: t("supplierColCurrency"),
-      key: "currency",
-      width: 100,
-      align: "center",
-      render: (_v, r) => {
-        const draft = getInlineValues(r);
-        if (draft) {
-          return (
-            <Select
-              size="small"
-              allowClear
-              className="w-full min-w-0"
-              placeholder={t("supplierFieldCurrency")}
-              value={draft.currency_id}
-              options={currencyOptions}
-              onChange={(currency_id) => patchDraft({ currency_id: currency_id ?? undefined })}
-              getPopupContainer={drawerSelectGetPopup}
-              popupMatchSelectWidth={false}
-              listHeight={280}
-            />
-          );
-        }
-        return r.currency?.code ?? r.currency?.name ?? "—";
       },
     },
     {

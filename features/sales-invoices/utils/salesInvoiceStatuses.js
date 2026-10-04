@@ -30,6 +30,33 @@ export function isSalesInvoiceDraft(status) {
 }
 
 /**
+ * Derived settlement for a posted invoice. Draft and reversed invoices have none.
+ * @param {string | null | undefined} status
+ * @param {unknown} paidTotal
+ * @param {unknown} netToPay
+ * @returns {"unpaid" | "partial" | "paid" | null}
+ */
+export function salesInvoiceSettlement(status, paidTotal, netToPay) {
+  if (status !== "posted") return null;
+  const paid = Number(paidTotal ?? 0);
+  const open = Number(netToPay ?? 0);
+  if (!Number.isFinite(paid) || paid <= 0) return "unpaid";
+  if (!Number.isFinite(open) || open <= 0) return "paid";
+  return "partial";
+}
+
+/**
+ * @param {(key: string) => string} t
+ * @param {"unpaid" | "partial" | "paid" | null} settlement
+ */
+export function getSalesInvoiceSettlementLabel(t, settlement) {
+  if (settlement === "unpaid") return t("settlementUnpaid");
+  if (settlement === "partial") return t("settlementPartial");
+  if (settlement === "paid") return t("settlementPaid");
+  return "";
+}
+
+/**
  * @param {string | null | undefined} status
  */
 export function isSalesInvoicePosted(status) {

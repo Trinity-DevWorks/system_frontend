@@ -123,7 +123,7 @@ export default function CurrencyRateHistoryModal({ open, currency, onClose }) {
             <Typography.Text type="secondary" className="text-sm">
               1 {currency?.code} ={" "}
               {formatTenantNumber(selectedPair.current_rate, {
-                decimals: 6,
+                decimals: 12,
                 trimTrailingZeros: true,
               }) || String(selectedPair.current_rate)}{" "}
               {selectedPair.to_currency?.code}
@@ -160,7 +160,7 @@ export default function CurrencyRateHistoryModal({ open, currency, onClose }) {
                 period: formatPeriod(row),
                 rate:
                   formatTenantNumber(row.rate, {
-                    decimals: 6,
+                    decimals: 12,
                     trimTrailingZeros: true,
                   }) || String(row.rate ?? "\u2014"),
                 updated_by: row.updated_by ?? "\u2014",
