@@ -306,8 +306,8 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
           className="w-full"
           value={newRate}
           onChange={setNewRate}
-          min={0.000001}
-          step={0.000001}
+          min={0.000000000001}
+          step={0.0001}
           controls={false}
           placeholder={t("pairRate")}
         />
@@ -343,8 +343,8 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
               {editingKey === row.key ? (
                 <TenantNumberInput
                   kind="rate"
-                  min={0.000001}
-                  step={0.000001}
+                  min={0.000000000001}
+                  step={0.0001}
                   controls={false}
                   value={editRate}
                   onChange={setEditRate}
@@ -352,7 +352,7 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
               ) : (
                 <Typography.Text>
                   {formatTenantNumber(row.rate, {
-                    decimals: 6,
+                    decimals: 12,
                     trimTrailingZeros: true,
                   }) || "—"}
                 </Typography.Text>

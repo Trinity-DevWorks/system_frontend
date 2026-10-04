@@ -8,6 +8,8 @@ import { formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { ClearOutlined, CopyOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { App, Checkbox, Input, Select, Tag, Tooltip } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import LinePriceInput from "@/shared/components/lines-grid/LinePriceInput";
+import { linePriceFromPrimary, manualLinePrice, positiveRate } from "@/lib/currency/documentExchangeRate";
 import ServerSearchSelect from "@/shared/components/selects/ServerSearchSelect";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
@@ -298,12 +300,16 @@ function PurchaseInvoiceLineLotField({ itemId, warehouseId, value, trackLots, re
  *   lineKeyboardActionsRef?: import("react").MutableRefObject<{ duplicateLine?: (index: number) => void }>;
  *   onAddLine: () => void;
  *   onViewItem?: (itemId: string) => void;
- *   t: (key: string) => string;
+ *   pricing?: import("@/shared/components/lines-grid/LinePriceInput").LinePricing;
+ *   rateBanner?: import("react").ReactNode;
+ *   t: (key: string, values?: Record<string, unknown>) => string;
  * }} props
  */
 export default function PurchaseInvoiceLineEditor({
   lines,
   readOnly,
+  pricing = { rate: 1, foreign: false, primaryCode: "", currencyCode: "" },
+  rateBanner = null,
   itemOptions = [],
   taxContext = {
     taxEnabled: true,
@@ -326,6 +332,8 @@ export default function PurchaseInvoiceLineEditor({
 }) {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification } = App.useApp();
+  const priceDecimals = taxContext.settings?.priceDecimalPlaces ?? 2;
+  const catalogPrice = (primaryPrice) => linePriceFromPrimary(primaryPrice, pricing.rate, priceDecimals);
   const [barcodePendingIndex, setBarcodePendingIndex] = useState(/** @type {number | null} */ (null));
   const [selectedLineIndexes, setSelectedLineIndexes] = useState(() => new Set());
   /** Last barcode successfully applied per line — used so only a true rescan bumps qty. */
@@ -595,6 +603,8 @@ export default function PurchaseInvoiceLineEditor({
       const incrementQuantity = sameItem && committed != null && committed === code;
       const patch = purchaseInvoiceLinePatchFromBarcodeLookup(row, result, code, headerWarehouseId, {
         incrementQuantity,
+        rate: pricing.rate,
+        priceDecimals,
       });
       if (patch) {
         applyPatch(index, patch);
@@ -741,7 +751,7 @@ export default function PurchaseInvoiceLineEditor({
                       patch.barcode = option.barcode;
                     }
                     if (row.unit_price == null && option?.unit_cost != null) {
-                      patch.unit_price = Number(option.unit_cost);
+                      Object.assign(patch, catalogPrice(option.unit_cost));
                     }
                     if (Object.keys(patch).length > 0) applyPatch(index, patch);
                     const nextBarcode = typeof patch.barcode === "string" ? patch.barcode.trim() : "";
@@ -749,8 +759,7 @@ export default function PurchaseInvoiceLineEditor({
                   }}
                   onCatalogReprice={(option) => {
                     applyPatch(index, {
-                      unit_price:
-                        option?.unit_cost != null ? Number(option.unit_cost) : undefined,
+                      ...catalogPrice(option?.unit_cost),
                       discount_percent: 0,
                       tax_rate: undefined,
                       line_total: undefined,
@@ -766,8 +775,7 @@ export default function PurchaseInvoiceLineEditor({
                     applyPatch(index, {
                       item_uom_id: value,
                       conversion_factor: option?.conversion_factor ?? 1,
-                      unit_price:
-                        option?.unit_cost != null ? Number(option.unit_cost) : row.unit_price,
+                      ...(option?.unit_cost != null ? catalogPrice(option.unit_cost) : {}),
                       barcode: nextBarcode,
                     });
                   }}
@@ -841,19 +849,26 @@ export default function PurchaseInvoiceLineEditor({
             return (
               <PiFocusStop field="unit_price" line={index}>
                 <div className="flex min-w-0 items-center gap-1">
-                  <TenantNumberInput
-                    kind="money"
+                  <LinePriceInput
+                    line={row}
+                    pricing={pricing}
                     className="min-w-0 flex-1"
-                    min={0}
                     placeholder={t("lineUnitPricePlaceholder")}
-                    value={row.unit_price}
                     disabled={readOnly}
-                    onChange={(value) => applyPatch(index, { unit_price: value ?? undefined })}
+                    t={t}
+                    onChange={(value) => applyPatch(index, manualLinePrice(value, pricing.rate))}
                   />
                   {row.price_mismatch ? (
                     <Tooltip
                       title={t(poLinked ? "priceMismatchWarningPo" : "priceMismatchWarning", {
-                        grn: (poLinked ? row.po_unit_price : row.grn_unit_cost) ?? "\u2014",
+                        grn: formatTenantMoney(
+                          linePriceFromPrimary(
+                            poLinked ? row.po_unit_price : row.grn_unit_cost,
+                            positiveRate(row.price_rate) ?? pricing.rate ?? 1,
+                            priceDecimals,
+                            "document",
+                          ).unit_price,
+                        ) || "\u2014",
                       })}
                     >
                       <Tag color="warning" className="!m-0 shrink-0">
@@ -960,6 +975,7 @@ export default function PurchaseInvoiceLineEditor({
           );
         }}
       />
+      {rateBanner}
     </section>
   );
 }

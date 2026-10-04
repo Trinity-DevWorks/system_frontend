@@ -97,6 +97,7 @@ function spaceChildren(nodes) {
  *   onSearchChange?: (query: string) => void,
  *   extra?: import("react").ReactNode,
  *   filterBar?: import("react").ReactNode,
+ *   belowTable?: import("react").ReactNode,
  * }} [props.toolbar]
  * @param {import("antd/es/table/interface").TableRowSelection<any> | false} [props.rowSelection]
  * @param {(selectedKeys?: import("react").Key[]) => void} [props.onBulkDelete]
@@ -167,6 +168,7 @@ function AppDataTable({
     onSearchChange,
     extra,
     filterBar,
+    belowTable,
   } = toolbar;
 
   const paginationMode = pagination ? "server" : false;
@@ -756,6 +758,8 @@ function AppDataTable({
               </div>
             ) : null}
           </div>
+
+          {belowTable ? <div className="min-w-0">{belowTable}</div> : null}
         </div>
       </div>
     </div>

@@ -67,6 +67,10 @@ export default function PurchaseInvoiceTotals({ t, readOnly, totals = null }) {
             <span className="resource-drawer-pricing-card-label">{t("totalNetToPay")}</span>
             <span className="resource-drawer-pricing-card-value">{money(totals?.net_to_pay)}</span>
           </div>
+          <div className="resource-drawer-pricing-card sales-invoice-totals-paid col-start-2">
+            <span className="resource-drawer-pricing-card-label">{t("totalPaid")}</span>
+            <span className="resource-drawer-pricing-card-value">{money(totals?.paid_total)}</span>
+          </div>
         </div>
       </div>
     </section>

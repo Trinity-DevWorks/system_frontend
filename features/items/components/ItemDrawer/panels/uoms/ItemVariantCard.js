@@ -13,12 +13,10 @@ import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismiss
 /**
  * @param {Record<string, unknown>} values
  * @param {(key: string) => string} t
- * @param {string} currencyLabel
  */
-function VariantPricingGrid({ values, t, currencyLabel }) {
+function VariantPricingGrid({ values, t }) {
   const price = (v) => formatTenantMoney(v) || "—";
   const cells = [
-    { label: t("uomColCurrency"), value: currencyLabel },
     { label: t("uomFieldSell"), value: price(values.selling_price) },
     { label: t("uomFieldCost"), value: price(values.cost_price) },
     { label: t("uomColTakeaway"), value: price(values.takeaway_price) },
@@ -68,9 +66,7 @@ function VariantFormField({ label, required, children }) {
  *   readOnly: boolean;
  *   values: import("../itemDrawerPanelsState").UomInlineValues;
  *   uomOptions: { value: number; label: string }[];
- *   currencyOptions: { value: number; label: string }[];
  *   uomsQueryPending?: boolean;
- *   currenciesQueryPending?: boolean;
  *   barcodes: unknown[];
  *   savePending?: boolean;
  *   patchPending?: boolean;
@@ -94,9 +90,7 @@ export default function ItemVariantCard({
   readOnly,
   values,
   uomOptions,
-  currencyOptions,
   uomsQueryPending,
-  currenciesQueryPending,
   barcodes,
   savePending,
   patchPending,
@@ -117,8 +111,6 @@ export default function ItemVariantCard({
     uomName && uomCode && uomName.toUpperCase() !== uomCode.toUpperCase()
       ? `${uomName} (${uomCode})`
       : uomName || uomCode || (isNew ? (forceBaseUnit ? t("variantCardNewBaseTitle") : t("variantCardNewTitle")) : "—");
-  const currency = /** @type {{ code?: string; name?: string } | undefined} */ (row.currency);
-  const currencyLabel = currency?.code ?? currency?.name ?? "—";
   const rowId = Number(row.id);
   const isPersisted = !isNew && rowId > 0 && row.id !== UOM_DRAFT_ROW_ID;
   const flagsDisabled = readOnly || inlineBlocked || isEditing;
@@ -250,18 +242,6 @@ export default function ItemVariantCard({
                   getPopupContainer={drawerSelectGetPopup}
                 />
               </VariantFormField>
-              <VariantFormField label={t("uomFieldCurrency")}>
-                <Select
-                  className="w-full"
-                  allowClear
-                  placeholder={t("uomFieldCurrency")}
-                  value={values.currency_id}
-                  options={currencyOptions}
-                  loading={currenciesQueryPending}
-                  onChange={(v) => onPatch({ currency_id: v ?? undefined })}
-                  getPopupContainer={drawerSelectGetPopup}
-                />
-              </VariantFormField>
             </div>
 
             <div className={variantFormGridClass}>
@@ -362,7 +342,7 @@ export default function ItemVariantCard({
           </div>
         ) : (
           <>
-            <VariantPricingGrid t={t} currencyLabel={currencyLabel} values={displayValues} />
+            <VariantPricingGrid t={t} values={displayValues} />
             <div className="flex flex-wrap items-center gap-x-7 gap-y-5 border-b border-[var(--ant-color-border-secondary)] px-5 py-3.5">
               <label className={configOptionClass}>
                 <Radio

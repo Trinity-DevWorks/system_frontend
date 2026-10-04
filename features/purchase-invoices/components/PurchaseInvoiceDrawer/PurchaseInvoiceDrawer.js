@@ -44,6 +44,7 @@ import {
   seedLinesFromGoodsReceipt,
   seedLinesFromPurchaseOrder,
   suggestedDueOn,
+  withPurchaseInvoiceLineMismatchFlags,
 } from "../../utils/purchaseInvoiceDrawerUtils";
 import {
   customerIsExemptOnDate as supplierIsExemptOnDate,
@@ -54,6 +55,14 @@ import { usePurchaseInvoiceDrawerMutations } from "../../queries/usePurchaseInvo
 import { tenantPricesIncludeTax, useCompanySettings } from "@/lib/company-settings";
 import { withConfirmKeyboard } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import { PURCHASE_INVOICE_SUPPLIER_RECENT_KIND } from "../../api/purchaseInvoiceSelectors.api";
+import LinePriceRateBanner from "@/shared/components/lines-grid/LinePriceRateBanner";
+import { formatExchangeRate } from "@/shared/components/lines-grid/LinePriceInput";
+import {
+  lineAtRate,
+  lineAwaitsRateUpdate,
+  manualLineAtOtherRate,
+  positiveRate,
+} from "@/lib/currency/documentExchangeRate";
 
 /**
  * @param {{
@@ -149,6 +158,7 @@ export default function PurchaseInvoiceDrawer({
       if (!record || typeof record !== "object") return;
       const mappedLines = mapPurchaseInvoiceLinesFromApi(
         /** @type {Array<Record<string, unknown>>} */ (record.lines),
+        record.exchange_rate,
       );
       const nextLines = mappedLines.length > 0 ? mappedLines : [getEmptyPurchaseInvoiceLine()];
       setLines(nextLines);
@@ -350,6 +360,16 @@ export default function PurchaseInvoiceDrawer({
     });
   }, [open, supplierId, drawerData.supplierDetail, drawerData.supplierDetailPending, form, readOnly]);
 
+  const sourceLinePricing = useCallback(() => {
+    const headerCurrencyId = form.getFieldValue("currency_id");
+    const primaryId = drawerData.primaryCurrencyId;
+    const isPrimary = headerCurrencyId == null || primaryId == null || Number(headerCurrencyId) === Number(primaryId);
+    return {
+      rate: isPrimary ? 1 : positiveRate(form.getFieldValue("exchange_rate")),
+      priceDecimals: settings.priceDecimalPlaces,
+    };
+  }, [form, drawerData.primaryCurrencyId, settings.priceDecimalPlaces]);
+
   const applyGrnToForm = useCallback(
     async (grnId) => {
       if (grnId == null || grnId === "") return;
@@ -360,7 +380,7 @@ export default function PurchaseInvoiceDrawer({
           warehouse_id: grn.warehouse_id != null ? Number(grn.warehouse_id) : form.getFieldValue("warehouse_id"),
           purchase_order_id: undefined,
         });
-        setLines(seedLinesFromGoodsReceipt(grn));
+        setLines(seedLinesFromGoodsReceipt(grn, sourceLinePricing()));
         grnApplyRef.current = String(grnId);
       } catch (err) {
         grnApplyRef.current = null;
@@ -371,7 +391,7 @@ export default function PurchaseInvoiceDrawer({
         });
       }
     },
-    [form, notification, t],
+    [form, notification, t, sourceLinePricing],
   );
 
   const confirmGrnChange = useCallback(
@@ -435,7 +455,7 @@ export default function PurchaseInvoiceDrawer({
             order.warehouse_id != null ? Number(order.warehouse_id) : form.getFieldValue("warehouse_id"),
           goods_receipt_id: undefined,
         });
-        setLines(seedLinesFromPurchaseOrder(order));
+        setLines(seedLinesFromPurchaseOrder(order, sourceLinePricing()));
         poApplyRef.current = String(poId);
       } catch (err) {
         poApplyRef.current = null;
@@ -446,7 +466,7 @@ export default function PurchaseInvoiceDrawer({
         });
       }
     },
-    [form, notification, t],
+    [form, notification, t, sourceLinePricing],
   );
 
   const confirmPoChange = useCallback(
@@ -502,6 +522,44 @@ export default function PurchaseInvoiceDrawer({
     drawerData.primaryCurrencyId == null ||
     Number(currencyId) === Number(drawerData.primaryCurrencyId);
 
+  const headerRate = exchangeRateLocked ? 1 : positiveRate(formValuesWatch?.exchange_rate);
+  const primaryCode = drawerData.currencyCode(drawerData.primaryCurrencyId);
+  const documentCurrencyCode = drawerData.currencyCode(currencyId);
+  const linePricing = useMemo(
+    () => ({
+      rate: headerRate,
+      foreign: !exchangeRateLocked,
+      primaryCode,
+      currencyCode: documentCurrencyCode,
+    }),
+    [headerRate, exchangeRateLocked, primaryCode, documentCurrencyCode],
+  );
+  const exchangeRateHelp = exchangeRateLocked
+    ? undefined
+    : t("fieldExchangeRateHelp", {
+        primary: primaryCode,
+        rate: headerRate != null ? formatExchangeRate(headerRate) : "?",
+        currency: documentCurrencyCode,
+      });
+  const linesAwaitingRate = useMemo(
+    () => lines.filter((line) => lineAwaitsRateUpdate(line, headerRate)).length,
+    [lines, headerRate],
+  );
+  const manualLinesAtOtherRate = useMemo(
+    () => lines.filter((line) => manualLineAtOtherRate(line, headerRate)).length,
+    [lines, headerRate],
+  );
+  const updateLinePrices = useCallback(() => {
+    if (headerRate == null) return;
+    setLines((prev) =>
+      prev.map((line) =>
+        lineAwaitsRateUpdate(line, headerRate)
+          ? withPurchaseInvoiceLineMismatchFlags(lineAtRate(line, headerRate, settings.priceDecimalPlaces))
+          : line,
+      ),
+    );
+  }, [headerRate, settings.priceDecimalPlaces]);
+
   useEffect(() => {
     if (readOnly || currencyId == null) return;
     if (exchangeRateLocked) {
@@ -512,7 +570,7 @@ export default function PurchaseInvoiceDrawer({
     }
     const current = form.getFieldValue("exchange_rate");
     if (current != null && Number(current) > 0 && Number(current) !== 1) return;
-    const rate = drawerData.pairRateToPrimary(currencyId);
+    const rate = drawerData.rateFromPrimary(currencyId);
     if (rate != null && rate > 0) {
       form.setFieldsValue({ exchange_rate: rate });
     }
@@ -808,7 +866,7 @@ export default function PurchaseInvoiceDrawer({
           form.setFieldsValue({ exchange_rate: 1 });
           return;
         }
-        const rate = drawerData.pairRateToPrimary(nextId);
+        const rate = drawerData.rateFromPrimary(nextId);
         form.setFieldsValue({ exchange_rate: rate != null && rate > 0 ? rate : undefined });
       }
     },
@@ -902,6 +960,7 @@ export default function PurchaseInvoiceDrawer({
           paymentMethodsPending={drawerData.paymentMethodsPending}
           paymentTermsPending={drawerData.paymentTermsPending}
           exchangeRateLocked={exchangeRateLocked}
+          exchangeRateHelp={exchangeRateHelp}
           supplierLocked={hasSource}
           warehouseLocked={hasSource}
           grnDisabled={!supplierReady}
@@ -915,6 +974,18 @@ export default function PurchaseInvoiceDrawer({
         >
           <PurchaseInvoiceLineEditor
             lines={lines}
+            pricing={linePricing}
+            rateBanner={
+              !readOnly ? (
+                <LinePriceRateBanner
+                  count={linesAwaitingRate}
+                  manualCount={manualLinesAtOtherRate}
+                  disabled={submitting}
+                  t={t}
+                  onUpdate={updateLinePrices}
+                />
+              ) : null
+            }
             readOnly={readOnly || submitting || !supplierReady}
             taxContext={taxContext}
             warehouseOptions={drawerData.warehouseOptions}

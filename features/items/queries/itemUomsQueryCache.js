@@ -35,14 +35,13 @@ export function removeItemUomFromList(list, itemUomId) {
 }
 
 /**
- * Mirror server exclusive flags (base / default sale / default purchase per currency).
+ * Mirror server exclusive flags (one base / default sale / default purchase per item).
  *
  * @param {unknown[]} list
  * @param {Record<string, unknown>} sourceRow
  */
 export function applyItemUomExclusiveFlags(list, sourceRow) {
   const sourceId = sourceRow.id;
-  const currencyId = sourceRow.currency?.id ?? sourceRow.currency_id;
 
   return list.map((row) => {
     if (!row || typeof row !== "object") return row;
@@ -57,16 +56,10 @@ export function applyItemUomExclusiveFlags(list, sourceRow) {
       next.is_base = false;
     }
     if (sourceRow.is_default_sale) {
-      const rowCurrencyId = r.currency?.id ?? r.currency_id;
-      if (Number(rowCurrencyId) === Number(currencyId)) {
-        next.is_default_sale = false;
-      }
+      next.is_default_sale = false;
     }
     if (sourceRow.is_default_purchase) {
-      const rowCurrencyId = r.currency?.id ?? r.currency_id;
-      if (Number(rowCurrencyId) === Number(currencyId)) {
-        next.is_default_purchase = false;
-      }
+      next.is_default_purchase = false;
     }
     return next;
   });

@@ -241,6 +241,11 @@
   white-space: nowrap;
 }
 
+.sales-invoice-exchange-rate-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .sales-invoice-exchange-rate-inline .ant-input-number {
   flex: 1 1 auto;
   width: 100% !important;
@@ -305,6 +310,7 @@
 }
 
 .sales-invoice-form .item-lines-panel {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -312,6 +318,22 @@
   gap: 8px;
   padding-block: 12px;
   overflow: hidden;
+}
+
+.line-price-rate-banner {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 16px);
+  pointer-events: none;
+}
+
+.line-price-rate-banner .ant-alert {
+  margin: 0;
+  pointer-events: auto;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
 }
 
 .sales-invoice-form .item-lines-section-card {
@@ -511,6 +533,10 @@
   height: 22px;
   min-height: 22px;
   text-align: right;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card.sales-invoice-totals-paid {
+  grid-column-start: 2;
 }
 
 .sales-invoice-totals .resource-drawer-pricing-card.sales-invoice-totals-net {

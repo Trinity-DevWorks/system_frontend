@@ -13,7 +13,6 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { fetchItemBarcodes } from "../../../../api/itemBarcodes.api";
-import { fetchCurrencyNames } from "@/features/currencies/index";
 import { createItemUom, deleteItemUom, fetchItemUoms, updateItemUom } from "../../../../api/itemUoms.api";
 import { fetchUnitOfMeasurementNames } from "@/features/unit-of-measurements/index";
 import { itemBarcodesQueryKey } from "../../../../queries/itemBarcodesQueryCache";
@@ -32,7 +31,6 @@ import {
   uomInlineValuesToBody,
 } from "../itemDrawerPanelsState";
 import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
-import { CURRENCIES_LIST_QUERY_KEY } from "@/features/currencies";
 import { UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY } from "@/features/unit-of-measurements";
 import { ITEMS_LIST_QUERY_KEY, itemDetailQueryKey } from "../../../../queries/itemsQueryKeys";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
@@ -71,13 +69,6 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     queryKey: barcodesQueryKeyValue,
     queryFn: () => fetchItemBarcodes(itemId),
     enabled: queriesEnabled,
-  });
-
-  const currenciesQuery = useQuery({
-    queryKey: CURRENCIES_LIST_QUERY_KEY,
-    queryFn: fetchCurrencyNames,
-    enabled: active && isPersistedEntityId(itemId),
-    staleTime: QUERY_STALE_TIME.catalog,
   });
 
   const uomsQuery = useQuery({
@@ -191,19 +182,13 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
 
   const resolvedUnitGroupId = unitGroupId != null && unitGroupId !== "" ? Number(unitGroupId) : null;
 
-  const primaryCurrencyId = useMemo(
-    () => (currenciesQuery.data ?? []).find((c) => c.is_primary)?.id,
-    [currenciesQuery.data],
-  );
-
-  const usedUomCurrencyKeys = useMemo(() => {
-    const keys = new Set();
+  const usedUomIds = useMemo(() => {
+    const ids = new Set();
     for (const r of rows) {
       const uomId = r.uom?.id ?? r.uom_id;
-      const currencyId = r.currency?.id ?? r.currency_id;
-      if (uomId != null && currencyId != null) keys.add(`${uomId}:${currencyId}`);
+      if (uomId != null) ids.add(Number(uomId));
     }
-    return keys;
+    return ids;
   }, [rows]);
 
   const uomOptions = useMemo(() => {
@@ -215,17 +200,12 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
       }));
 
     if (inlineEdit?.key === "new") {
-      const currencyId = inlineEdit.values.currency_id ?? primaryCurrencyId;
       const selectedUom = inlineEdit.values.uom_id;
-      if (currencyId != null) {
-        options = options.filter(
-          (o) => o.value === selectedUom || !usedUomCurrencyKeys.has(`${o.value}:${currencyId}`),
-        );
-      }
+      options = options.filter((o) => o.value === selectedUom || !usedUomIds.has(Number(o.value)));
     }
 
     return options;
-  }, [uomsQuery.data, resolvedUnitGroupId, inlineEdit, primaryCurrencyId, usedUomCurrencyKeys]);
+  }, [uomsQuery.data, resolvedUnitGroupId, inlineEdit, usedUomIds]);
 
   const needsBaseUnit = !baseRow;
   const addDisabledReason = useMemo(() => {
@@ -233,11 +213,6 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     if (inlineEdit) return t("uomAddDisabledEditing");
     return null;
   }, [resolvedUnitGroupId, inlineEdit, t]);
-
-  const currencyOptions = useMemo(
-    () => (currenciesQuery.data ?? []).map((c) => ({ value: c.id, label: c.code ?? c.name })),
-    [currenciesQuery.data],
-  );
 
   const variantCards = useMemo(() => {
     if (!inlineEdit || inlineEdit.key !== "new") return rows;
@@ -254,7 +229,6 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
       key: "new",
       values: {
         ...defaultUomInlineValues(),
-        currency_id: primaryCurrencyId,
         is_base: needsBaseUnit,
         conversion_factor: 1,
         is_default_sale: needsBaseUnit,
@@ -326,9 +300,7 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     resolvedUnitGroupId,
     addDisabledReason,
     uomOptions,
-    currencyOptions,
     uomsQueryPending: uomsQuery.isPending,
-    currenciesQueryPending: currenciesQuery.isPending,
     saveMutationPending: saveMutation.isPending,
     patchMutationPending: patchMutation.isPending,
     startCreateRow,

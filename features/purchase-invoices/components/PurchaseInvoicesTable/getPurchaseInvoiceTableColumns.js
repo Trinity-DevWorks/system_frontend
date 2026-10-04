@@ -1,6 +1,8 @@
 import {
+  getPurchaseInvoiceSettlementLabel,
   getPurchaseInvoiceStatusLabel,
   isPurchaseInvoiceDraft,
+  purchaseInvoiceSettlement,
   purchaseInvoiceStatusTagColor,
 } from "../../utils/purchaseInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
@@ -72,11 +74,21 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       title: t("colStatus"),
       dataIndex: "status",
       key: "status",
-      width: 110,
+      width: 200,
       sorter: (a, b) => String(a.status ?? "").localeCompare(String(b.status ?? "")),
-      render: (value) => (
-        <Tag color={purchaseInvoiceStatusTagColor(value)}>{getPurchaseInvoiceStatusLabel(t, value)}</Tag>
-      ),
+      render: (value, record) => {
+        const settlement = purchaseInvoiceSettlement(value, record?.paid_total, record?.net_to_pay);
+        return (
+          <span className="inline-flex flex-wrap gap-1">
+            <Tag color={purchaseInvoiceStatusTagColor(value)}>{getPurchaseInvoiceStatusLabel(t, value)}</Tag>
+            {settlement ? (
+              <Tag color={settlement === "paid" ? "success" : settlement === "partial" ? "warning" : "default"}>
+                {getPurchaseInvoiceSettlementLabel(t, settlement)}
+              </Tag>
+            ) : null}
+          </span>
+        );
+      },
     },
     {
       title: t("colTotal"),
@@ -85,6 +97,15 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       width: 130,
       align: "right",
       sorter: (a, b) => Number(a.grand_total ?? 0) - Number(b.grand_total ?? 0),
+      render: (value) => formatTenantMoney(value) || "\u2014",
+    },
+    {
+      title: t("colPaidTotal"),
+      dataIndex: "paid_total",
+      key: "paid_total",
+      width: 130,
+      align: "right",
+      sorter: (a, b) => Number(a.paid_total ?? 0) - Number(b.paid_total ?? 0),
       render: (value) => formatTenantMoney(value) || "\u2014",
     },
     {

@@ -18,6 +18,7 @@
 
 import {
   AlertOutlined,
+  AccountBookOutlined,
   ApartmentOutlined,
   AppstoreOutlined,
   BankOutlined,
@@ -36,6 +37,7 @@ import {
   ExperimentOutlined,
   FieldTimeOutlined,
   FileDoneOutlined,
+  FileSearchOutlined,
   FileTextOutlined,
   FlagOutlined,
   FormOutlined,
@@ -157,12 +159,16 @@ export const FEATURES = [
   { id: "stockTransfers", path: "/main/stock/transfers", section: "inventory", labelKey: "navStockTransfers", icon: RetweetOutlined, groupKey: "navGroupDocuments", module: "inventory", permission: "stock" },
 
   { id: "salesInvoices", path: "/main/sales-invoices", section: "sales", labelKey: "navSalesInvoices", icon: FileDoneOutlined, module: "sales", permission: "sales_invoices" },
+  { id: "customerReceipts", path: "/main/customer-receipts", section: "sales", labelKey: "navCustomerReceipts", icon: DollarOutlined, module: "sales", permission: "customer_receipts" },
   { id: "customerGroups", path: "/main/customer-groups", section: "sales", labelKey: "navCustomerGroups", icon: UsergroupAddOutlined, module: "sales", permission: "customer_groups" },
   { id: "customers", path: "/main/customers", section: "sales", labelKey: "navCustomers", icon: UserOutlined, module: "sales", permission: "customers" },
+  { id: "customerLedger", path: "/main/customer-ledger", section: "sales", labelKey: "navCustomerLedger", icon: FileSearchOutlined, module: "sales", permission: "customers" },
 
   { id: "supplierGroups", path: "/main/supplier-groups", section: "purchasing", labelKey: "navSupplierGroups", icon: ClusterOutlined, module: "purchasing", permission: "supplier_groups" },
   { id: "suppliers", path: "/main/suppliers", section: "purchasing", labelKey: "navSuppliers", icon: SolutionOutlined, module: "purchasing", permission: "suppliers" },
+  { id: "supplierLedger", path: "/main/supplier-ledger", section: "purchasing", labelKey: "navSupplierLedger", icon: FileSearchOutlined, module: "purchasing", permission: "suppliers" },
   { id: "purchaseInvoices", path: "/main/purchase-invoices", section: "purchasing", labelKey: "navPurchaseInvoices", icon: FileDoneOutlined, module: "purchasing", permission: "purchase_invoices" },
+  { id: "supplierPayments", path: "/main/supplier-payments", section: "purchasing", labelKey: "navSupplierPayments", icon: AccountBookOutlined, module: "purchasing", permission: "supplier_payments" },
 
   { id: "branches", path: "/main/branches", section: "administration", labelKey: "navBranches", icon: ApartmentOutlined, module: CORE_MODULE, permission: "branches" },
   { id: "users", path: "/main/users", section: "administration", labelKey: "navUsers", icon: TeamOutlined, module: CORE_MODULE, permission: "users" },
