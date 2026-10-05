@@ -25,7 +25,7 @@ export default function InvoiceChainStatusTag({ status, issue }) {
   if (status.status === "failed") {
     label = t("chainStatusFailed");
     color = "error";
-  } else if (status.financed && status.status !== "revoked") {
+  } else if (status.financed && status.status !== "revoked" && status.status !== "disputed") {
     label = t("chainStatusFinanced");
     color = "gold";
   }

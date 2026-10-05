@@ -98,6 +98,9 @@ export function reverseSalesInvoice(invoiceId) {
  *   registered_at?: string | null;
  *   supplier_approved_at?: string | null;
  *   buyer_approved_at?: string | null;
+ *   revoked_at?: string | null;
+ *   disputed_at?: string | null;
+ *   dispute_reason?: string | null;
  *   attestations?: Array<{
  *     verifier: string;
  *     verifier_name: string | null;
@@ -202,6 +205,27 @@ export function unlockInvoiceProofPortal(invoiceId, link = {}, body) {
     {
       address: body.address,
       signature: body.signature,
+    },
+  );
+}
+
+/**
+ * Record the buyer dispute reason after it is hashed on chain.
+ * @param {string} invoiceId
+ * @param {{ exp?: unknown; sig?: unknown }} [link]
+ * @param {{ reason: string; tx_hash?: string }} body
+ */
+export function recordInvoiceProofDispute(invoiceId, link = {}, body) {
+  const qs = new URLSearchParams();
+  if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));
+  if (typeof link.sig === "string" && link.sig.trim() !== "") qs.set("sig", link.sig.trim());
+  const query = qs.toString();
+  return tenantRequest(
+    "POST",
+    query ? `proofs/${invoiceId}/dispute?${query}` : `proofs/${invoiceId}/dispute`,
+    {
+      reason: body.reason,
+      ...(typeof body.tx_hash === "string" && body.tx_hash !== "" ? { tx_hash: body.tx_hash } : {}),
     },
   );
 }

@@ -26,8 +26,9 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   const [bundle, setBundle] = useState(/** @type {import("@/lib/invoice-proof-merkle").InvoiceProofDisclosureBundle | null} */ (null));
   const [result, setResult] = useState(/** @type {ReturnType<typeof verifyDisclosureBundle> | null} */ (null));
   const [chainState, setChainState] = useState(
-    /** @type {"idle" | "checking" | "match" | "mismatch" | "missing" | "revoked"} */ ("idle"),
+    /** @type {"idle" | "checking" | "match" | "mismatch" | "missing" | "revoked" | "disputed"} */ ("idle"),
   );
+  const [disputeReasonHash, setDisputeReasonHash] = useState(/** @type {string | null} */ (null));
   const [attestStage, setAttestStage] = useState(/** @type {"wallet" | "review" | "done"} */ ("wallet"));
   const [screen, setScreen] = useState(0);
 
@@ -41,6 +42,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
    */
   const handleFile = async (file) => {
     setChainState("idle");
+    setDisputeReasonHash(null);
     try {
       const parsed = JSON.parse(await file.text());
       setResult(verifyDisclosureBundle(parsed));
@@ -58,6 +60,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   const handleChainCheck = async () => {
     if (!bundle || !result) return;
     setChainState("checking");
+    setDisputeReasonHash(null);
     try {
       const onChain = await readOnChainSeal({
         chainId: Number(bundle.chain_id),
@@ -66,7 +69,11 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
       });
       if (onChain.contentHash === null) setChainState("missing");
       else if (onChain.contentHash !== result.contentHash) setChainState("mismatch");
-      else setChainState(onChain.revoked ? "revoked" : "match");
+      else if (onChain.revoked) setChainState("revoked");
+      else if (onChain.disputed) {
+        setChainState("disputed");
+        setDisputeReasonHash(onChain.disputeReasonHash);
+      } else setChainState("match");
     } catch (err) {
       setChainState("idle");
       const code = err instanceof Error ? err.message : "";
@@ -88,7 +95,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   /** @type {"process" | "error" | "finish"} */
   let stepStatus = "process";
   if (screen === 1 && result && !result.valid) stepStatus = "error";
-  if (screen === 2 && (chainState === "mismatch" || chainState === "missing" || chainState === "revoked")) {
+  if (screen === 2 && (chainState === "mismatch" || chainState === "missing" || chainState === "revoked" || chainState === "disputed")) {
     stepStatus = "error";
   }
   if (screen === 4 && attestStage === "done") stepStatus = "finish";
@@ -194,6 +201,26 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
           {chainState === "missing" ? <Alert type="warning" showIcon title={t("verifyChainMissing")} /> : null}
           {chainState === "revoked" ? (
             <Alert type="error" showIcon title={t("verifyChainRevoked")} description={t("verifyChainRevokedHint")} />
+          ) : null}
+          {chainState === "disputed" ? (
+            <Alert
+              type="error"
+              showIcon
+              title={t("verifyChainDisputed")}
+              description={
+                <div className="flex flex-col gap-2">
+                  <span>{t("verifyChainDisputedHint")}</span>
+                  {disputeReasonHash ? (
+                    <div>
+                      <div>{t("verifyDisputeReasonHash")}</div>
+                      <span className="break-all font-mono text-xs" dir="ltr">
+                        {disputeReasonHash}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              }
+            />
           ) : null}
 
           <div className="flex justify-between gap-2">

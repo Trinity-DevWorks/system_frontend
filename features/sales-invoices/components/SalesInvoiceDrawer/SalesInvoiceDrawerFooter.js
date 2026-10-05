@@ -39,6 +39,7 @@ function FooterChainTimes({
   registeredAt,
   supplierApprovedAt,
   buyerApprovedAt,
+  disputedAt,
   supplierWallet,
   buyerWallet,
   attestations = [],
@@ -47,6 +48,7 @@ function FooterChainTimes({
     [registeredAt, "chainRegisteredAt", "", "chainRegisteredAt"],
     [supplierApprovedAt, "chainSupplierApprovedAt", supplierWallet, "chainSupplierApprovedAt"],
     [buyerApprovedAt, "chainBuyerApprovedAt", buyerWallet, "chainBuyerApprovedAt"],
+    [disputedAt, "chainDisputedAt", "", "chainDisputedAt"],
     ...attestations
       .filter((attestation) => ATTESTATION_LABEL_KEYS[attestation?.role])
       .map((attestation) => [
@@ -85,6 +87,17 @@ function FooterChainTimes({
           </span>
         );
       })}
+    </div>
+  );
+}
+
+function FooterDisputeReason({ t, reason }) {
+  if (typeof reason !== "string" || reason.trim() === "") return null;
+
+  return (
+    <div className="max-w-xl text-xs">
+      <span className="font-medium text-[var(--ant-color-text-tertiary)]">{t("chainDisputeReason")}</span>
+      <div className="whitespace-pre-wrap font-semibold text-[var(--ant-color-text)]">{reason}</div>
     </div>
   );
 }
@@ -148,6 +161,8 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   chainRegisteredAt?: string | null;
  *   chainSupplierApprovedAt?: string | null;
  *   chainBuyerApprovedAt?: string | null;
+ *   chainDisputedAt?: string | null;
+ *   chainDisputeReason?: string | null;
  *   chainSupplierWallet?: string | null;
  *   chainBuyerWallet?: string | null;
  *   chainAttestations?: Array<{ verifier: string; role: string; attested_at: string | null }>;
@@ -189,6 +204,8 @@ export default function SalesInvoiceDrawerFooter({
   chainRegisteredAt = null,
   chainSupplierApprovedAt = null,
   chainBuyerApprovedAt = null,
+  chainDisputedAt = null,
+  chainDisputeReason = null,
   chainSupplierWallet = null,
   chainBuyerWallet = null,
   chainAttestations = [],
@@ -296,11 +313,13 @@ export default function SalesInvoiceDrawerFooter({
               registeredAt={chainRegisteredAt}
               supplierApprovedAt={chainSupplierApprovedAt}
               buyerApprovedAt={chainBuyerApprovedAt}
+              disputedAt={chainDisputedAt}
               supplierWallet={chainSupplierWallet}
               buyerWallet={chainBuyerWallet}
               attestations={chainAttestations}
             />
           ) : null}
+          {showVerify ? <FooterDisputeReason t={t} reason={chainDisputeReason} /> : null}
           {showVerify ? <FooterProofHint hint={proofHint} /> : null}
         </div>
         <div className="ms-auto flex shrink-0 items-center gap-3">
@@ -328,11 +347,13 @@ export default function SalesInvoiceDrawerFooter({
             registeredAt={chainRegisteredAt}
             supplierApprovedAt={chainSupplierApprovedAt}
             buyerApprovedAt={chainBuyerApprovedAt}
+            disputedAt={chainDisputedAt}
             supplierWallet={chainSupplierWallet}
             buyerWallet={chainBuyerWallet}
             attestations={chainAttestations}
           />
         ) : null}
+        {showVerify ? <FooterDisputeReason t={t} reason={chainDisputeReason} /> : null}
         {showVerify ? <FooterProofHint hint={proofHint} /> : null}
       </div>
       {showDelete ? (

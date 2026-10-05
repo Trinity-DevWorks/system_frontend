@@ -3,16 +3,16 @@
 import AuthSplitShell from "@/features/auth/components/AuthSplitShell";
 import { invoiceProofStatusTagColor } from "../utils/invoiceProofStatuses";
 import { useInvoiceProofPortalQuery } from "../queries/useInvoiceProofPortalQuery";
-import { fetchInvoiceProofPortal, unlockInvoiceProofPortal } from "../api/salesInvoices.api";
+import { fetchInvoiceProofPortal, recordInvoiceProofDispute, unlockInvoiceProofPortal } from "../api/salesInvoices.api";
 import { hasBuyerPortalLinkStamp } from "../utils/invoiceProofPortalUrl";
-import { BuyerApprovalError, sendBuyerApproval } from "@/lib/invoice-registry-buyer-approval";
-import { sendBuyerSafeApproval } from "@/lib/invoice-registry-buyer-safe";
+import { BuyerApprovalError, sendBuyerApproval, sendBuyerDispute } from "@/lib/invoice-registry-buyer-approval";
+import { sendBuyerSafeApproval, sendBuyerSafeDispute } from "@/lib/invoice-registry-buyer-safe";
 import { signProofPortalUnlock, watchProofPortalAccount } from "@/lib/invoice-proof-portal-unlock";
 import { getApiErrorCode, getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { useMutation } from "@tanstack/react-query";
-import { App, Alert, Button, Spin, Tag, Tooltip, Typography } from "antd";
+import { App, Alert, Button, Input, Modal, Spin, Tag, Tooltip, Typography } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { withLocalePrefix } from "@/lib/locale-path";
 import { useLocale, useTranslations } from "next-intl";
@@ -129,6 +129,7 @@ function statusHint(t, status) {
   if (status === "waiting_buyer") return t("hintWaitingBuyer");
   if (status === "fully_approved") return t("hintFullyApproved");
   if (status === "revoked") return t("hintRevoked");
+  if (status === "disputed") return t("hintDisputed");
   if (status === "tampered") return t("hintTampered");
   if (status === "pending_chain") return t("hintPendingChain");
   if (status === "not_registered") return t("hintNotRegistered");
@@ -149,6 +150,7 @@ function portalStatusLabel(t, status) {
   if (status === "waiting_buyer") return t("statusWaitingYou");
   if (status === "fully_approved") return t("statusApproved");
   if (status === "revoked") return t("statusRevoked");
+  if (status === "disputed") return t("statusDisputed");
   return status ? String(status) : "—";
 }
 
@@ -231,6 +233,8 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
   );
   const portalLinkKey = `${validId ?? ""}|${portalLink.exp ?? ""}|${portalLink.sig ?? ""}`;
   const [invoiceLinkKey, setInvoiceLinkKey] = useState(portalLinkKey);
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState("");
   if (invoiceLinkKey !== portalLinkKey) {
     setInvoiceLinkKey(portalLinkKey);
     setInvoice(null);
@@ -340,13 +344,17 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
         return;
       }
       message.success(t("approveSuccess"));
+      setDisputeOpen(false);
+      setDisputeReason("");
       setInvoice((current) =>
         current && typeof current === "object"
           ? {
               ...current,
               status: "fully_approved",
               can_approve_as_buyer: false,
+              can_dispute_as_buyer: false,
               eip712: null,
+              dispute_eip712: null,
               buyer_approved_at:
                 typeof buyerApprovedAt === "string" && buyerApprovedAt !== ""
                   ? buyerApprovedAt
@@ -354,6 +362,42 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
             }
           : current,
       );
+    },
+  });
+
+  const disputeMutation = useMutation({
+    mutationFn: async () => {
+      if (validId == null) throw new BuyerApprovalError("failed");
+      const reason = disputeReason.trim();
+      if (reason === "") throw new BuyerApprovalError("failed");
+      const chainId = Number(proof?.chain_id);
+      const contractAddress = typeof proof?.contract_address === "string" ? proof.contract_address : "";
+      const buyerWallet = typeof proof?.buyer_wallet === "string" ? proof.buyer_wallet : "";
+      const eip712 = proof?.dispute_eip712 && typeof proof.dispute_eip712 === "object" ? proof.dispute_eip712 : null;
+      if (!Number.isFinite(chainId) || chainId <= 0 || contractAddress === "" || buyerWallet === "" || eip712 == null) {
+        throw new BuyerApprovalError("failed");
+      }
+      let txHash = "";
+      if (unlockedBy?.buyerIsSafe) {
+        const sent = await sendBuyerSafeDispute({ chainId, contractAddress, buyerWallet, eip712, reason });
+        if (sent.status === "proposed") return { proposed: true, result: null };
+        txHash = sent.txHash;
+      } else {
+        txHash = await sendBuyerDispute({ chainId, contractAddress, buyerWallet, eip712, reason });
+      }
+      const result = await recordInvoiceProofDispute(validId, portalLink, { reason, tx_hash: txHash });
+      return { proposed: false, result };
+    },
+    onError: (err) => notifyWalletError(err, t("disputeError"), t("disputeError")),
+    onSuccess: ({ proposed, result }) => {
+      if (proposed) {
+        message.info(t("disputeSafeProposed"));
+        return;
+      }
+      message.success(t("disputeSuccess"));
+      setDisputeOpen(false);
+      setDisputeReason("");
+      if (result && typeof result === "object") setInvoice(result);
     },
   });
 
@@ -442,7 +486,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
     const alertType =
       status === "tampered"
         ? "error"
-        : status === "revoked"
+        : status === "revoked" || status === "disputed"
           ? "warning"
           : status === "fully_approved"
             ? "success"
@@ -525,6 +569,18 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
               <div>
                 <div className="text-[var(--ant-color-text-secondary)]">{t("revokedAt")}</div>
                 <div className="mt-0.5 font-medium">{formatTenantDateTime(proof.revoked_at)}</div>
+              </div>
+            ) : null}
+            {formatTenantDateTime(proof.disputed_at) ? (
+              <div>
+                <div className="text-[var(--ant-color-text-secondary)]">{t("disputedAt")}</div>
+                <div className="mt-0.5 font-medium">{formatTenantDateTime(proof.disputed_at)}</div>
+              </div>
+            ) : null}
+            {typeof proof.dispute_reason === "string" && proof.dispute_reason !== "" ? (
+              <div className="sm:col-span-2">
+                <div className="text-[var(--ant-color-text-secondary)]">{t("disputeReason")}</div>
+                <div className="mt-0.5 font-medium whitespace-pre-wrap">{proof.dispute_reason}</div>
               </div>
             ) : null}
           </div>
@@ -630,6 +686,15 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
           <Button onClick={() => void refreshPortal()} loading={portalQuery.isFetching || unlockMutation.isPending}>
             {t("refresh")}
           </Button>
+          {proof.can_dispute_as_buyer ? (
+            <Button
+              danger
+              loading={disputeMutation.isPending}
+              onClick={() => setDisputeOpen(true)}
+            >
+              {t("dispute")}
+            </Button>
+          ) : null}
           {proof.can_approve_as_buyer ? (
             <Button
               type="primary"
@@ -647,6 +712,25 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
   return (
     <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout>
       {body}
+      <Modal
+        title={t("disputeTitle")}
+        open={disputeOpen}
+        onCancel={() => setDisputeOpen(false)}
+        okText={t("disputeConfirm")}
+        confirmLoading={disputeMutation.isPending}
+        okButtonProps={{ danger: true, disabled: disputeReason.trim() === "" }}
+        onOk={() => disputeMutation.mutate()}
+      >
+        <Typography.Paragraph className="!mb-3">{t("disputeHint")}</Typography.Paragraph>
+        <Input.TextArea
+          value={disputeReason}
+          onChange={(event) => setDisputeReason(event.target.value)}
+          rows={4}
+          maxLength={2000}
+          showCount
+          placeholder={t("disputeReasonPlaceholder")}
+        />
+      </Modal>
     </AuthSplitShell>
   );
 }

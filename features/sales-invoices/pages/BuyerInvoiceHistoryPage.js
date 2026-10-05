@@ -30,6 +30,7 @@ function historyStatusLabel(t, status) {
   if (status === "waiting_buyer") return t("statusWaitingYou");
   if (status === "fully_approved") return t("statusApproved");
   if (status === "revoked") return t("statusRevoked");
+  if (status === "disputed") return t("statusDisputed");
   return status ? String(status) : "—";
 }
 

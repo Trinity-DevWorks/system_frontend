@@ -922,6 +922,8 @@ export default function SalesInvoiceDrawer({
           chainBuyerApprovedAt={
             typeof proofResult?.buyer_approved_at === "string" ? proofResult.buyer_approved_at : null
           }
+          chainDisputedAt={typeof proofResult?.disputed_at === "string" ? proofResult.disputed_at : null}
+          chainDisputeReason={typeof proofResult?.dispute_reason === "string" ? proofResult.dispute_reason : null}
           chainSupplierWallet={typeof proofResult?.supplier_wallet === "string" ? proofResult.supplier_wallet : null}
           chainBuyerWallet={typeof proofResult?.buyer_wallet === "string" ? proofResult.buyer_wallet : null}
           chainAttestations={Array.isArray(proofResult?.attestations) ? proofResult.attestations : []}

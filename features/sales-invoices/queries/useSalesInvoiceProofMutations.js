@@ -52,6 +52,8 @@ export function useSalesInvoiceProofMutations({ message, notification, t, tApiEr
         message.success(t("verifySuccessFullyApproved"));
       } else if (status === "revoked") {
         message.info(t("verifySuccessRevoked"));
+      } else if (status === "disputed") {
+        message.warning(t("verifySuccessDisputed"));
       } else {
         message.warning(t("verifySuccessNotRegistered"));
       }
