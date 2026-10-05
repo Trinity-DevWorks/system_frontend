@@ -11,13 +11,13 @@ import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { deleteSalesInvoice, postSalesInvoice, reverseSalesInvoice } from "../api/salesInvoices.api";
+import { deleteSalesInvoice, postSalesInvoice, reverseSalesInvoice, reissueSalesInvoice } from "../api/salesInvoices.api";
 import { fetchCustomerNames } from "@/features/customers/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
-import { SALES_INVOICE_STATUS_VALUES, getSalesInvoiceStatusLabel } from "../utils/salesInvoiceStatuses";
+import { SALES_INVOICE_STATUS_VALUES, getSalesInvoiceStatusLabel, salesInvoiceCanReissue, salesInvoiceCanReverse } from "../utils/salesInvoiceStatuses";
 import {
   formatStockFilterDateRange,
   stockFilterFieldRowClassName,
@@ -183,8 +183,24 @@ function SalesInvoicesTable() {
     },
   });
 
+  const reissueMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => reissueSalesInvoice(id),
+    onSuccess: (record) => {
+      message.success(t("reissueSuccess"));
+      invalidateAfterStatusChange();
+      openEditDrawer(record);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("reissueError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
   const handleReverse = useCallback(
     (record) => {
+      if (!salesInvoiceCanReverse(record)) return;
       const id = normalizeEntityId(record?.id);
       if (id == null) return;
       modal.confirm({
@@ -197,6 +213,22 @@ function SalesInvoicesTable() {
       });
     },
     [modal, t, reverseMutation],
+  );
+
+  const handleReissue = useCallback(
+    (record) => {
+      if (!salesInvoiceCanReissue(record)) return;
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("reissueConfirmTitle"),
+        content: t("reissueConfirmContent"),
+        okText: t("actionReissue"),
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(reissueMutation.mutateAsync(id)),
+      });
+    },
+    [modal, t, reissueMutation],
   );
 
   const statusLabel = useMemo(() => {
@@ -274,6 +306,7 @@ function SalesInvoicesTable() {
         onDelete: access.canDelete ? handleDelete : undefined,
         onPost: access.canEdit ? handlePost : undefined,
         onReverse: access.canReverse ? handleReverse : undefined,
+        onReissue: access.canAdd ? handleReissue : undefined,
         showChainStatus: showChainCheck,
         onRefreshProof: showChainCheck ? handleRefreshProof : undefined,
         onApproveProof: showChainCheck && invoiceProofsAccess.canEdit ? handleApproveProof : undefined,
@@ -286,11 +319,13 @@ function SalesInvoicesTable() {
       access.canEdit,
       access.canDelete,
       access.canReverse,
+      access.canAdd,
       openViewDrawer,
       openEditDrawer,
       handleDelete,
       handlePost,
       handleReverse,
+      handleReissue,
       showChainCheck,
       invoiceProofsAccess.canEdit,
       handleRefreshProof,

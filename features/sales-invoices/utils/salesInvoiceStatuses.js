@@ -62,3 +62,54 @@ export function getSalesInvoiceSettlementLabel(t, settlement) {
 export function isSalesInvoicePosted(status) {
   return status === "posted";
 }
+
+/**
+ * @param {unknown} record
+ */
+export function salesInvoiceHasPayments(record) {
+  const paid = Number(record?.paid_total ?? 0);
+  return Number.isFinite(paid) && paid > 0;
+}
+
+/**
+ * @param {unknown} record
+ */
+export function salesInvoiceCanReverse(record) {
+  if (record && typeof record === "object" && typeof record.can_reverse === "boolean") {
+    return record.can_reverse;
+  }
+  return record?.status === "posted" && !salesInvoiceHasPayments(record);
+}
+
+/**
+ * @param {unknown} record
+ */
+export function salesInvoiceCanReissue(record) {
+  if (record && typeof record === "object" && typeof record.can_reissue === "boolean") {
+    return record.can_reissue;
+  }
+  const status = record?.status;
+  if (status !== "posted" && status !== "reversed") return false;
+  if (salesInvoiceHasPayments(record)) return false;
+  return record?.replaced_by_invoice == null;
+}
+
+/**
+ * @param {(key: string) => string} t
+ * @param {unknown} record
+ */
+export function salesInvoiceReverseDisabledReason(t, record) {
+  if (salesInvoiceCanReverse(record)) return "";
+  return salesInvoiceHasPayments(record) ? t("reverseDisabledHasPayments") : "";
+}
+
+/**
+ * @param {(key: string) => string} t
+ * @param {unknown} record
+ */
+export function salesInvoiceReissueDisabledReason(t, record) {
+  if (salesInvoiceCanReissue(record)) return "";
+  if (salesInvoiceHasPayments(record)) return t("reissueDisabledHasPayments");
+  if (record?.replaced_by_invoice != null) return t("reissueDisabledAlreadyReissued");
+  return "";
+}

@@ -1,5 +1,6 @@
 import {
   CheckCircleOutlined,
+  CopyOutlined,
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
@@ -14,6 +15,10 @@ import {
   getSalesInvoiceSettlementLabel,
   getSalesInvoiceStatusLabel,
   isSalesInvoiceDraft,
+  salesInvoiceCanReissue,
+  salesInvoiceCanReverse,
+  salesInvoiceReissueDisabledReason,
+  salesInvoiceReverseDisabledReason,
   salesInvoiceSettlement,
   salesInvoiceStatusTagColor,
 } from "../../utils/salesInvoiceStatuses";
@@ -32,6 +37,7 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onDelete?: (record: unknown) => void;
  *   onPost?: (record: unknown) => void;
  *   onReverse?: (record: unknown) => void;
+ *   onReissue?: (record: unknown) => void;
  *   showChainStatus?: boolean;
  *   onRefreshProof?: (record: unknown) => void;
  *   onApproveProof?: (record: unknown) => void;
@@ -46,6 +52,7 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
     onDelete,
     onPost,
     onReverse,
+    onReissue,
     showChainStatus = false,
     onRefreshProof,
     onApproveProof,
@@ -245,7 +252,25 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                   icon: <RollbackOutlined />,
                   danger: true,
                   label: t("actionReverse"),
-                  onClick: () => onReverse(record),
+                  disabled: !salesInvoiceCanReverse(record),
+                  title: salesInvoiceReverseDisabledReason(t, record) || undefined,
+                  onClick: () => {
+                    if (salesInvoiceCanReverse(record)) onReverse(record);
+                  },
+                },
+              ]
+            : []),
+          ...(onReissue && (record?.status === "reversed" || (record?.status === "posted" && onReverse))
+            ? [
+                {
+                  key: "reissue",
+                  icon: <CopyOutlined />,
+                  label: t("actionReissue"),
+                  disabled: !salesInvoiceCanReissue(record),
+                  title: salesInvoiceReissueDisabledReason(t, record) || undefined,
+                  onClick: () => {
+                    if (salesInvoiceCanReissue(record)) onReissue(record);
+                  },
                 },
               ]
             : []),

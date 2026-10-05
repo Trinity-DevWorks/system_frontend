@@ -28,6 +28,60 @@ function isUuid(value) {
 }
 
 /**
+ * @param {string} locale
+ * @param {unknown} item
+ */
+function proofPortalHref(locale, item) {
+  const id = item && typeof item === "object" && typeof item.id === "string" ? item.id : "";
+  const sig = item && typeof item === "object" && typeof item.sig === "string" ? item.sig : "";
+  const exp = item && typeof item === "object" ? item.exp : null;
+  if (!isUuid(id) || sig === "" || exp == null) return "";
+  return `${withLocalePrefix(locale, `/proofs/${id}`)}?${new URLSearchParams({
+    exp: String(exp),
+    sig,
+  })}`;
+}
+
+/**
+ * @param {{
+ *   label: string;
+ *   invoice?: unknown;
+ *   fallbackNumber?: unknown;
+ *   fallbackId?: unknown;
+ *   locale: string;
+ * }} props
+ */
+function RelatedInvoiceField({ label, invoice, fallbackNumber, fallbackId, locale }) {
+  const number =
+    invoice && typeof invoice === "object" && typeof invoice.invoice_number === "string" && invoice.invoice_number !== ""
+      ? invoice.invoice_number
+      : typeof fallbackNumber === "string" && fallbackNumber !== ""
+        ? fallbackNumber
+        : "";
+  const href = proofPortalHref(locale, invoice);
+  const idFallback = typeof fallbackId === "string" && fallbackId !== "" ? fallbackId : "";
+  if (!number && !href && !idFallback) return null;
+
+  return (
+    <div>
+      <div className="text-[var(--ant-color-text-secondary)]">{label}</div>
+      {href ? (
+        <Typography.Link className="mt-0.5 font-medium" href={href}>
+          {number || href}
+        </Typography.Link>
+      ) : (
+        <div
+          className={`mt-0.5 font-medium ${!number && idFallback ? "font-mono text-xs" : ""}`}
+          dir={!number && idFallback ? "ltr" : undefined}
+        >
+          {number || idFallback}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * @param {string | number | null | undefined} value
  */
 function isNonZero(value) {
@@ -571,6 +625,18 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
                 <div className="mt-0.5 font-medium">{formatTenantDateTime(proof.revoked_at)}</div>
               </div>
             ) : null}
+            <RelatedInvoiceField
+              label={tInvoices("replacesInvoice")}
+              invoice={proof.replaces_invoice}
+              locale={locale}
+            />
+            <RelatedInvoiceField
+              label={t("replacedBy")}
+              invoice={proof.replaced_by_invoice}
+              fallbackNumber={proof.replaced_by_invoice_number}
+              fallbackId={proof.replaced_by}
+              locale={locale}
+            />
             {formatTenantDateTime(proof.disputed_at) ? (
               <div>
                 <div className="text-[var(--ant-color-text-secondary)]">{t("disputedAt")}</div>
@@ -656,17 +722,10 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
             <div className="flex flex-col gap-2">
               {proof.other_invoices.map((item) => {
                 const id = typeof item?.id === "string" ? item.id : "";
-                const sig = typeof item?.sig === "string" ? item.sig : "";
-                const href =
-                  id !== "" && sig !== "" && item?.exp != null
-                    ? `${withLocalePrefix(locale, `/proofs/${id}`)}?${new URLSearchParams({
-                        exp: String(item.exp),
-                        sig,
-                      })}`
-                    : "";
+                const href = proofPortalHref(locale, item);
                 return (
                   <a
-                    key={id || sig}
+                    key={id || href || item.invoice_number}
                     href={href || undefined}
                     className="flex items-center justify-between gap-3 rounded-lg border border-[var(--ant-color-border-secondary)] px-3 py-2 text-sm text-inherit no-underline transition-colors hover:bg-[var(--ant-color-fill-quaternary)]"
                   >

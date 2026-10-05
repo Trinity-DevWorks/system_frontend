@@ -12,6 +12,7 @@ import {
   fetchSalesInvoice,
   postSalesInvoice,
   reverseSalesInvoice,
+  reissueSalesInvoice,
   syncSalesInvoiceLines,
   updateSalesInvoice,
 } from "../api/salesInvoices.api";
@@ -37,6 +38,7 @@ import { persistSalesInvoicePostIntent } from "../utils/salesInvoicePostIntent";
  *   onSaved?: (record: Record<string, unknown>) => void;
  *   onPosted?: (record: Record<string, unknown>) => void;
  *   onReversed?: (record: Record<string, unknown>) => void;
+ *   onReissued?: (record: Record<string, unknown>) => void;
  *   onDeleted?: () => void;
  *   onClose?: () => void;
  *   onPostAndNew?: () => void;
@@ -54,6 +56,7 @@ export function useSalesInvoiceDrawerMutations({
   onSaved,
   onPosted,
   onReversed,
+  onReissued,
   onDeleted,
   onClose,
   onPostAndNew,
@@ -175,6 +178,24 @@ export function useSalesInvoiceDrawerMutations({
     },
   });
 
+  const reissueMutation = useMutation({
+    mutationFn: () => {
+      if (invoiceId == null) throw new Error("Missing sales invoice id");
+      return reissueSalesInvoice(invoiceId);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("reissueError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (record) => {
+      message.success(t("reissueSuccess"));
+      invalidateAfterPost();
+      onReissued?.(/** @type {Record<string, unknown>} */ (record));
+    },
+  });
+
   const { verifyMutation, approveCompanyMutation } = useSalesInvoiceProofMutations({
     message,
     notification,
@@ -205,6 +226,7 @@ export function useSalesInvoiceDrawerMutations({
     saveMutation.isPending ||
     postMutation.isPending ||
     reverseMutation.isPending ||
+    reissueMutation.isPending ||
     deleteMutation.isPending ||
     verifyMutation.isPending ||
     approveCompanyMutation.isPending;
@@ -213,6 +235,7 @@ export function useSalesInvoiceDrawerMutations({
     saveMutation,
     postMutation,
     reverseMutation,
+    reissueMutation,
     deleteMutation,
     verifyMutation,
     approveCompanyMutation,

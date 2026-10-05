@@ -123,6 +123,84 @@ function FooterProofHint({ hint }) {
   );
 }
 
+function FooterActionButton({
+  label,
+  onClick,
+  disabled = false,
+  disabledReason = "",
+  danger = false,
+  submitting = false,
+}) {
+  const button = (
+    <Button
+      className="shrink-0"
+      danger={danger}
+      disabled={disabled || submitting}
+      loading={submitting}
+      onClick={disabled ? undefined : onClick}
+    >
+      {label}
+    </Button>
+  );
+  if (!disabled || disabledReason === "") {
+    return button;
+  }
+
+  return (
+    <Tooltip title={disabledReason}>
+      <span className="inline-flex shrink-0">{button}</span>
+    </Tooltip>
+  );
+}
+
+function RelatedInvoiceNumber({ invoice, onOpen }) {
+  const number =
+    invoice && typeof invoice === "object" && typeof invoice.invoice_number === "string"
+      ? invoice.invoice_number
+      : "";
+  if (!number) return null;
+  if (!onOpen) {
+    return <span className="sales-invoice-drawer-footer-posted-value">{number}</span>;
+  }
+  return (
+    <Typography.Link
+      className="sales-invoice-drawer-footer-posted-value"
+      onClick={() => onOpen(invoice)}
+    >
+      {number}
+    </Typography.Link>
+  );
+}
+
+function FooterInvoiceLinks({ t, replacesInvoice, replacedByInvoice, onOpenRelatedInvoice }) {
+  const origin =
+    replacesInvoice && typeof replacesInvoice === "object" && typeof replacesInvoice.invoice_number === "string"
+      ? replacesInvoice.invoice_number
+      : "";
+  const successor =
+    replacedByInvoice && typeof replacedByInvoice === "object" && typeof replacedByInvoice.invoice_number === "string"
+      ? replacedByInvoice.invoice_number
+      : "";
+  if (!origin && !successor) return null;
+
+  return (
+    <div className="sales-invoice-drawer-footer-posted">
+      {origin ? (
+        <span className="sales-invoice-drawer-footer-posted-item">
+          <span className="sales-invoice-drawer-footer-posted-label">{t("replacesInvoice")}</span>
+          <RelatedInvoiceNumber invoice={replacesInvoice} onOpen={onOpenRelatedInvoice} />
+        </span>
+      ) : null}
+      {successor ? (
+        <span className="sales-invoice-drawer-footer-posted-item">
+          <span className="sales-invoice-drawer-footer-posted-label">{t("replacedByInvoice")}</span>
+          <RelatedInvoiceNumber invoice={replacedByInvoice} onOpen={onOpenRelatedInvoice} />
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function FooterPostedMeta({ t, postedBy, postedAt }) {
   return (
     <div className="sales-invoice-drawer-footer-posted">
@@ -153,6 +231,11 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   postDisabled: boolean;
  *   showDelete: boolean;
  *   showReverse?: boolean;
+ *   reverseDisabled?: boolean;
+ *   reverseDisabledReason?: string;
+ *   showReissue?: boolean;
+ *   reissueDisabled?: boolean;
+ *   reissueDisabledReason?: string;
  *   postedBy?: unknown;
  *   postedAt?: string | null;
  *   showVerify?: boolean;
@@ -182,6 +265,8 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   postMenuItems: { key: string; label: string }[];
  *   onDelete: () => void;
  *   onReverse?: () => void;
+ *   onReissue?: () => void;
+ *   onOpenRelatedInvoice?: (invoice: unknown) => void;
  *   onVerify?: () => void;
  *   onApproveCompany?: () => void;
  * }} props
@@ -196,6 +281,15 @@ export default function SalesInvoiceDrawerFooter({
   postDisabled,
   showDelete,
   showReverse = false,
+  reverseDisabled = false,
+  reverseDisabledReason = "",
+  showReissue = false,
+  reissueDisabled = false,
+  reissueDisabledReason = "",
+  onReissue,
+  onOpenRelatedInvoice,
+  replacesInvoice = null,
+  replacedByInvoice = null,
   postedBy = null,
   postedAt = null,
   showVerify = false,
@@ -307,6 +401,12 @@ export default function SalesInvoiceDrawerFooter({
       <div className="flex w-full min-w-0 items-center gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <FooterPostedMeta t={t} postedBy={postedBy} postedAt={postedAt} />
+          <FooterInvoiceLinks
+            t={t}
+            replacesInvoice={replacesInvoice}
+            replacedByInvoice={replacedByInvoice}
+            onOpenRelatedInvoice={onOpenRelatedInvoice}
+          />
           {showVerify ? (
             <FooterChainTimes
               t={t}
@@ -327,10 +427,24 @@ export default function SalesInvoiceDrawerFooter({
           <Button className="shrink-0" onClick={forceClose}>
             {t("drawerClose")}
           </Button>
+          {showReissue ? (
+            <FooterActionButton
+              label={t("actionReissue")}
+              onClick={onReissue}
+              disabled={reissueDisabled}
+              disabledReason={reissueDisabledReason}
+              submitting={submitting}
+            />
+          ) : null}
           {showReverse ? (
-            <Button className="shrink-0" danger disabled={submitting} loading={submitting} onClick={onReverse}>
-              {t("actionReverse")}
-            </Button>
+            <FooterActionButton
+              label={t("actionReverse")}
+              onClick={onReverse}
+              disabled={reverseDisabled}
+              disabledReason={reverseDisabledReason}
+              danger
+              submitting={submitting}
+            />
           ) : null}
         </div>
       </div>
@@ -341,6 +455,12 @@ export default function SalesInvoiceDrawerFooter({
     <div className="flex w-full min-w-0 items-center gap-3">
       <div className="flex min-w-0 flex-col gap-1">
         <FooterPostedMeta t={t} postedBy={postedBy} postedAt={postedAt} />
+        <FooterInvoiceLinks
+          t={t}
+          replacesInvoice={replacesInvoice}
+          replacedByInvoice={replacedByInvoice}
+          onOpenRelatedInvoice={onOpenRelatedInvoice}
+        />
         {showVerify ? (
           <FooterChainTimes
             t={t}

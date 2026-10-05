@@ -72,6 +72,11 @@ export function reverseSalesInvoice(invoiceId) {
   return tenantRequest("POST", `sales-invoices/${invoiceId}/reverse`);
 }
 
+/** @param {string} invoiceId */
+export function reissueSalesInvoice(invoiceId) {
+  return tenantRequest("POST", `sales-invoices/${invoiceId}/reissue`);
+}
+
 /**
  * @param {string} invoiceId
  * @returns {Promise<{

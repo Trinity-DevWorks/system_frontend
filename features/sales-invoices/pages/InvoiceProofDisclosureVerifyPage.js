@@ -29,6 +29,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
     /** @type {"idle" | "checking" | "match" | "mismatch" | "missing" | "revoked" | "disputed"} */ ("idle"),
   );
   const [disputeReasonHash, setDisputeReasonHash] = useState(/** @type {string | null} */ (null));
+  const [replacedBy, setReplacedBy] = useState(/** @type {string | null} */ (null));
   const [attestStage, setAttestStage] = useState(/** @type {"wallet" | "review" | "done"} */ ("wallet"));
   const [screen, setScreen] = useState(0);
 
@@ -43,6 +44,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   const handleFile = async (file) => {
     setChainState("idle");
     setDisputeReasonHash(null);
+    setReplacedBy(null);
     try {
       const parsed = JSON.parse(await file.text());
       setResult(verifyDisclosureBundle(parsed));
@@ -61,6 +63,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
     if (!bundle || !result) return;
     setChainState("checking");
     setDisputeReasonHash(null);
+    setReplacedBy(null);
     try {
       const onChain = await readOnChainSeal({
         chainId: Number(bundle.chain_id),
@@ -69,7 +72,10 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
       });
       if (onChain.contentHash === null) setChainState("missing");
       else if (onChain.contentHash !== result.contentHash) setChainState("mismatch");
-      else if (onChain.revoked) setChainState("revoked");
+      else if (onChain.revoked) {
+        setChainState("revoked");
+        setReplacedBy(onChain.replacedBy);
+      }
       else if (onChain.disputed) {
         setChainState("disputed");
         setDisputeReasonHash(onChain.disputeReasonHash);
@@ -200,7 +206,25 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
           {chainState === "mismatch" ? <Alert type="error" showIcon title={t("verifyChainMismatch")} /> : null}
           {chainState === "missing" ? <Alert type="warning" showIcon title={t("verifyChainMissing")} /> : null}
           {chainState === "revoked" ? (
-            <Alert type="error" showIcon title={t("verifyChainRevoked")} description={t("verifyChainRevokedHint")} />
+            <Alert
+              type="error"
+              showIcon
+              title={t("verifyChainRevoked")}
+              description={
+                <div className="flex flex-col gap-2">
+                  <span>{t("verifyChainRevokedHint")}</span>
+                  {replacedBy ? (
+                    <div>
+                      <div>{t("verifyReplacedBy")}</div>
+                      <span className="break-all font-mono text-xs" dir="ltr">
+                        {replacedBy}
+                      </span>
+                      <div className="mt-1">{t("verifyReplacedByHint")}</div>
+                    </div>
+                  ) : null}
+                </div>
+              }
+            />
           ) : null}
           {chainState === "disputed" ? (
             <Alert

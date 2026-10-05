@@ -6,6 +6,7 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY, salesInvoiceProofQueryKey } from "../../queries/salesInvoicesQueryKeys";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
@@ -24,7 +25,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import {
   useSalesInvoiceDrawerKeyboard,
 } from "./salesInvoiceDrawerKeyboard";
-import { isSalesInvoiceDraft, isSalesInvoicePosted } from "../../utils/salesInvoiceStatuses";
+import {
+  isSalesInvoiceDraft,
+  isSalesInvoicePosted,
+  salesInvoiceCanReissue,
+  salesInvoiceCanReverse,
+  salesInvoiceReissueDisabledReason,
+  salesInvoiceReverseDisabledReason,
+} from "../../utils/salesInvoiceStatuses";
 import {
   INVOICE_CHAIN_PENDING_POLL_MS,
   isInvoiceChainPending,
@@ -104,6 +112,7 @@ export default function SalesInvoiceDrawer({
   const itemAccess = useResourceAccess("items");
   const companyProfileAccess = useResourceAccess("company_profile");
   const queryClient = useQueryClient();
+  const { openDrawer } = useGlobalDrawer();
   const router = useRouter();
   const { settings } = useCompanySettings();
   const companyProfile = useCompanyProfile();
@@ -257,6 +266,9 @@ export default function SalesInvoiceDrawer({
   const effectiveStatus =
     loadedStatus ??
     (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
+  const invoiceRecord = detailQuery.data ?? tableSeedRecord;
+  const reverseEnabled = salesInvoiceCanReverse(invoiceRecord);
+  const reissueEnabled = salesInvoiceCanReissue(invoiceRecord);
   const readOnly = mode === "view" || !isSalesInvoiceDraft(effectiveStatus) || (mode === "edit" && !access.canEdit);
 
   const proofEnabled =
@@ -588,6 +600,7 @@ export default function SalesInvoiceDrawer({
     saveMutation,
     postMutation,
     reverseMutation,
+    reissueMutation,
     deleteMutation,
     verifyMutation,
     approveCompanyMutation,
@@ -604,10 +617,35 @@ export default function SalesInvoiceDrawer({
     onSaved: syncBaselinesFromRecordAndBump,
     onPosted: syncBaselinesFromRecordAndBump,
     onReversed: syncBaselinesFromRecordAndBump,
+    onReissued: (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({
+        featureId: "salesInvoices",
+        id,
+        mode: "edit",
+        seed: record,
+      });
+    },
     onDeleted: forceClose,
     onClose: forceClose,
     onPostAndNew,
   });
+
+  const handleOpenRelatedInvoice = useCallback(
+    (invoice) => {
+      const id = normalizeEntityId(invoice?.id);
+      if (id == null) return;
+      const status = typeof invoice?.status === "string" ? invoice.status : "";
+      openDrawer({
+        featureId: "salesInvoices",
+        id,
+        mode: status === "draft" && access.canEdit ? "edit" : "view",
+        seed: invoice && typeof invoice === "object" ? { ...invoice } : null,
+      });
+    },
+    [access.canEdit, openDrawer],
+  );
 
   const currentValues = useMemo(
     () => ({
@@ -744,6 +782,7 @@ export default function SalesInvoiceDrawer({
   );
 
   const handleReverse = useCallback(() => {
+    if (!reverseEnabled) return;
     modal.confirm(
       withConfirmKeyboard({
         title: t("reverseConfirmTitle"),
@@ -754,7 +793,20 @@ export default function SalesInvoiceDrawer({
         onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
       }),
     );
-  }, [modal, t, reverseMutation]);
+  }, [modal, t, reverseMutation, reverseEnabled]);
+
+  const handleReissue = useCallback(() => {
+    if (!reissueEnabled) return;
+    modal.confirm(
+      withConfirmKeyboard({
+        title: t("reissueConfirmTitle"),
+        content: t("reissueConfirmContent"),
+        okText: t("actionReissue"),
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(reissueMutation.mutateAsync()),
+      }),
+    );
+  }, [modal, t, reissueMutation, reissueEnabled]);
 
   const handleDelete = useCallback(() => {
     const name = loadedNumber ?? String(invoiceId ?? "");
@@ -909,7 +961,20 @@ export default function SalesInvoiceDrawer({
           postDisabled={!canSubmitRequired || !access.canEdit}
           showDelete={!readOnly && invoiceId != null && access.canDelete}
           showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
+          reverseDisabled={!reverseEnabled}
+          reverseDisabledReason={salesInvoiceReverseDisabledReason(t, invoiceRecord)}
           onReverse={handleReverse}
+          showReissue={Boolean(
+            invoiceId != null &&
+              access.canAdd &&
+              (effectiveStatus === "reversed" || (effectiveStatus === "posted" && access.canReverse)),
+          )}
+          reissueDisabled={!reissueEnabled}
+          reissueDisabledReason={salesInvoiceReissueDisabledReason(t, invoiceRecord)}
+          onReissue={handleReissue}
+          replacesInvoice={invoiceRecord?.replaces_invoice ?? null}
+          replacedByInvoice={invoiceRecord?.replaced_by_invoice ?? null}
+          onOpenRelatedInvoice={handleOpenRelatedInvoice}
           postedBy={loadedPostedBy}
           postedAt={loadedPostedAt}
           showVerify={showProofView}
