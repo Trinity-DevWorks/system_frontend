@@ -38,10 +38,10 @@ export function isSalesInvoiceDraft(status) {
  */
 export function salesInvoiceSettlement(status, paidTotal, netToPay) {
   if (status !== "posted") return null;
-  const paid = Number(paidTotal ?? 0);
   const open = Number(netToPay ?? 0);
-  if (!Number.isFinite(paid) || paid <= 0) return "unpaid";
   if (!Number.isFinite(open) || open <= 0) return "paid";
+  const paid = Number(paidTotal ?? 0);
+  if (!Number.isFinite(paid) || paid <= 0) return "unpaid";
   return "partial";
 }
 
@@ -74,11 +74,19 @@ export function salesInvoiceHasPayments(record) {
 /**
  * @param {unknown} record
  */
+export function salesInvoiceHasCredits(record) {
+  const credited = Number(record?.credited_total ?? 0);
+  return Number.isFinite(credited) && credited > 0;
+}
+
+/**
+ * @param {unknown} record
+ */
 export function salesInvoiceCanReverse(record) {
   if (record && typeof record === "object" && typeof record.can_reverse === "boolean") {
     return record.can_reverse;
   }
-  return record?.status === "posted" && !salesInvoiceHasPayments(record);
+  return record?.status === "posted" && !salesInvoiceHasPayments(record) && !salesInvoiceHasCredits(record);
 }
 
 /**
@@ -90,7 +98,7 @@ export function salesInvoiceCanReissue(record) {
   }
   const status = record?.status;
   if (status !== "posted" && status !== "reversed") return false;
-  if (salesInvoiceHasPayments(record)) return false;
+  if (salesInvoiceHasPayments(record) || salesInvoiceHasCredits(record)) return false;
   return record?.replaced_by_invoice == null;
 }
 
@@ -100,7 +108,9 @@ export function salesInvoiceCanReissue(record) {
  */
 export function salesInvoiceReverseDisabledReason(t, record) {
   if (salesInvoiceCanReverse(record)) return "";
-  return salesInvoiceHasPayments(record) ? t("reverseDisabledHasPayments") : "";
+  if (salesInvoiceHasPayments(record)) return t("reverseDisabledHasPayments");
+  if (salesInvoiceHasCredits(record)) return t("reverseDisabledHasCredits");
+  return "";
 }
 
 /**
@@ -110,6 +120,30 @@ export function salesInvoiceReverseDisabledReason(t, record) {
 export function salesInvoiceReissueDisabledReason(t, record) {
   if (salesInvoiceCanReissue(record)) return "";
   if (salesInvoiceHasPayments(record)) return t("reissueDisabledHasPayments");
+  if (salesInvoiceHasCredits(record)) return t("reissueDisabledHasCredits");
   if (record?.replaced_by_invoice != null) return t("reissueDisabledAlreadyReissued");
+  return "";
+}
+
+/**
+ * @param {unknown} record
+ * @param {boolean} [canAdd]
+ */
+export function salesInvoiceCanCreditNote(record, canAdd = true) {
+  if (!canAdd) return false;
+  if (record?.status !== "posted") return false;
+  return Number(record?.net_to_pay ?? 0) > 0;
+}
+
+/**
+ * @param {(key: string) => string} t
+ * @param {unknown} record
+ * @param {boolean} [canAdd]
+ */
+export function salesInvoiceCreditNoteDisabledReason(t, record, canAdd = true) {
+  if (salesInvoiceCanCreditNote(record, canAdd)) return "";
+  if (!canAdd) return t("creditNoteDisabledNoPermission");
+  if (record?.status !== "posted") return t("creditNoteDisabledNotPosted");
+  if (Number(record?.net_to_pay ?? 0) <= 0) return t("creditNoteDisabledClosed");
   return "";
 }

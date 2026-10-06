@@ -4,6 +4,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  FileSyncOutlined,
   MoreOutlined,
   QrcodeOutlined,
   ReloadOutlined,
@@ -15,8 +16,10 @@ import {
   getSalesInvoiceSettlementLabel,
   getSalesInvoiceStatusLabel,
   isSalesInvoiceDraft,
+  salesInvoiceCanCreditNote,
   salesInvoiceCanReissue,
   salesInvoiceCanReverse,
+  salesInvoiceCreditNoteDisabledReason,
   salesInvoiceReissueDisabledReason,
   salesInvoiceReverseDisabledReason,
   salesInvoiceSettlement,
@@ -38,6 +41,8 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onPost?: (record: unknown) => void;
  *   onReverse?: (record: unknown) => void;
  *   onReissue?: (record: unknown) => void;
+ *   onCreditNote?: (record: unknown) => void;
+ *   canAddCreditNote?: boolean;
  *   showChainStatus?: boolean;
  *   onRefreshProof?: (record: unknown) => void;
  *   onApproveProof?: (record: unknown) => void;
@@ -53,6 +58,8 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
     onPost,
     onReverse,
     onReissue,
+    onCreditNote,
+    canAddCreditNote = true,
     showChainStatus = false,
     onRefreshProof,
     onApproveProof,
@@ -274,6 +281,16 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                 },
               ]
             : []),
+          {
+            key: "credit-note",
+            icon: <FileSyncOutlined />,
+            label: t("actionCreditNote"),
+            disabled: !salesInvoiceCanCreditNote(record, canAddCreditNote),
+            title: salesInvoiceCreditNoteDisabledReason(t, record, canAddCreditNote) || undefined,
+            onClick: () => {
+              if (salesInvoiceCanCreditNote(record, canAddCreditNote)) onCreditNote?.(record);
+            },
+          },
           ...proofItems(record),
         ];
 

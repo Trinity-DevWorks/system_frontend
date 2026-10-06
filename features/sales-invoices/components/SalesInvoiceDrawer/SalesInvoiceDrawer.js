@@ -111,6 +111,7 @@ export default function SalesInvoiceDrawer({
   const customerAccess = useResourceAccess("customers");
   const itemAccess = useResourceAccess("items");
   const companyProfileAccess = useResourceAccess("company_profile");
+  const creditNotesAccess = useResourceAccess("sales_credit_notes");
   const queryClient = useQueryClient();
   const { openDrawer } = useGlobalDrawer();
   const router = useRouter();
@@ -176,6 +177,7 @@ export default function SalesInvoiceDrawer({
       tax_total: record.tax_total,
       grand_total: record.grand_total,
       paid_total: record.paid_total,
+      credited_total: record.credited_total,
       net_to_pay: record.net_to_pay,
     });
   }, []);
@@ -647,6 +649,30 @@ export default function SalesInvoiceDrawer({
     [access.canEdit, openDrawer],
   );
 
+  const handleCreateCreditNote = useCallback(() => {
+    if (invoiceId == null) return;
+    openDrawer({
+      featureId: "salesCreditNotes",
+      mode: "create",
+      extras: { fromInvoiceId: invoiceId },
+    });
+  }, [invoiceId, openDrawer]);
+
+  const handleOpenCreditNote = useCallback(
+    (note) => {
+      const id = normalizeEntityId(note?.id);
+      if (id == null) return;
+      const noteStatus = typeof note?.status === "string" ? note.status : "";
+      openDrawer({
+        featureId: "salesCreditNotes",
+        id,
+        mode: noteStatus === "draft" && creditNotesAccess.canEdit ? "edit" : "view",
+        seed: note && typeof note === "object" ? { ...note } : null,
+      });
+    },
+    [creditNotesAccess.canEdit, openDrawer],
+  );
+
   const currentValues = useMemo(
     () => ({
       customer_id: formValuesWatch?.customer_id,
@@ -974,7 +1000,15 @@ export default function SalesInvoiceDrawer({
           onReissue={handleReissue}
           replacesInvoice={invoiceRecord?.replaces_invoice ?? null}
           replacedByInvoice={invoiceRecord?.replaced_by_invoice ?? null}
+          creditNotes={Array.isArray(invoiceRecord?.credit_notes) ? invoiceRecord.credit_notes : []}
           onOpenRelatedInvoice={handleOpenRelatedInvoice}
+          onOpenCreditNote={creditNotesAccess.canView ? handleOpenCreditNote : undefined}
+          showCreditNote={Boolean(effectiveStatus === "posted" && invoiceId != null && creditNotesAccess.canAdd)}
+          creditNoteDisabled={Number(invoiceRecord?.net_to_pay ?? 0) <= 0}
+          creditNoteDisabledReason={
+            Number(invoiceRecord?.net_to_pay ?? 0) <= 0 ? t("creditNoteDisabledClosed") : ""
+          }
+          onCreditNote={handleCreateCreditNote}
           postedBy={loadedPostedBy}
           postedAt={loadedPostedAt}
           showVerify={showProofView}

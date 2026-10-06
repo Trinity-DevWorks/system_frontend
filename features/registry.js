@@ -39,6 +39,7 @@ import {
   FieldTimeOutlined,
   FileDoneOutlined,
   FileSearchOutlined,
+  FileSyncOutlined,
   FileTextOutlined,
   FlagOutlined,
   FormOutlined,
@@ -161,6 +162,7 @@ export const FEATURES = [
   { id: "stockTransfers", path: "/main/stock/transfers", section: "inventory", labelKey: "navStockTransfers", icon: RetweetOutlined, groupKey: "navGroupDocuments", module: "inventory", permission: "stock" },
 
   { id: "salesInvoices", path: "/main/sales-invoices", section: "sales", labelKey: "navSalesInvoices", icon: FileDoneOutlined, module: "sales", permission: "sales_invoices" },
+  { id: "salesCreditNotes", path: "/main/sales-credit-notes", section: "sales", labelKey: "navSalesCreditNotes", icon: FileSyncOutlined, module: "sales", permission: "sales_credit_notes" },
   { id: "customerReceipts", path: "/main/customer-receipts", section: "sales", labelKey: "navCustomerReceipts", icon: DollarOutlined, module: "sales", permission: "customer_receipts" },
   { id: "invoiceVerifiers", path: "/main/invoice-verifiers", section: "sales", labelKey: "navInvoiceVerifiers", icon: AuditOutlined, module: "sales", permission: "invoice_proofs", createAction: "edit" },
   { id: "customerGroups", path: "/main/customer-groups", section: "sales", labelKey: "navCustomerGroups", icon: UsergroupAddOutlined, module: "sales", permission: "customer_groups" },

@@ -172,7 +172,14 @@ function RelatedInvoiceNumber({ invoice, onOpen }) {
   );
 }
 
-function FooterInvoiceLinks({ t, replacesInvoice, replacedByInvoice, onOpenRelatedInvoice }) {
+function FooterInvoiceLinks({
+  t,
+  replacesInvoice,
+  replacedByInvoice,
+  creditNotes = [],
+  onOpenRelatedInvoice,
+  onOpenCreditNote,
+}) {
   const origin =
     replacesInvoice && typeof replacesInvoice === "object" && typeof replacesInvoice.invoice_number === "string"
       ? replacesInvoice.invoice_number
@@ -181,7 +188,10 @@ function FooterInvoiceLinks({ t, replacesInvoice, replacedByInvoice, onOpenRelat
     replacedByInvoice && typeof replacedByInvoice === "object" && typeof replacedByInvoice.invoice_number === "string"
       ? replacedByInvoice.invoice_number
       : "";
-  if (!origin && !successor) return null;
+  const notes = Array.isArray(creditNotes)
+    ? creditNotes.filter((note) => note && typeof note.credit_note_number === "string")
+    : [];
+  if (!origin && !successor && notes.length === 0) return null;
 
   return (
     <div className="sales-invoice-drawer-footer-posted">
@@ -197,6 +207,18 @@ function FooterInvoiceLinks({ t, replacesInvoice, replacedByInvoice, onOpenRelat
           <RelatedInvoiceNumber invoice={replacedByInvoice} onOpen={onOpenRelatedInvoice} />
         </span>
       ) : null}
+      {notes.map((note) => (
+        <span key={String(note.id)} className="sales-invoice-drawer-footer-posted-item">
+          <span className="sales-invoice-drawer-footer-posted-label">{t("creditNoteLink")}</span>
+          {onOpenCreditNote ? (
+            <Typography.Link className="sales-invoice-drawer-footer-posted-value" onClick={() => onOpenCreditNote(note)}>
+              {note.credit_note_number}
+            </Typography.Link>
+          ) : (
+            <span className="sales-invoice-drawer-footer-posted-value">{note.credit_note_number}</span>
+          )}
+        </span>
+      ))}
     </div>
   );
 }
@@ -266,7 +288,12 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   onDelete: () => void;
  *   onReverse?: () => void;
  *   onReissue?: () => void;
- *   onOpenRelatedInvoice?: (invoice: unknown) => void;
+   *   onOpenRelatedInvoice?: (invoice: unknown) => void;
+   *   onOpenCreditNote?: (note: unknown) => void;
+   *   showCreditNote?: boolean;
+   *   creditNoteDisabled?: boolean;
+   *   creditNoteDisabledReason?: string;
+   *   onCreditNote?: () => void;
  *   onVerify?: () => void;
  *   onApproveCompany?: () => void;
  * }} props
@@ -288,8 +315,14 @@ export default function SalesInvoiceDrawerFooter({
   reissueDisabledReason = "",
   onReissue,
   onOpenRelatedInvoice,
+  onOpenCreditNote,
+  showCreditNote = false,
+  creditNoteDisabled = false,
+  creditNoteDisabledReason = "",
+  onCreditNote,
   replacesInvoice = null,
   replacedByInvoice = null,
+  creditNotes = [],
   postedBy = null,
   postedAt = null,
   showVerify = false,
@@ -405,7 +438,9 @@ export default function SalesInvoiceDrawerFooter({
             t={t}
             replacesInvoice={replacesInvoice}
             replacedByInvoice={replacedByInvoice}
+            creditNotes={creditNotes}
             onOpenRelatedInvoice={onOpenRelatedInvoice}
+            onOpenCreditNote={onOpenCreditNote}
           />
           {showVerify ? (
             <FooterChainTimes
@@ -427,6 +462,15 @@ export default function SalesInvoiceDrawerFooter({
           <Button className="shrink-0" onClick={forceClose}>
             {t("drawerClose")}
           </Button>
+          {showCreditNote ? (
+            <FooterActionButton
+              label={t("actionCreditNote")}
+              onClick={onCreditNote}
+              disabled={creditNoteDisabled}
+              disabledReason={creditNoteDisabledReason}
+              submitting={submitting}
+            />
+          ) : null}
           {showReissue ? (
             <FooterActionButton
               label={t("actionReissue")}
@@ -459,7 +503,9 @@ export default function SalesInvoiceDrawerFooter({
           t={t}
           replacesInvoice={replacesInvoice}
           replacedByInvoice={replacedByInvoice}
+          creditNotes={creditNotes}
           onOpenRelatedInvoice={onOpenRelatedInvoice}
+          onOpenCreditNote={onOpenCreditNote}
         />
         {showVerify ? (
           <FooterChainTimes

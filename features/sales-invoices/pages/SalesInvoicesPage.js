@@ -7,6 +7,7 @@ import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY } from "../
 import { STOCK_BALANCES_QUERY_KEY, STOCK_MOVEMENTS_QUERY_KEY } from "@/features/stock/queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
@@ -17,7 +18,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
-import { SALES_INVOICE_STATUS_VALUES, getSalesInvoiceStatusLabel, salesInvoiceCanReissue, salesInvoiceCanReverse } from "../utils/salesInvoiceStatuses";
+import { SALES_INVOICE_STATUS_VALUES, getSalesInvoiceStatusLabel, salesInvoiceCanCreditNote, salesInvoiceCanReissue, salesInvoiceCanReverse } from "../utils/salesInvoiceStatuses";
 import {
   formatStockFilterDateRange,
   stockFilterFieldRowClassName,
@@ -38,6 +39,7 @@ function SalesInvoicesTable() {
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const access = useResourceAccess("sales_invoices");
+  const creditNotesAccess = useResourceAccess("sales_credit_notes");
   const invoiceProofsAccess = useResourceAccess("invoice_proofs");
   const { settings } = useCompanySettings();
   const showChainCheck = Boolean(settings.invoiceProofsEnabled) && invoiceProofsAccess.canView;
@@ -101,6 +103,7 @@ function SalesInvoicesTable() {
   );
 
   const { openCreateDrawer, openEditDrawer, openViewDrawer } = usePageDrawer("salesInvoices");
+  const { openDrawer } = useGlobalDrawer();
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteSalesInvoice(id),
@@ -231,6 +234,20 @@ function SalesInvoicesTable() {
     [modal, t, reissueMutation],
   );
 
+  const handleCreateCreditNote = useCallback(
+    (record) => {
+      if (!salesInvoiceCanCreditNote(record, creditNotesAccess.canAdd)) return;
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({
+        featureId: "salesCreditNotes",
+        mode: "create",
+        extras: { fromInvoiceId: id },
+      });
+    },
+    [creditNotesAccess.canAdd, openDrawer],
+  );
+
   const statusLabel = useMemo(() => {
     if (!statusFilter) return null;
     return statusFilterOptions.find((o) => o.value === statusFilter)?.label ?? statusFilter;
@@ -307,6 +324,8 @@ function SalesInvoicesTable() {
         onPost: access.canEdit ? handlePost : undefined,
         onReverse: access.canReverse ? handleReverse : undefined,
         onReissue: access.canAdd ? handleReissue : undefined,
+        onCreditNote: handleCreateCreditNote,
+        canAddCreditNote: creditNotesAccess.canAdd,
         showChainStatus: showChainCheck,
         onRefreshProof: showChainCheck ? handleRefreshProof : undefined,
         onApproveProof: showChainCheck && invoiceProofsAccess.canEdit ? handleApproveProof : undefined,
@@ -320,12 +339,14 @@ function SalesInvoicesTable() {
       access.canDelete,
       access.canReverse,
       access.canAdd,
+      creditNotesAccess.canAdd,
       openViewDrawer,
       openEditDrawer,
       handleDelete,
       handlePost,
       handleReverse,
       handleReissue,
+      handleCreateCreditNote,
       showChainCheck,
       invoiceProofsAccess.canEdit,
       handleRefreshProof,

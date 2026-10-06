@@ -22,9 +22,11 @@ export const customerLedgerConfig = {
     opening_balance: "typeOpeningBalance",
     invoice: "typeInvoice",
     payment: "typePayment",
+    credit_note: "typeCreditNote",
   },
   documentFeature: {
     invoice: "salesInvoices",
     payment: "customerReceipts",
+    credit_note: "salesCreditNotes",
   },
 };

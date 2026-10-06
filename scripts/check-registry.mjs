@@ -50,10 +50,17 @@ const OLD_MODULE_RULES = [
   { prefix: "/main/stock", module: "inventory" },
   { prefix: "/main/salesmen", module: "sales" },
   { prefix: "/main/sales-invoices", module: "sales" },
+  { prefix: "/main/sales-credit-notes", module: "sales" },
+  { prefix: "/main/customer-receipts", module: "sales" },
+  { prefix: "/main/invoice-verifiers", module: "sales" },
   { prefix: "/main/customer-groups", module: "sales" },
   { prefix: "/main/customers", module: "sales" },
+  { prefix: "/main/customer-ledger", module: "sales" },
   { prefix: "/main/supplier-groups", module: "purchasing" },
   { prefix: "/main/suppliers", module: "purchasing" },
+  { prefix: "/main/supplier-ledger", module: "purchasing" },
+  { prefix: "/main/purchase-invoices", module: "purchasing" },
+  { prefix: "/main/supplier-payments", module: "purchasing" },
 ];
 
 const OLD_PERMISSION_RULES = [
@@ -77,10 +84,17 @@ const OLD_PERMISSION_RULES = [
   { prefix: "/main/stock", resource: "stock" },
   { prefix: "/main/salesmen", resource: "salesmen" },
   { prefix: "/main/sales-invoices", resource: "sales_invoices" },
+  { prefix: "/main/sales-credit-notes", resource: "sales_credit_notes" },
+  { prefix: "/main/customer-receipts", resource: "customer_receipts" },
+  { prefix: "/main/invoice-verifiers", resource: "invoice_proofs" },
   { prefix: "/main/customer-groups", resource: "customer_groups" },
   { prefix: "/main/customers", resource: "customers" },
+  { prefix: "/main/customer-ledger", resource: "customers" },
   { prefix: "/main/supplier-groups", resource: "supplier_groups" },
   { prefix: "/main/suppliers", resource: "suppliers" },
+  { prefix: "/main/supplier-ledger", resource: "suppliers" },
+  { prefix: "/main/purchase-invoices", resource: "purchase_invoices" },
+  { prefix: "/main/supplier-payments", resource: "supplier_payments" },
 ];
 
 /** The resolver both old files shared. */
@@ -125,11 +139,18 @@ const OLD_ROUTES = {
   stockBundleExplosions: "/main/stock/bundle-explosions",
   stockStockCounts: "/main/stock/stock-counts",
   stockAdjustmentReasons: "/main/stock/adjustment-reasons",
-  customerGroups: "/main/customer-groups",
   salesInvoices: "/main/sales-invoices",
+  salesCreditNotes: "/main/sales-credit-notes",
+  customerReceipts: "/main/customer-receipts",
+  invoiceVerifiers: "/main/invoice-verifiers",
+  customerGroups: "/main/customer-groups",
   customers: "/main/customers",
+  customerLedger: "/main/customer-ledger",
   supplierGroups: "/main/supplier-groups",
   suppliers: "/main/suppliers",
+  supplierLedger: "/main/supplier-ledger",
+  purchaseInvoices: "/main/purchase-invoices",
+  supplierPayments: "/main/supplier-payments",
   settings: "/main/settings",
   settingsCompanyProfile: "/main/settings/company-profile",
   settingsCompanySettings: "/main/settings/company-settings",
@@ -233,8 +254,12 @@ const OLD_NAV = [
     label: "navSales",
     children: [
       { key: "/main/sales-invoices", label: "navSalesInvoices", module: "sales", permission: "sales_invoices" },
+      { key: "/main/sales-credit-notes", label: "navSalesCreditNotes", module: "sales", permission: "sales_credit_notes" },
+      { key: "/main/customer-receipts", label: "navCustomerReceipts", module: "sales", permission: "customer_receipts" },
+      { key: "/main/invoice-verifiers", label: "navInvoiceVerifiers", module: "sales", permission: "invoice_proofs" },
       { key: "/main/customer-groups", label: "navCustomerGroups", module: "sales", permission: "customer_groups" },
       { key: "/main/customers", label: "navCustomers", module: "sales", permission: "customers" },
+      { key: "/main/customer-ledger", label: "navCustomerLedger", module: "sales", permission: "customers" },
     ],
   },
   {
@@ -243,6 +268,9 @@ const OLD_NAV = [
     children: [
       { key: "/main/supplier-groups", label: "navSupplierGroups", module: "purchasing", permission: "supplier_groups" },
       { key: "/main/suppliers", label: "navSuppliers", module: "purchasing", permission: "suppliers" },
+      { key: "/main/supplier-ledger", label: "navSupplierLedger", module: "purchasing", permission: "suppliers" },
+      { key: "/main/purchase-invoices", label: "navPurchaseInvoices", module: "purchasing", permission: "purchase_invoices" },
+      { key: "/main/supplier-payments", label: "navSupplierPayments", module: "purchasing", permission: "supplier_payments" },
     ],
   },
   {
