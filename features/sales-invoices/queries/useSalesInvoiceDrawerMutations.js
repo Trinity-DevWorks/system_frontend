@@ -69,6 +69,7 @@ export function useSalesInvoiceDrawerMutations({
 
   const invalidateAfterPost = useCallback(() => {
     invalidateList();
+    queryClient.invalidateQueries({ queryKey: SALES_INVOICE_DETAIL_QUERY_PREFIX });
     queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
   }, [invalidateList, queryClient]);

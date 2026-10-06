@@ -17,10 +17,95 @@ import {
   fetchPurchaseInvoiceSupplierSelectorPage,
   PURCHASE_INVOICE_SUPPLIER_RECENT_KIND,
 } from "../../api/purchaseInvoiceSelectors.api";
+import { fetchLinkedPurchaseProof, importLinkedPurchaseProof } from "../../api/purchaseInvoices.api";
+import { getPurchaseInvoiceProofStatusLabel } from "@/features/sales-invoices/utils/invoiceProofStatuses";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { PiFocusStop } from "./purchaseInvoiceDrawerKeyboard";
-import { Col, DatePicker, Form, Input, Row, Select, Tooltip } from "antd";
+import { useQuery } from "@tanstack/react-query";
+import { Alert, App, Col, DatePicker, Form, Input, Row, Select, Switch, Tooltip, Typography, Upload } from "antd";
 import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
+
+const LINKED_PROOF_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * @param {unknown} address
+ */
+function shortWallet(address) {
+  const raw = String(address ?? "").trim();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(raw)) return raw || "\u2014";
+  return `${raw.slice(0, 6)}…${raw.slice(-4)}`;
+}
+
+/**
+ * @param {{
+ *   proofId: string;
+ *   t: (key: string) => string;
+ *   tSales: (key: string) => string;
+ * }} props
+ */
+function LinkedProofPreview({ proofId, t, tSales }) {
+  const tApiErrors = useTranslations("ApiErrors");
+  const valid = LINKED_PROOF_ID_PATTERN.test(proofId.trim());
+  const query = useQuery({
+    queryKey: ["tenant", "purchase-invoices", "linked-proof", proofId.trim()],
+    queryFn: () => fetchLinkedPurchaseProof(proofId.trim()),
+    enabled: valid,
+    retry: false,
+    staleTime: 15_000,
+  });
+
+  if (!valid) return null;
+  if (query.isPending) {
+    return <Typography.Text type="secondary">{t("linkedProofChecking")}</Typography.Text>;
+  }
+  if (query.isError) {
+    return (
+      <Alert
+        type="error"
+        showIcon
+        message={getLocalizedApiErrorMessage(tApiErrors, query.error) || t("linkedProofInvalid")}
+      />
+    );
+  }
+
+  const preview = query.data && typeof query.data === "object" ? query.data : null;
+  if (!preview) return null;
+  const status = typeof preview.status === "string" ? preview.status : "";
+
+  return (
+    <div className="purchase-invoice-linked-proof-preview">
+      <div className="purchase-invoice-linked-proof-facts">
+        <div className="purchase-invoice-linked-proof-fact">
+          <span className="purchase-invoice-linked-proof-fact-label">{t("linkedProofSupplier")}</span>
+          <span className="purchase-invoice-linked-proof-fact-value" dir="ltr">
+            {shortWallet(preview.supplier_wallet)}
+          </span>
+        </div>
+        <div className="purchase-invoice-linked-proof-fact">
+          <span className="purchase-invoice-linked-proof-fact-label">{t("linkedProofBuyer")}</span>
+          <span className="purchase-invoice-linked-proof-fact-value" dir="ltr">
+            {shortWallet(preview.buyer_wallet)}
+          </span>
+        </div>
+        <div className="purchase-invoice-linked-proof-fact">
+          <span className="purchase-invoice-linked-proof-fact-label">{t("linkedProofStatus")}</span>
+          <span className="purchase-invoice-linked-proof-fact-value">
+            {getPurchaseInvoiceProofStatusLabel(t, tSales, status)}
+          </span>
+        </div>
+      </div>
+      {preview.company_wallet_set === false ? (
+        <Alert type="warning" showIcon title={t("linkedProofNoCompanyWallet")} />
+      ) : null}
+      {preview.buyer_matches_company === false && preview.company_wallet_set !== false ? (
+        <Alert type="warning" showIcon title={t("linkedProofBuyerMismatch")} />
+      ) : null}
+    </div>
+  );
+}
 
 /**
  * @param {{
@@ -75,6 +160,10 @@ function InvoiceSupplierBoundValue({ name, label, options, placeholder, empty, e
  *   grnDisabled?: boolean;
  *   poDisabled?: boolean;
  *   invoiceId?: string | null;
+ *   showLinkedProof?: boolean;
+ *   tSales?: (key: string) => string;
+ *   onLinkedProofImported?: (result: Record<string, unknown>, disclosure: Record<string, unknown>) => void;
+ *   onLinkedProofCleared?: () => void;
  *   onOpenSupplierDrawer?: () => void;
  *   onValuesChange?: (changed: Record<string, unknown>, all: Record<string, unknown>) => void;
  *   keyboardRootRef?: import("react").Ref<HTMLDivElement>;
@@ -103,6 +192,10 @@ export default function PurchaseInvoiceDrawerForm({
   grnDisabled = false,
   poDisabled = false,
   invoiceId = null,
+  showLinkedProof = false,
+  tSales = (key) => key,
+  onLinkedProofImported,
+  onLinkedProofCleared,
   onOpenSupplierDrawer,
   onValuesChange,
   keyboardRootRef,
@@ -112,6 +205,26 @@ export default function PurchaseInvoiceDrawerForm({
   const supplierReady = supplierId != null && supplierId !== "";
   const goodsReceiptId = Form.useWatch("goods_receipt_id", form);
   const purchaseOrderId = Form.useWatch("purchase_order_id", form);
+  const { message } = App.useApp();
+  const tApiErrors = useTranslations("ApiErrors");
+  const useLinkedProof = Form.useWatch("use_linked_proof", form);
+  const linkedProofId = Form.useWatch("linked_proof_id", form);
+  const sealLocked = Boolean(useLinkedProof && LINKED_PROOF_ID_PATTERN.test(String(linkedProofId ?? "").trim()));
+
+  const importDisclosureFile = useCallback(
+    async (file) => {
+      try {
+        const parsed = JSON.parse(await file.text());
+        const result = await importLinkedPurchaseProof(parsed);
+        if (!result || typeof result !== "object") throw new Error(t("linkedProofInvalid"));
+        onLinkedProofImported?.(/** @type {Record<string, unknown>} */ (result), parsed);
+      } catch (error) {
+        message.error(getLocalizedApiErrorMessage(tApiErrors, error) || t("linkedProofInvalid"));
+      }
+      return false;
+    },
+    [message, onLinkedProofImported, t, tApiErrors],
+  );
 
   const fetchGrnPage = useCallback(
     (args) =>
@@ -163,7 +276,7 @@ export default function PurchaseInvoiceDrawerForm({
                     name="supplier_id"
                     label={<ResourceDrawerFieldLabel text={t("fieldSupplier")} required />}
                     rules={[{ required: true, message: t("supplierRequired") }]}
-                    readOnly={readOnly || supplierLocked}
+                    readOnly={readOnly || supplierLocked || sealLocked}
                     addNewSentinel={PI_LOOKUP_ADD_SUPPLIER}
                     addNewLabel={t("fieldSupplierAddNew")}
                     onAddNew={onOpenSupplierDrawer}
@@ -192,7 +305,7 @@ export default function PurchaseInvoiceDrawerForm({
                       value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
                     })}
                   >
-                    <DatePicker className="w-full" format={dayjsDatePattern()} />
+                    <DatePicker className="w-full" format={dayjsDatePattern()} disabled={sealLocked} />
                   </Form.Item>
                 </PiFocusStop>
               </Col>
@@ -217,7 +330,7 @@ export default function PurchaseInvoiceDrawerForm({
                           ? String(goodsReceiptId)
                           : undefined
                       }
-                      disabled={readOnly || grnDisabled || !supplierReady || Boolean(purchaseOrderId)}
+                      disabled={readOnly || sealLocked || grnDisabled || !supplierReady || Boolean(purchaseOrderId)}
                       fetchPage={fetchGrnPage}
                       queryKey={grnQueryKey}
                       seedOptions={grnSeedOptions}
@@ -262,7 +375,7 @@ export default function PurchaseInvoiceDrawerForm({
                       value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
                     })}
                   >
-                    <DatePicker className="w-full" format={dayjsDatePattern()} allowClear />
+                    <DatePicker className="w-full" format={dayjsDatePattern()} allowClear disabled={sealLocked} />
                   </Form.Item>
                 </PiFocusStop>
               </Col>
@@ -288,7 +401,7 @@ export default function PurchaseInvoiceDrawerForm({
                           ? String(purchaseOrderId)
                           : undefined
                       }
-                      disabled={readOnly || poDisabled || !supplierReady || Boolean(goodsReceiptId)}
+                      disabled={readOnly || sealLocked || poDisabled || !supplierReady || Boolean(goodsReceiptId)}
                       fetchPage={fetchPoPage}
                       queryKey={poQueryKey}
                       seedOptions={poSeedOptions}
@@ -366,6 +479,7 @@ export default function PurchaseInvoiceDrawerForm({
                       placeholder={t("currencyPlaceholder")}
                       options={currencyOptions}
                       loading={currenciesPending}
+                      disabled={sealLocked}
                       getPopupContainer={drawerSelectGetPopup}
                     />
                   </Form.Item>
@@ -395,7 +509,7 @@ export default function PurchaseInvoiceDrawerForm({
                               className="w-full"
                               style={{ width: "100%" }}
                               min={0.000000000001}
-                              readOnly={exchangeRateLocked}
+                              readOnly={exchangeRateLocked || sealLocked}
                               aria-label={t("fieldExchangeRate")}
                             />
                           </Form.Item>
@@ -407,6 +521,66 @@ export default function PurchaseInvoiceDrawerForm({
               </Col>
             </Row>
           </div>
+
+          {showLinkedProof ? (
+            <div className="purchase-invoice-linked-proof">
+              <div className="purchase-invoice-linked-proof-head">
+                <div className="min-w-0">
+                  <div className="purchase-invoice-linked-proof-title">{t("linkedProofToggle")}</div>
+                  <div className="purchase-invoice-linked-proof-hint">{t("linkedProofHint")}</div>
+                </div>
+                <Form.Item name="use_linked_proof" valuePropName="checked" noStyle>
+                  <Switch
+                    disabled={readOnly}
+                    aria-label={t("linkedProofToggle")}
+                    onChange={(checked) => {
+                      if (!checked) {
+                        form.setFieldValue("linked_proof_id", "");
+                        onLinkedProofCleared?.();
+                      }
+                    }}
+                  />
+                </Form.Item>
+              </div>
+              {useLinkedProof ? (
+                <div className="purchase-invoice-linked-proof-body">
+                  <Form.Item name="linked_proof_id" hidden>
+                    <Input />
+                  </Form.Item>
+                  {!readOnly && !sealLocked ? (
+                    <Upload.Dragger
+                      className="purchase-invoice-linked-proof-drop"
+                      accept="application/json,.json"
+                      maxCount={1}
+                      showUploadList={false}
+                      beforeUpload={importDisclosureFile}
+                    >
+                      <span className="purchase-invoice-linked-proof-drop-label">{t("linkedProofUpload")}</span>
+                    </Upload.Dragger>
+                  ) : null}
+                  <LinkedProofPreview proofId={String(linkedProofId ?? "")} t={t} tSales={tSales} />
+                  {sealLocked ? (
+                    <div className="purchase-invoice-linked-proof-id-row">
+                      <span className="purchase-invoice-linked-proof-id" dir="ltr" title={String(linkedProofId)}>
+                        {String(linkedProofId)}
+                      </span>
+                      {!readOnly ? (
+                        <Upload
+                          accept="application/json,.json"
+                          maxCount={1}
+                          showUploadList={false}
+                          beforeUpload={importDisclosureFile}
+                        >
+                          <Typography.Link>{t("linkedProofUpload")}</Typography.Link>
+                        </Upload>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div className="purchase-invoice-linked-proof-lock">{t("linkedProofSealHint")}</div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {children}

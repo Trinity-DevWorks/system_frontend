@@ -282,6 +282,7 @@ function PurchaseInvoiceLineLotField({ itemId, warehouseId, value, trackLots, re
  * @param {{
  *   lines: import("../../utils/purchaseInvoiceDrawerUtils").PurchaseInvoiceLineFormRow[];
  *   readOnly: boolean;
+ *   sealLocked?: boolean;
  *   itemOptions?: { value: string; label: string; track_inventory?: boolean; track_lots?: boolean; vat_percentage?: number }[];
  *   taxContext: {
  *     taxEnabled: boolean;
@@ -308,6 +309,7 @@ function PurchaseInvoiceLineLotField({ itemId, warehouseId, value, trackLots, re
 export default function PurchaseInvoiceLineEditor({
   lines,
   readOnly,
+  sealLocked = false,
   pricing = { rate: 1, foreign: false, primaryCode: "", currencyCode: "" },
   rateBanner = null,
   itemOptions = [],
@@ -439,7 +441,7 @@ export default function PurchaseInvoiceLineEditor({
       const sourceLinked =
         (row.goods_receipt_line_id != null && row.goods_receipt_line_id !== "") ||
         (row.purchase_order_line_id != null && row.purchase_order_line_id !== "");
-      const deleteBlocked = lines.length <= 1 || sourceLinked;
+      const deleteBlocked = lines.length <= 1 || sourceLinked || sealLocked;
 
       return [
         {
@@ -456,7 +458,7 @@ export default function PurchaseInvoiceLineEditor({
           key: "duplicate-row",
           icon: <CopyOutlined />,
           label: t("lineMenuDuplicateRow"),
-          disabled: readOnly || !onDuplicateLine || sourceLinked,
+          disabled: readOnly || sealLocked || !onDuplicateLine || sourceLinked,
           extra: t("lineMenuDuplicateShortcut"),
           onClick: () => handleDuplicateLine(index),
         },
@@ -464,7 +466,7 @@ export default function PurchaseInvoiceLineEditor({
           key: "clear-row",
           icon: <ClearOutlined />,
           label: t("lineMenuClearRow"),
-          disabled: readOnly || lineEmpty || sourceLinked,
+          disabled: readOnly || sealLocked || lineEmpty || sourceLinked,
           onClick: () => {
             if (readOnly || lineEmpty) return;
             setSelectedLineIndexes((prev) => {
@@ -517,6 +519,7 @@ export default function PurchaseInvoiceLineEditor({
       onRemoveLine,
       onViewItem,
       readOnly,
+      sealLocked,
       t,
     ],
   );
@@ -627,7 +630,7 @@ export default function PurchaseInvoiceLineEditor({
       <LinesGrid
         columns={columns}
         lines={lines}
-        canAddLine={!readOnly && canAddLine}
+        canAddLine={!readOnly && !sealLocked && canAddLine}
         onAddLine={onAddLine}
         addLabel={t("panelAddRow")}
         showDeleteColumn={false}
@@ -638,6 +641,7 @@ export default function PurchaseInvoiceLineEditor({
           const grnLinked = row.goods_receipt_line_id != null && row.goods_receipt_line_id !== "";
           const poLinked = row.purchase_order_line_id != null && row.purchase_order_line_id !== "";
           const sourceLinked = grnLinked || poLinked;
+          const commercialLocked = readOnly || sourceLinked || sealLocked;
           if (columnKey === "line_no") {
             return (
               <span className="item-lines-readonly-uom item-lines-line-no">
@@ -653,7 +657,7 @@ export default function PurchaseInvoiceLineEditor({
             );
           }
           if (columnKey === "barcode") {
-            const barcodeLocked = readOnly || sourceLinked;
+            const barcodeLocked = commercialLocked;
             return (
               <PiFocusStop field="barcode" line={index}>
                 <Input
@@ -693,12 +697,18 @@ export default function PurchaseInvoiceLineEditor({
                   className="w-full"
                   placeholder={t("lineItemPlaceholder")}
                   value={row.item_id != null ? String(row.item_id) : undefined}
-                  disabled={readOnly || sourceLinked}
+                  disabled={commercialLocked}
                   fetchPage={fetchPurchaseInvoiceItemSelectorPage}
                   queryKey={ITEMS_LIST_QUERY_KEY}
                   queryParams={PURCHASE_INVOICE_ITEM_SELECTOR_PARAMS}
                   recentKind={PURCHASE_INVOICE_ITEM_RECENT_KIND}
-                  seedOptions={selectedOption ? [selectedOption] : []}
+                  seedOptions={
+                    selectedOption
+                      ? [selectedOption]
+                      : row.item_id != null && row.item_label
+                        ? [{ value: String(row.item_id), label: row.item_label }]
+                        : []
+                  }
                   recentLabel={t("selectorRecent")}
                   clearRecentLabel={t("selectorClearRecent")}
                   resultsLabel={t("selectorResults")}
@@ -731,7 +741,7 @@ export default function PurchaseInvoiceLineEditor({
                   itemId={row.item_id}
                   value={row.item_uom_id}
                   catalogReloadKey={row.catalogReloadKey ?? 0}
-                  readOnly={readOnly || sourceLinked}
+                  readOnly={commercialLocked}
                   t={t}
                   onCatalogDefaults={(option) => {
                     /** @type {Partial<import("../../utils/purchaseInvoiceDrawerUtils").PurchaseInvoiceLineFormRow>} */
@@ -854,7 +864,7 @@ export default function PurchaseInvoiceLineEditor({
                     pricing={pricing}
                     className="min-w-0 flex-1"
                     placeholder={t("lineUnitPricePlaceholder")}
-                    disabled={readOnly}
+                    disabled={readOnly || sealLocked}
                     t={t}
                     onChange={(value) => applyPatch(index, manualLinePrice(value, pricing.rate))}
                   />
@@ -890,7 +900,7 @@ export default function PurchaseInvoiceLineEditor({
                   max={100}
                   placeholder="0"
                   value={row.discount_percent}
-                  disabled={readOnly}
+                  disabled={readOnly || sealLocked}
                   onChange={(value) => applyPatch(index, { discount_percent: value ?? 0 })}
                 />
               </PiFocusStop>
@@ -956,7 +966,7 @@ export default function PurchaseInvoiceLineEditor({
                   min={0.000001}
                   placeholder={t("lineQtyPlaceholder")}
                   value={row.quantity}
-                  disabled={readOnly}
+                  disabled={readOnly || sealLocked}
                   onChange={(value) => applyPatch(index, { quantity: value ?? undefined })}
                 />
                 {row.qty_mismatch ? (

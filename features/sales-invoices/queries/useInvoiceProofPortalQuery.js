@@ -8,16 +8,17 @@ import { useQuery } from "@tanstack/react-query";
 /**
  * @param {string | null | undefined} invoiceId
  * @param {{ exp?: unknown; sig?: unknown } | null | undefined} [link]
+ * @param {(invoiceId: string, link: { exp?: unknown; sig?: unknown }) => Promise<unknown>} [fetcher]
  */
-export function useInvoiceProofPortalQuery(invoiceId, link) {
+export function useInvoiceProofPortalQuery(invoiceId, link, fetcher = fetchInvoiceProofPortal) {
   const exp = link?.exp ?? null;
   const sig = typeof link?.sig === "string" ? link.sig.trim() : "";
   const enabled = Boolean(invoiceId) && hasBuyerPortalLinkStamp({ exp, sig });
 
   return useQuery({
-    queryKey: invoiceProofPortalQueryKey(invoiceId, exp, sig || null),
+    queryKey: [...invoiceProofPortalQueryKey(invoiceId, exp, sig || null), fetcher === fetchInvoiceProofPortal ? "sales" : "purchase"],
     queryFn: () =>
-      fetchInvoiceProofPortal(/** @type {string} */ (invoiceId), { exp, sig }),
+      fetcher(/** @type {string} */ (invoiceId), { exp, sig }),
     enabled,
     staleTime: QUERY_STALE_TIME.default,
     retry: (failureCount, error) => {

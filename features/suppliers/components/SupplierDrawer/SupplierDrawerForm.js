@@ -2,6 +2,7 @@
 
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import WalletAddressField from "@/shared/components/inputs/WalletAddressField";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
@@ -58,6 +59,7 @@ function currencyOptionsForRow(currencies, currentRows, currentRowIndex, t) {
  *   onOpenVatGroupDrawer?: () => void;
  *   currencies: unknown[];
  *   currenciesPending: boolean;
+ *   showWalletAddress?: boolean;
  * }} props
  */
 export default function SupplierDrawerForm({
@@ -79,6 +81,7 @@ export default function SupplierDrawerForm({
   onOpenVatGroupDrawer,
   currencies,
   currenciesPending,
+  showWalletAddress = false,
 }) {
   const showCode = mode !== "create";
   const creditRowsWatch = Form.useWatch("currency_credit_limits", form);
@@ -466,6 +469,22 @@ export default function SupplierDrawerForm({
           ) : null
         }
       </Form.Item>
+
+      {showWalletAddress ? (
+        <>
+          <Divider titlePlacement="start" className="!mt-6">
+            {t("drawerSectionInvoiceProofs")}
+          </Divider>
+          <WalletAddressField
+            addressName="wallet_address"
+            typeName="wallet_type"
+            label={t("fieldWalletAddress")}
+            extra={t("fieldWalletAddressHelp")}
+            invalidMessage={t("fieldWalletAddressInvalid")}
+            allowClear
+          />
+        </>
+      ) : null}
 
       <Divider titlePlacement="start" className="!mt-6">
         {t("drawerSectionNotes")}

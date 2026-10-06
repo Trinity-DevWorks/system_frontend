@@ -35,6 +35,7 @@ import {
 } from "../../utils/salesInvoiceStatuses";
 import {
   INVOICE_CHAIN_PENDING_POLL_MS,
+  invoiceProofShouldPoll,
   isInvoiceChainPending,
 } from "../../utils/invoiceProofStatuses";
 import SalesInvoiceDrawerFooter from "./SalesInvoiceDrawerFooter";
@@ -276,7 +277,7 @@ export default function SalesInvoiceDrawer({
   const proofEnabled =
     open &&
     invoiceId != null &&
-    isSalesInvoicePosted(effectiveStatus) &&
+    (isSalesInvoicePosted(effectiveStatus) || effectiveStatus === "reversed") &&
     Boolean(settings.invoiceProofsEnabled) &&
     access.canView &&
     (invoiceProofAccess.canView || invoiceProofAccess.canEdit);
@@ -291,7 +292,7 @@ export default function SalesInvoiceDrawer({
     refetchInterval: (query) => {
       const data = query.state.data;
       const status = data && typeof data === "object" ? data.status : null;
-      return isInvoiceChainPending(status) ? INVOICE_CHAIN_PENDING_POLL_MS : false;
+      return invoiceProofShouldPoll(status, effectiveStatus) ? INVOICE_CHAIN_PENDING_POLL_MS : false;
     },
   });
   const proofResult = proofEnabled && proofQuery.data && typeof proofQuery.data === "object" ? proofQuery.data : null;
@@ -1035,10 +1036,12 @@ export default function SalesInvoiceDrawer({
             customerAccess.canEdit && invoiceCustomerId != null ? () => setCustomerEditOpen(true) : undefined
           }
           showApproveCompany={Boolean(
-            invoiceProofAccess.canEdit && proofResult?.can_approve_as_company,
+            isSalesInvoicePosted(effectiveStatus) &&
+              invoiceProofAccess.canEdit &&
+              proofResult?.can_approve_as_company,
           )}
           approvingCompany={approveCompanyMutation.isPending}
-          showBuyerLink={showProofView}
+          showBuyerLink={showProofView && isSalesInvoicePosted(effectiveStatus)}
           buyerLinkInvoiceId={invoiceId}
           buyerLinkInvoiceNumber={loadedNumber}
           onSave={handleSave}

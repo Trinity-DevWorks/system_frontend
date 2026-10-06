@@ -4,6 +4,7 @@
 
 import dayjs from "dayjs";
 import { tenantMoneyFixed } from "@/lib/tenant-format";
+import { walletTypeForAddress } from "@/lib/wallet-address";
 
 /** @typedef {"keep" | "new" | "close"} SupplierCreateSaveIntent */
 
@@ -146,6 +147,13 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (dateFingerprint(v.exempted_from) !== dateFingerprint(defaults.exempted_from)) return true;
   if (dateFingerprint(v.exempted_to) !== dateFingerprint(defaults.exempted_to)) return true;
   if (notes !== String(defaults.notes ?? "").trim()) return true;
+  if (String(v.wallet_address ?? "").trim() !== String(defaults.wallet_address ?? "").trim()) return true;
+  if (
+    walletTypeForAddress(v.wallet_address, v.wallet_type) !==
+    walletTypeForAddress(defaults.wallet_address, defaults.wallet_type)
+  ) {
+    return true;
+  }
   if (
     currencyBalancesFingerprint(
       mergeCreditAndOpeningRows(
@@ -198,6 +206,10 @@ export function isEditDirtyVsLoaded(form, row) {
   if (dateFingerprint(v.exempted_from) !== dateFingerprint(row.exempted_from)) return true;
   if (dateFingerprint(v.exempted_to) !== dateFingerprint(row.exempted_to)) return true;
   if (notes !== String(row.notes ?? "").trim()) return true;
+  if (String(v.wallet_address ?? "").trim() !== String(row.wallet_address ?? "").trim()) return true;
+  if (walletTypeForAddress(v.wallet_address, v.wallet_type) !== walletTypeForAddress(row.wallet_address, row.wallet_type)) {
+    return true;
+  }
   if (
     currencyBalancesFingerprint(
       mergeCreditAndOpeningRows(
@@ -242,6 +254,8 @@ export function toSupplierCacheRow(row) {
     exempted_to: row.exempted_to ?? null,
     vat_number: row.vat_number ?? null,
     notes: row.notes ?? null,
+    wallet_address: row.wallet_address ?? null,
+    wallet_type: row.wallet_type ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -343,6 +357,10 @@ export function supplierFormValuesToPayload(values, mode) {
         : null,
     notes: notesRaw === "" ? null : notesRaw,
   };
+
+  const walletRaw = String(values.wallet_address ?? "").trim();
+  base.wallet_address = walletRaw === "" ? null : walletRaw;
+  base.wallet_type = walletRaw === "" ? null : walletTypeForAddress(values.wallet_address, values.wallet_type);
 
   if (mode === "create") {
     return base;

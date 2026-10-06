@@ -209,6 +209,8 @@ export function getPurchaseInvoiceDefaults() {
     due_on: dayjs().format("YYYY-MM-DD"),
     exchange_rate: 1,
     reference_2: "",
+    use_linked_proof: false,
+    linked_proof_id: "",
     adjustment: 0,
     notes: "",
   };
@@ -293,6 +295,8 @@ export function mapPurchaseInvoiceRecordToForm(record) {
     due_on: record.due_on ? String(record.due_on).slice(0, 10) : undefined,
     exchange_rate: record.exchange_rate != null ? Number(record.exchange_rate) : undefined,
     reference_2: record.reference_2 ?? "",
+    use_linked_proof: Boolean(record.linked_proof_id),
+    linked_proof_id: record.linked_proof_id ?? "",
     adjustment: record.adjustment != null ? Number(record.adjustment) : 0,
     notes: record.notes ?? "",
   };
@@ -717,6 +721,9 @@ export function isPurchaseInvoiceHeaderDirtyVsBaseline(form, baseline) {
   if (toIsoDate(values.invoice_date) !== toIsoDate(baseline.invoice_date)) return true;
   if (toIsoDate(values.due_on) !== toIsoDate(baseline.due_on)) return true;
   if (String(values.reference_2 ?? "").trim() !== String(baseline.reference_2 ?? "").trim()) return true;
+  const linkedProofId = values.use_linked_proof ? String(values.linked_proof_id ?? "").trim() : "";
+  const baselineLinkedProofId = baseline.use_linked_proof ? String(baseline.linked_proof_id ?? "").trim() : "";
+  if (linkedProofId !== baselineLinkedProofId) return true;
   if (String(values.notes ?? "").trim() !== String(baseline.notes ?? "").trim()) return true;
   if (Number(values.adjustment ?? 0) !== Number(baseline.adjustment ?? 0)) return true;
   if (Number(values.exchange_rate ?? 1) !== Number(baseline.exchange_rate ?? 1)) return true;
@@ -749,8 +756,9 @@ export function canSavePurchaseInvoiceDraft(values, lines) {
 
 /**
  * @param {Record<string, unknown>} values
+ * @param {Record<string, unknown> | null} [disclosure]
  */
-export function purchaseInvoiceHeaderToPayload(values) {
+export function purchaseInvoiceHeaderToPayload(values, disclosure = null) {
   const grnId = values.goods_receipt_id;
   const poId = values.purchase_order_id;
   return {
@@ -767,18 +775,25 @@ export function purchaseInvoiceHeaderToPayload(values) {
       values.exchange_rate != null && values.exchange_rate !== "" ? Number(values.exchange_rate) : null,
     reference_2:
       typeof values.reference_2 === "string" && values.reference_2.trim() ? values.reference_2.trim() : null,
+    linked_proof_id: values.use_linked_proof
+      ? (typeof values.linked_proof_id === "string" && values.linked_proof_id.trim()
+          ? values.linked_proof_id.trim()
+          : null)
+      : null,
     adjustment: values.adjustment != null ? Number(values.adjustment) : 0,
     notes: typeof values.notes === "string" && values.notes.trim() ? values.notes.trim() : null,
+    ...(values.use_linked_proof && disclosure ? { disclosure } : {}),
   };
 }
 
 /**
  * @param {Record<string, unknown>} values
  * @param {PurchaseInvoiceLineFormRow[]} lines
+ * @param {Record<string, unknown> | null} [disclosure]
  */
-export function purchaseInvoiceCreatePayload(values, lines) {
+export function purchaseInvoiceCreatePayload(values, lines, disclosure = null) {
   return {
-    ...purchaseInvoiceHeaderToPayload(values),
+    ...purchaseInvoiceHeaderToPayload(values, disclosure),
     lines: getValidPurchaseInvoiceLines(lines),
   };
 }

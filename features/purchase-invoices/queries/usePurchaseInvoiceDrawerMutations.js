@@ -1,6 +1,6 @@
 "use client";
 
-import { PURCHASE_INVOICE_DETAIL_QUERY_PREFIX, PURCHASE_INVOICES_QUERY_KEY } from "./purchaseInvoicesQueryKeys";
+import { PURCHASE_INVOICE_DETAIL_QUERY_PREFIX, PURCHASE_INVOICES_QUERY_KEY, purchaseInvoiceProofQueryKey } from "./purchaseInvoicesQueryKeys";
 import { STOCK_BALANCES_QUERY_KEY, STOCK_MOVEMENTS_QUERY_KEY } from "@/features/stock/queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { normalizeEntityId } from "@/lib/entityId";
@@ -11,6 +11,7 @@ import {
   fetchPurchaseInvoice,
   postPurchaseInvoice,
   reversePurchaseInvoice,
+  reissuePurchaseInvoice,
   syncPurchaseInvoiceLines,
   updatePurchaseInvoice,
 } from "../api/purchaseInvoices.api";
@@ -21,6 +22,7 @@ import {
   purchaseInvoiceCreatePayload,
   purchaseInvoiceHeaderToPayload,
 } from "../utils/purchaseInvoiceDrawerUtils";
+import { persistPurchaseInvoicePostIntent } from "../utils/purchaseInvoicePostIntent";
 
 /**
  * @param {{
@@ -31,12 +33,15 @@ import {
  *   tApiErrors: (key: string) => string;
  *   invoiceId: string | null;
  *   lines: import("../utils/purchaseInvoiceDrawerUtils").PurchaseInvoiceLineFormRow[];
+ *   linkedDisclosure?: Record<string, unknown> | null;
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onSaved?: (record: Record<string, unknown>) => void;
  *   onPosted?: (record: Record<string, unknown>) => void;
  *   onReversed?: (record: Record<string, unknown>) => void;
+ *   onReissued?: (record: Record<string, unknown>) => void;
  *   onDeleted?: () => void;
  *   onClose?: () => void;
+ *   onPostAndNew?: () => void;
  * }} args
  */
 export function usePurchaseInvoiceDrawerMutations({
@@ -47,12 +52,15 @@ export function usePurchaseInvoiceDrawerMutations({
   tApiErrors,
   invoiceId,
   lines,
+  linkedDisclosure = null,
   onCreated,
   onSaved,
   onPosted,
   onReversed,
+  onReissued,
   onDeleted,
   onClose,
+  onPostAndNew,
 }) {
   const queryClient = useQueryClient();
 
@@ -62,6 +70,7 @@ export function usePurchaseInvoiceDrawerMutations({
 
   const invalidateAfterPost = useCallback(() => {
     invalidateList();
+    queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICE_DETAIL_QUERY_PREFIX });
     queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
     queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
   }, [invalidateList, queryClient]);
@@ -78,9 +87,9 @@ export function usePurchaseInvoiceDrawerMutations({
     mutationFn: async ({ values }) => {
       const validLines = getValidPurchaseInvoiceLines(lines);
       if (invoiceId == null) {
-        return createPurchaseInvoice(purchaseInvoiceCreatePayload(values, lines));
+        return createPurchaseInvoice(purchaseInvoiceCreatePayload(values, lines, linkedDisclosure));
       }
-      await updatePurchaseInvoice(invoiceId, purchaseInvoiceHeaderToPayload(values));
+      await updatePurchaseInvoice(invoiceId, purchaseInvoiceHeaderToPayload(values, linkedDisclosure));
       const synced = await syncPurchaseInvoiceLines(invoiceId, { lines: validLines });
       if (synced.invoice) return synced.invoice;
       return fetchPurchaseInvoice(invoiceId);
@@ -109,14 +118,14 @@ export function usePurchaseInvoiceDrawerMutations({
   });
 
   const postMutation = useMutation({
-    mutationFn: async ({ values }) => {
+    mutationFn: async ({ values, intent = "close" }) => {
       let id = invoiceId;
       if (id == null) {
-        const created = await createPurchaseInvoice(purchaseInvoiceCreatePayload(values, lines));
+        const created = await createPurchaseInvoice(purchaseInvoiceCreatePayload(values, lines, linkedDisclosure));
         id = normalizeEntityId(created?.id);
         if (id == null) throw new Error("Missing purchase invoice id after create");
       } else {
-        await updatePurchaseInvoice(id, purchaseInvoiceHeaderToPayload(values));
+        await updatePurchaseInvoice(id, purchaseInvoiceHeaderToPayload(values, linkedDisclosure));
         await syncPurchaseInvoiceLines(id, { lines: getValidPurchaseInvoiceLines(lines) });
       }
       return postPurchaseInvoice(id);
@@ -129,15 +138,25 @@ export function usePurchaseInvoiceDrawerMutations({
         });
       }
     },
-    onSuccess: (record) => {
+    onSuccess: (record, variables) => {
+      const intent = variables?.intent === "keep" || variables?.intent === "new" ? variables.intent : "close";
+      persistPurchaseInvoicePostIntent(intent);
       message.success(t("postSuccess"));
       invalidateAfterPost();
       const id = normalizeEntityId(record?.id ?? invoiceId);
-      if (id != null) cacheDetail(id, record);
+      if (id != null) {
+        cacheDetail(id, record);
+        queryClient.invalidateQueries({ queryKey: purchaseInvoiceProofQueryKey(id) });
+      }
       if (invoiceId == null) {
         onCreated?.(/** @type {Record<string, unknown>} */ (record));
       }
       onPosted?.(/** @type {Record<string, unknown>} */ (record));
+      if (intent === "keep") return;
+      if (intent === "new") {
+        onPostAndNew?.();
+        return;
+      }
       onClose?.();
     },
   });
@@ -157,8 +176,29 @@ export function usePurchaseInvoiceDrawerMutations({
       message.success(t("reverseSuccess"));
       invalidateAfterPost();
       const id = normalizeEntityId(record?.id ?? invoiceId);
-      if (id != null) cacheDetail(id, record);
+      if (id != null) {
+        cacheDetail(id, record);
+        queryClient.invalidateQueries({ queryKey: purchaseInvoiceProofQueryKey(id) });
+      }
       onReversed?.(/** @type {Record<string, unknown>} */ (record));
+    },
+  });
+
+  const reissueMutation = useMutation({
+    mutationFn: () => {
+      if (invoiceId == null) throw new Error("Missing purchase invoice id");
+      return reissuePurchaseInvoice(invoiceId);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("reissueError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (record) => {
+      message.success(t("reissueSuccess"));
+      invalidateAfterPost();
+      onReissued?.(/** @type {Record<string, unknown>} */ (record));
     },
   });
 
@@ -181,12 +221,18 @@ export function usePurchaseInvoiceDrawerMutations({
     },
   });
 
-  const submitting = saveMutation.isPending || postMutation.isPending || reverseMutation.isPending || deleteMutation.isPending;
+  const submitting =
+    saveMutation.isPending ||
+    postMutation.isPending ||
+    reverseMutation.isPending ||
+    reissueMutation.isPending ||
+    deleteMutation.isPending;
 
   return {
     saveMutation,
     postMutation,
     reverseMutation,
+    reissueMutation,
     deleteMutation,
     submitting,
   };

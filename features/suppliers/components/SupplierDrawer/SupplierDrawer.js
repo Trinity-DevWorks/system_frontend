@@ -11,7 +11,7 @@ import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
-import { fetchCurrencyNames } from "@/features/currencies/index";
+import { CURRENCIES_LIST_QUERY_KEY, fetchCurrencyNames } from "@/features/currencies";
 import { fetchPaymentMethodNames } from "@/features/payment-methods/index";
 import { fetchPaymentTermNames } from "@/features/payment-terms/index";
 import { fetchSupplierGroupNames } from "@/features/supplier-groups/index";
@@ -43,7 +43,7 @@ import { SUPPLIER_GROUPS_LIST_QUERY_KEY } from "@/features/supplier-groups";
 import { PAYMENT_METHODS_LIST_QUERY_KEY } from "@/features/payment-methods";
 import { PAYMENT_TERMS_LIST_QUERY_KEY } from "@/features/payment-terms";
 import { VAT_GROUPS_LIST_QUERY_KEY } from "@/features/vat-groups";
-import { CURRENCIES_LIST_QUERY_KEY } from "@/features/currencies";
+import { useCompanySettings } from "@/lib/company-settings";
 
 const SUPPLIER_DETAIL_QUERY_PREFIX = /** @type {const} */ (SUPPLIERS_LIST_QUERY_KEY);
 
@@ -67,6 +67,8 @@ export default function SupplierDrawer({
 }) {
   const t = useTranslations("Suppliers");
   const tApiErrors = useTranslations("ApiErrors");
+  const { settings } = useCompanySettings();
+  const showWalletAddress = Boolean(settings.invoiceProofsEnabled);
   const { message, modal } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
@@ -141,6 +143,8 @@ export default function SupplierDrawer({
       exempted_to: undefined,
       vat_number: "",
       notes: "",
+      wallet_address: "",
+      wallet_type: undefined,
     }),
     [],
   );
@@ -166,6 +170,8 @@ export default function SupplierDrawer({
       exempted_to: r.exempted_to ? dayjs(String(r.exempted_to)) : undefined,
       vat_number: r.vat_number ?? "",
       notes: r.notes ?? "",
+      wallet_address: r.wallet_address ?? "",
+      wallet_type: r.wallet_type ?? undefined,
     };
   }, []);
 
@@ -445,6 +451,7 @@ export default function SupplierDrawer({
         onOpenVatGroupDrawer={readOnly ? undefined : () => setNestedCreate("vat-group")}
         currencies={currenciesData ?? []}
         currenciesPending={currenciesQuery.isPending}
+        showWalletAddress={showWalletAddress}
       />
       {!readOnly ? (
         <>

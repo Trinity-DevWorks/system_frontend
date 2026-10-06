@@ -69,7 +69,21 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
 
   /** @param {Record<string, any>} record */
   const proofItems = (record) => {
-    if (!showChainStatus || record?.status !== "posted") return [];
+    if (!showChainStatus) return [];
+    if (record?.status === "reversed") {
+      return onRefreshProof
+        ? [
+            { type: "divider" },
+            {
+              key: "proof-refresh",
+              icon: <ReloadOutlined />,
+              label: t("actionVerify"),
+              onClick: () => onRefreshProof(record),
+            },
+          ]
+        : [];
+    }
+    if (record?.status !== "posted") return [];
     const items = [];
     if (onRefreshProof) {
       items.push({

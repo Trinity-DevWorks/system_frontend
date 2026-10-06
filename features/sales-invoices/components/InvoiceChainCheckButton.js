@@ -2,7 +2,8 @@
 
 import { fetchInvoiceChainCheck, runInvoiceChainCheck } from "../api/invoiceChainCheck.api";
 import { invoiceChainCheckQueryKey } from "../queries/invoiceChainCheckQueryKeys";
-import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY } from "../queries/salesInvoicesQueryKeys";
+import { SALES_INVOICES_QUERY_KEY, SALES_INVOICE_DETAIL_QUERY_PREFIX } from "../queries/salesInvoicesQueryKeys";
+import { PURCHASE_INVOICES_QUERY_KEY, PURCHASE_INVOICE_DETAIL_QUERY_PREFIX } from "@/features/purchase-invoices/queries/purchaseInvoicesQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useDrawerHostPresence } from "@/lib/drawer/DrawerHostPresence";
 import { formatTenantDateTime } from "@/lib/tenant-format";
@@ -69,6 +70,8 @@ export default function InvoiceChainCheckButton({ canRun, onOpenInvoice }) {
       queryClient.setQueryData(queryKey, data);
       queryClient.invalidateQueries({ queryKey: SALES_INVOICES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: SALES_INVOICE_DETAIL_QUERY_PREFIX });
+      queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICE_DETAIL_QUERY_PREFIX });
       const status = data?.check?.status;
       if (status === "consistent") message.success(t("runConsistent"));
       else if (status === "issues") message.warning(t("runIssues", { count: data.check.issue_count }));

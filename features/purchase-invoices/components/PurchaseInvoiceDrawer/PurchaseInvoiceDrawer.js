@@ -3,25 +3,50 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
-import { PURCHASE_INVOICE_DETAIL_QUERY_PREFIX } from "../../queries/purchaseInvoicesQueryKeys";
+import { PURCHASE_INVOICE_DETAIL_QUERY_PREFIX, PURCHASE_INVOICES_QUERY_KEY } from "../../queries/purchaseInvoicesQueryKeys";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
-import { fetchPurchaseInvoice } from "../../api/purchaseInvoices.api";
+import { fetchPurchaseInvoice, verifyPurchaseInvoice } from "../../api/purchaseInvoices.api";
+import { createVendorPortalLink, createPurchaseInvoiceProofDisclosure, fetchPurchaseInvoiceProofFields } from "../../api/purchaseInvoices.api";
+import { purchaseInvoiceProofQueryKey } from "../../queries/purchaseInvoicesQueryKeys";
+import { usePurchaseInvoiceProofMutations } from "../../queries/usePurchaseInvoiceProofMutations";
+import {
+  INVOICE_CHAIN_PENDING_POLL_MS,
+  invoiceProofShouldPoll,
+  isInvoiceChainPending,
+} from "@/features/sales-invoices/utils/invoiceProofStatuses";
+import { purchaseInvoiceProofPortalAbsoluteUrl } from "../../utils/invoiceProofPortalUrl";
 import { fetchGoodsReceipt } from "@/features/stock/api/goodsReceipts.api";
 import { fetchPurchaseOrder } from "@/features/stock/api/purchaseOrders.api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import SupplierDrawer from "@/features/suppliers/components/SupplierDrawer/SupplierDrawer";
 import { SUPPLIERS_LIST_QUERY_KEY } from "@/features/suppliers/queries/suppliersQueryKeys";
+import { ROUTES } from "@/features/registry";
+import { useCompanyProfile } from "@/features/settings/queries/companyProfile";
+import { useRouter } from "@/i18n/navigation";
 import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
-import { App, Form } from "antd";
+import { App, Form, Input, Modal, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePurchaseInvoiceDrawerKeyboard } from "./purchaseInvoiceDrawerKeyboard";
-import { isPurchaseInvoiceDraft } from "../../utils/purchaseInvoiceStatuses";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
+import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
+import {
+  isPurchaseInvoiceDraft,
+  isPurchaseInvoicePosted,
+  purchaseInvoiceCanReissue,
+  purchaseInvoiceCanReverse,
+  purchaseInvoiceReissueDisabledReason,
+  purchaseInvoiceReverseDisabledReason,
+} from "../../utils/purchaseInvoiceStatuses";
+import {
+  PURCHASE_INVOICE_POST_INTENT_EVENT,
+  PURCHASE_INVOICE_POST_INTENT_KEY,
+} from "../../utils/purchaseInvoicePostIntent";
 import PurchaseInvoiceDrawerFooter from "./PurchaseInvoiceDrawerFooter";
 import PurchaseInvoiceDrawerForm from "./PurchaseInvoiceDrawerForm";
 import PurchaseInvoiceDrawerHeaderMeta from "./PurchaseInvoiceDrawerHeaderMeta";
@@ -73,6 +98,7 @@ import {
  *   createSeed?: { header?: Record<string, unknown>; lines?: Array<Record<string, unknown>> } | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onPostAndNew?: () => void;
  * }} props
  */
 export default function PurchaseInvoiceDrawer({
@@ -83,17 +109,31 @@ export default function PurchaseInvoiceDrawer({
   createSeed = null,
   onClose,
   onCreated,
+  onPostAndNew,
 }) {
   const t = useTranslations("PurchaseInvoices");
+  const tSales = useTranslations("SalesInvoices");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal, notification } = App.useApp();
   const access = useResourceAccess("purchase_invoices");
+  const invoiceProofAccess = useResourceAccess("invoice_proofs");
+  const { openDrawer } = useGlobalDrawer();
   const supplierAccess = useResourceAccess("suppliers");
+  const companyProfileAccess = useResourceAccess("company_profile");
   const itemAccess = useResourceAccess("items");
   const queryClient = useQueryClient();
   const { settings } = useCompanySettings();
+  const companyProfile = useCompanyProfile();
+  const router = useRouter();
   const [form] = Form.useForm();
   const [supplierCreateOpen, setSupplierCreateOpen] = useState(false);
+  const [linkedDisclosure, setLinkedDisclosure] = useState(/** @type {Record<string, unknown> | null} */ (null));
+  const [linkedSupplierSeed, setLinkedSupplierSeed] = useState(
+    /** @type {{ value: string; label: string } | null} */ (null),
+  );
+  const [supplierEditOpen, setSupplierEditOpen] = useState(false);
+  const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState("");
   const [itemViewId, setItemViewId] = useState(/** @type {string | null} */ (null));
   const [itemViewTrackedOpen, setItemViewTrackedOpen] = useState(open);
   if (open !== itemViewTrackedOpen) {
@@ -116,6 +156,8 @@ export default function PurchaseInvoiceDrawer({
   const hydrateSupplierRef = useRef(true);
   const loadedDetailVersionRef = useRef(0);
   const keyboardRootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const tamperedToastKeyRef = useRef(/** @type {string | null} */ (null));
+  const previousProofStatusRef = useRef(/** @type {string | null} */ (null));
   const linesRef = useRef(lines);
   useLayoutEffect(() => {
     linesRef.current = lines;
@@ -248,6 +290,57 @@ export default function PurchaseInvoiceDrawer({
     loadedStatus ?? (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
   const readOnly =
     mode === "view" || !isPurchaseInvoiceDraft(effectiveStatus) || (mode === "edit" && !access.canEdit);
+  const invoiceRecord = detailQuery.data ?? tableSeedRecord;
+  const reverseEnabled = purchaseInvoiceCanReverse(invoiceRecord);
+  const reissueEnabled = purchaseInvoiceCanReissue(invoiceRecord);
+  const proofEnabled =
+    open &&
+    invoiceId != null &&
+    (isPurchaseInvoicePosted(effectiveStatus) || effectiveStatus === "reversed") &&
+    Boolean(settings.invoiceProofsEnabled) &&
+    access.canView &&
+    (invoiceProofAccess.canView || invoiceProofAccess.canEdit);
+  const showProofView = proofEnabled && invoiceProofAccess.canView;
+
+  const proofQuery = useQuery({
+    queryKey: purchaseInvoiceProofQueryKey(invoiceId),
+    queryFn: () => verifyPurchaseInvoice(/** @type {string} */ (invoiceId)),
+    enabled: proofEnabled,
+    staleTime: QUERY_STALE_TIME.ledger,
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      const linked =
+        invoiceRecord && typeof invoiceRecord === "object" && invoiceRecord.linked_proof_id != null && invoiceRecord.linked_proof_id !== "";
+      if (linked) return false;
+      const data = query.state.data;
+      const status = data && typeof data === "object" ? data.status : null;
+      return invoiceProofShouldPoll(status, effectiveStatus) ? INVOICE_CHAIN_PENDING_POLL_MS : false;
+    },
+  });
+  const proofResult = proofEnabled && proofQuery.data && typeof proofQuery.data === "object" ? proofQuery.data : null;
+  const proofStatus = typeof proofResult?.status === "string" ? proofResult.status : null;
+
+  useEffect(() => {
+    const previous = previousProofStatusRef.current;
+    previousProofStatusRef.current = proofStatus;
+    if (previous != null && isInvoiceChainPending(previous) && proofStatus && !isInvoiceChainPending(proofStatus)) {
+      queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICES_QUERY_KEY });
+    }
+  }, [proofStatus, queryClient]);
+
+  useEffect(() => {
+    if (!open) {
+      tamperedToastKeyRef.current = null;
+      return;
+    }
+    if (!invoiceProofAccess.canView || invoiceId == null || proofStatus !== "tampered") return;
+    if (tamperedToastKeyRef.current === invoiceId) return;
+    tamperedToastKeyRef.current = invoiceId;
+    notification.error({
+      title: tSales("proofStatusTampered"),
+      description: tSales("verifySuccessTampered"),
+    });
+  }, [open, invoiceId, invoiceProofAccess.canView, proofStatus, notification, tSales]);
 
   const formValuesWatch = Form.useWatch([], form);
   const supplierId = formValuesWatch?.supplier_id ?? null;
@@ -275,6 +368,27 @@ export default function PurchaseInvoiceDrawer({
     supplierId,
     invoiceLookups,
   });
+
+  const invoiceSupplier =
+    drawerData.supplierDetail && typeof drawerData.supplierDetail === "object"
+      ? drawerData.supplierDetail
+      : detailQuery.data?.supplier && typeof detailQuery.data.supplier === "object"
+        ? detailQuery.data.supplier
+        : null;
+  const invoiceSupplierId = normalizeEntityId(invoiceSupplier?.id) ?? normalizeEntityId(supplierId);
+  const supplierWalletSaved = invoiceSupplier ? Boolean(invoiceSupplier.wallet_address) : null;
+  const companyWalletSaved = companyProfile.isReady ? Boolean(companyProfile.profile.wallet_address) : null;
+
+  const closeSupplierEdit = useCallback(() => {
+    setSupplierEditOpen(false);
+    if (invoiceId != null) {
+      queryClient.invalidateQueries({ queryKey: [...PURCHASE_INVOICE_DETAIL_QUERY_PREFIX, invoiceId] });
+    }
+    invalidateTenantListQueries(queryClient, SUPPLIERS_LIST_QUERY_KEY);
+    if (invoiceSupplierId != null) {
+      queryClient.invalidateQueries({ queryKey: [...SUPPLIERS_LIST_QUERY_KEY, invoiceSupplierId, "full"] });
+    }
+  }, [queryClient, invoiceId, invoiceSupplierId]);
 
   const grnSeedOptions = useMemo(() => {
     const record = detailQuery.data ?? tableSeedRecord;
@@ -353,7 +467,7 @@ export default function PurchaseInvoiceDrawer({
     if (!supplier || String(supplier.id) !== String(supplierId)) return;
 
     prevSupplierIdRef.current = supplierId;
-    dueOnAutoRef.current = true;
+    if (!form.getFieldValue("use_linked_proof")) dueOnAutoRef.current = true;
     form.setFieldsValue({
       payment_method_id: supplier.payment_method_id ?? undefined,
       payment_terms_id: supplier.payment_terms_id ?? undefined,
@@ -561,7 +675,7 @@ export default function PurchaseInvoiceDrawer({
   }, [headerRate, settings.priceDecimalPlaces]);
 
   useEffect(() => {
-    if (readOnly || currencyId == null) return;
+    if (readOnly || currencyId == null || formValuesWatch?.use_linked_proof) return;
     if (exchangeRateLocked) {
       if (Number(form.getFieldValue("exchange_rate")) !== 1) {
         form.setFieldsValue({ exchange_rate: 1 });
@@ -574,7 +688,7 @@ export default function PurchaseInvoiceDrawer({
     if (rate != null && rate > 0) {
       form.setFieldsValue({ exchange_rate: rate });
     }
-  }, [currencyId, drawerData, exchangeRateLocked, form, readOnly]);
+  }, [currencyId, drawerData, exchangeRateLocked, form, formValuesWatch?.use_linked_proof, readOnly]);
 
   const paymentTermDueDays = useMemo(() => {
     const termId = formValuesWatch?.payment_terms_id;
@@ -583,13 +697,13 @@ export default function PurchaseInvoiceDrawer({
   }, [drawerData.paymentTermOptions, formValuesWatch?.payment_terms_id]);
 
   useEffect(() => {
-    if (readOnly || !dueOnAutoRef.current) return;
+    if (readOnly || formValuesWatch?.use_linked_proof || !dueOnAutoRef.current) return;
     const next = suggestedDueOn(formValuesWatch?.invoice_date, paymentTermDueDays);
     if (String(form.getFieldValue("due_on") ?? "") === next) return;
     applyingDueOnRef.current = true;
     form.setFieldsValue({ due_on: next });
     applyingDueOnRef.current = false;
-  }, [form, formValuesWatch?.invoice_date, paymentTermDueDays, readOnly]);
+  }, [form, formValuesWatch?.invoice_date, formValuesWatch?.use_linked_proof, paymentTermDueDays, readOnly]);
 
   const { isCreateDirty } = useCreateDiscardBaseline({
     open,
@@ -664,7 +778,51 @@ export default function PurchaseInvoiceDrawer({
     [form, queryClient],
   );
 
-  const { saveMutation, postMutation, reverseMutation, deleteMutation, submitting } = usePurchaseInvoiceDrawerMutations({
+  const handleLinkedProofImported = useCallback(
+    (result, disclosure) => {
+      setLinkedDisclosure(disclosure);
+      dueOnAutoRef.current = false;
+      const supplierId = result.supplier_id;
+      const supplierName = typeof result.supplier_name === "string" ? result.supplier_name : "";
+      if (supplierId != null && supplierId !== "") {
+        setLinkedSupplierSeed({ value: String(supplierId), label: supplierName || String(supplierId) });
+      }
+      form.setFieldsValue({
+        use_linked_proof: true,
+        linked_proof_id: result.proof_id ?? "",
+        supplier_id: supplierId,
+        currency_id: result.currency_id,
+        invoice_date: result.invoice_date,
+        ...(result.due_on ? { due_on: result.due_on } : {}),
+        exchange_rate: result.exchange_rate != null && result.exchange_rate !== "" ? Number(result.exchange_rate) : undefined,
+        notes: typeof result.notes === "string" ? result.notes : "",
+        adjustment: result.adjustment != null && result.adjustment !== "" ? Number(result.adjustment) : 0,
+        goods_receipt_id: undefined,
+        purchase_order_id: undefined,
+      });
+      const imported = Array.isArray(result.lines) ? result.lines : [];
+      setLines(
+        imported.length > 0
+          ? imported.map((line) => {
+              const row = line && typeof line === "object" ? /** @type {Record<string, unknown>} */ (line) : {};
+              return {
+                ...getEmptyPurchaseInvoiceLine(),
+                item_id: row.item_id != null ? String(row.item_id) : undefined,
+                item_label: typeof row.item_label === "string" ? row.item_label : "",
+                item_uom_id: row.item_uom_id != null ? Number(row.item_uom_id) : undefined,
+                quantity: row.quantity != null && row.quantity !== "" ? Number(row.quantity) : undefined,
+                unit_price: row.unit_price != null && row.unit_price !== "" ? Number(row.unit_price) : undefined,
+                discount_percent: row.discount_percent != null && row.discount_percent !== "" ? Number(row.discount_percent) : 0,
+                description: typeof row.description === "string" ? row.description : "",
+              };
+            })
+          : [getEmptyPurchaseInvoiceLine()],
+      );
+    },
+    [form],
+  );
+
+  const { saveMutation, postMutation, reverseMutation, reissueMutation, deleteMutation, submitting } = usePurchaseInvoiceDrawerMutations({
     form,
     message,
     notification,
@@ -672,13 +830,48 @@ export default function PurchaseInvoiceDrawer({
     tApiErrors,
     invoiceId,
     lines,
+    linkedDisclosure,
     onCreated: handleCreated,
     onSaved: syncBaselinesFromRecordAndBump,
     onPosted: syncBaselinesFromRecordAndBump,
     onReversed: syncBaselinesFromRecordAndBump,
+    onReissued: (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({
+        featureId: "purchaseInvoices",
+        id,
+        mode: "edit",
+        seed: record,
+      });
+    },
     onDeleted: forceClose,
     onClose: forceClose,
+    onPostAndNew,
   });
+
+  const { verifyMutation, approveBuyerMutation, disputeBuyerMutation } = usePurchaseInvoiceProofMutations({
+    message,
+    notification,
+    t,
+    tSales,
+    tApiErrors,
+  });
+
+  const handleOpenRelatedInvoice = useCallback(
+    (invoice) => {
+      const id = normalizeEntityId(invoice?.id);
+      if (id == null) return;
+      const status = typeof invoice?.status === "string" ? invoice.status : "";
+      openDrawer({
+        featureId: "purchaseInvoices",
+        id,
+        mode: status === "draft" && access.canEdit ? "edit" : "view",
+        seed: invoice && typeof invoice === "object" ? { ...invoice } : null,
+      });
+    },
+    [access.canEdit, openDrawer],
+  );
 
   const currentValues = useMemo(
     () => ({
@@ -746,25 +939,56 @@ export default function PurchaseInvoiceDrawer({
       .catch(() => {});
   }, [form, saveMutation]);
 
-  const handlePost = useCallback(() => {
-    form
-      .validateFields()
-      .then((values) => {
-        const content = hasGrn ? t("postConfirmContentApOnly") : t("postConfirmContentApAndStock");
-        modal.confirm(
-          withConfirmKeyboard({
-            title: t("postConfirmTitle"),
-            content,
-            okText: t("postConfirmOk"),
-            cancelText: t("drawerCancel"),
-            onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
-          }),
-        );
-      })
-      .catch(() => {});
-  }, [form, modal, t, postMutation, hasGrn]);
+  const lastPostIntent = usePersistedSaveIntent(
+    PURCHASE_INVOICE_POST_INTENT_KEY,
+    PURCHASE_INVOICE_POST_INTENT_EVENT,
+  );
+
+  const postIntentLabel = useCallback(
+    (/** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent} */ intent) => {
+      if (intent === "keep") return t("actionPost");
+      if (intent === "new") return t("actionPostAndNew");
+      return t("actionPostAndClose");
+    },
+    [t],
+  );
+
+  const postMenuItems = useMemo(
+    () =>
+      /** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent[]} */ ([
+        "keep",
+        "new",
+        "close",
+      ])
+        .filter((key) => key !== lastPostIntent)
+        .map((key) => ({ key, label: postIntentLabel(key) })),
+    [lastPostIntent, postIntentLabel],
+  );
+
+  const handlePost = useCallback(
+    (/** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent} */ intent = lastPostIntent) => {
+      const postIntent = intent === "keep" || intent === "new" || intent === "close" ? intent : "close";
+      form
+        .validateFields()
+        .then((values) => {
+          const content = hasGrn ? t("postConfirmContentApOnly") : t("postConfirmContentApAndStock");
+          modal.confirm(
+            withConfirmKeyboard({
+              title: t("postConfirmTitle"),
+              content,
+              okText: t("postConfirmOk"),
+              cancelText: t("drawerCancel"),
+              onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values, intent: postIntent })),
+            }),
+          );
+        })
+        .catch(() => {});
+    },
+    [form, modal, t, postMutation, lastPostIntent, hasGrn],
+  );
 
   const handleReverse = useCallback(() => {
+    if (!reverseEnabled) return;
     modal.confirm(
       withConfirmKeyboard({
         title: t("reverseConfirmTitle"),
@@ -775,7 +999,20 @@ export default function PurchaseInvoiceDrawer({
         onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
       }),
     );
-  }, [modal, t, reverseMutation, hasGrn]);
+  }, [modal, t, reverseMutation, hasGrn, reverseEnabled]);
+
+  const handleReissue = useCallback(() => {
+    if (!reissueEnabled) return;
+    modal.confirm(
+      withConfirmKeyboard({
+        title: t("reissueConfirmTitle"),
+        content: t("reissueConfirmContent"),
+        okText: t("actionReissue"),
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(reissueMutation.mutateAsync()),
+      }),
+    );
+  }, [modal, t, reissueMutation, reissueEnabled]);
 
   const handleDelete = useCallback(() => {
     const name = loadedNumber ?? String(invoiceId ?? "");
@@ -918,7 +1155,15 @@ export default function PurchaseInvoiceDrawer({
         size="100%"
         className="sales-invoice-crud-drawer"
         headerExtra={
-          <PurchaseInvoiceDrawerHeaderMeta t={t} invoiceStatus={effectiveStatus} />
+          <PurchaseInvoiceDrawerHeaderMeta
+            t={t}
+            invoiceStatus={effectiveStatus}
+            chainIssue={
+              showProofView
+                ? ((detailQuery.data ? detailQuery.data.chain_issue : tableSeedRecord?.chain_issue) ?? null)
+                : null
+            }
+          />
         }
         showDetailLoading={showDetailLoading}
         detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
@@ -928,6 +1173,7 @@ export default function PurchaseInvoiceDrawer({
           <PurchaseInvoiceDrawerFooter
             readOnly={readOnly}
             t={t}
+            tSales={tSales}
             forceClose={forceClose}
             requestClose={requestClose}
             submitting={submitting}
@@ -935,12 +1181,79 @@ export default function PurchaseInvoiceDrawer({
             postDisabled={!canSubmitRequired || !access.canEdit}
             showDelete={!readOnly && invoiceId != null && access.canDelete}
             showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
+            reverseDisabled={!reverseEnabled}
+            reverseDisabledReason={purchaseInvoiceReverseDisabledReason(t, invoiceRecord)}
             onReverse={handleReverse}
             postedBy={loadedPostedBy}
             postedAt={loadedPostedAt}
             onSave={handleSave}
             onPost={handlePost}
+            lastPostIntent={lastPostIntent}
+            postIntentLabel={postIntentLabel}
+            postMenuItems={postMenuItems}
             onDelete={handleDelete}
+            showVerify={showProofView}
+            verifying={verifyMutation.isPending || (proofQuery.isFetching && !proofResult)}
+            proofStatus={proofStatus}
+            chainRegisteredAt={typeof proofResult?.registered_at === "string" ? proofResult.registered_at : null}
+            chainSupplierApprovedAt={
+              typeof proofResult?.supplier_approved_at === "string" ? proofResult.supplier_approved_at : null
+            }
+            chainBuyerApprovedAt={
+              typeof proofResult?.buyer_approved_at === "string" ? proofResult.buyer_approved_at : null
+            }
+            chainDisputedAt={typeof proofResult?.disputed_at === "string" ? proofResult.disputed_at : null}
+            chainDisputeReason={typeof proofResult?.dispute_reason === "string" ? proofResult.dispute_reason : null}
+            chainSupplierWallet={typeof proofResult?.supplier_wallet === "string" ? proofResult.supplier_wallet : null}
+            chainBuyerWallet={typeof proofResult?.buyer_wallet === "string" ? proofResult.buyer_wallet : null}
+            chainAttestations={Array.isArray(proofResult?.attestations) ? proofResult.attestations : []}
+            companyWalletSaved={companyWalletSaved}
+            supplierWalletSaved={supplierWalletSaved}
+            onOpenCompanyProfile={
+              companyProfileAccess.canEdit ? () => router.push(ROUTES.settingsCompanyProfile) : undefined
+            }
+            onOpenSupplier={
+              supplierAccess.canEdit && invoiceSupplierId != null ? () => setSupplierEditOpen(true) : undefined
+            }
+            showApproveBuyer={Boolean(
+              effectiveStatus === "posted" && invoiceProofAccess.canEdit && proofResult?.can_approve_as_buyer,
+            )}
+            approvingBuyer={approveBuyerMutation.isPending}
+            onApproveBuyer={() => {
+              if (invoiceId != null) approveBuyerMutation.mutate({ invoiceId, proof: proofResult });
+            }}
+            showDispute={Boolean(
+              effectiveStatus === "posted" && invoiceProofAccess.canEdit && proofResult?.can_dispute_as_buyer,
+            )}
+            onDispute={() => {
+              setDisputeReason("");
+              setDisputeOpen(true);
+            }}
+            showVendorLink={
+              showProofView &&
+              effectiveStatus === "posted" &&
+              !(invoiceRecord && invoiceRecord.linked_proof_id)
+            }
+            vendorLinkInvoiceId={invoiceId}
+            vendorLinkInvoiceNumber={loadedNumber}
+            issueVendorLink={createVendorPortalLink}
+            vendorAbsoluteUrl={purchaseInvoiceProofPortalAbsoluteUrl}
+            fetchProofFields={fetchPurchaseInvoiceProofFields}
+            createProofDisclosure={createPurchaseInvoiceProofDisclosure}
+            showReissue={Boolean(
+              invoiceId != null &&
+                access.canAdd &&
+                (effectiveStatus === "reversed" || (effectiveStatus === "posted" && access.canReverse)),
+            )}
+            reissueDisabled={!reissueEnabled}
+            reissueDisabledReason={purchaseInvoiceReissueDisabledReason(t, invoiceRecord)}
+            onReissue={handleReissue}
+            replacesInvoice={invoiceRecord?.replaces_invoice ?? null}
+            replacedByInvoice={invoiceRecord?.replaced_by_invoice ?? null}
+            onOpenRelatedInvoice={handleOpenRelatedInvoice}
+            onVerify={() => {
+              if (invoiceId != null) verifyMutation.mutate(invoiceId);
+            }}
           />
         }
       >
@@ -948,7 +1261,16 @@ export default function PurchaseInvoiceDrawer({
           form={form}
           readOnly={readOnly || submitting}
           t={t}
-          supplierSeedOptions={drawerData.supplierSeedOptions}
+          supplierSeedOptions={
+            linkedSupplierSeed
+              ? [linkedSupplierSeed, ...drawerData.supplierSeedOptions]
+              : drawerData.supplierSeedOptions
+          }
+          onLinkedProofImported={handleLinkedProofImported}
+          onLinkedProofCleared={() => {
+            setLinkedDisclosure(null);
+            setLinkedSupplierSeed(null);
+          }}
           grnSeedOptions={grnSeedOptions}
           poSeedOptions={poSeedOptions}
           warehouseOptions={drawerData.warehouseOptions}
@@ -966,6 +1288,8 @@ export default function PurchaseInvoiceDrawer({
           grnDisabled={!supplierReady}
           poDisabled={!supplierReady}
           invoiceId={invoiceId}
+          showLinkedProof={Boolean(settings.invoiceProofsEnabled) || Boolean(invoiceRecord?.linked_proof_id)}
+          tSales={tSales}
           onOpenSupplierDrawer={
             !readOnly && supplierAccess.canAdd ? () => setSupplierCreateOpen(true) : undefined
           }
@@ -987,6 +1311,7 @@ export default function PurchaseInvoiceDrawer({
               ) : null
             }
             readOnly={readOnly || submitting || !supplierReady}
+            sealLocked={Boolean(formValuesWatch?.use_linked_proof && formValuesWatch?.linked_proof_id)}
             taxContext={taxContext}
             warehouseOptions={drawerData.warehouseOptions}
             headerWarehouseId={warehouseId}
@@ -1001,7 +1326,12 @@ export default function PurchaseInvoiceDrawer({
             onViewItem={viewLineItem}
             t={t}
           />
-          <PurchaseInvoiceTotals t={t} readOnly={readOnly || submitting} totals={displayTotals} />
+          <PurchaseInvoiceTotals
+            t={t}
+            readOnly={readOnly || submitting}
+            sealLocked={Boolean(formValuesWatch?.use_linked_proof && formValuesWatch?.linked_proof_id)}
+            totals={displayTotals}
+          />
         </PurchaseInvoiceDrawerForm>
       </ResourceCrudDrawer>
       {!readOnly && supplierAccess.canAdd ? (
@@ -1014,6 +1344,15 @@ export default function PurchaseInvoiceDrawer({
           onCreated={onSupplierCreated}
         />
       ) : null}
+      {supplierAccess.canEdit && invoiceSupplierId != null ? (
+        <SupplierDrawer
+          open={open && supplierEditOpen}
+          mode="edit"
+          supplierId={String(invoiceSupplierId)}
+          zIndex={1100}
+          onClose={closeSupplierEdit}
+        />
+      ) : null}
       {itemAccess.canView ? (
         <ItemDrawer
           open={open && itemViewId != null}
@@ -1023,6 +1362,35 @@ export default function PurchaseInvoiceDrawer({
           onClose={() => setItemViewId(null)}
         />
       ) : null}
+      <Modal
+        title={t("disputeTitle")}
+        open={open && disputeOpen}
+        onCancel={() => setDisputeOpen(false)}
+        okText={t("disputeConfirm")}
+        confirmLoading={disputeBuyerMutation.isPending}
+        okButtonProps={{ danger: true, disabled: disputeReason.trim() === "" }}
+        onOk={() => {
+          if (invoiceId == null) return;
+          return disputeBuyerMutation.mutateAsync({
+            invoiceId,
+            proof: proofResult,
+            reason: disputeReason.trim(),
+          }).then(() => {
+            setDisputeOpen(false);
+            setDisputeReason("");
+          });
+        }}
+      >
+        <Typography.Paragraph className="!mb-3">{t("disputeHint")}</Typography.Paragraph>
+        <Input.TextArea
+          value={disputeReason}
+          onChange={(event) => setDisputeReason(event.target.value)}
+          rows={4}
+          maxLength={2000}
+          showCount
+          placeholder={t("disputeReasonPlaceholder")}
+        />
+      </Modal>
     </>
   );
 }

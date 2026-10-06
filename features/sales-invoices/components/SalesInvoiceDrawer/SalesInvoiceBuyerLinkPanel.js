@@ -84,7 +84,15 @@ function printBuyerQr({ svg, invoiceNumber, companyName, printedOn }) {
  *   t: (key: string) => string;
  * }} props
  */
-export default function SalesInvoiceBuyerLinkPanel({ invoiceId, invoiceNumber = null, t }) {
+export default function SalesInvoiceBuyerLinkPanel({
+  invoiceId,
+  invoiceNumber = null,
+  t,
+  issueLink = createBuyerPortalLink,
+  absoluteUrl = salesInvoiceProofPortalAbsoluteUrl,
+  copySuccessKey = "copyBuyerLinkSuccess",
+  copyErrorKey = "copyBuyerLinkError",
+}) {
   const locale = useLocale();
   const { profile } = useCompanyProfile();
   const companyName = profile.company_name.trim();
@@ -96,22 +104,22 @@ export default function SalesInvoiceBuyerLinkPanel({ invoiceId, invoiceNumber = 
 
   useEffect(() => {
     let cancelled = false;
-    createBuyerPortalLink(invoiceId)
+    issueLink(invoiceId)
       .then((data) => {
         if (cancelled) return;
-        const nextUrl = salesInvoiceProofPortalAbsoluteUrl(invoiceId, locale, {
+        const nextUrl = absoluteUrl(invoiceId, locale, {
           exp: data?.exp,
           sig: data?.sig,
         });
         if (nextUrl === "") {
-          message.error(t("copyBuyerLinkError"));
+          message.error(t(copyErrorKey));
           return;
         }
         setUrl(nextUrl);
       })
       .catch((err) => {
         if (cancelled) return;
-        message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t("copyBuyerLinkError"));
+        message.error(getLocalizedApiErrorMessage(tApiErrors, err) || t(copyErrorKey));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -119,17 +127,17 @@ export default function SalesInvoiceBuyerLinkPanel({ invoiceId, invoiceNumber = 
     return () => {
       cancelled = true;
     };
-  }, [invoiceId, locale, message, t, tApiErrors]);
+  }, [absoluteUrl, copyErrorKey, invoiceId, issueLink, locale, message, t, tApiErrors]);
 
   const handleCopy = useCallback(async () => {
     if (url === "") return;
     try {
       await navigator.clipboard.writeText(url);
-      message.success(t("copyBuyerLinkSuccess"));
+      message.success(t(copySuccessKey));
     } catch {
-      message.error(t("copyBuyerLinkError"));
+      message.error(t(copyErrorKey));
     }
-  }, [message, t, url]);
+  }, [copyErrorKey, copySuccessKey, message, t, url]);
 
   const handlePrint = useCallback(() => {
     const svg = qrRef.current?.querySelector("svg");

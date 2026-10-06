@@ -193,7 +193,7 @@ export default function DrawerHost({ drawerRegistry, access }) {
     if (targetFeatureId === "items") {
       extras.onSaveAndNew = handleSaveAndNew;
     }
-    if (targetFeatureId === "salesInvoices") {
+    if (targetFeatureId === "salesInvoices" || targetFeatureId === "purchaseInvoices") {
       extras.onPostAndNew = handleSaveAndNew;
     }
 

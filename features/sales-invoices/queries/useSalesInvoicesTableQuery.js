@@ -5,7 +5,7 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { SALES_INVOICES_QUERY_KEY } from "./salesInvoicesQueryKeys";
 import { fetchSalesInvoices } from "../api/salesInvoices.api";
-import { salesInvoiceListChainPollInterval } from "../utils/invoiceProofStatuses";
+import { invoiceListChainPollInterval } from "../utils/invoiceProofStatuses";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { useMemo } from "react";
 
@@ -46,7 +46,7 @@ export function useSalesInvoicesTableQuery({
     defaultPageSize: 50,
     pageSizeOptions: [20, 50, 100],
     staleTime: QUERY_STALE_TIME.ledger,
-    refetchInterval: salesInvoiceListChainPollInterval,
+    refetchInterval: invoiceListChainPollInterval,
     tableId: "sales-invoices",
     t,
     tApiErrors,

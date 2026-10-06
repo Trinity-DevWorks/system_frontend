@@ -9,6 +9,7 @@ import { Form, Input } from "antd";
  * @param {{
  *   t: (key: string) => string;
  *   readOnly: boolean;
+ *   sealLocked?: boolean;
  *   totals?: {
  *     subtotal?: string | number;
  *     discount_total?: string | number;
@@ -19,7 +20,7 @@ import { Form, Input } from "antd";
  *   } | null;
  * }} props
  */
-export default function PurchaseInvoiceTotals({ t, readOnly, totals = null }) {
+export default function PurchaseInvoiceTotals({ t, readOnly, sealLocked = false, totals = null }) {
   const money = (value) => (value != null ? formatTenantMoney(value) : "\u2014");
 
   return (
@@ -30,7 +31,7 @@ export default function PurchaseInvoiceTotals({ t, readOnly, totals = null }) {
           className="sales-invoice-totals-notes"
           label={<ResourceDrawerFieldLabel text={t("fieldNotes")} optional />}
         >
-          <Input.TextArea rows={1} maxLength={2000} showCount={!readOnly} disabled={readOnly} />
+          <Input.TextArea rows={1} maxLength={2000} showCount={!readOnly && !sealLocked} disabled={readOnly || sealLocked} />
         </Form.Item>
       </div>
 
@@ -56,7 +57,7 @@ export default function PurchaseInvoiceTotals({ t, readOnly, totals = null }) {
               layout="horizontal"
               colon={false}
             >
-              <TenantNumberInput kind="money" disabled={readOnly} />
+              <TenantNumberInput kind="money" disabled={readOnly || sealLocked} />
             </Form.Item>
           </div>
           <div className="resource-drawer-pricing-card">

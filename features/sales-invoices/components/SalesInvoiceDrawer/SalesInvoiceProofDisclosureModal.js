@@ -84,7 +84,14 @@ function downloadJson(fileName, data) {
  *   onClose: () => void;
  * }} props
  */
-export default function SalesInvoiceProofDisclosureModal({ open, invoiceId, invoiceNumber = null, onClose }) {
+export default function SalesInvoiceProofDisclosureModal({
+  open,
+  invoiceId,
+  invoiceNumber = null,
+  onClose,
+  fetchFields = fetchSalesInvoiceProofFields,
+  createDisclosure = createSalesInvoiceProofDisclosure,
+}) {
   const t = useTranslations("InvoiceProofDisclosure");
   const tApiErrors = useTranslations("ApiErrors");
   const locale = useLocale();
@@ -117,7 +124,7 @@ export default function SalesInvoiceProofDisclosureModal({ open, invoiceId, invo
   useEffect(() => {
     if (requestKey == null) return undefined;
     let cancelled = false;
-    fetchSalesInvoiceProofFields(requestKey)
+    fetchFields(requestKey)
       .then((data) => {
         if (!cancelled) setFields(Array.isArray(data?.fields) ? data.fields : []);
       })
@@ -138,7 +145,7 @@ export default function SalesInvoiceProofDisclosureModal({ open, invoiceId, invo
     if (invoiceId == null || selectedPaths.length === 0) return;
     setCreating(true);
     try {
-      const bundle = await createSalesInvoiceProofDisclosure(invoiceId, selectedPaths);
+      const bundle = await createDisclosure(invoiceId, selectedPaths);
       if (!verifyDisclosureBundle(bundle).valid) {
         message.error(t("selfCheckFailed"));
         return;

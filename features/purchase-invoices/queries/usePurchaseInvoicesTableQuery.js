@@ -1,4 +1,5 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { invoiceListChainPollInterval } from "@/features/sales-invoices/utils/invoiceProofStatuses";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
 import { useMemo } from "react";
 import { fetchPurchaseInvoices } from "../api/purchaseInvoices.api";
@@ -41,6 +42,7 @@ export function usePurchaseInvoicesTableQuery({
     defaultPageSize: 50,
     pageSizeOptions: [20, 50, 100],
     staleTime: QUERY_STALE_TIME.ledger,
+    refetchInterval: invoiceListChainPollInterval,
     tableId: "purchase-invoices",
     t,
     tApiErrors,

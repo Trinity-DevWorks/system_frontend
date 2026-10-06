@@ -8,7 +8,7 @@ import {
 } from "../../utils/invoiceProofStatuses";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import { DownOutlined, WarningOutlined } from "@ant-design/icons";
-import { Button, Dropdown, Space, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Dropdown, Space, Tag, Tooltip, Typography } from "antd";
 import SalesInvoiceBuyerLinkButton from "./SalesInvoiceBuyerLinkButton";
 import SalesInvoiceProofDisclosureButton from "./SalesInvoiceProofDisclosureButton";
 
@@ -33,6 +33,29 @@ const ATTESTATION_LABEL_KEYS = {
   tax_authority: "chainAttestedTaxAuthority",
   financier: "chainAttestedFinancier",
 };
+
+function FooterFact({ label, value, who = "", wallet = "", named = false }) {
+  return (
+    <span className="sales-invoice-drawer-footer-fact">
+      <span className="sales-invoice-drawer-footer-fact-label">{label}</span>
+      <span className="sales-invoice-drawer-footer-fact-value">{value}</span>
+      {who ? (
+        <Tooltip title={String(wallet)}>
+          <span
+            className={
+              named
+                ? "sales-invoice-drawer-footer-fact-who"
+                : "sales-invoice-drawer-footer-fact-who sales-invoice-drawer-footer-fact-who-mono"
+            }
+            dir={named ? undefined : "ltr"}
+          >
+            {who}
+          </span>
+        </Tooltip>
+      ) : null}
+    </span>
+  );
+}
 
 function FooterChainTimes({
   t,
@@ -62,32 +85,23 @@ function FooterChainTimes({
   if (items.length === 0) return null;
 
   return (
-    <div className="sales-invoice-drawer-footer-posted">
+    <>
       {items.map(([value, key, wallet, itemKey, name]) => {
         const when = formatTenantDateTime(value) || "\u2014";
-        const label = typeof name === "string" ? name.trim() : "";
-        const who = label || shortAddress(wallet);
+        const whoName = typeof name === "string" ? name.trim() : "";
+        const who = whoName || shortAddress(wallet);
         return (
-          <span key={itemKey} className="sales-invoice-drawer-footer-posted-item">
-            <span className="sales-invoice-drawer-footer-posted-label">{t(key)}</span>
-            <span className="sales-invoice-drawer-footer-posted-value">
-              {when}
-              {who ? (
-                <Tooltip title={String(wallet)}>
-                  {label ? (
-                    <span className="ms-1 cursor-help text-xs">{who}</span>
-                  ) : (
-                    <span className="ms-1 cursor-help font-mono text-xs" dir="ltr">
-                      {who}
-                    </span>
-                  )}
-                </Tooltip>
-              ) : null}
-            </span>
-          </span>
+          <FooterFact
+            key={itemKey}
+            label={t(key)}
+            value={when}
+            who={who}
+            wallet={wallet}
+            named={Boolean(whoName)}
+          />
         );
       })}
-    </div>
+    </>
   );
 }
 
@@ -95,10 +109,13 @@ function FooterDisputeReason({ t, reason }) {
   if (typeof reason !== "string" || reason.trim() === "") return null;
 
   return (
-    <div className="max-w-xl text-xs">
-      <span className="font-medium text-[var(--ant-color-text-tertiary)]">{t("chainDisputeReason")}</span>
-      <div className="whitespace-pre-wrap font-semibold text-[var(--ant-color-text)]">{reason}</div>
-    </div>
+    <Alert
+      className="invoice-drawer-footer-dispute"
+      type="error"
+      showIcon
+      title={t("chainDisputeReason")}
+      description={<span className="whitespace-pre-wrap">{reason.trim()}</span>}
+    />
   );
 }
 
@@ -109,13 +126,11 @@ function FooterProofHint({ hint }) {
   if (!hint) return null;
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs">
-      <Typography.Text type="warning" className="min-w-0 text-xs">
-        <WarningOutlined className="me-1" />
-        {hint.text}
-      </Typography.Text>
+    <div className="invoice-drawer-footer-hint">
+      <WarningOutlined />
+      <span className="invoice-drawer-footer-hint-text">{hint.text}</span>
       {hint.onAction ? (
-        <Button size="small" type="link" className="shrink-0 !px-0 text-xs" onClick={hint.onAction}>
+        <Button size="small" type="link" className="shrink-0 !px-0" onClick={hint.onAction}>
           {hint.actionLabel}
         </Button>
       ) : null}
@@ -160,13 +175,10 @@ function RelatedInvoiceNumber({ invoice, onOpen }) {
       : "";
   if (!number) return null;
   if (!onOpen) {
-    return <span className="sales-invoice-drawer-footer-posted-value">{number}</span>;
+    return <span className="sales-invoice-drawer-footer-fact-value">{number}</span>;
   }
   return (
-    <Typography.Link
-      className="sales-invoice-drawer-footer-posted-value"
-      onClick={() => onOpen(invoice)}
-    >
+    <Typography.Link className="sales-invoice-drawer-footer-fact-value" onClick={() => onOpen(invoice)}>
       {number}
     </Typography.Link>
   );
@@ -194,51 +206,45 @@ function FooterInvoiceLinks({
   if (!origin && !successor && notes.length === 0) return null;
 
   return (
-    <div className="sales-invoice-drawer-footer-posted">
+    <>
       {origin ? (
-        <span className="sales-invoice-drawer-footer-posted-item">
-          <span className="sales-invoice-drawer-footer-posted-label">{t("replacesInvoice")}</span>
+        <span className="sales-invoice-drawer-footer-fact">
+          <span className="sales-invoice-drawer-footer-fact-label">{t("replacesInvoice")}</span>
           <RelatedInvoiceNumber invoice={replacesInvoice} onOpen={onOpenRelatedInvoice} />
         </span>
       ) : null}
       {successor ? (
-        <span className="sales-invoice-drawer-footer-posted-item">
-          <span className="sales-invoice-drawer-footer-posted-label">{t("replacedByInvoice")}</span>
+        <span className="sales-invoice-drawer-footer-fact">
+          <span className="sales-invoice-drawer-footer-fact-label">{t("replacedByInvoice")}</span>
           <RelatedInvoiceNumber invoice={replacedByInvoice} onOpen={onOpenRelatedInvoice} />
         </span>
       ) : null}
       {notes.map((note) => (
-        <span key={String(note.id)} className="sales-invoice-drawer-footer-posted-item">
-          <span className="sales-invoice-drawer-footer-posted-label">{t("creditNoteLink")}</span>
+        <span key={String(note.id)} className="sales-invoice-drawer-footer-fact">
+          <span className="sales-invoice-drawer-footer-fact-label">{t("creditNoteLink")}</span>
           {onOpenCreditNote ? (
-            <Typography.Link className="sales-invoice-drawer-footer-posted-value" onClick={() => onOpenCreditNote(note)}>
+            <Typography.Link className="sales-invoice-drawer-footer-fact-value" onClick={() => onOpenCreditNote(note)}>
               {note.credit_note_number}
             </Typography.Link>
           ) : (
-            <span className="sales-invoice-drawer-footer-posted-value">{note.credit_note_number}</span>
+            <span className="sales-invoice-drawer-footer-fact-value">{note.credit_note_number}</span>
           )}
         </span>
       ))}
-    </div>
+    </>
   );
 }
 
-function FooterPostedMeta({ t, postedBy, postedAt }) {
+function FooterPostedFacts({ t, postedBy, postedAt }) {
+  const name = postedByDisplayName(postedBy);
+  const when = formatTenantDateTime(postedAt);
+  if (!name && !when) return null;
+
   return (
-    <div className="sales-invoice-drawer-footer-posted">
-      <span className="sales-invoice-drawer-footer-posted-item">
-        <span className="sales-invoice-drawer-footer-posted-label">{t("fieldPostedBy")}</span>
-        <span className="sales-invoice-drawer-footer-posted-value">
-          {postedByDisplayName(postedBy) || "\u2014"}
-        </span>
-      </span>
-      <span className="sales-invoice-drawer-footer-posted-item">
-        <span className="sales-invoice-drawer-footer-posted-label">{t("fieldPostedOn")}</span>
-        <span className="sales-invoice-drawer-footer-posted-value">
-          {formatTenantDateTime(postedAt) || "\u2014"}
-        </span>
-      </span>
-    </div>
+    <>
+      {name ? <FooterFact label={t("fieldPostedBy")} value={name} /> : null}
+      {when ? <FooterFact label={t("fieldPostedOn")} value={when} /> : null}
+    </>
   );
 }
 
@@ -429,105 +435,91 @@ export default function SalesInvoiceDrawerFooter({
       </>
     ) : null;
 
+  const facts = (
+    <div className="sales-invoice-drawer-footer-facts">
+      <FooterPostedFacts t={t} postedBy={postedBy} postedAt={postedAt} />
+      <FooterInvoiceLinks
+        t={t}
+        replacesInvoice={replacesInvoice}
+        replacedByInvoice={replacedByInvoice}
+        creditNotes={creditNotes}
+        onOpenRelatedInvoice={onOpenRelatedInvoice}
+        onOpenCreditNote={onOpenCreditNote}
+      />
+      {showVerify ? (
+        <FooterChainTimes
+          t={t}
+          registeredAt={chainRegisteredAt}
+          supplierApprovedAt={chainSupplierApprovedAt}
+          buyerApprovedAt={chainBuyerApprovedAt}
+          disputedAt={chainDisputedAt}
+          supplierWallet={chainSupplierWallet}
+          buyerWallet={chainBuyerWallet}
+          attestations={chainAttestations}
+        />
+      ) : null}
+    </div>
+  );
+  const hint = showVerify ? <FooterProofHint hint={proofHint} /> : null;
+  const dispute = showVerify ? <FooterDisputeReason t={t} reason={chainDisputeReason} /> : null;
+
   if (readOnly) {
     return (
-      <div className="flex w-full min-w-0 items-center gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <FooterPostedMeta t={t} postedBy={postedBy} postedAt={postedAt} />
-          <FooterInvoiceLinks
-            t={t}
-            replacesInvoice={replacesInvoice}
-            replacedByInvoice={replacedByInvoice}
-            creditNotes={creditNotes}
-            onOpenRelatedInvoice={onOpenRelatedInvoice}
-            onOpenCreditNote={onOpenCreditNote}
-          />
-          {showVerify ? (
-            <FooterChainTimes
-              t={t}
-              registeredAt={chainRegisteredAt}
-              supplierApprovedAt={chainSupplierApprovedAt}
-              buyerApprovedAt={chainBuyerApprovedAt}
-              disputedAt={chainDisputedAt}
-              supplierWallet={chainSupplierWallet}
-              buyerWallet={chainBuyerWallet}
-              attestations={chainAttestations}
-            />
-          ) : null}
-          {showVerify ? <FooterDisputeReason t={t} reason={chainDisputeReason} /> : null}
-          {showVerify ? <FooterProofHint hint={proofHint} /> : null}
+      <div className="invoice-drawer-footer">
+        <div className="invoice-drawer-footer-row">
+          {facts}
+          <div className="invoice-drawer-footer-actions">
+            {verifyControls}
+            <Button className="shrink-0" onClick={forceClose}>
+              {t("drawerClose")}
+            </Button>
+            {showCreditNote ? (
+              <FooterActionButton
+                label={t("actionCreditNote")}
+                onClick={onCreditNote}
+                disabled={creditNoteDisabled}
+                disabledReason={creditNoteDisabledReason}
+                submitting={submitting}
+              />
+            ) : null}
+            {showReissue ? (
+              <FooterActionButton
+                label={t("actionReissue")}
+                onClick={onReissue}
+                disabled={reissueDisabled}
+                disabledReason={reissueDisabledReason}
+                submitting={submitting}
+              />
+            ) : null}
+            {showReverse ? (
+              <FooterActionButton
+                label={t("actionReverse")}
+                onClick={onReverse}
+                disabled={reverseDisabled}
+                disabledReason={reverseDisabledReason}
+                danger
+                submitting={submitting}
+              />
+            ) : null}
+          </div>
         </div>
-        <div className="ms-auto flex shrink-0 items-center gap-3">
-          {verifyControls}
-          <Button className="shrink-0" onClick={forceClose}>
-            {t("drawerClose")}
-          </Button>
-          {showCreditNote ? (
-            <FooterActionButton
-              label={t("actionCreditNote")}
-              onClick={onCreditNote}
-              disabled={creditNoteDisabled}
-              disabledReason={creditNoteDisabledReason}
-              submitting={submitting}
-            />
-          ) : null}
-          {showReissue ? (
-            <FooterActionButton
-              label={t("actionReissue")}
-              onClick={onReissue}
-              disabled={reissueDisabled}
-              disabledReason={reissueDisabledReason}
-              submitting={submitting}
-            />
-          ) : null}
-          {showReverse ? (
-            <FooterActionButton
-              label={t("actionReverse")}
-              onClick={onReverse}
-              disabled={reverseDisabled}
-              disabledReason={reverseDisabledReason}
-              danger
-              submitting={submitting}
-            />
-          ) : null}
-        </div>
+        {dispute}
+        {hint}
       </div>
     );
   }
 
   return (
-    <div className="flex w-full min-w-0 items-center gap-3">
-      <div className="flex min-w-0 flex-col gap-1">
-        <FooterPostedMeta t={t} postedBy={postedBy} postedAt={postedAt} />
-        <FooterInvoiceLinks
-          t={t}
-          replacesInvoice={replacesInvoice}
-          replacedByInvoice={replacedByInvoice}
-          creditNotes={creditNotes}
-          onOpenRelatedInvoice={onOpenRelatedInvoice}
-          onOpenCreditNote={onOpenCreditNote}
-        />
-        {showVerify ? (
-          <FooterChainTimes
-            t={t}
-            registeredAt={chainRegisteredAt}
-            supplierApprovedAt={chainSupplierApprovedAt}
-            buyerApprovedAt={chainBuyerApprovedAt}
-            disputedAt={chainDisputedAt}
-            supplierWallet={chainSupplierWallet}
-            buyerWallet={chainBuyerWallet}
-            attestations={chainAttestations}
-          />
-        ) : null}
-        {showVerify ? <FooterDisputeReason t={t} reason={chainDisputeReason} /> : null}
-        {showVerify ? <FooterProofHint hint={proofHint} /> : null}
-      </div>
+    <div className="invoice-drawer-footer">
+      <div className="invoice-drawer-footer-row">
+        {facts}
+        <div className="invoice-drawer-footer-actions">
       {showDelete ? (
         <Button className="shrink-0" danger disabled={submitting} onClick={onDelete}>
           {t("actionDelete")}
         </Button>
       ) : null}
-      <Space className="ms-auto shrink-0">
+      <Space className="shrink-0">
         <Button onClick={requestClose} disabled={submitting}>
           {t("drawerCancel")}
         </Button>
@@ -568,6 +560,10 @@ export default function SalesInvoiceDrawerFooter({
           </Dropdown>
         </Space.Compact>
       </Space>
+        </div>
+      </div>
+      {dispute}
+      {hint}
     </div>
   );
 }

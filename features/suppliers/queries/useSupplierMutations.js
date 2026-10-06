@@ -121,7 +121,7 @@ export function useSupplierDrawerMutations({
       return { previous, optimisticId };
     },
     onError: (err, _variables, context) => {
-      restoreTenantListCache(queryClient, context.previous);
+      restoreTenantListCache(queryClient, context?.previous);
       if (!applyApiFieldErrors(form, err)) {
         message.error(getLocalizedApiErrorMessage(tApiErrors, err));
       }
@@ -185,58 +185,62 @@ export function useSupplierDrawerMutations({
       await queryClient.cancelQueries({ queryKey: detailKey });
       const previousList = snapshotTenantListCache(queryClient, listKey);
       const previousDetail = queryClient.getQueryData(detailKey);
-      const now = new Date().toISOString();
-      const groupRow = Array.isArray(supplierGroupsData)
-        ? supplierGroupsData.find((g) => g.id === values.supplier_group_id)
-        : null;
-      const groupPatch = groupRow ? { id: groupRow.id, name: groupRow.name } : null;
-      const snap = primarySnapshotForOptimistic(
-        0,
-        /** @type {unknown[]} */ (values.currency_balances ?? []),
-        currenciesData ?? [],
-      );
-      patchTenantListCache(queryClient, listKey, (rows) =>
-        rows.map((row) =>
-          row.id === id
-            ? {
-                ...row,
-                ...values,
-                supplier_group: groupPatch ?? row.supplier_group,
-                credit_limit: snap.credit_limit,
-                opening_balance: snap.opening_balance,
-                balance: snap.balance,
-                currency_balances: mergeCurrencyBalancesForCache(
-                  /** @type {Record<string, unknown>} */ (row),
-                  /** @type {unknown[]} */ (values.currency_balances ?? []),
-                ),
-                updated_at: now,
-              }
-            : row,
-        ),
-      );
-      queryClient.setQueryData(detailKey, (old) => {
-        if (!old || typeof old !== "object") {
-          return { id, ...values, supplier_group: groupPatch, updated_at: now };
-        }
-        const prev = /** @type {Record<string, unknown>} */ (old);
-        return {
-          ...prev,
-          ...values,
-          supplier_group: groupPatch ?? prev.supplier_group,
-          credit_limit: snap.credit_limit,
-          opening_balance: snap.opening_balance,
-          balance: snap.balance,
-          currency_balances: mergeCurrencyBalancesForCache(
-            prev,
-            /** @type {unknown[]} */ (values.currency_balances ?? []),
+      try {
+        const now = new Date().toISOString();
+        const groupRow = Array.isArray(supplierGroupsData)
+          ? supplierGroupsData.find((g) => g && g.id === values.supplier_group_id)
+          : null;
+        const groupPatch = groupRow ? { id: groupRow.id, name: groupRow.name } : null;
+        const snap = primarySnapshotForOptimistic(
+          0,
+          /** @type {unknown[]} */ (values?.currency_balances ?? []),
+          currenciesData ?? [],
+        );
+        patchTenantListCache(queryClient, listKey, (rows) =>
+          rows.map((row) =>
+            row && row.id === id
+              ? {
+                  ...row,
+                  ...values,
+                  supplier_group: groupPatch ?? row.supplier_group,
+                  credit_limit: snap.credit_limit,
+                  opening_balance: snap.opening_balance,
+                  balance: snap.balance,
+                  currency_balances: mergeCurrencyBalancesForCache(
+                    /** @type {Record<string, unknown>} */ (row),
+                    /** @type {unknown[]} */ (values?.currency_balances ?? []),
+                  ),
+                  updated_at: now,
+                }
+              : row,
           ),
-          updated_at: now,
-        };
-      });
+        );
+        queryClient.setQueryData(detailKey, (old) => {
+          if (!old || typeof old !== "object") {
+            return { id, ...values, supplier_group: groupPatch, updated_at: now };
+          }
+          const prev = /** @type {Record<string, unknown>} */ (old);
+          return {
+            ...prev,
+            ...values,
+            supplier_group: groupPatch ?? prev.supplier_group,
+            credit_limit: snap.credit_limit,
+            opening_balance: snap.opening_balance,
+            balance: snap.balance,
+            currency_balances: mergeCurrencyBalancesForCache(
+              prev,
+              /** @type {unknown[]} */ (values?.currency_balances ?? []),
+            ),
+            updated_at: now,
+          };
+        });
+      } catch {
+        /* keep snapshots so onError can restore */
+      }
       return { previousList, previousDetail, id };
     },
     onError: (err, _variables, context) => {
-      restoreTenantListCache(queryClient, context.previousList);
+      restoreTenantListCache(queryClient, context?.previousList);
       if (context?.previousDetail !== undefined) {
         queryClient.setQueryData(supplierDetailQueryKey(context.id), context.previousDetail);
       }

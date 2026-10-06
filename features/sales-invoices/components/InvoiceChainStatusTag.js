@@ -1,7 +1,11 @@
 "use client";
 
 import { formatTenantDateTime } from "@/lib/tenant-format";
-import { getInvoiceProofStatusLabel, invoiceProofStatusTagColor } from "../utils/invoiceProofStatuses";
+import {
+  getInvoiceProofStatusLabel,
+  getPurchaseInvoiceProofStatusLabel,
+  invoiceProofStatusTagColor,
+} from "../utils/invoiceProofStatuses";
 import InvoiceChainIssueTag from "./InvoiceChainIssueTag";
 import { Tag, Tooltip } from "antd";
 import { useTranslations } from "next-intl";
@@ -12,15 +16,20 @@ import { useTranslations } from "next-intl";
  * @param {{
  *   status?: { status: string; financed: boolean; checked_at: string | null } | null;
  *   issue?: { kind: string; checked_at: string | null } | null;
+ *   variant?: "sales" | "purchase";
  * }} props
  */
-export default function InvoiceChainStatusTag({ status, issue }) {
+export default function InvoiceChainStatusTag({ status, issue, variant = "sales" }) {
   const t = useTranslations("SalesInvoices");
+  const tPurchase = useTranslations("PurchaseInvoices");
 
   if (issue?.kind) return <InvoiceChainIssueTag issue={issue} />;
   if (!status?.status) return "\u2014";
 
-  let label = getInvoiceProofStatusLabel(t, status.status);
+  let label =
+    variant === "purchase"
+      ? getPurchaseInvoiceProofStatusLabel(tPurchase, t, status.status)
+      : getInvoiceProofStatusLabel(t, status.status);
   let color = invoiceProofStatusTagColor(status.status);
   if (status.status === "failed") {
     label = t("chainStatusFailed");

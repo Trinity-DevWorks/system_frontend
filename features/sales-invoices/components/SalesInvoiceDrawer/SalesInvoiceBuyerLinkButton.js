@@ -17,6 +17,11 @@ export default function SalesInvoiceBuyerLinkButton({
   invoiceNumber = null,
   disabled = false,
   t,
+  actionLabel,
+  issueLink,
+  absoluteUrl,
+  copySuccessKey,
+  copyErrorKey,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -26,11 +31,21 @@ export default function SalesInvoiceBuyerLinkButton({
       trigger="click"
       placement="topRight"
       destroyOnHidden
-      content={<SalesInvoiceBuyerLinkPanel invoiceId={invoiceId} invoiceNumber={invoiceNumber} t={t} />}
+      content={
+        <SalesInvoiceBuyerLinkPanel
+          invoiceId={invoiceId}
+          invoiceNumber={invoiceNumber}
+          t={t}
+          issueLink={issueLink}
+          absoluteUrl={absoluteUrl}
+          copySuccessKey={copySuccessKey}
+          copyErrorKey={copyErrorKey}
+        />
+      }
       onOpenChange={setOpen}
     >
       <Button className="shrink-0" disabled={disabled}>
-        {t("actionBuyerLink")}
+        {actionLabel ?? t("actionBuyerLink")}
       </Button>
     </Popover>
   );

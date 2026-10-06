@@ -2,11 +2,28 @@ import {
   getPurchaseInvoiceSettlementLabel,
   getPurchaseInvoiceStatusLabel,
   isPurchaseInvoiceDraft,
+  purchaseInvoiceCanReissue,
+  purchaseInvoiceCanReverse,
+  purchaseInvoiceReissueDisabledReason,
+  purchaseInvoiceReverseDisabledReason,
   purchaseInvoiceSettlement,
   purchaseInvoiceStatusTagColor,
 } from "../../utils/purchaseInvoiceStatuses";
+import InvoiceChainStatusTag from "@/features/sales-invoices/components/InvoiceChainStatusTag";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import {
+  CheckCircleOutlined,
+  CopyOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  MoreOutlined,
+  QrcodeOutlined,
+  ReloadOutlined,
+  RollbackOutlined,
+  SendOutlined,
+  ShareAltOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -18,11 +35,86 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
+ *   onPost?: (record: unknown) => void;
  *   onReverse?: (record: unknown) => void;
+ *   onReissue?: (record: unknown) => void;
+ *   showChainStatus?: boolean;
+ *   onRefreshProof?: (record: unknown) => void;
+ *   onApproveProof?: (record: unknown) => void;
+ *   onSupplierLink?: (record: unknown) => void;
+ *   onShareProof?: (record: unknown) => void;
  * }} [actions]
  */
 export function getPurchaseInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onReverse } = actions;
+  const {
+    onView,
+    onEdit,
+    onDelete,
+    onPost,
+    onReverse,
+    onReissue,
+    showChainStatus = false,
+    onRefreshProof,
+    onApproveProof,
+    onSupplierLink,
+    onShareProof,
+  } = actions;
+
+  /** @param {Record<string, any>} record */
+  const proofItems = (record) => {
+    if (!showChainStatus) return [];
+    if (record?.status === "reversed") {
+      return onRefreshProof
+        ? [
+            { type: "divider" },
+            {
+              key: "proof-refresh",
+              icon: <ReloadOutlined />,
+              label: t("actionVerify"),
+              onClick: () => onRefreshProof(record),
+            },
+          ]
+        : [];
+    }
+    if (record?.status !== "posted") return [];
+    const items = [];
+    if (onRefreshProof) {
+      items.push({
+        key: "proof-refresh",
+        icon: <ReloadOutlined />,
+        label: t("actionVerify"),
+        onClick: () => onRefreshProof(record),
+      });
+    }
+    if (onApproveProof && record?.chain_status?.status === "waiting_buyer") {
+      items.push({
+        key: "proof-approve",
+        icon: <CheckCircleOutlined />,
+        label: t("actionApproveAsBuyer"),
+        onClick: () => onApproveProof(record),
+      });
+    }
+    if (onSupplierLink && !record?.linked_proof_id) {
+      items.push({
+        key: "proof-supplier-link",
+        icon: <QrcodeOutlined />,
+        label: t("actionSupplierLink"),
+        onClick: () => onSupplierLink(record),
+      });
+    }
+    if (onShareProof && !record?.linked_proof_id) {
+      const shareBlocked = record?.chain_status?.status === "tampered";
+      items.push({
+        key: "proof-share",
+        icon: <ShareAltOutlined />,
+        disabled: shareBlocked,
+        title: shareBlocked ? t("shareProofDisabledTampered") : undefined,
+        label: t("actionShareProof"),
+        onClick: () => onShareProof(record),
+      });
+    }
+    return items.length > 0 ? [{ type: "divider" }, ...items] : [];
+  };
 
   return [
     {
@@ -90,6 +182,21 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
         );
       },
     },
+    ...(showChainStatus
+      ? [
+          {
+            title: t("colBlockchain"),
+            key: "chain_status",
+            width: 150,
+            render: (_, record) =>
+              record?.linked_proof_id && !record?.chain_status?.status ? (
+                <Tag>{t("chainStatusLinked")}</Tag>
+              ) : (
+                <InvoiceChainStatusTag variant="purchase" status={record?.chain_status} issue={record?.chain_issue} />
+              ),
+          },
+        ]
+      : []),
     {
       title: t("colTotal"),
       dataIndex: "grand_total",
@@ -148,6 +255,16 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
                   label: t("actionEdit"),
                   onClick: () => onEdit?.(record),
                 },
+                ...(onPost
+                  ? [
+                      {
+                        key: "post",
+                        icon: <SendOutlined />,
+                        label: t("actionPost"),
+                        onClick: () => onPost(record),
+                      },
+                    ]
+                  : []),
                 {
                   key: "delete",
                   icon: <DeleteOutlined />,
@@ -164,10 +281,29 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
                   icon: <RollbackOutlined />,
                   danger: true,
                   label: t("actionReverse"),
-                  onClick: () => onReverse(record),
+                  disabled: !purchaseInvoiceCanReverse(record),
+                  title: purchaseInvoiceReverseDisabledReason(t, record) || undefined,
+                  onClick: () => {
+                    if (purchaseInvoiceCanReverse(record)) onReverse(record);
+                  },
                 },
               ]
             : []),
+          ...(onReissue && (record?.status === "reversed" || (record?.status === "posted" && onReverse))
+            ? [
+                {
+                  key: "reissue",
+                  icon: <CopyOutlined />,
+                  label: t("actionReissue"),
+                  disabled: !purchaseInvoiceCanReissue(record),
+                  title: purchaseInvoiceReissueDisabledReason(t, record) || undefined,
+                  onClick: () => {
+                    if (purchaseInvoiceCanReissue(record)) onReissue(record);
+                  },
+                },
+              ]
+            : []),
+          ...proofItems(record),
         ];
 
         return (

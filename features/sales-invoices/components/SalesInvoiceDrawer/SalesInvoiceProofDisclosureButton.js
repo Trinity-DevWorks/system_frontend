@@ -18,6 +18,8 @@ export default function SalesInvoiceProofDisclosureButton({
   invoiceNumber = null,
   disabled = false,
   disabledReason = null,
+  fetchFields,
+  createDisclosure,
 }) {
   const t = useTranslations("InvoiceProofDisclosure");
   const [open, setOpen] = useState(false);
@@ -42,6 +44,8 @@ export default function SalesInvoiceProofDisclosureButton({
         invoiceId={invoiceId}
         invoiceNumber={invoiceNumber}
         onClose={() => setOpen(false)}
+        fetchFields={fetchFields}
+        createDisclosure={createDisclosure}
       />
     </>
   );

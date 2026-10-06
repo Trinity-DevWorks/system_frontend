@@ -6,6 +6,11 @@ import { useInvoiceProofPortalQuery } from "../queries/useInvoiceProofPortalQuer
 import { fetchInvoiceProofPortal, recordInvoiceProofDispute, unlockInvoiceProofPortal } from "../api/salesInvoices.api";
 import { hasBuyerPortalLinkStamp } from "../utils/invoiceProofPortalUrl";
 import { BuyerApprovalError, sendBuyerApproval, sendBuyerDispute } from "@/lib/invoice-registry-buyer-approval";
+import { sendSupplierApproval } from "@/lib/invoice-registry-supplier-safe";
+import {
+  fetchPurchaseProofPortal,
+  unlockPurchaseProofPortal,
+} from "@/features/purchase-invoices/api/purchaseInvoices.api";
 import { sendBuyerSafeApproval, sendBuyerSafeDispute } from "@/lib/invoice-registry-buyer-safe";
 import { signProofPortalUnlock, watchProofPortalAccount } from "@/lib/invoice-proof-portal-unlock";
 import { getApiErrorCode, getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
@@ -31,12 +36,12 @@ function isUuid(value) {
  * @param {string} locale
  * @param {unknown} item
  */
-function proofPortalHref(locale, item) {
+function proofPortalHref(locale, item, basePath = "/proofs") {
   const id = item && typeof item === "object" && typeof item.id === "string" ? item.id : "";
   const sig = item && typeof item === "object" && typeof item.sig === "string" ? item.sig : "";
   const exp = item && typeof item === "object" ? item.exp : null;
   if (!isUuid(id) || sig === "" || exp == null) return "";
-  return `${withLocalePrefix(locale, `/proofs/${id}`)}?${new URLSearchParams({
+  return `${withLocalePrefix(locale, `${basePath}/${id}`)}?${new URLSearchParams({
     exp: String(exp),
     sig,
   })}`;
@@ -51,14 +56,14 @@ function proofPortalHref(locale, item) {
  *   locale: string;
  * }} props
  */
-function RelatedInvoiceField({ label, invoice, fallbackNumber, fallbackId, locale }) {
+function RelatedInvoiceField({ label, invoice, fallbackNumber, fallbackId, locale, basePath = "/proofs" }) {
   const number =
     invoice && typeof invoice === "object" && typeof invoice.invoice_number === "string" && invoice.invoice_number !== ""
       ? invoice.invoice_number
       : typeof fallbackNumber === "string" && fallbackNumber !== ""
         ? fallbackNumber
         : "";
-  const href = proofPortalHref(locale, invoice);
+  const href = proofPortalHref(locale, invoice, basePath);
   const idFallback = typeof fallbackId === "string" && fallbackId !== "" ? fallbackId : "";
   if (!number && !href && !idFallback) return null;
 
@@ -177,31 +182,33 @@ function PortalInvoiceLine({ line, currencyCode, tInvoices }) {
 /**
  * @param {string | null | undefined} status
  * @param {(key: string) => string} t
+ * @param {boolean} asSupplier
  */
-function statusHint(t, status) {
-  if (status === "waiting_company") return t("hintWaitingCompany");
-  if (status === "waiting_buyer") return t("hintWaitingBuyer");
+function statusHint(t, status, asSupplier) {
+  if (status === "waiting_company") return asSupplier ? t("hintWaitingBuyer") : t("hintWaitingCompany");
+  if (status === "waiting_buyer") return asSupplier ? t("hintWaitingCompanyAfterYou") : t("hintWaitingBuyer");
   if (status === "fully_approved") return t("hintFullyApproved");
   if (status === "revoked") return t("hintRevoked");
-  if (status === "disputed") return t("hintDisputed");
+  if (status === "disputed") return asSupplier ? t("hintDisputedByBuyer") : t("hintDisputed");
   if (status === "tampered") return t("hintTampered");
   if (status === "pending_chain") return t("hintPendingChain");
   if (status === "not_registered") return t("hintNotRegistered");
-  if (status === "verified") return t("hintVerified");
+  if (status === "verified") return asSupplier ? t("hintWaitingBuyer") : t("hintVerified");
   return null;
 }
 
 /**
  * @param {string | null | undefined} status
  * @param {(key: string) => string} t
+ * @param {boolean} asSupplier
  */
-function portalStatusLabel(t, status) {
+function portalStatusLabel(t, status, asSupplier) {
   if (status === "verified") return t("statusVerified");
   if (status === "tampered") return t("statusTampered");
   if (status === "not_registered") return t("statusNotRegistered");
   if (status === "pending_chain") return t("statusPendingChain");
-  if (status === "waiting_company") return t("statusWaitingCompany");
-  if (status === "waiting_buyer") return t("statusWaitingYou");
+  if (status === "waiting_company") return asSupplier ? t("statusWaitingYou") : t("statusWaitingCompany");
+  if (status === "waiting_buyer") return asSupplier ? t("statusWaitingCompany") : t("statusWaitingYou");
   if (status === "fully_approved") return t("statusApproved");
   if (status === "revoked") return t("statusRevoked");
   if (status === "disputed") return t("statusDisputed");
@@ -262,9 +269,10 @@ function shortContentHash(hash) {
  * @param {{
  *   invoiceId: string;
  *   initialHost: string;
+ *   variant?: "buyer" | "vendor";
  * }} props
  */
-function InvoiceProofPortalInner({ invoiceId, initialHost }) {
+function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) {
   const t = useTranslations("InvoiceProofPortal");
   const tInvoices = useTranslations("SalesInvoices");
   const locale = useLocale();
@@ -272,6 +280,10 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
   const { message, notification } = App.useApp();
   const searchParams = useSearchParams();
   const validId = isUuid(invoiceId) ? invoiceId.trim() : null;
+  const isVendor = variant === "vendor";
+  const portalBasePath = isVendor ? "/proofs/purchases" : "/proofs";
+  const fetchPortal = isVendor ? fetchPurchaseProofPortal : fetchInvoiceProofPortal;
+  const unlockPortal = isVendor ? unlockPurchaseProofPortal : unlockInvoiceProofPortal;
   const portalLink = useMemo(
     () => ({
       exp: searchParams.get("exp"),
@@ -280,7 +292,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
     [searchParams],
   );
   const hasStamp = hasBuyerPortalLinkStamp(portalLink);
-  const portalQuery = useInvoiceProofPortalQuery(validId, portalLink);
+  const portalQuery = useInvoiceProofPortalQuery(validId, portalLink, fetchPortal);
   const [invoice, setInvoice] = useState(null);
   const [unlockedBy, setUnlockedBy] = useState(
     /** @type {{ address: string; buyerIsSafe: boolean } | null} */ (null),
@@ -323,7 +335,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
       : null;
   const proof = invoice && typeof invoice === "object" && invoice.locked !== true ? invoice : null;
   const status = typeof proof?.status === "string" ? proof.status : null;
-  const hint = statusHint(t, status);
+  const hint = statusHint(t, status, isVendor);
   const errorCode = portalQuery.isError ? getApiErrorCode(portalQuery.error) : null;
   const currencyCode = typeof proof?.currency_code === "string" ? proof.currency_code : null;
   const lines = Array.isArray(proof?.lines) ? proof.lines : [];
@@ -341,7 +353,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
     else if (code === "wallet_mismatch") description = t("walletMismatch");
     else if (code === "wrong_network") description = t("wrongNetwork");
     else if (code === "rejected") description = t("rejected");
-    else if (code === "not_safe_owner") description = t("notSafeOwner");
+    else if (code === "not_safe_owner") description = isVendor ? t("notSafeOwnerSupplier") : t("notSafeOwner");
     else if (code === "pending_confirmations") description = t("pendingConfirmations");
     else description = getLocalizedApiErrorMessage(tApiErrors, err) || fallback;
     notification.error({ title, description });
@@ -350,7 +362,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
   const unlockMutation = useMutation({
     mutationFn: async () => {
       if (validId == null) throw new BuyerApprovalError("failed");
-      const fresh = await fetchInvoiceProofPortal(validId, portalLink);
+      const fresh = await fetchPortal(validId, portalLink);
       const buyerWallet = typeof fresh?.buyer_wallet === "string" ? fresh.buyer_wallet : "";
       const messageToSign = typeof fresh?.message === "string" ? fresh.message : "";
       if (fresh?.locked !== true || buyerWallet === "" || messageToSign === "") {
@@ -361,7 +373,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
         chainId: Number(fresh?.chain_id),
         message: messageToSign,
       });
-      const result = await unlockInvoiceProofPortal(validId, portalLink, signed);
+      const result = await unlockPortal(validId, portalLink, signed);
       return { result, signed };
     },
     onError: (err) => notifyWalletError(err, t("unlockError"), t("unlockError")),
@@ -378,11 +390,27 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
       if (validId == null) throw new BuyerApprovalError("failed");
       const chainId = Number(proof?.chain_id);
       const contractAddress = typeof proof?.contract_address === "string" ? proof.contract_address : "";
-      const buyerWallet = typeof proof?.buyer_wallet === "string" ? proof.buyer_wallet : "";
       const eip712 = proof?.eip712 && typeof proof.eip712 === "object" ? proof.eip712 : null;
-      if (!Number.isFinite(chainId) || chainId <= 0 || contractAddress === "" || buyerWallet === "" || eip712 == null) {
+      if (!Number.isFinite(chainId) || chainId <= 0 || contractAddress === "" || eip712 == null) {
         throw new BuyerApprovalError("failed");
       }
+      if (isVendor) {
+        const supplierWallet = typeof proof?.supplier_wallet === "string" ? proof.supplier_wallet : "";
+        if (supplierWallet === "") throw new BuyerApprovalError("failed");
+        const sent = await sendSupplierApproval({
+          chainId,
+          contractAddress,
+          supplierWallet,
+          eip712,
+          blockchainNetwork: typeof proof?.blockchain_network === "string" ? proof.blockchain_network : null,
+          safeTxServiceUrl: typeof proof?.safe_tx_service_url === "string" ? proof.safe_tx_service_url : null,
+          safeApiKey: typeof proof?.safe_api_key === "string" ? proof.safe_api_key : null,
+        });
+        if (sent.status === "proposed") return { proposed: true, buyerApprovedAt: null };
+        return { proposed: false, buyerApprovedAt: sent.txHash ?? null };
+      }
+      const buyerWallet = typeof proof?.buyer_wallet === "string" ? proof.buyer_wallet : "";
+      if (buyerWallet === "") throw new BuyerApprovalError("failed");
       if (unlockedBy?.buyerIsSafe) {
         const sent = await sendBuyerSafeApproval({ chainId, contractAddress, buyerWallet, eip712 });
         if (sent.status === "proposed") return { proposed: true, buyerApprovedAt: null };
@@ -406,6 +434,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
               ...current,
               status: "fully_approved",
               can_approve_as_buyer: false,
+              can_approve_as_company: false,
               can_dispute_as_buyer: false,
               eip712: null,
               dispute_eip712: null,
@@ -502,7 +531,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
             {t("unlockTitle")}
           </Typography.Title>
           <Typography.Paragraph className="!mb-0 !text-sm !text-[var(--ant-color-text-secondary)]">
-            {t("unlockSubtitle")}
+            {t(isVendor ? "unlockSubtitleSupplier" : "unlockSubtitle")}
           </Typography.Paragraph>
         </div>
         {expectedWallet === "" ? (
@@ -565,7 +594,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
           </div>
           {status ? (
             <Tag className="mt-1 shrink-0" color={invoiceProofStatusTagColor(status)}>
-              {portalStatusLabel(t, status)}
+              {portalStatusLabel(t, status, isVendor)}
             </Tag>
           ) : null}
         </div>
@@ -587,7 +616,9 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
               </div>
             ) : null}
             <div>
-              <div className="text-[var(--ant-color-text-secondary)]">{t("chainSupplierApprovedAt")}</div>
+              <div className="text-[var(--ant-color-text-secondary)]">
+                {isVendor ? t("chainYouApprovedAt") : t("chainSupplierApprovedAt")}
+              </div>
               <div className="mt-0.5 font-medium">{formatTenantDateTime(proof.supplier_approved_at) || "—"}</div>
               {formatTenantDateTime(proof.supplier_approved_at) && shortAddress(proof.supplier_wallet) ? (
                 <p className="mb-0 mt-0.5 font-mono text-xs text-[var(--ant-color-text-secondary)]" dir="ltr">
@@ -598,7 +629,9 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
               ) : null}
             </div>
             <div>
-              <div className="text-[var(--ant-color-text-secondary)]">{t("chainBuyerApprovedAt")}</div>
+              <div className="text-[var(--ant-color-text-secondary)]">
+                {isVendor ? t("chainSupplierApprovedAt") : t("chainBuyerApprovedAt")}
+              </div>
               <div className="mt-0.5 font-medium">{formatTenantDateTime(proof.buyer_approved_at) || "—"}</div>
               {formatTenantDateTime(proof.buyer_approved_at) && shortAddress(proof.buyer_wallet) ? (
                 <p className="mb-0 mt-0.5 font-mono text-xs text-[var(--ant-color-text-secondary)]" dir="ltr">
@@ -629,6 +662,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
               label={tInvoices("replacesInvoice")}
               invoice={proof.replaces_invoice}
               locale={locale}
+              basePath={portalBasePath}
             />
             <RelatedInvoiceField
               label={t("replacedBy")}
@@ -636,6 +670,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
               fallbackNumber={proof.replaced_by_invoice_number}
               fallbackId={proof.replaced_by}
               locale={locale}
+              basePath={portalBasePath}
             />
             {formatTenantDateTime(proof.disputed_at) ? (
               <div>
@@ -722,7 +757,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
             <div className="flex flex-col gap-2">
               {proof.other_invoices.map((item) => {
                 const id = typeof item?.id === "string" ? item.id : "";
-                const href = proofPortalHref(locale, item);
+                const href = proofPortalHref(locale, item, portalBasePath);
                 return (
                   <a
                     key={id || href || item.invoice_number}
@@ -754,7 +789,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
               {t("dispute")}
             </Button>
           ) : null}
-          {proof.can_approve_as_buyer ? (
+          {proof.can_approve_as_buyer || proof.can_approve_as_company ? (
             <Button
               type="primary"
               loading={approveMutation.isPending}
@@ -800,10 +835,10 @@ function InvoiceProofPortalInner({ invoiceId, initialHost }) {
  *   initialHost: string;
  * }} props
  */
-export default function InvoiceProofPortalPage({ invoiceId, initialHost }) {
+export default function InvoiceProofPortalPage({ invoiceId, initialHost, variant = "buyer" }) {
   return (
     <App className="flex min-h-dvh flex-col">
-      <InvoiceProofPortalInner invoiceId={invoiceId} initialHost={initialHost} />
+      <InvoiceProofPortalInner invoiceId={invoiceId} initialHost={initialHost} variant={variant} />
     </App>
   );
 }
