@@ -210,6 +210,12 @@ export function notificationVisual(notification, token) {
       accent: token.colorError,
       iconBg: token.colorErrorBg,
     };
+  } else if (type.startsWith("purchase_invoice.")) {
+    visual = {
+      Icon: FileDoneOutlined,
+      accent: type.endsWith(".needs_setup") ? token.colorWarning : token.colorPrimary,
+      iconBg: type.endsWith(".needs_setup") ? token.colorWarningBg : token.colorPrimaryBg,
+    };
   } else if (type.startsWith("branch.")) {
     visual = {
       Icon: TeamOutlined,

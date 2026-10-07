@@ -5,6 +5,7 @@ import { postedByDisplayName } from "./SalesInvoiceDrawerHeaderMeta";
 import {
   getInvoiceProofStatusLabel,
   invoiceProofStatusTagColor,
+  shareProofBlockReason,
 } from "../../utils/invoiceProofStatuses";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import { DownOutlined, WarningOutlined } from "@ant-design/icons";
@@ -428,8 +429,8 @@ export default function SalesInvoiceDrawerFooter({
           <SalesInvoiceProofDisclosureButton
             invoiceId={buyerLinkInvoiceId}
             invoiceNumber={buyerLinkInvoiceNumber}
-            disabled={submitting || proofStatus === "tampered"}
-            disabledReason={proofStatus === "tampered" ? t("shareProofDisabledTampered") : null}
+            disabled={submitting || shareProofBlockReason(t, proofStatus) != null}
+            disabledReason={shareProofBlockReason(t, proofStatus)}
           />
         ) : null}
       </>

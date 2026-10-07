@@ -26,7 +26,7 @@ import { getApiErrorCode, getLocalizedApiErrorMessage } from "@/lib/api-error-no
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { useMutation } from "@tanstack/react-query";
-import { App, Alert, Button, Input, Modal, Spin, Tag, Tooltip, Typography } from "antd";
+import { App, Alert, Button, Input, Modal, Spin, Tabs, Tag, Tooltip, Typography } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { withLocalePrefix } from "@/lib/locale-path";
 import { useLocale, useTranslations } from "next-intl";
@@ -45,7 +45,7 @@ function isUuid(value) {
  * @param {string} locale
  * @param {unknown} item
  */
-function proofPortalHref(locale, item, basePath = "/proofs") {
+function proofPortalHref(locale, item, basePath = "/proofs/sales") {
   const id = item && typeof item === "object" && typeof item.id === "string" ? item.id : "";
   const sig = item && typeof item === "object" && typeof item.sig === "string" ? item.sig : "";
   const exp = item && typeof item === "object" ? item.exp : null;
@@ -65,7 +65,7 @@ function proofPortalHref(locale, item, basePath = "/proofs") {
  *   locale: string;
  * }} props
  */
-function RelatedInvoiceField({ label, invoice, fallbackNumber, fallbackId, locale, basePath = "/proofs" }) {
+function RelatedInvoiceField({ label, invoice, fallbackNumber, fallbackId, locale, basePath = "/proofs/sales" }) {
   const number =
     invoice && typeof invoice === "object" && typeof invoice.invoice_number === "string" && invoice.invoice_number !== ""
       ? invoice.invoice_number
@@ -147,31 +147,29 @@ function PortalInvoiceLine({ line, currencyCode, tInvoices }) {
   const showDescription = description !== "" && description !== name;
 
   return (
-    <div className="rounded-lg border border-[var(--ant-color-border-secondary)] px-3 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-start gap-1 font-medium">
-            <span className="break-words">{name || "—"}</span>
-            {showDescription ? (
-              <Tooltip title={description}>
-                <button
-                  type="button"
-                  className="inline-flex shrink-0 items-center text-[var(--ant-color-text-secondary)]"
-                  aria-label={description}
-                >
-                  <QuestionCircleOutlined />
-                </button>
-              </Tooltip>
-            ) : null}
-          </div>
+    <div className="grid grid-cols-1 gap-1 border-b border-[var(--ant-color-border-secondary)] px-3 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_7rem_8rem_9rem] sm:items-center sm:gap-3">
+      <div className="min-w-0">
+        <div className="flex items-start gap-1 font-medium">
+          <span className="break-words">{name || "—"}</span>
+          {showDescription ? (
+            <Tooltip title={description}>
+              <button
+                type="button"
+                className="inline-flex shrink-0 items-center text-[var(--ant-color-text-secondary)]"
+                aria-label={description}
+              >
+                <QuestionCircleOutlined />
+              </button>
+            </Tooltip>
+          ) : null}
         </div>
-        <div className="shrink-0 text-end font-medium whitespace-nowrap">
-          {moneyWithCurrency(line.line_total, currencyCode)}
-        </div>
+        <div className="mt-1 text-sm text-[var(--ant-color-text-secondary)] sm:hidden">{qtyPrice}</div>
       </div>
-      <div className="mt-2 text-sm text-[var(--ant-color-text-secondary)]">{qtyPrice}</div>
+      <div className="hidden text-end text-sm sm:block">{line.uom ? `${qty} ${line.uom}` : qty}</div>
+      <div className="hidden text-end text-sm sm:block">{price}</div>
+      <div className="text-end font-medium whitespace-nowrap">{moneyWithCurrency(line.line_total, currencyCode)}</div>
       {isNonZero(line.discount_percent) || isNonZero(line.tax_rate) ? (
-        <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-[var(--ant-color-text-secondary)]">
+        <div className="flex flex-wrap gap-x-3 text-xs text-[var(--ant-color-text-secondary)] sm:col-span-4">
           {isNonZero(line.discount_percent) ? (
             <span>
               {tInvoices("lineDiscountPercent")}: {percentLabel(line.discount_percent)}
@@ -291,7 +289,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
   const validId = isUuid(invoiceId) ? invoiceId.trim() : null;
   const isVendor = variant === "vendor";
   const portalRole = isVendor ? "vendor" : "buyer";
-  const portalBasePath = isVendor ? "/proofs/purchases" : "/proofs";
+  const portalBasePath = isVendor ? "/proofs/purchases" : "/proofs/sales";
   const fetchPortal = isVendor ? fetchPurchaseProofPortal : fetchInvoiceProofPortal;
   const unlockPortal = isVendor ? unlockPurchaseProofPortal : unlockInvoiceProofPortal;
   const resumePortal = isVendor ? resumePurchaseProofPortal : resumeInvoiceProofPortal;
@@ -310,12 +308,14 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
   );
   const portalLinkKey = `${validId ?? ""}|${portalLink.exp ?? ""}|${portalLink.sig ?? ""}`;
   const [invoiceLinkKey, setInvoiceLinkKey] = useState(portalLinkKey);
+  const [portalTab, setPortalTab] = useState("invoice");
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [disputeReason, setDisputeReason] = useState("");
   const [resumeState, setResumeState] = useState(() => (readPortalSession(portalRole) ? "pending" : "skipped"));
   if (invoiceLinkKey !== portalLinkKey) {
     setInvoiceLinkKey(portalLinkKey);
     setInvoice(null);
+    setPortalTab("invoice");
     setResumeState(readPortalSession(portalRole) ? "pending" : "skipped");
   }
 
@@ -697,9 +697,18 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
     const fullHash =
       typeof proof.content_hash === "string" ? proof.content_hash.toLowerCase() : "";
     const shortHash = shortContentHash(fullHash);
+    const otherInvoices = Array.isArray(proof.other_invoices) ? proof.other_invoices : [];
     body = (
+      <Tabs
+        activeKey={portalTab}
+        onChange={setPortalTab}
+        items={[
+          {
+            key: "invoice",
+            label: t("tabInvoice"),
+            children: (
       <>
-        <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="text-sm text-[var(--ant-color-text-secondary)]">
               {proof.company_name || t("title")}
@@ -806,11 +815,17 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
             ) : null}
           </div>
           <div>
-            <Typography.Text className="mb-2 block font-medium">{t("lines")}</Typography.Text>
+            <Typography.Text className="mb-2 block font-medium sm:hidden">{t("lines")}</Typography.Text>
             {lines.length === 0 ? (
               <div className="text-sm text-[var(--ant-color-text-secondary)]">—</div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="overflow-hidden rounded-xl border border-[var(--ant-color-border-secondary)]">
+                <div className="hidden grid-cols-[minmax(0,1fr)_7rem_8rem_9rem] gap-3 border-b border-[var(--ant-color-border-secondary)] bg-[var(--ant-color-fill-quaternary)] px-3 py-2 text-xs font-medium text-[var(--ant-color-text-secondary)] sm:grid">
+                  <span>{t("lines")}</span>
+                  <span className="text-end">{tInvoices("lineQuantity")}</span>
+                  <span className="text-end">{tInvoices("lineUnitPrice")}</span>
+                  <span className="text-end">{tInvoices("lineTotal")}</span>
+                </div>
                 {lines.map((line, index) => (
                   <PortalInvoiceLine
                     key={String(index)}
@@ -871,31 +886,6 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
             </p>
           </div>
         ) : null}
-        {Array.isArray(proof.other_invoices) && proof.other_invoices.length > 0 ? (
-          <div className="mb-6">
-            <Typography.Text className="mb-2 block font-medium">{t("historyOther")}</Typography.Text>
-            <div className="flex flex-col gap-2">
-              {proof.other_invoices.map((item) => {
-                const id = typeof item?.id === "string" ? item.id : "";
-                const href = proofPortalHref(locale, item, portalBasePath);
-                return (
-                  <a
-                    key={id || href || item.invoice_number}
-                    href={href || undefined}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-[var(--ant-color-border-secondary)] px-3 py-2 text-sm text-inherit no-underline transition-colors hover:bg-[var(--ant-color-fill-quaternary)]"
-                  >
-                    <span>
-                      {item.invoice_number || "—"}
-                      {" · "}
-                      {formatTenantDate(item.invoice_date) || "—"}
-                    </span>
-                    <span>{t("historyOpen")}</span>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
         <div className="mt-2 flex flex-col-reverse gap-3 border-t border-[var(--ant-color-border-secondary)] pt-4 sm:flex-row sm:justify-end">
           <Button onClick={() => void refreshPortal()} loading={portalQuery.isFetching || unlockMutation.isPending}>
             {t("refresh")}
@@ -920,11 +910,63 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
           ) : null}
         </div>
       </>
+            ),
+          },
+          {
+            key: "others",
+            label: (
+              <span className="inline-flex items-center gap-2">
+                {t("tabOther")}
+                <span className="rounded-full bg-[var(--ant-color-fill-secondary)] px-1.5 text-xs tabular-nums leading-5">
+                  {otherInvoices.length}
+                </span>
+              </span>
+            ),
+            children: otherInvoices.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[var(--ant-color-border-secondary)] px-4 py-10 text-center text-sm text-[var(--ant-color-text-secondary)]">
+                {t("historyEmpty")}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {otherInvoices.map((item) => {
+                  const id = typeof item?.id === "string" ? item.id : "";
+                  const href = proofPortalHref(locale, item, portalBasePath);
+                  const total = formatTenantMoney(item?.grand_total);
+                  const currency = typeof item?.currency_code === "string" ? item.currency_code : "";
+                  const itemStatus = typeof item?.status === "string" ? item.status : "";
+                  return (
+                    <a
+                      key={id || href || item?.invoice_number}
+                      href={href || undefined}
+                      className="flex items-center justify-between gap-4 rounded-xl border border-[var(--ant-color-border-secondary)] px-4 py-3.5 text-inherit no-underline transition-colors hover:bg-[var(--ant-color-fill-quaternary)]"
+                    >
+                      <span className="min-w-0">
+                        <span className="block font-semibold">{item?.invoice_number || "—"}</span>
+                        <span className="text-sm text-[var(--ant-color-text-secondary)]">
+                          {formatTenantDate(item?.invoice_date) || "—"}
+                          {total ? ` · ${total}${currency ? ` ${currency}` : ""}` : ""}
+                        </span>
+                      </span>
+                      {itemStatus ? (
+                        <Tag className="shrink-0" color={invoiceProofStatusTagColor(itemStatus)}>
+                          {portalStatusLabel(t, itemStatus, isVendor)}
+                        </Tag>
+                      ) : (
+                        <span className="shrink-0 text-sm text-[var(--ant-color-text-secondary)]">{t("historyOpen")}</span>
+                      )}
+                    </a>
+                  );
+                })}
+              </div>
+            ),
+          },
+        ]}
+      />
     );
   }
 
   return (
-    <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout>
+    <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout wide>
       {body}
       <Modal
         title={t("disputeTitle")}
@@ -933,6 +975,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
         okText={t("disputeConfirm")}
         confirmLoading={disputeMutation.isPending}
         okButtonProps={{ danger: true, disabled: disputeReason.trim() === "" }}
+        styles={{ body: { paddingBottom: 28 } }}
         onOk={() => disputeMutation.mutate()}
       >
         <Typography.Paragraph className="!mb-3">{t("disputeHint")}</Typography.Paragraph>

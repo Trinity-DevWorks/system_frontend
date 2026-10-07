@@ -214,6 +214,16 @@
           "body": "وجد الفحص {issue_count} مشكلة عبر {checked_count} فاتورة مختومة."
         }
       },
+      "purchase_invoice": {
+        "received": {
+          "title": "فاتورة مشتريات من {company_name}",
+          "body": "الفاتورة {invoice_number} جاهزة كـ {purchase_number}. راجع المستودع ثم رحّلها."
+        },
+        "needs_setup": {
+          "title": "فاتورة المشتريات تحتاج إعداداً",
+          "body": "تعذر إنشاء فاتورة {invoice_number} من {company_name}. طابق الأصناف والعملة ثم استورد الإثبات."
+        }
+      },
       "purchasing": {
         "low_stock": {
           "title": "تنبيهات انخفاض المخزون",
@@ -2720,6 +2730,7 @@
     "fieldVatNumberMax": "يجب ألا يزيد الرقم الضريبي عن 128 حرفًا.",
     "fieldWalletAddress": "عنوان المحفظة",
     "fieldWalletAddressHelp": "محفظة المشتري الشخصية أو الـ Safe المستخدم للموافقة على الفواتير على السلسلة. لا تدخل المفتاح الخاص.",
+    "knownTenant": "هذه الشركة تستخدم النظام: {company}.",
     "fieldWalletAddressInvalid": "أدخل عنوان إيثيريوم صالحًا (0x متبوعًا بـ 40 خانة ست عشرية).",
     "fieldNotes": "ملاحظات",
     "fieldNotesPlaceholder": "ملاحظات اختيارية",
@@ -2937,6 +2948,7 @@
     "drawerSectionInvoiceProofs": "إثباتات الفواتير",
     "fieldWalletAddress": "عنوان المحفظة",
     "fieldWalletAddressHelp": "محفظة المورّد الشخصية أو الـ Safe المستخدمة للموافقة على فواتير المشتريات على السلسلة. لا تدخل المفتاح الخاص.",
+    "knownTenant": "هذه الشركة تستخدم النظام: {company}.",
     "fieldWalletAddressInvalid": "أدخل عنوان إيثيريوم صالح (0x متبوعًا بـ 40 خانة ست عشرية).",
     "attachmentsTitle": "المرفقات",
     "attachmentsHintCreate": "احفظ المورد أولًا لرفع الملفات.",
@@ -3207,6 +3219,7 @@
     "actionBuyerLink": "رابط المشتري",
     "actionShareProof": "مشاركة الإثبات",
     "shareProofDisabledTampered": "هذه الفاتورة مُعدَّلة. مشاركة الإثبات معطّلة.",
+    "shareProofDisabledPendingChain": "هذه الفاتورة ما زالت تُسجَّل على السلسلة. مشاركة الإثبات معطّلة.",
     "rowProofChecking": "جارٍ فحص الفاتورة على البلوك تشين…",
     "rowProofApproving": "بانتظار اعتماد محفظتك…",
     "approveCompanyUnavailable": "لا يمكن اعتماد هذه الفاتورة بعد: محفظة الشركة غير مسجّلة على البلوك تشين لها. افتح الفاتورة لمعرفة التفاصيل.",
@@ -3589,10 +3602,20 @@
     "approve": "اعتماد الفاتورة",
     "bindingNotice": "أنت تعتمد {number} بتاريخ {date}.",
     "sealLabel": "الختم",
+    "chooseTitle": "بوابة الفواتير",
+    "chooseSubtitle": "اختر ما تريد فتحه.",
+    "chooseVerify": "التحقق",
+    "chooseVerifyHint": "تحقق من ملف إثبات على سلسلة الكتل.",
+    "chooseSales": "المبيعات",
+    "chooseSalesHint": "فواتير أرسلتها هذه الشركة إليك.",
+    "choosePurchases": "المشتريات",
+    "choosePurchasesHint": "فواتير استلمتها هذه الشركة منك.",
     "historyTitle": "فواتيرك",
     "historySubtitle": "سجّل الدخول بمحفظتك لرؤية فواتير هذه الشركة.",
     "historyConnect": "تسجيل الدخول",
     "historyEmpty": "لا توجد فواتير مرحّلة لهذه المحفظة.",
+    "tabInvoice": "هذه الفاتورة",
+    "tabOther": "فواتير أخرى",
     "historyOther": "فواتيرك الأخرى",
     "historyOpen": "فتح",
     "approveSuccess": "تم اعتماد الفاتورة.",
@@ -4831,6 +4854,7 @@
     "actionSupplierLink": "رابط المورّد",
     "actionShareProof": "مشاركة الإثبات",
     "shareProofDisabledTampered": "هذه الفاتورة مُعبث بها. مشاركة الإثبات معطّلة.",
+    "shareProofDisabledPendingChain": "هذه الفاتورة ما زالت تُسجَّل على السلسلة. مشاركة الإثبات معطّلة.",
     "actionReissue": "إعادة إصدار",
     "reissueDisabledHasPayments": "هذه الفاتورة عليها دفعات ولا يمكن إعادة إصدارها.",
     "reissueDisabledHasGrn": "لا يمكن إعادة إصدار فاتورة مرتبطة بسند استلام.",

@@ -10,6 +10,7 @@ import {
   purchaseInvoiceStatusTagColor,
 } from "../../utils/purchaseInvoiceStatuses";
 import InvoiceChainStatusTag from "@/features/sales-invoices/components/InvoiceChainStatusTag";
+import { shareProofBlockReason } from "@/features/sales-invoices/utils/invoiceProofStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import {
   CheckCircleOutlined,
@@ -103,12 +104,12 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       });
     }
     if (onShareProof && !record?.linked_proof_id) {
-      const shareBlocked = record?.chain_status?.status === "tampered";
+      const shareBlockedReason = shareProofBlockReason(t, record?.chain_status?.status);
       items.push({
         key: "proof-share",
         icon: <ShareAltOutlined />,
-        disabled: shareBlocked,
-        title: shareBlocked ? t("shareProofDisabledTampered") : undefined,
+        disabled: shareBlockedReason != null,
+        title: shareBlockedReason ?? undefined,
         label: t("actionShareProof"),
         onClick: () => onShareProof(record),
       });

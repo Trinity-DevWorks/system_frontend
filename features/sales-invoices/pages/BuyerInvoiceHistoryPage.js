@@ -43,7 +43,7 @@ function invoiceHref(item, locale) {
   const sig = typeof item.sig === "string" ? item.sig : "";
   if (id === "" || sig === "" || item.exp == null) return "";
   const qs = new URLSearchParams({ exp: String(item.exp), sig });
-  return `${withLocalePrefix(locale, `/proofs/${id}`)}?${qs}`;
+  return `${withLocalePrefix(locale, `/proofs/sales/${id}`)}?${qs}`;
 }
 
 /**
@@ -161,7 +161,7 @@ function BuyerInvoiceHistoryInner({ initialHost }) {
   }
 
   return (
-    <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout>
+    <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout wide>
       {body}
     </AuthSplitShell>
   );

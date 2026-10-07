@@ -55,6 +55,17 @@ export function isInvoiceChainPending(status) {
 }
 
 /**
+ * Reason to keep Share proof disabled, or null when it can open.
+ * @param {(key: string) => string} t
+ * @param {string | null | undefined} status
+ */
+export function shareProofBlockReason(t, status) {
+  if (status === "tampered") return t("shareProofDisabledTampered");
+  if (status === "pending_chain") return t("shareProofDisabledPendingChain");
+  return null;
+}
+
+/**
  * Keep reading the chain after reverse until revoke lands.
  * @param {string | null | undefined} chainStatus
  * @param {string | null | undefined} invoiceStatus

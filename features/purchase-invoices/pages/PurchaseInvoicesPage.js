@@ -11,6 +11,7 @@ import {
 } from "@/features/stock/queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import { DRAWER_ID_PARAM, RESOURCE_DRAWER_CREATE_TOKEN } from "@/lib/drawer/drawerUrl";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
@@ -32,7 +33,8 @@ import { useCompanySettings } from "@/lib/company-settings";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   formatStockFilterDateRange,
   stockFilterFieldRowClassName,
@@ -53,10 +55,17 @@ function PurchaseInvoicesTable() {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const drawerId = searchParams.get(DRAWER_ID_PARAM);
   const access = useResourceAccess("purchase_invoices");
   const invoiceProofsAccess = useResourceAccess("invoice_proofs");
   const { settings } = useCompanySettings();
   const showChainCheck = Boolean(settings.invoiceProofsEnabled) && invoiceProofsAccess.canView;
+
+  useEffect(() => {
+    if (!drawerId || drawerId === RESOURCE_DRAWER_CREATE_TOKEN) return;
+    queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICES_QUERY_KEY });
+  }, [drawerId, queryClient]);
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [supplierFilter, setSupplierFilter] = useState(/** @type {string | undefined} */ (undefined));

@@ -214,6 +214,16 @@
           "body": "The check found {issue_count} issue(s) across {checked_count} sealed invoice(s)."
         }
       },
+      "purchase_invoice": {
+        "received": {
+          "title": "Purchase invoice from {company_name}",
+          "body": "Invoice {invoice_number} is ready as {purchase_number}. Review the warehouse, then post it."
+        },
+        "needs_setup": {
+          "title": "Purchase invoice needs setup",
+          "body": "Invoice {invoice_number} from {company_name} could not be created. Match their items and currency, then import the proof."
+        }
+      },
       "purchasing": {
         "low_stock": {
           "title": "Low stock alerts",
@@ -2720,6 +2730,7 @@
     "fieldVatNumberMax": "VAT number must be at most 128 characters.",
     "fieldWalletAddress": "Wallet address",
     "fieldWalletAddressHelp": "Buyer's personal wallet or Safe used to approve invoices on chain. Do not enter a private key.",
+    "knownTenant": "This company uses the system: {company}.",
     "fieldWalletAddressInvalid": "Enter a valid Ethereum address (0x followed by 40 hex characters).",
     "fieldNotes": "Notes",
     "fieldNotesPlaceholder": "Optional notes",
@@ -2937,6 +2948,7 @@
     "drawerSectionInvoiceProofs": "Invoice proofs",
     "fieldWalletAddress": "Wallet address",
     "fieldWalletAddressHelp": "Supplier's personal wallet or Safe used to approve purchase invoices on chain. Do not enter a private key.",
+    "knownTenant": "This company uses the system: {company}.",
     "fieldWalletAddressInvalid": "Enter a valid Ethereum address (0x followed by 40 hex characters).",
     "attachmentsTitle": "Files",
     "attachmentsHintCreate": "Save this supplier first to upload files.",
@@ -3207,6 +3219,7 @@
     "actionBuyerLink": "Buyer link",
     "actionShareProof": "Share proof",
     "shareProofDisabledTampered": "This invoice is tampered. Share proof is disabled.",
+    "shareProofDisabledPendingChain": "This invoice is still being registered on the chain. Share proof is disabled.",
     "rowProofChecking": "Checking the invoice on the blockchain…",
     "rowProofApproving": "Waiting for your wallet to approve…",
     "approveCompanyUnavailable": "This invoice can't be approved yet: the company wallet is not on the blockchain for it. Open the invoice for details.",
@@ -3589,10 +3602,20 @@
     "approve": "Approve invoice",
     "bindingNotice": "You are approving {number} dated {date}.",
     "sealLabel": "Seal",
+    "chooseTitle": "Invoice portal",
+    "chooseSubtitle": "Choose what you want to open.",
+    "chooseVerify": "Verify",
+    "chooseVerifyHint": "Check a proof file against the blockchain.",
+    "chooseSales": "Sales",
+    "chooseSalesHint": "Invoices this company sent to you.",
+    "choosePurchases": "Purchases",
+    "choosePurchasesHint": "Invoices this company received from you.",
     "historyTitle": "Your invoices",
     "historySubtitle": "Sign in with your wallet to see invoices from this company.",
     "historyConnect": "Sign in",
     "historyEmpty": "No posted invoices for this wallet.",
+    "tabInvoice": "This invoice",
+    "tabOther": "Other invoices",
     "historyOther": "Your other invoices",
     "historyOpen": "Open",
     "approveSuccess": "Invoice approved.",
@@ -4831,6 +4854,7 @@
     "actionSupplierLink": "Supplier link",
     "actionShareProof": "Share proof",
     "shareProofDisabledTampered": "This invoice is tampered. Share proof is disabled.",
+    "shareProofDisabledPendingChain": "This invoice is still being registered on the chain. Share proof is disabled.",
     "actionReissue": "Reissue",
     "reissueDisabledHasPayments": "This invoice has payments and cannot be reissued.",
     "reissueDisabledHasGrn": "A goods-receipt purchase invoice cannot be reissued.",

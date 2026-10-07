@@ -452,6 +452,7 @@ export default function SupplierDrawer({
         currencies={currenciesData ?? []}
         currenciesPending={currenciesQuery.isPending}
         showWalletAddress={showWalletAddress}
+        knownTenant={detailQuery.data?.known_tenant ?? null}
       />
       {!readOnly ? (
         <>

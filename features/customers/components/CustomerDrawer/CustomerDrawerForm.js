@@ -91,6 +91,7 @@ export default function CustomerDrawerForm({
   currenciesPending,
   isSystem = false,
   showWalletAddress = false,
+  knownTenant = null,
 }) {
   const showCode = mode !== "create";
   const creditRowsWatch = Form.useWatch("currency_credit_limits", form);
@@ -650,6 +651,9 @@ export default function CustomerDrawerForm({
             invalidMessage={t("fieldWalletAddressInvalid")}
             allowClear
           />
+          {knownTenant?.company_name ? (
+            <Alert className="!mb-4" type="info" showIcon title={t("knownTenant", { company: knownTenant.company_name })} />
+          ) : null}
         </>
       ) : null}
 

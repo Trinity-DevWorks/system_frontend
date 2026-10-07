@@ -142,6 +142,8 @@ function NotificationsPageInner() {
     }
     navigateNotificationActionPath({
       actionPath: typeof row.action_path === "string" ? row.action_path : null,
+      resourceType: typeof row.resource_type === "string" ? row.resource_type : null,
+      resourceId: row.resource_id != null ? String(row.resource_id) : null,
       pathname,
       search: searchParams.toString(),
       router,

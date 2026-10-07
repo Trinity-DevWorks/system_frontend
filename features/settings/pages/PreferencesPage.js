@@ -63,7 +63,11 @@ const PREFERENCE_GROUPS = [
   },
   {
     id: "invoice_proofs",
-    types: ["invoice_proof.chain_issues"],
+    types: [
+      "invoice_proof.chain_issues",
+      "purchase_invoice.received",
+      "purchase_invoice.needs_setup",
+    ],
   },
 ];
 

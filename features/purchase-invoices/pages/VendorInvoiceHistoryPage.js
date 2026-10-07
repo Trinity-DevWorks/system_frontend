@@ -107,9 +107,11 @@ function VendorInvoiceHistoryInner({ initialHost }) {
             {t("historySubtitle")}
           </Typography.Paragraph>
         </div>
-        <Button type="primary" block size="large" loading={signInMutation.isPending} onClick={() => signInMutation.mutate()}>
-          {t("historyConnect")}
-        </Button>
+        <div className="mt-6 flex justify-end">
+          <Button type="primary" loading={signInMutation.isPending || challengeQuery.isLoading} onClick={() => signInMutation.mutate()}>
+            {t("historyConnect")}
+          </Button>
+        </div>
       </>
     );
   } else if (invoices.length === 0) {
@@ -141,7 +143,7 @@ function VendorInvoiceHistoryInner({ initialHost }) {
   }
 
   return (
-    <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout>
+    <AuthSplitShell isCentral={mode.isCentral} tenantLabel={tenantLabel} scrollable documentLayout wide>
       {body}
     </AuthSplitShell>
   );

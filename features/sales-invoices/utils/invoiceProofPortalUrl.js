@@ -3,8 +3,10 @@ import { withLocalePrefix } from "@/lib/locale-path";
 /**
  * @param {string} invoiceId
  */
+export const SALES_PROOF_PORTAL_BASE = "/proofs/sales";
+
 export function salesInvoiceProofPortalPath(invoiceId) {
-  return `/proofs/${invoiceId}`;
+  return `${SALES_PROOF_PORTAL_BASE}/${invoiceId}`;
 }
 
 /**

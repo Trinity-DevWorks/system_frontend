@@ -27,6 +27,7 @@ import {
 } from "../../utils/salesInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import InvoiceChainStatusTag from "../InvoiceChainStatusTag";
+import { shareProofBlockReason } from "../../utils/invoiceProofStatuses";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -110,12 +111,12 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
       });
     }
     if (onShareProof) {
-      const shareBlocked = record?.chain_status?.status === "tampered";
+      const shareBlockedReason = shareProofBlockReason(t, record?.chain_status?.status);
       items.push({
         key: "proof-share",
         icon: <ShareAltOutlined />,
-        disabled: shareBlocked,
-        title: shareBlocked ? t("shareProofDisabledTampered") : undefined,
+        disabled: shareBlockedReason != null,
+        title: shareBlockedReason ?? undefined,
         label: t("actionShareProof"),
         onClick: () => onShareProof(record),
       });

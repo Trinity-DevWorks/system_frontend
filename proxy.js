@@ -187,6 +187,17 @@ export default async function proxy(request) {
   const isResetPasswordPath =
     barePath === "/reset-password" || barePath.startsWith("/reset-password/");
   const isProofsPath = barePath === "/proofs" || barePath.startsWith("/proofs/");
+  const legacySalesInvoiceId = barePath.match(
+    /^\/proofs\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i,
+  );
+  if (legacySalesInvoiceId) {
+    const url = request.nextUrl.clone();
+    url.pathname = withLocalePrefix(
+      currentLocale,
+      `/proofs/sales/${legacySalesInvoiceId[1]}`,
+    );
+    return NextResponse.redirect(url);
+  }
   const isAuthGuestPath =
     isLoginPath || isForgotPasswordPath || isResetPasswordPath;
   const isMainCentralPath =

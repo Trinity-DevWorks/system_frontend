@@ -22,8 +22,29 @@ export function parseActionPath(actionPath) {
 }
 
 /**
+ * Older purchase-invoice notifications stored only the list path, with the
+ * invoice id on resource_id. Open that drawer anyway.
+ *
+ * @param {string} href
+ * @param {string | null | undefined} resourceType
+ * @param {string | null | undefined} resourceId
+ * @returns {string}
+ */
+export function withPurchaseInvoiceDrawer(href, resourceType, resourceId) {
+  const parsed = parseActionPath(href);
+  if (parsed.pathname !== "/main/purchase-invoices") return parsed.href;
+  if (parsed.href.includes("drawer=")) return parsed.href;
+  if (resourceType !== "purchase_invoice") return parsed.href;
+  const id = resourceId == null ? "" : String(resourceId).trim();
+  if (!id) return parsed.href;
+  return `${parsed.pathname}?drawer=${encodeURIComponent(id)}&mode=edit`;
+}
+
+/**
  * @param {{
  *   actionPath: string | null | undefined,
+ *   resourceType?: string | null,
+ *   resourceId?: string | null,
  *   pathname: string,
  *   search?: string,
  *   router: { push: (href: string) => void },
@@ -31,12 +52,14 @@ export function parseActionPath(actionPath) {
  */
 export function navigateNotificationActionPath({
   actionPath,
+  resourceType = null,
+  resourceId = null,
   pathname,
   search = "",
   router,
 }) {
   if (!actionPath || typeof actionPath !== "string") return;
-  const { href } = parseActionPath(actionPath);
+  const href = withPurchaseInvoiceDrawer(parseActionPath(actionPath).href, resourceType, resourceId);
   if (!href) return;
 
   const currentSearch = search.startsWith("?") ? search : search ? `?${search}` : "";

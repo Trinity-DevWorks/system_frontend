@@ -6,7 +6,7 @@ import WalletAddressField from "@/shared/components/inputs/WalletAddressField";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, DatePicker, Divider, Form, Input, Select, Space, Switch, Typography } from "antd";
+import { Alert, Button, DatePicker, Divider, Form, Input, Select, Space, Switch, Typography } from "antd";
 import {
   SUPPLIER_LOOKUP_ADD_PAYMENT_METHOD,
   SUPPLIER_LOOKUP_ADD_PAYMENT_TERMS,
@@ -82,6 +82,7 @@ export default function SupplierDrawerForm({
   currencies,
   currenciesPending,
   showWalletAddress = false,
+  knownTenant = null,
 }) {
   const showCode = mode !== "create";
   const creditRowsWatch = Form.useWatch("currency_credit_limits", form);
@@ -483,6 +484,9 @@ export default function SupplierDrawerForm({
             invalidMessage={t("fieldWalletAddressInvalid")}
             allowClear
           />
+          {knownTenant?.company_name ? (
+            <Alert className="!mb-4" type="info" showIcon title={t("knownTenant", { company: knownTenant.company_name })} />
+          ) : null}
         </>
       ) : null}
 

@@ -492,6 +492,7 @@ export default function CustomerDrawer({
         currenciesPending={currenciesQuery.isPending}
         isSystem={isSystemCustomer}
         showWalletAddress={showWalletAddress}
+        knownTenant={detailQuery.data?.known_tenant ?? null}
       />
       {!readOnly ? (
         <>

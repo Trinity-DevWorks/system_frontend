@@ -7,7 +7,7 @@ import { DownOutlined, WarningOutlined } from "@ant-design/icons";
 import { Alert, Button, Dropdown, Space, Tag, Tooltip, Typography } from "antd";
 import SalesInvoiceBuyerLinkButton from "@/features/sales-invoices/components/SalesInvoiceDrawer/SalesInvoiceBuyerLinkButton";
 import SalesInvoiceProofDisclosureButton from "@/features/sales-invoices/components/SalesInvoiceDrawer/SalesInvoiceProofDisclosureButton";
-import { getPurchaseInvoiceProofStatusLabel, invoiceProofStatusTagColor } from "@/features/sales-invoices/utils/invoiceProofStatuses";
+import { getPurchaseInvoiceProofStatusLabel, invoiceProofStatusTagColor, shareProofBlockReason } from "@/features/sales-invoices/utils/invoiceProofStatuses";
 
 /**
  * @param {unknown} address
@@ -338,8 +338,8 @@ export default function PurchaseInvoiceDrawerFooter({
           <SalesInvoiceProofDisclosureButton
             invoiceId={vendorLinkInvoiceId}
             invoiceNumber={vendorLinkInvoiceNumber}
-            disabled={submitting || proofStatus === "tampered"}
-            disabledReason={proofStatus === "tampered" ? t("shareProofDisabledTampered") : null}
+            disabled={submitting || shareProofBlockReason(t, proofStatus) != null}
+            disabledReason={shareProofBlockReason(t, proofStatus)}
             fetchFields={fetchProofFields}
             createDisclosure={createProofDisclosure}
           />

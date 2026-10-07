@@ -254,7 +254,7 @@ export function recordInvoiceProofDispute(invoiceId, link = {}, body) {
 }
 
 /**
- * Clerk-issued HMAC buyer-portal URL (relative `/proofs/{id}?exp=&sig=`).
+ * Clerk-issued HMAC buyer-portal stamp. The browser path is `/proofs/sales/{id}?exp=&sig=`.
  * @param {string} invoiceId
  * @returns {Promise<{ url?: string; exp?: number; sig?: string }>}
  */

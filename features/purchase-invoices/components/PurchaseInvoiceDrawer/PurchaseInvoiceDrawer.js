@@ -1369,6 +1369,7 @@ export default function PurchaseInvoiceDrawer({
         okText={t("disputeConfirm")}
         confirmLoading={disputeBuyerMutation.isPending}
         okButtonProps={{ danger: true, disabled: disputeReason.trim() === "" }}
+        styles={{ body: { paddingBottom: 28 } }}
         onOk={() => {
           if (invoiceId == null) return;
           return disputeBuyerMutation.mutateAsync({
