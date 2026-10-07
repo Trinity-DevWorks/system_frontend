@@ -3963,6 +3963,7 @@
       "PROOF_BUYER_UNKNOWN": "This wallet is not a customer of this company.",
       "PROOF_VENDOR_UNKNOWN": "This wallet is not a supplier of this company.",
       "PROOF_UNLOCK_INVALID": "This unlock request expired. Refresh and try again.",
+      "PROOF_SESSION_INVALID": "Connect your wallet to view this invoice.",
       "INVOICE_PROOF_NOT_ON_CHAIN": "This invoice is not registered on chain yet.",
       "INVOICE_PROOF_NOT_DISPUTED": "This invoice is not disputed on the blockchain yet.",
       "INVOICE_PROOF_DISPUTE_REASON_MISMATCH": "The dispute reason does not match the hash on the blockchain.",

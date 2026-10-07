@@ -199,6 +199,24 @@ export function fetchInvoiceProofPortal(invoiceId, link = {}) {
  * @param {{ exp?: unknown; sig?: unknown }} [link]
  * @param {{ address: string; signature: string }} body
  */
+/**
+ * Open an invoice already unlocked by this wallet in the current browser session.
+ * @param {string} invoiceId
+ * @param {{ exp?: unknown; sig?: unknown }} [link]
+ * @param {{ session: string; address: string }} body
+ */
+export function resumeInvoiceProofPortal(invoiceId, link = {}, body) {
+  const qs = new URLSearchParams();
+  if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));
+  if (typeof link.sig === "string" && link.sig.trim() !== "") qs.set("sig", link.sig.trim());
+  const query = qs.toString();
+  return tenantRequest(
+    "POST",
+    query ? `proofs/${invoiceId}/resume?${query}` : `proofs/${invoiceId}/resume`,
+    { session: body.session, address: body.address },
+  );
+}
+
 export function unlockInvoiceProofPortal(invoiceId, link = {}, body) {
   const qs = new URLSearchParams();
   if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));

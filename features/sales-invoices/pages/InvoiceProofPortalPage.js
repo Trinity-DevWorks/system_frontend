@@ -3,16 +3,25 @@
 import AuthSplitShell from "@/features/auth/components/AuthSplitShell";
 import { invoiceProofStatusTagColor } from "../utils/invoiceProofStatuses";
 import { useInvoiceProofPortalQuery } from "../queries/useInvoiceProofPortalQuery";
-import { fetchInvoiceProofPortal, recordInvoiceProofDispute, unlockInvoiceProofPortal } from "../api/salesInvoices.api";
+import { fetchInvoiceProofPortal, recordInvoiceProofDispute, resumeInvoiceProofPortal, unlockInvoiceProofPortal } from "../api/salesInvoices.api";
 import { hasBuyerPortalLinkStamp } from "../utils/invoiceProofPortalUrl";
 import { BuyerApprovalError, sendBuyerApproval, sendBuyerDispute } from "@/lib/invoice-registry-buyer-approval";
 import { sendSupplierApproval } from "@/lib/invoice-registry-supplier-safe";
 import {
   fetchPurchaseProofPortal,
+  resumePurchaseProofPortal,
   unlockPurchaseProofPortal,
 } from "@/features/purchase-invoices/api/purchaseInvoices.api";
 import { sendBuyerSafeApproval, sendBuyerSafeDispute } from "@/lib/invoice-registry-buyer-safe";
-import { signProofPortalUnlock, watchProofPortalAccount } from "@/lib/invoice-proof-portal-unlock";
+import {
+  clearPortalSession,
+  connectProofPortalAccount,
+  readConnectedAccount,
+  readPortalSession,
+  savePortalSession,
+  signProofPortalUnlock,
+  watchProofPortalAccount,
+} from "@/lib/invoice-proof-portal-unlock";
 import { getApiErrorCode, getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { resolveHostMode } from "@/lib/runtime-mode";
@@ -281,9 +290,11 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
   const searchParams = useSearchParams();
   const validId = isUuid(invoiceId) ? invoiceId.trim() : null;
   const isVendor = variant === "vendor";
+  const portalRole = isVendor ? "vendor" : "buyer";
   const portalBasePath = isVendor ? "/proofs/purchases" : "/proofs";
   const fetchPortal = isVendor ? fetchPurchaseProofPortal : fetchInvoiceProofPortal;
   const unlockPortal = isVendor ? unlockPurchaseProofPortal : unlockInvoiceProofPortal;
+  const resumePortal = isVendor ? resumePurchaseProofPortal : resumeInvoiceProofPortal;
   const portalLink = useMemo(
     () => ({
       exp: searchParams.get("exp"),
@@ -301,9 +312,11 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
   const [invoiceLinkKey, setInvoiceLinkKey] = useState(portalLinkKey);
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [disputeReason, setDisputeReason] = useState("");
+  const [resumeState, setResumeState] = useState(() => (readPortalSession(portalRole) ? "pending" : "skipped"));
   if (invoiceLinkKey !== portalLinkKey) {
     setInvoiceLinkKey(portalLinkKey);
     setInvoice(null);
+    setResumeState(readPortalSession(portalRole) ? "pending" : "skipped");
   }
 
   const accountSwitchedMessage = t("accountSwitched");
@@ -313,16 +326,59 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
   }, [accountSwitchedMessage]);
 
   useEffect(() => {
+    if (!validId || !hasStamp || resumeState !== "pending") return undefined;
+    let cancelled = false;
+    (async () => {
+      const session = readPortalSession(portalRole);
+      if (!session) {
+        if (!cancelled) setResumeState("skipped");
+        return;
+      }
+      const account = await readConnectedAccount();
+      if (cancelled) return;
+      if (account !== "" && account !== session.address) {
+        clearPortalSession(portalRole);
+        setResumeState("skipped");
+        return;
+      }
+      if (account === "") {
+        setResumeState("skipped");
+        return;
+      }
+      try {
+        const result = await resumePortal(validId, portalLink, { session: session.token, address: account });
+        if (cancelled) return;
+        if (result && typeof result === "object" && result.locked !== true) {
+          const token = typeof result.portal_session === "string" ? result.portal_session : session.token;
+          savePortalSession(portalRole, { token, address: account, buyerIsSafe: session.buyerIsSafe });
+          setUnlockedBy({ address: account, buyerIsSafe: session.buyerIsSafe || result.buyer_wallet_type === "safe" });
+          setInvoice(result);
+        }
+        setResumeState("ready");
+      } catch (err) {
+        if (cancelled) return;
+        if (getApiErrorCode(err) === "PROOF_SESSION_INVALID") clearPortalSession(portalRole);
+        setResumeState("skipped");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasStamp, portalLink, portalRole, resumePortal, resumeState, validId]);
+
+  useEffect(() => {
     if (!invoice || typeof invoice !== "object" || invoice.locked === true) return undefined;
 
     return watchProofPortalAccount(unlockedBy?.address ?? invoice.buyer_wallet, () => {
+      clearPortalSession(portalRole);
+      setResumeState("skipped");
       setInvoice(null);
       message.warning({
         content: accountSwitchedMessageRef.current,
         key: "invoice-proof-portal-account-switched",
       });
     });
-  }, [invoice, unlockedBy, message]);
+  }, [invoice, unlockedBy, message, portalRole]);
 
   const mode = useMemo(() => resolveHostMode(initialHost), [initialHost]);
   const tenantLabel = mode.tenantSlug
@@ -379,8 +435,17 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
     onError: (err) => notifyWalletError(err, t("unlockError"), t("unlockError")),
     onSuccess: ({ result, signed }) => {
       if (result && typeof result === "object" && result.locked !== true) {
+        const token = typeof result.portal_session === "string" ? result.portal_session : "";
+        if (token !== "") {
+          savePortalSession(portalRole, {
+            token,
+            address: signed.address,
+            buyerIsSafe: signed.buyerIsSafe,
+          });
+        }
         setUnlockedBy({ address: signed.address, buyerIsSafe: signed.buyerIsSafe });
         setInvoice(result);
+        setResumeState("ready");
       }
     },
   });
@@ -406,21 +471,22 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
           safeTxServiceUrl: typeof proof?.safe_tx_service_url === "string" ? proof.safe_tx_service_url : null,
           safeApiKey: typeof proof?.safe_api_key === "string" ? proof.safe_api_key : null,
         });
-        if (sent.status === "proposed") return { proposed: true, buyerApprovedAt: null };
-        return { proposed: false, buyerApprovedAt: sent.txHash ?? null };
+        if (sent.status === "proposed") return { proposed: true, role: "supplier", approvedAt: null };
+        const approvedAt = sent.txHash ? await buyerApprovedAtFromTx(sent.txHash) : null;
+        return { proposed: false, role: "supplier", approvedAt: approvedAt ?? new Date().toISOString() };
       }
       const buyerWallet = typeof proof?.buyer_wallet === "string" ? proof.buyer_wallet : "";
       if (buyerWallet === "") throw new BuyerApprovalError("failed");
       if (unlockedBy?.buyerIsSafe) {
         const sent = await sendBuyerSafeApproval({ chainId, contractAddress, buyerWallet, eip712 });
-        if (sent.status === "proposed") return { proposed: true, buyerApprovedAt: null };
-        return { proposed: false, buyerApprovedAt: await buyerApprovedAtFromTx(sent.txHash) };
+        if (sent.status === "proposed") return { proposed: true, role: "buyer", approvedAt: null };
+        return { proposed: false, role: "buyer", approvedAt: await buyerApprovedAtFromTx(sent.txHash) };
       }
       const txHash = await sendBuyerApproval({ chainId, contractAddress, buyerWallet, eip712 });
-      return { proposed: false, buyerApprovedAt: await buyerApprovedAtFromTx(txHash) };
+      return { proposed: false, role: "buyer", approvedAt: await buyerApprovedAtFromTx(txHash) };
     },
     onError: (err) => notifyWalletError(err, t("approveError"), t("approveError")),
-    onSuccess: ({ proposed, buyerApprovedAt }) => {
+    onSuccess: ({ proposed, role, approvedAt }) => {
       if (proposed) {
         message.info(t("approveSafeProposed"));
         return;
@@ -428,23 +494,29 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
       message.success(t("approveSuccess"));
       setDisputeOpen(false);
       setDisputeReason("");
-      setInvoice((current) =>
-        current && typeof current === "object"
-          ? {
-              ...current,
-              status: "fully_approved",
-              can_approve_as_buyer: false,
-              can_approve_as_company: false,
-              can_dispute_as_buyer: false,
-              eip712: null,
-              dispute_eip712: null,
-              buyer_approved_at:
-                typeof buyerApprovedAt === "string" && buyerApprovedAt !== ""
-                  ? buyerApprovedAt
-                  : current.buyer_approved_at,
-            }
-          : current,
-      );
+      setInvoice((current) => {
+        if (!current || typeof current !== "object") return current;
+        const stampedAt = typeof approvedAt === "string" && approvedAt !== "" ? approvedAt : null;
+        if (role === "supplier") {
+          return {
+            ...current,
+            status: "waiting_buyer",
+            can_approve_as_company: false,
+            eip712: null,
+            supplier_approved_at: stampedAt ?? current.supplier_approved_at,
+          };
+        }
+        return {
+          ...current,
+          status: "fully_approved",
+          can_approve_as_buyer: false,
+          can_approve_as_company: false,
+          can_dispute_as_buyer: false,
+          eip712: null,
+          dispute_eip712: null,
+          buyer_approved_at: stampedAt ?? current.buyer_approved_at,
+        };
+      });
     },
   });
 
@@ -484,7 +556,53 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
     },
   });
 
+  async function openWithSession(address) {
+    const session = readPortalSession(portalRole);
+    if (!session || session.address !== address || validId == null) return false;
+    const result = await resumePortal(validId, portalLink, { session: session.token, address });
+    if (!result || typeof result !== "object" || result.locked === true) return false;
+    const token = typeof result.portal_session === "string" ? result.portal_session : session.token;
+    savePortalSession(portalRole, { token, address, buyerIsSafe: session.buyerIsSafe });
+    setUnlockedBy({ address, buyerIsSafe: session.buyerIsSafe || result.buyer_wallet_type === "safe" });
+    setInvoice(result);
+    setResumeState("ready");
+    return true;
+  }
+
+  async function connectOrUnlock() {
+    const address = await connectProofPortalAccount();
+    try {
+      if (await openWithSession(address)) return;
+    } catch (err) {
+      if (getApiErrorCode(err) === "PROOF_SESSION_INVALID") clearPortalSession(portalRole);
+      if (getApiErrorCode(err) !== "PROOF_WALLET_MISMATCH" && getApiErrorCode(err) !== "PROOF_SESSION_INVALID") {
+        notifyWalletError(err, t("unlockError"), t("unlockError"));
+        return;
+      }
+    }
+    unlockMutation.mutate();
+  }
+
   async function refreshPortal() {
+    const session = readPortalSession(portalRole);
+    const account = await readConnectedAccount();
+    if (account === "") {
+      clearPortalSession(portalRole);
+      setResumeState("skipped");
+      setInvoice(null);
+      return;
+    }
+    if (session && account !== session.address) {
+      clearPortalSession(portalRole);
+      setResumeState("skipped");
+      setInvoice(null);
+      return;
+    }
+    try {
+      if (await openWithSession(account)) return;
+    } catch {
+      clearPortalSession(portalRole);
+    }
     if (proof) {
       unlockMutation.mutate();
       return;
@@ -514,7 +632,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
         description={getLocalizedApiErrorMessage(tApiErrors, portalQuery.error) || t("loadError")}
       />
     );
-  } else if (portalQuery.isLoading || (!proof && !challenge)) {
+  } else if (portalQuery.isLoading || (!proof && !challenge) || (!proof && resumeState === "pending")) {
     body = (
       <div className="flex justify-center py-10">
         <Spin />
@@ -556,7 +674,9 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
               <Button
                 type="primary"
                 loading={unlockMutation.isPending}
-                onClick={() => unlockMutation.mutate()}
+                onClick={() => {
+                  connectOrUnlock().catch((err) => notifyWalletError(err, t("unlockError"), t("unlockError")));
+                }}
               >
                 {t("connect")}
               </Button>

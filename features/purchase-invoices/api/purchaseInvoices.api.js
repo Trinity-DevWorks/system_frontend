@@ -143,6 +143,23 @@ export function fetchPurchaseProofPortal(invoiceId, link = {}) {
  * @param {{ exp?: unknown; sig?: unknown }} [link]
  * @param {{ address: string; signature: string }} body
  */
+/**
+ * @param {string} invoiceId
+ * @param {{ exp?: unknown; sig?: unknown }} [link]
+ * @param {{ session: string; address: string }} body
+ */
+export function resumePurchaseProofPortal(invoiceId, link = {}, body) {
+  const qs = new URLSearchParams();
+  if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));
+  if (typeof link.sig === "string" && link.sig.trim() !== "") qs.set("sig", link.sig.trim());
+  const query = qs.toString();
+  return tenantRequest(
+    "POST",
+    query ? `proofs/purchases/${invoiceId}/resume?${query}` : `proofs/purchases/${invoiceId}/resume`,
+    { session: body.session, address: body.address },
+  );
+}
+
 export function unlockPurchaseProofPortal(invoiceId, link = {}, body) {
   const qs = new URLSearchParams();
   if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));

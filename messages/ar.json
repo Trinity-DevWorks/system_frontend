@@ -3963,6 +3963,7 @@
       "PROOF_BUYER_UNKNOWN": "هذه المحفظة ليست لعميل في هذه الشركة.",
       "PROOF_VENDOR_UNKNOWN": "هذه المحفظة ليست لمورّد في هذه الشركة.",
       "PROOF_UNLOCK_INVALID": "انتهت صلاحية طلب الفتح. حدّث الصفحة ثم حاول مرة أخرى.",
+      "PROOF_SESSION_INVALID": "اربط المحفظة لعرض هذه الفاتورة.",
       "INVOICE_PROOF_NOT_ON_CHAIN": "هذه الفاتورة غير مسجّلة على السلسلة بعد.",
       "INVOICE_PROOF_NOT_DISPUTED": "هذه الفاتورة غير متنازع عليها على البلوك تشين بعد.",
       "INVOICE_PROOF_DISPUTE_REASON_MISMATCH": "سبب الاعتراض لا يطابق الهاش على البلوك تشين.",
