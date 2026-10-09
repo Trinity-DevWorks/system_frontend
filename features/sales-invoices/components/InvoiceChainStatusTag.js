@@ -34,18 +34,25 @@ export default function InvoiceChainStatusTag({ status, issue, variant = "sales"
   if (status.status === "failed") {
     label = t("chainStatusFailed");
     color = "error";
-  } else if (status.financed && status.status !== "revoked" && status.status !== "disputed") {
-    label = t("chainStatusFinanced");
-    color = "gold";
   }
 
   const checkedAt = status.checked_at ? formatTenantDateTime(status.checked_at) : "";
+  const tip = checkedAt ? t("chainStatusCheckedAt", { date: checkedAt }) : undefined;
 
   return (
-    <Tooltip title={checkedAt ? t("chainStatusCheckedAt", { date: checkedAt }) : undefined}>
-      <Tag color={color} className="!m-0">
-        {label}
-      </Tag>
-    </Tooltip>
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <Tooltip title={tip}>
+        <Tag color={color} className="!m-0">
+          {label}
+        </Tag>
+      </Tooltip>
+      {status.financed ? (
+        <Tooltip title={tip}>
+          <Tag color="gold" className="!m-0">
+            {t("chainStatusFinanced")}
+          </Tag>
+        </Tooltip>
+      ) : null}
+    </span>
   );
 }

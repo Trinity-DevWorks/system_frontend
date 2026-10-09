@@ -1,4 +1,4 @@
-import { tenantRequest } from "@/lib/axios";
+import { tenantApiClient, tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
 
 /**
@@ -21,6 +21,37 @@ export async function fetchPurchaseInvoices(params = {}) {
 /**
  * @param {string} invoiceId
  */
+/**
+ * @param {string} invoiceId
+ * @returns {Promise<Blob>}
+ */
+export async function fetchPurchaseInvoicePdf(invoiceId) {
+  const res = await tenantApiClient.get(`purchase-invoices/${invoiceId}/pdf`, {
+    responseType: "blob",
+    timeout: 120_000,
+  });
+  return res.data;
+}
+
+/**
+ * Supplier portal PDF. Requires the unlocked portal session.
+ * @param {string} invoiceId
+ * @param {{ exp?: unknown; sig?: unknown; session: string; address: string }} link
+ * @returns {Promise<Blob>}
+ */
+export async function fetchVendorPortalInvoicePdf(invoiceId, link) {
+  const qs = new URLSearchParams();
+  if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));
+  if (typeof link.sig === "string" && link.sig.trim() !== "") qs.set("sig", link.sig.trim());
+  qs.set("session", link.session);
+  qs.set("address", link.address);
+  const res = await tenantApiClient.get(`proofs/purchases/${invoiceId}/pdf?${qs.toString()}`, {
+    responseType: "blob",
+    timeout: 120_000,
+  });
+  return res.data;
+}
+
 export function fetchPurchaseInvoice(invoiceId) {
   return tenantRequest("GET", `purchase-invoices/${invoiceId}`);
 }
@@ -103,6 +134,27 @@ export function createPurchaseInvoiceProofDisclosure(invoiceId, fields) {
  * @param {string} invoiceId
  * @param {{ reason: string; tx_hash?: string }} body
  */
+/**
+ * Record the supplier dispute reason after it is hashed on chain.
+ * @param {string} invoiceId
+ * @param {{ exp?: unknown; sig?: unknown }} [link]
+ * @param {{ reason: string; tx_hash?: string }} body
+ */
+export function recordPurchaseProofDispute(invoiceId, link = {}, body) {
+  const qs = new URLSearchParams();
+  if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));
+  if (typeof link.sig === "string" && link.sig.trim() !== "") qs.set("sig", link.sig.trim());
+  const query = qs.toString();
+  return tenantRequest(
+    "POST",
+    query ? `proofs/purchases/${invoiceId}/dispute?${query}` : `proofs/purchases/${invoiceId}/dispute`,
+    {
+      reason: body.reason,
+      ...(typeof body.tx_hash === "string" && body.tx_hash !== "" ? { tx_hash: body.tx_hash } : {}),
+    },
+  );
+}
+
 export function recordPurchaseInvoiceDispute(invoiceId, body) {
   return tenantRequest("POST", `purchase-invoices/${invoiceId}/dispute`, {
     reason: body.reason,
@@ -116,6 +168,15 @@ export function recordPurchaseInvoiceDispute(invoiceId, body) {
  */
 export function fetchLinkedPurchaseProof(proofId) {
   return tenantRequest("GET", `purchase-invoices/linked-proofs/${proofId}`);
+}
+
+/**
+ * A supplier invoice waiting to be reviewed. Saving the purchase invoice is separate.
+ * @param {string} offerId
+ * @returns {Promise<{ id: string, proof_id: string, purchase_invoice_id: string | null, disclosure: Record<string, unknown> }>}
+ */
+export function fetchLinkedPurchaseOffer(offerId) {
+  return tenantRequest("GET", `purchase-invoices/linked-offers/${encodeURIComponent(offerId)}`);
 }
 
 /**

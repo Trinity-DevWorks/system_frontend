@@ -882,6 +882,27 @@
   font-weight: 600;
 }
 
+.invoice-tamper-label,
+.invoice-tamper-label .item-general-form-label,
+.invoice-tamper-label .item-general-form-label-optional,
+.invoice-tamper-label .resource-drawer-pricing-card-label {
+  color: #ff4d4f;
+}
+
+.resource-drawer-pricing-card:has(.invoice-tamper-label) > .resource-drawer-pricing-card-value,
+.ant-form-item:has(.invoice-tamper-label) .ant-input,
+.ant-form-item:has(.invoice-tamper-label) .ant-input-number-input,
+.ant-form-item:has(.invoice-tamper-label) .ant-select-selection-item,
+.ant-form-item:has(.invoice-tamper-label) .ant-picker-input > input,
+.sales-invoice-exchange-rate-inline:has(.invoice-tamper-label) .ant-input-number-input,
+.invoice-tamper-field,
+.invoice-tamper-field .ant-input,
+.invoice-tamper-field .ant-input-number-input,
+.invoice-tamper-field .ant-select-selection-item,
+.invoice-tamper-field .item-lines-readonly-uom {
+  color: #ff4d4f !important;
+}
+
 @media (max-width: 640px) {
   .sales-invoice-totals {
     flex-direction: column;

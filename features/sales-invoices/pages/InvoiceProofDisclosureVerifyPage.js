@@ -26,7 +26,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
   const [bundle, setBundle] = useState(/** @type {import("@/lib/invoice-proof-merkle").InvoiceProofDisclosureBundle | null} */ (null));
   const [result, setResult] = useState(/** @type {ReturnType<typeof verifyDisclosureBundle> | null} */ (null));
   const [chainState, setChainState] = useState(
-    /** @type {"idle" | "checking" | "match" | "mismatch" | "missing" | "revoked" | "disputed"} */ ("idle"),
+    /** @type {"idle" | "checking" | "match" | "mismatch" | "missing" | "revoked" | "disputed" | "seal_broken"} */ ("idle"),
   );
   const [disputeReasonHash, setDisputeReasonHash] = useState(/** @type {string | null} */ (null));
   const [replacedBy, setReplacedBy] = useState(/** @type {string | null} */ (null));
@@ -79,7 +79,8 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
       else if (onChain.disputed) {
         setChainState("disputed");
         setDisputeReasonHash(onChain.disputeReasonHash);
-      } else setChainState("match");
+      } else if (onChain.sealBroken) setChainState("seal_broken");
+      else setChainState("match");
     } catch (err) {
       setChainState("idle");
       const code = err instanceof Error ? err.message : "";
@@ -224,6 +225,14 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
                   ) : null}
                 </div>
               }
+            />
+          ) : null}
+          {chainState === "seal_broken" ? (
+            <Alert
+              type="error"
+              showIcon
+              title={t("verifyChainSealBroken")}
+              description={t("verifyChainSealBrokenHint")}
             />
           ) : null}
           {chainState === "disputed" ? (

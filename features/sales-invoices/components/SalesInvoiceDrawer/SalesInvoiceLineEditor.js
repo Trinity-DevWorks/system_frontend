@@ -16,6 +16,7 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useTranslations } from "next-intl";
 import { SI_BASE_UOM, isSalesInvoiceLineEmpty, mapSalesInvoiceItemOption, salesInvoiceLinePatchFromBarcodeLookup, salesInvoiceLinePatchFromItemPick, salesInvoiceSelectFilter, salesInvoiceWarehouseCodeLabel } from "../../utils/salesInvoiceDrawerUtils";
 import { previewLineAmounts, previewLineTaxRate } from "../../utils/salesInvoiceTax";
+import { TamperFieldWarning } from "../InvoiceTamper/InvoiceTamperMark";
 import {
   useSalesInvoiceItemAvailability,
   useSalesInvoiceLineUomOptions,
@@ -651,6 +652,7 @@ export default function SalesInvoiceLineEditor({
               (item) => row.item_id != null && String(item.value) === String(row.item_id),
             );
             return (
+              <TamperFieldWarning paths={[`lines.${index}.item_code`, `lines.${index}.item_name`, `lines.${index}.description`]}>
               <SiFocusStop field="item" line={index}>
                 <ServerSearchSelect
                   className="w-full"
@@ -685,10 +687,12 @@ export default function SalesInvoiceLineEditor({
                   }}
                 />
               </SiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "uom") {
             return (
+              <TamperFieldWarning paths={[`lines.${index}.uom_code`]}>
               <SiFocusStop field="uom" line={index}>
                 <SalesInvoiceLineUomField
                   itemId={row.item_id}
@@ -744,6 +748,7 @@ export default function SalesInvoiceLineEditor({
                   }}
                 />
               </SiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "conversion") {
@@ -757,6 +762,7 @@ export default function SalesInvoiceLineEditor({
           }
           if (columnKey === "warehouse") {
             return (
+              <TamperFieldWarning paths={[`lines.${index}.warehouse`]}>
               <SiFocusStop field="warehouse" line={index}>
                 <SalesInvoiceLineWarehouseField
                   itemId={row.item_id}
@@ -771,6 +777,7 @@ export default function SalesInvoiceLineEditor({
                   onChange={(value) => onPatchLine(index, { warehouse_id: value, lot_id: undefined })}
                 />
               </SiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "lot") {
@@ -786,15 +793,24 @@ export default function SalesInvoiceLineEditor({
                 onChange={(value) => onPatchLine(index, { lot_id: value ?? null })}
               />
             );
-            if (!row.track_lots || readOnly) return lotField;
+            if (!row.track_lots || readOnly) {
+              return (
+                <TamperFieldWarning paths={[`lines.${index}.lot`]}>
+                  {lotField}
+                </TamperFieldWarning>
+              );
+            }
             return (
+              <TamperFieldWarning paths={[`lines.${index}.lot`]}>
               <SiFocusStop field="lot" line={index}>
                 {lotField}
               </SiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "unit_price") {
             return (
+              <TamperFieldWarning paths={[`lines.${index}.unit_price`]}>
               <SiFocusStop field="unit_price" line={index}>
                 <LinePriceInput
                   line={row}
@@ -805,10 +821,12 @@ export default function SalesInvoiceLineEditor({
                   onChange={(value) => onPatchLine(index, manualLinePrice(value, pricing.rate))}
                 />
               </SiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "discount_percent") {
             return (
+              <TamperFieldWarning paths={[`lines.${index}.discount_percent`, `lines.${index}.discount_amount`]}>
               <SiFocusStop field="discount" line={index}>
                 <TenantNumberInput
                   kind="quantity"
@@ -821,6 +839,7 @@ export default function SalesInvoiceLineEditor({
                   onChange={(value) => onPatchLine(index, { discount_percent: value ?? 0 })}
                 />
               </SiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "tax_rate") {
@@ -838,11 +857,13 @@ export default function SalesInvoiceLineEditor({
                   customerExempt: taxContext.customerExempt,
                 });
             return (
+              <TamperFieldWarning paths={[`lines.${index}.tax_rate`]}>
               <span className="item-lines-readonly-uom">
                 {taxRate != null
                   ? `${formatTenantNumber(taxRate, { decimals: 4, trimTrailingZeros: true })}%`
                   : "\u2014"}
               </span>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "line_total") {
@@ -869,12 +890,15 @@ export default function SalesInvoiceLineEditor({
               : null;
             const lineTotal = readOnly ? row.line_total : live?.line_total;
             return (
+              <TamperFieldWarning paths={[`lines.${index}.line_total`, `lines.${index}.line_subtotal`, `lines.${index}.tax_amount`]}>
               <span className="item-lines-readonly-uom">
                 {lineTotal != null ? formatTenantMoney(lineTotal) : "\u2014"}
               </span>
+              </TamperFieldWarning>
             );
           }
           return (
+            <TamperFieldWarning paths={[`lines.${index}.quantity`]}>
             <SiFocusStop field="quantity" line={index}>
               <TenantNumberInput
                 kind="quantity"
@@ -886,6 +910,7 @@ export default function SalesInvoiceLineEditor({
                 onChange={(value) => onPatchLine(index, { quantity: value ?? undefined })}
               />
             </SiFocusStop>
+            </TamperFieldWarning>
           );
         }}
       />

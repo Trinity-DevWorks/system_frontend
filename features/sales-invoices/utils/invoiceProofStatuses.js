@@ -120,3 +120,77 @@ export function invoiceProofStatusTagColor(status) {
   }
   return "default";
 }
+
+/**
+ * Field labels from InvoiceProofDisclosure.fields, used to name a tampered leaf.
+ * @param {unknown} messages
+ * @returns {Record<string, string>}
+ */
+export function disclosureFieldLabels(messages) {
+  const block = messages && typeof messages === "object" ? messages.InvoiceProofDisclosure : null;
+  const fields = block && typeof block === "object" ? /** @type {{ fields?: unknown }} */ (block).fields : null;
+  return fields && typeof fields === "object" ? /** @type {Record<string, string>} */ (fields) : {};
+}
+
+/**
+ * The line shown on a tampered invoice.
+ * `snapshot` names the leaves that no longer match the seal.
+ * `chain` means the stored copy still matches and the blockchain hash is different.
+ *
+ * @param {(key: string, values?: Record<string, string | number>) => string} t
+ * @param {Record<string, string>} labels
+ * @param {unknown} reason
+ * @param {unknown} paths
+ */
+export function describeTamper(t, labels, reason, paths) {
+  if (reason === "chain") return t("tamperChain");
+  if (reason !== "snapshot") return t("verifySuccessTampered");
+  const names = [];
+  const list = Array.isArray(paths) ? paths : [];
+  for (const path of list) {
+    const label = labelTamperPath(String(path), labels, t);
+    if (label !== "") names.push(label);
+  }
+  if (names.length === 0) return t("tamperSnapshot");
+  if (names.length === 1) return t("tamperField", { field: names[0] });
+  return t("tamperFields", { fields: quoteTamperNames(names, t) });
+}
+
+/**
+ * @param {(key: string, values?: Record<string, string | number>) => string} t
+ * @param {Record<string, string>} labels
+ * @param {string} path
+ */
+export function tamperFieldSentence(t, labels, path) {
+  return t("tamperField", { field: labelTamperPath(path, labels, t) });
+}
+
+/**
+ * @param {string[]} names
+ * @param {(key: string, values?: Record<string, string | number>) => string} t
+ */
+function quoteTamperNames(names, t) {
+  const quoted = names.map((name) => `"${name}"`);
+  if (quoted.length === 2) return `${quoted[0]} ${t("tamperAnd")} ${quoted[1]}`;
+  return `${quoted.slice(0, -1).join(", ")}, ${t("tamperAnd")} ${quoted[quoted.length - 1]}`;
+}
+
+/**
+ * @param {string} path
+ * @param {Record<string, string>} labels
+ * @param {(key: string, values?: Record<string, string | number>) => string} t
+ */
+function labelTamperPath(path, labels, t) {
+  const segments = path.split(".").filter((part) => part !== "");
+  const parts = [];
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    if (segment === "lines" && /^\d+$/.test(segments[index + 1] ?? "")) continue;
+    if (/^\d+$/.test(segment)) {
+      parts.push(t("tamperLine", { n: Number(segment) + 1 }));
+      continue;
+    }
+    parts.push(typeof labels[segment] === "string" ? labels[segment] : segment);
+  }
+  return parts.join(" ");
+}

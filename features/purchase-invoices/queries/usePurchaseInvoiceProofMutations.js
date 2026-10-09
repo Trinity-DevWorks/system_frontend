@@ -5,10 +5,24 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { BuyerApprovalError, sendBuyerApproval, sendBuyerDispute } from "@/lib/invoice-registry-buyer-approval";
 import { sendBuyerSafeApproval, sendBuyerSafeDispute } from "@/lib/invoice-registry-buyer-safe";
 import { recordPurchaseInvoiceDispute, verifyPurchaseInvoice } from "../api/purchaseInvoices.api";
+import { describeTamper, disclosureFieldLabels } from "@/features/sales-invoices/utils/invoiceProofStatuses";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMessages } from "next-intl";
 import { useCallback } from "react";
 
 const ROW_PROOF_MESSAGE_KEY = "purchase-invoice-row-proof";
+
+/**
+ * A supplier can dispute only before approving, so an empty approval time means they disputed.
+ * After that approval, this company is the buyer.
+ * @param {(key: string) => string} t
+ * @param {unknown} result
+ */
+function disputedProofMessage(t, result) {
+  const approvedAt = result && typeof result === "object" ? result.supplier_approved_at : null;
+  const supplierDisputed = typeof approvedAt !== "string" || approvedAt.trim() === "";
+  return supplierDisputed ? t("verifySuccessDisputedBySupplier") : t("verifySuccessDisputedByYou");
+}
 
 /**
  * @param {(key: string) => string} t
@@ -39,22 +53,26 @@ function buyerWalletErrorDescription(t, tSales, tApiErrors, err, fallback) {
  */
 export function usePurchaseInvoiceProofMutations({ message, notification, t, tSales, tApiErrors }) {
   const queryClient = useQueryClient();
+  const fieldLabels = disclosureFieldLabels(useMessages());
 
   const notifyManualProofCheck = useCallback(
     (result) => {
       const status = result && typeof result === "object" ? result.status : null;
       if (status === "verified") message.success(tSales("verifySuccessVerified"));
       else if (status === "tampered") {
-        notification.error({ title: tSales("proofStatusTampered"), description: tSales("verifySuccessTampered") });
+        notification.error({
+          title: tSales("proofStatusTampered"),
+          description: describeTamper(tSales, fieldLabels, result.tamper_reason, result.tampered_fields),
+        });
       } else if (status === "pending_chain") message.info(tSales("verifySuccessPendingChain"));
       else if (status === "waiting_company") message.info(t("verifySuccessWaitingSupplier"));
       else if (status === "waiting_buyer") message.info(t("verifySuccessWaitingBuyer"));
       else if (status === "fully_approved") message.success(tSales("verifySuccessFullyApproved"));
       else if (status === "revoked") message.info(tSales("verifySuccessRevoked"));
-      else if (status === "disputed") message.warning(tSales("verifySuccessDisputed"));
+      else if (status === "disputed") message.warning(disputedProofMessage(t, result));
       else message.warning(tSales("verifySuccessNotRegistered"));
     },
-    [message, notification, t, tSales],
+    [message, notification, t, tSales, fieldLabels],
   );
 
   const storeProof = useCallback(

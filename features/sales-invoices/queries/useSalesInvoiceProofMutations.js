@@ -5,7 +5,9 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { BuyerApprovalError } from "@/lib/invoice-registry-buyer-approval";
 import { sendSupplierApproval } from "@/lib/invoice-registry-supplier-safe";
 import { verifySalesInvoice } from "../api/salesInvoices.api";
+import { describeTamper, disclosureFieldLabels } from "../utils/invoiceProofStatuses";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMessages } from "next-intl";
 import { useCallback } from "react";
 
 const ROW_PROOF_MESSAGE_KEY = "sales-invoice-row-proof";
@@ -22,6 +24,7 @@ const ROW_PROOF_MESSAGE_KEY = "sales-invoice-row-proof";
  */
 export function useSalesInvoiceProofMutations({ message, notification, t, tApiErrors }) {
   const queryClient = useQueryClient();
+  const fieldLabels = disclosureFieldLabels(useMessages());
 
   const storeProof = useCallback(
     (id, result) => {
@@ -40,7 +43,7 @@ export function useSalesInvoiceProofMutations({ message, notification, t, tApiEr
       } else if (status === "tampered") {
         notification.error({
           title: t("proofStatusTampered"),
-          description: t("verifySuccessTampered"),
+          description: describeTamper(t, fieldLabels, result.tamper_reason, result.tampered_fields),
         });
       } else if (status === "pending_chain") {
         message.warning(t("verifySuccessPendingChain"));
@@ -58,7 +61,7 @@ export function useSalesInvoiceProofMutations({ message, notification, t, tApiEr
         message.warning(t("verifySuccessNotRegistered"));
       }
     },
-    [message, notification, t],
+    [message, notification, t, fieldLabels],
   );
 
   const verifyMutation = useMutation({

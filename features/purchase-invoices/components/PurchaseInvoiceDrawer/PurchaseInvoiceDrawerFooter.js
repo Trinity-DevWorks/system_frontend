@@ -5,8 +5,11 @@ import { postedByDisplayName } from "./PurchaseInvoiceDrawerHeaderMeta";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import { DownOutlined, WarningOutlined } from "@ant-design/icons";
 import { Alert, Button, Dropdown, Space, Tag, Tooltip, Typography } from "antd";
+import InvoicePdfDownloadButton from "@/features/sales-invoices/components/InvoicePdfDownloadButton";
+import { fetchPurchaseInvoicePdf } from "../../api/purchaseInvoices.api";
 import SalesInvoiceBuyerLinkButton from "@/features/sales-invoices/components/SalesInvoiceDrawer/SalesInvoiceBuyerLinkButton";
 import SalesInvoiceProofDisclosureButton from "@/features/sales-invoices/components/SalesInvoiceDrawer/SalesInvoiceProofDisclosureButton";
+import { attestationSideLabelKey } from "@/features/sales-invoices/utils/invoiceAttestationSides";
 import { getPurchaseInvoiceProofStatusLabel, invoiceProofStatusTagColor, shareProofBlockReason } from "@/features/sales-invoices/utils/invoiceProofStatuses";
 
 /**
@@ -83,22 +86,24 @@ function FooterChainTimes({
         attestation.attested_at,
         ATTESTATION_LABEL_KEYS[attestation.role],
         attestation.verifier,
-        `attestation-${attestation.verifier}`,
+        `attestation-${attestation.party_side === "buyer" ? "buyer" : "supplier"}-${attestation.verifier}`,
         attestation.verifier_name,
+        attestationSideLabelKey(attestation.party_side, "buyer"),
       ]),
   ].filter(([value]) => typeof value === "string" && value !== "");
   if (items.length === 0) return null;
 
   return (
     <>
-      {items.map(([value, key, wallet, itemKey, name]) => {
+      {items.map(([value, key, wallet, itemKey, name, sideKey]) => {
         const when = formatTenantDateTime(value) || "\u2014";
         const whoName = typeof name === "string" ? name.trim() : "";
         const who = whoName || shortAddress(wallet);
+        const factLabel = sideKey ? `${label(key)} · ${label(sideKey)}` : label(key);
         return (
           <FooterFact
             key={itemKey}
-            label={label(key)}
+            label={factLabel}
             value={when}
             who={who}
             wallet={wallet}
@@ -212,6 +217,7 @@ export default function PurchaseInvoiceDrawerFooter({
   submitting,
   saveDisabled,
   postDisabled,
+  postDisabledReason = "",
   showDelete,
   showReverse = false,
   reverseDisabled = false,
@@ -228,6 +234,7 @@ export default function PurchaseInvoiceDrawerFooter({
   showVerify = false,
   verifying = false,
   proofStatus = null,
+  tamperMessage = null,
   chainRegisteredAt = null,
   chainSupplierApprovedAt = null,
   chainBuyerApprovedAt = null,
@@ -256,6 +263,8 @@ export default function PurchaseInvoiceDrawerFooter({
   reissueDisabled = false,
   reissueDisabledReason = "",
   onReissue,
+  pdfInvoiceId = null,
+  pdfInvoiceNumber = null,
   onVerify,
   replacesInvoice = null,
   replacedByInvoice = null,
@@ -271,7 +280,9 @@ export default function PurchaseInvoiceDrawerFooter({
   });
 
   let proofHint = null;
-  if (proofStatus === "waiting_company" && !chainSupplierWallet && supplierWalletSaved !== null) {
+  if (tamperMessage) {
+    proofHint = { text: tamperMessage };
+  } else if (proofStatus === "waiting_company" && !chainSupplierWallet && supplierWalletSaved !== null) {
     proofHint = supplierWalletSaved
       ? { text: t("proofHintSupplierWalletSyncing") }
       : {
@@ -340,6 +351,7 @@ export default function PurchaseInvoiceDrawerFooter({
             invoiceNumber={vendorLinkInvoiceNumber}
             disabled={submitting || shareProofBlockReason(t, proofStatus) != null}
             disabledReason={shareProofBlockReason(t, proofStatus)}
+            audience="purchase"
             fetchFields={fetchProofFields}
             createDisclosure={createProofDisclosure}
           />
@@ -371,6 +383,17 @@ export default function PurchaseInvoiceDrawerFooter({
       ) : null}
     </div>
   );
+  const pdfButton = (
+    <InvoicePdfDownloadButton
+      invoiceId={pdfInvoiceId}
+      invoiceNumber={pdfInvoiceNumber}
+      label={t("actionDownloadPdf")}
+      failedLabel={t("pdfFailed")}
+      disabled={submitting}
+      fetchPdf={fetchPurchaseInvoicePdf}
+    />
+  );
+
   const hint = showVerify ? <FooterProofHint hint={proofHint} /> : null;
   const dispute = showVerify && tSales ? <FooterDisputeReason t={t} tSales={tSales} reason={chainDisputeReason} /> : null;
 
@@ -381,6 +404,7 @@ export default function PurchaseInvoiceDrawerFooter({
           {facts}
           <div className="invoice-drawer-footer-actions">
             {proofControls}
+            {pdfButton}
             <Button className="shrink-0" onClick={forceClose}>
               {t("drawerClose")}
             </Button>
@@ -416,6 +440,7 @@ export default function PurchaseInvoiceDrawerFooter({
       <div className="invoice-drawer-footer-row">
         {facts}
         <div className="invoice-drawer-footer-actions">
+      {pdfButton}
       {showDelete ? (
         <Button className="shrink-0" danger disabled={submitting} onClick={onDelete}>
           {t("actionDelete")}
@@ -439,7 +464,11 @@ export default function PurchaseInvoiceDrawerFooter({
             disabled={postDisabled || submitting}
             loading={submitting}
             onClick={() => onPost(lastPostIntent)}
-            title={`${(postIntentLabel ? postIntentLabel(lastPostIntent) : t("actionPost"))} (Ctrl+Shift+Enter)`}
+            title={
+              postDisabled && postDisabledReason
+                ? postDisabledReason
+                : `${(postIntentLabel ? postIntentLabel(lastPostIntent) : t("actionPost"))} (Ctrl+Shift+Enter)`
+            }
           >
             {postIntentLabel ? postIntentLabel(lastPostIntent) : t("actionPost")}
           </Button>

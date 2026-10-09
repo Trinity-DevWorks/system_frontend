@@ -36,7 +36,28 @@ export function purchaseInvoiceHasPayments(record) {
 /**
  * @param {unknown} record
  */
-export function purchaseInvoiceCanReverse(record) {
+/**
+ * A linked invoice whose seal is waiting for this buyer must be disputed before reverse.
+ * @param {unknown} record
+ * @param {string | null | undefined} [proofStatus]
+ */
+export function purchaseInvoiceMustDisputeBeforeReverse(record, proofStatus) {
+  if (!record || typeof record !== "object") return false;
+  const row = /** @type {Record<string, unknown>} */ (record);
+  if (row.linked_proof_id == null || row.linked_proof_id === "") return false;
+  const chain = row.chain_status && typeof row.chain_status === "object"
+    ? /** @type {{ status?: unknown }} */ (row.chain_status).status
+    : null;
+  const status = proofStatus ?? (typeof chain === "string" ? chain : null);
+  return status === "waiting_buyer";
+}
+
+/**
+ * @param {unknown} record
+ * @param {string | null | undefined} [proofStatus]
+ */
+export function purchaseInvoiceCanReverse(record, proofStatus) {
+  if (purchaseInvoiceMustDisputeBeforeReverse(record, proofStatus)) return false;
   if (record && typeof record === "object" && typeof record.can_reverse === "boolean") {
     return record.can_reverse;
   }
@@ -47,10 +68,24 @@ export function purchaseInvoiceCanReverse(record) {
  * @param {(key: string) => string} t
  * @param {unknown} record
  */
-export function purchaseInvoiceReverseDisabledReason(t, record) {
-  if (purchaseInvoiceCanReverse(record)) return "";
+/**
+ * @param {(key: string) => string} t
+ * @param {unknown} record
+ * @param {string | null | undefined} [proofStatus]
+ */
+export function purchaseInvoiceReverseDisabledReason(t, record, proofStatus) {
+  if (purchaseInvoiceMustDisputeBeforeReverse(record, proofStatus)) return t("reverseDisabledDisputeFirst");
+  if (purchaseInvoiceCanReverse(record, proofStatus)) return "";
   if (purchaseInvoiceHasPayments(record)) return t("reverseDisabledHasPayments");
   return "";
+}
+
+/**
+ * Supplier approval is on chain when the seal is waiting for the buyer, or already fully approved.
+ * @param {string | null | undefined} status
+ */
+export function linkedPurchaseProofAllowsPost(status) {
+  return status === "waiting_buyer" || status === "fully_approved";
 }
 
 /**

@@ -38,6 +38,13 @@ export function getInvoiceVerifierTableColumns(t, actions = {}) {
       render: (role) => <Tag color={INVOICE_VERIFIER_ROLE_COLORS[role]}>{t(`roles.${role}`)}</Tag>,
     },
     {
+      title: t("columnActsFor"),
+      dataIndex: "party_side",
+      key: "party_side",
+      width: 140,
+      render: (side) => t(side === "buyer" ? "actsFor.buyer" : "actsFor.supplier"),
+    },
+    {
       title: t("columnWallet"),
       dataIndex: "wallet_address",
       key: "wallet_address",

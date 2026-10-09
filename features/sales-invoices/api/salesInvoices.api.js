@@ -1,4 +1,4 @@
-import { tenantRequest } from "@/lib/axios";
+import { tenantApiClient, tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
 
 /**
@@ -84,6 +84,8 @@ export function reissueSalesInvoice(invoiceId) {
  *   snapshot_intact?: boolean | null;
  *   live_invoice_matches?: boolean | null; // diagnostic; does not change status
  *   chain_matches?: boolean | null;
+ *   tamper_reason?: "snapshot" | "chain" | null;
+ *   tampered_fields?: string[];
  *   chain_id?: number | null;
  *   contract_address?: string | null;
  *   supplier_wallet?: string | null;
@@ -258,6 +260,52 @@ export function recordInvoiceProofDispute(invoiceId, link = {}, body) {
  * @param {string} invoiceId
  * @returns {Promise<{ url?: string; exp?: number; sig?: string }>}
  */
+/**
+ * @param {string} invoiceId
+ * @returns {Promise<Blob>}
+ */
+export async function fetchSalesInvoicePdf(invoiceId) {
+  const res = await tenantApiClient.get(`sales-invoices/${invoiceId}/pdf`, {
+    responseType: "blob",
+    timeout: 120_000,
+  });
+  return res.data;
+}
+
+/**
+ * Buyer portal PDF. Requires the unlocked portal session.
+ * @param {string} invoiceId
+ * @param {{ exp?: unknown; sig?: unknown; session: string; address: string }} link
+ * @returns {Promise<Blob>}
+ */
+export async function fetchBuyerPortalInvoicePdf(invoiceId, link) {
+  const qs = new URLSearchParams();
+  if (link.exp != null && String(link.exp) !== "") qs.set("exp", String(link.exp));
+  if (typeof link.sig === "string" && link.sig.trim() !== "") qs.set("sig", link.sig.trim());
+  qs.set("session", link.session);
+  qs.set("address", link.address);
+  const res = await tenantApiClient.get(`proofs/${invoiceId}/pdf?${qs.toString()}`, {
+    responseType: "blob",
+    timeout: 120_000,
+  });
+  return res.data;
+}
+
+/**
+ * @param {Blob} blob
+ * @param {string} filename
+ */
+export function saveInvoicePdfBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 export function createBuyerPortalLink(invoiceId) {
   return tenantRequest("POST", `sales-invoices/${invoiceId}/buyer-portal-link`);
 }

@@ -1,16 +1,20 @@
 "use client";
 
 import AuthSplitShell from "@/features/auth/components/AuthSplitShell";
+import { attestationSideLabelKey, visibleAttestations } from "../utils/invoiceAttestationSides";
 import { invoiceProofStatusTagColor } from "../utils/invoiceProofStatuses";
 import { useInvoiceProofPortalQuery } from "../queries/useInvoiceProofPortalQuery";
-import { fetchInvoiceProofPortal, recordInvoiceProofDispute, resumeInvoiceProofPortal, unlockInvoiceProofPortal } from "../api/salesInvoices.api";
+import { fetchBuyerPortalInvoicePdf, fetchInvoiceProofPortal, recordInvoiceProofDispute, resumeInvoiceProofPortal, unlockInvoiceProofPortal } from "../api/salesInvoices.api";
+import InvoicePdfDownloadButton from "../components/InvoicePdfDownloadButton";
 import { hasBuyerPortalLinkStamp } from "../utils/invoiceProofPortalUrl";
 import { BuyerApprovalError, sendBuyerApproval, sendBuyerDispute } from "@/lib/invoice-registry-buyer-approval";
-import { sendSupplierApproval } from "@/lib/invoice-registry-supplier-safe";
+import { sendSupplierApproval, sendSupplierDispute } from "@/lib/invoice-registry-supplier-safe";
 import {
   fetchPurchaseProofPortal,
+  recordPurchaseProofDispute,
   resumePurchaseProofPortal,
   unlockPurchaseProofPortal,
+  fetchVendorPortalInvoicePdf,
 } from "@/features/purchase-invoices/api/purchaseInvoices.api";
 import { sendBuyerSafeApproval, sendBuyerSafeDispute } from "@/lib/invoice-registry-buyer-safe";
 import {
@@ -187,16 +191,30 @@ function PortalInvoiceLine({ line, currencyCode, tInvoices }) {
 }
 
 /**
+ * A supplier can dispute only before approving, so an empty approval time means they disputed.
+ * @param {string | null | undefined} supplierApprovedAt
+ */
+function supplierDisputed(supplierApprovedAt) {
+  return typeof supplierApprovedAt !== "string" || supplierApprovedAt.trim() === "";
+}
+
+/**
  * @param {string | null | undefined} status
  * @param {(key: string) => string} t
  * @param {boolean} asSupplier
+ * @param {string | null | undefined} supplierApprovedAt
  */
-function statusHint(t, status, asSupplier) {
+function statusHint(t, status, asSupplier, supplierApprovedAt) {
   if (status === "waiting_company") return asSupplier ? t("hintWaitingBuyer") : t("hintWaitingCompany");
   if (status === "waiting_buyer") return asSupplier ? t("hintWaitingCompanyAfterYou") : t("hintWaitingBuyer");
   if (status === "fully_approved") return t("hintFullyApproved");
   if (status === "revoked") return t("hintRevoked");
-  if (status === "disputed") return asSupplier ? t("hintDisputedByBuyer") : t("hintDisputed");
+  if (status === "disputed") {
+    if (supplierDisputed(supplierApprovedAt)) {
+      return asSupplier ? t("hintDisputed") : t("hintDisputedBySupplier");
+    }
+    return asSupplier ? t("hintDisputedByBuyer") : t("hintDisputed");
+  }
   if (status === "tampered") return t("hintTampered");
   if (status === "pending_chain") return t("hintPendingChain");
   if (status === "not_registered") return t("hintNotRegistered");
@@ -391,7 +409,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
       : null;
   const proof = invoice && typeof invoice === "object" && invoice.locked !== true ? invoice : null;
   const status = typeof proof?.status === "string" ? proof.status : null;
-  const hint = statusHint(t, status, isVendor);
+  const hint = statusHint(t, status, isVendor, proof?.supplier_approved_at);
   const errorCode = portalQuery.isError ? getApiErrorCode(portalQuery.error) : null;
   const currencyCode = typeof proof?.currency_code === "string" ? proof.currency_code : null;
   const lines = Array.isArray(proof?.lines) ? proof.lines : [];
@@ -502,7 +520,9 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
             ...current,
             status: "waiting_buyer",
             can_approve_as_company: false,
+            can_dispute_as_supplier: false,
             eip712: null,
+            dispute_eip712: null,
             supplier_approved_at: stampedAt ?? current.supplier_approved_at,
           };
         }
@@ -527,11 +547,32 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
       if (reason === "") throw new BuyerApprovalError("failed");
       const chainId = Number(proof?.chain_id);
       const contractAddress = typeof proof?.contract_address === "string" ? proof.contract_address : "";
-      const buyerWallet = typeof proof?.buyer_wallet === "string" ? proof.buyer_wallet : "";
       const eip712 = proof?.dispute_eip712 && typeof proof.dispute_eip712 === "object" ? proof.dispute_eip712 : null;
-      if (!Number.isFinite(chainId) || chainId <= 0 || contractAddress === "" || buyerWallet === "" || eip712 == null) {
+      if (!Number.isFinite(chainId) || chainId <= 0 || contractAddress === "" || eip712 == null) {
         throw new BuyerApprovalError("failed");
       }
+      if (isVendor) {
+        const supplierWallet = typeof proof?.supplier_wallet === "string" ? proof.supplier_wallet : "";
+        if (supplierWallet === "") throw new BuyerApprovalError("failed");
+        const sent = await sendSupplierDispute({
+          chainId,
+          contractAddress,
+          supplierWallet,
+          eip712,
+          reason,
+          blockchainNetwork: typeof proof?.blockchain_network === "string" ? proof.blockchain_network : null,
+          safeTxServiceUrl: typeof proof?.safe_tx_service_url === "string" ? proof.safe_tx_service_url : null,
+          safeApiKey: typeof proof?.safe_api_key === "string" ? proof.safe_api_key : null,
+        });
+        if (sent.status === "proposed") return { proposed: true, result: null };
+        const result = await recordPurchaseProofDispute(validId, portalLink, {
+          reason,
+          tx_hash: sent.txHash ?? "",
+        });
+        return { proposed: false, result };
+      }
+      const buyerWallet = typeof proof?.buyer_wallet === "string" ? proof.buyer_wallet : "";
+      if (buyerWallet === "") throw new BuyerApprovalError("failed");
       let txHash = "";
       if (unlockedBy?.buyerIsSafe) {
         const sent = await sendBuyerSafeDispute({ chainId, contractAddress, buyerWallet, eip712, reason });
@@ -721,11 +762,27 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
               {proof.customer_name ? ` · ${proof.customer_name}` : ""}
             </div>
           </div>
-          {status ? (
-            <Tag className="mt-1 shrink-0" color={invoiceProofStatusTagColor(status)}>
-              {portalStatusLabel(t, status, isVendor)}
-            </Tag>
-          ) : null}
+          <div className="mt-1 flex shrink-0 flex-col items-end gap-2">
+            {status ? (
+              <Tag className="shrink-0" color={invoiceProofStatusTagColor(status)}>
+                {portalStatusLabel(t, status, isVendor)}
+              </Tag>
+            ) : null}
+            {unlockedBy ? (
+              <InvoicePdfDownloadButton
+                invoiceId={validId}
+                invoiceNumber={typeof proof.invoice_number === "string" ? proof.invoice_number : null}
+                label={t("actionDownloadPdf")}
+                failedLabel={t("pdfFailed")}
+                fetchPdf={(id) => {
+                  const session = readPortalSession(portalRole);
+                  if (!session) return Promise.reject(new Error("session"));
+                  const link = { ...portalLink, session: session.token, address: unlockedBy.address };
+                  return isVendor ? fetchVendorPortalInvoicePdf(id, link) : fetchBuyerPortalInvoicePdf(id, link);
+                }}
+              />
+            ) : null}
+          </div>
         </div>
         <div className="mb-6 flex flex-col gap-5">
           {hint ? (
@@ -770,7 +827,26 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
                 </p>
               ) : null}
             </div>
-            {formatTenantDateTime(proof.financed_at) ? (
+            {visibleAttestations(proof.attestations, isVendor ? "buyer" : "supplier").map((attestation) => (
+              <div key={`${attestation.party_side}-${attestation.role}-${attestation.verifier}`}>
+                <div className="text-[var(--ant-color-text-secondary)]">
+                  {tInvoices(
+                    attestation.role === "tax_authority"
+                      ? "chainAttestedTaxAuthority"
+                      : attestation.role === "financier"
+                        ? "chainAttestedFinancier"
+                        : "chainAttestedAuditor",
+                  )}
+                  {" · "}
+                  {t(attestationSideLabelKey(attestation.party_side, isVendor ? "supplier" : "buyer"))}
+                </div>
+                <div className="mt-0.5 font-medium">{formatTenantDateTime(attestation.attested_at) || "—"}</div>
+                {typeof attestation.verifier_name === "string" && attestation.verifier_name.trim() !== "" ? (
+                  <div className="mt-0.5 text-xs text-[var(--ant-color-text-secondary)]">{attestation.verifier_name}</div>
+                ) : null}
+              </div>
+            ))}
+            {!isVendor && formatTenantDateTime(proof.financed_at) ? (
               <div>
                 <div className="flex items-center gap-1 text-[var(--ant-color-text-secondary)]">
                   {t("financedAt")}
@@ -890,7 +966,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
           <Button onClick={() => void refreshPortal()} loading={portalQuery.isFetching || unlockMutation.isPending}>
             {t("refresh")}
           </Button>
-          {proof.can_dispute_as_buyer ? (
+          {proof.can_dispute_as_buyer || proof.can_dispute_as_supplier ? (
             <Button
               danger
               loading={disputeMutation.isPending}

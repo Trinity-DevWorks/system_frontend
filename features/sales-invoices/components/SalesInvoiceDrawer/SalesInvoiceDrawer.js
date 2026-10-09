@@ -10,6 +10,7 @@ import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import { visibleAttestations } from "../../utils/invoiceAttestationSides";
 import { fetchSalesInvoice, verifySalesInvoice } from "../../api/salesInvoices.api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
@@ -20,7 +21,7 @@ import { useCompanyProfile } from "@/features/settings/queries/companyProfile";
 import { useRouter } from "@/i18n/navigation";
 import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
 import { App, Form } from "antd";
-import { useTranslations } from "next-intl";
+import { useTranslations, useMessages } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useSalesInvoiceDrawerKeyboard,
@@ -35,6 +36,8 @@ import {
 } from "../../utils/salesInvoiceStatuses";
 import {
   INVOICE_CHAIN_PENDING_POLL_MS,
+  describeTamper,
+  disclosureFieldLabels,
   invoiceProofShouldPoll,
   isInvoiceChainPending,
 } from "../../utils/invoiceProofStatuses";
@@ -43,6 +46,7 @@ import SalesInvoiceDrawerForm from "./SalesInvoiceDrawerForm";
 import SalesInvoiceDrawerHeaderMeta from "./SalesInvoiceDrawerHeaderMeta";
 import SalesInvoiceLineEditor from "./SalesInvoiceLineEditor";
 import SalesInvoiceTotals from "./SalesInvoiceTotals";
+import { InvoiceTamperProvider, TamperBesideLabel } from "../InvoiceTamper/InvoiceTamperMark";
 import { rememberRecentSelectorOption } from "@/lib/recentSelectorOptions";
 import {
   areSalesInvoiceLinesDirty,
@@ -297,6 +301,15 @@ export default function SalesInvoiceDrawer({
   });
   const proofResult = proofEnabled && proofQuery.data && typeof proofQuery.data === "object" ? proofQuery.data : null;
   const proofStatus = typeof proofResult?.status === "string" ? proofResult.status : null;
+  const messages = useMessages();
+  const tamperMessage =
+    proofStatus === "tampered"
+      ? describeTamper(t, disclosureFieldLabels(messages), proofResult?.tamper_reason, proofResult?.tampered_fields)
+      : null;
+  const tamperedPaths =
+    proofResult?.tamper_reason === "snapshot" && Array.isArray(proofResult?.tampered_fields)
+      ? proofResult.tampered_fields.map(String)
+      : [];
   const previousProofStatusRef = useRef(/** @type {string | null} */ (null));
 
   useEffect(() => {
@@ -328,9 +341,9 @@ export default function SalesInvoiceDrawer({
     tamperedToastKeyRef.current = invoiceId;
     notification.error({
       title: t("proofStatusTampered"),
-      description: t("verifySuccessTampered"),
+      description: tamperMessage || t("verifySuccessTampered"),
     });
-  }, [open, invoiceId, invoiceProofAccess.canView, proofStatus, notification, t]);
+  }, [open, invoiceId, invoiceProofAccess.canView, proofStatus, tamperMessage, notification, t]);
 
   const formValuesWatch = Form.useWatch([], form);
   const customerId = formValuesWatch?.customer_id ?? null;
@@ -924,7 +937,19 @@ export default function SalesInvoiceDrawer({
       : mode === "view" || readOnly
         ? t("drawerTitleView")
         : t("drawerTitleEdit");
-  const title = loadedNumber ? `${baseTitle} # ${loadedNumber}` : baseTitle;
+  const title = loadedNumber ? (
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <span className="truncate">
+        {baseTitle}
+        {" # "}
+      </span>
+      <TamperBesideLabel path="invoice_number">
+        <span>{loadedNumber}</span>
+      </TamperBesideLabel>
+    </span>
+  ) : (
+    baseTitle
+  );
 
   const showDetailLoading = fetchRemoteDetail && detailQuery.isLoading;
   const keyboardEnabled = open && !readOnly && !submitting && !showDetailLoading;
@@ -953,6 +978,7 @@ export default function SalesInvoiceDrawer({
 
   return (
     <>
+    <InvoiceTamperProvider paths={tamperedPaths} labels={disclosureFieldLabels(messages)} t={t}>
     <ResourceCrudDrawer
       title={title}
       open={open}
@@ -1015,6 +1041,7 @@ export default function SalesInvoiceDrawer({
           showVerify={showProofView}
           verifying={verifyMutation.isPending || (proofQuery.isFetching && !proofResult)}
           proofStatus={proofStatus}
+          tamperMessage={tamperMessage}
           chainRegisteredAt={typeof proofResult?.registered_at === "string" ? proofResult.registered_at : null}
           chainSupplierApprovedAt={
             typeof proofResult?.supplier_approved_at === "string" ? proofResult.supplier_approved_at : null
@@ -1026,7 +1053,7 @@ export default function SalesInvoiceDrawer({
           chainDisputeReason={typeof proofResult?.dispute_reason === "string" ? proofResult.dispute_reason : null}
           chainSupplierWallet={typeof proofResult?.supplier_wallet === "string" ? proofResult.supplier_wallet : null}
           chainBuyerWallet={typeof proofResult?.buyer_wallet === "string" ? proofResult.buyer_wallet : null}
-          chainAttestations={Array.isArray(proofResult?.attestations) ? proofResult.attestations : []}
+          chainAttestations={visibleAttestations(proofResult?.attestations, "both")}
           companyWalletSaved={companyWalletSaved}
           buyerWalletSaved={buyerWalletSaved}
           onOpenCompanyProfile={
@@ -1044,6 +1071,8 @@ export default function SalesInvoiceDrawer({
           showBuyerLink={showProofView && isSalesInvoicePosted(effectiveStatus)}
           buyerLinkInvoiceId={invoiceId}
           buyerLinkInvoiceNumber={loadedNumber}
+          pdfInvoiceId={invoiceId}
+          pdfInvoiceNumber={loadedNumber}
           onSave={handleSave}
           onPost={handlePost}
           lastPostIntent={lastPostIntent}
@@ -1116,6 +1145,7 @@ export default function SalesInvoiceDrawer({
         <SalesInvoiceTotals t={t} readOnly={readOnly || submitting} totals={displayTotals} />
       </SalesInvoiceDrawerForm>
     </ResourceCrudDrawer>
+    </InvoiceTamperProvider>
     {!readOnly && customerAccess.canAdd ? (
       <CustomerDrawer
         open={open && customerCreateOpen}

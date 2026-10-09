@@ -17,6 +17,7 @@ export const INVOICE_VERIFIER_CREATE_SAVE_INTENT_EVENT = "invoiceVerifierDrawer:
 export const INVOICE_VERIFIER_DEFAULTS = Object.freeze({
   name: "",
   role: undefined,
+  party_side: "supplier",
   wallet_address: "",
   wallet_type: "wallet",
   email: "",
@@ -87,6 +88,7 @@ export function invoiceVerifierFormValuesToPayload(values, isCreate) {
   return {
     ...payload,
     wallet_address: normalizeScalar(values.wallet_address),
+    party_side: values.party_side === "buyer" ? "buyer" : "supplier",
     wallet_type: values.wallet_type === "safe" ? "safe" : "wallet",
   };
 }

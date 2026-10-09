@@ -9,18 +9,23 @@ import { useResourceAccess } from "@/lib/permissions";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
-import { fetchPurchaseInvoice, verifyPurchaseInvoice } from "../../api/purchaseInvoices.api";
+import { visibleAttestations } from "@/features/sales-invoices/utils/invoiceAttestationSides";
+import { fetchLinkedPurchaseOffer, fetchLinkedPurchaseProof, fetchPurchaseInvoice, importLinkedPurchaseProof, verifyPurchaseInvoice } from "../../api/purchaseInvoices.api";
 import { createVendorPortalLink, createPurchaseInvoiceProofDisclosure, fetchPurchaseInvoiceProofFields } from "../../api/purchaseInvoices.api";
 import { purchaseInvoiceProofQueryKey } from "../../queries/purchaseInvoicesQueryKeys";
 import { usePurchaseInvoiceProofMutations } from "../../queries/usePurchaseInvoiceProofMutations";
 import {
   INVOICE_CHAIN_PENDING_POLL_MS,
+  describeTamper,
+  disclosureFieldLabels,
   invoiceProofShouldPoll,
   isInvoiceChainPending,
 } from "@/features/sales-invoices/utils/invoiceProofStatuses";
 import { purchaseInvoiceProofPortalAbsoluteUrl } from "../../utils/invoiceProofPortalUrl";
 import { fetchGoodsReceipt } from "@/features/stock/api/goodsReceipts.api";
 import { fetchPurchaseOrder } from "@/features/stock/api/purchaseOrders.api";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import SupplierDrawer from "@/features/suppliers/components/SupplierDrawer/SupplierDrawer";
@@ -30,7 +35,7 @@ import { useCompanyProfile } from "@/features/settings/queries/companyProfile";
 import { useRouter } from "@/i18n/navigation";
 import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
 import { App, Form, Input, Modal, Typography } from "antd";
-import { useTranslations } from "next-intl";
+import { useTranslations, useMessages } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePurchaseInvoiceDrawerKeyboard } from "./purchaseInvoiceDrawerKeyboard";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
@@ -38,6 +43,7 @@ import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import {
   isPurchaseInvoiceDraft,
   isPurchaseInvoicePosted,
+  linkedPurchaseProofAllowsPost,
   purchaseInvoiceCanReissue,
   purchaseInvoiceCanReverse,
   purchaseInvoiceReissueDisabledReason,
@@ -52,6 +58,7 @@ import PurchaseInvoiceDrawerForm from "./PurchaseInvoiceDrawerForm";
 import PurchaseInvoiceDrawerHeaderMeta from "./PurchaseInvoiceDrawerHeaderMeta";
 import PurchaseInvoiceLineEditor from "./PurchaseInvoiceLineEditor";
 import PurchaseInvoiceTotals from "./PurchaseInvoiceTotals";
+import { InvoiceTamperProvider, TamperBesideLabel } from "@/features/sales-invoices/components/InvoiceTamper/InvoiceTamperMark";
 import { rememberRecentSelectorOption } from "@/lib/recentSelectorOptions";
 import {
   arePurchaseInvoiceLinesDirty,
@@ -125,6 +132,9 @@ export default function PurchaseInvoiceDrawer({
   const { settings } = useCompanySettings();
   const companyProfile = useCompanyProfile();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const linkedOfferId = searchParams.get("linked_offer");
+  const appliedOfferRef = useRef("");
   const [form] = Form.useForm();
   const [supplierCreateOpen, setSupplierCreateOpen] = useState(false);
   const [linkedDisclosure, setLinkedDisclosure] = useState(/** @type {Record<string, unknown> | null} */ (null));
@@ -291,7 +301,6 @@ export default function PurchaseInvoiceDrawer({
   const readOnly =
     mode === "view" || !isPurchaseInvoiceDraft(effectiveStatus) || (mode === "edit" && !access.canEdit);
   const invoiceRecord = detailQuery.data ?? tableSeedRecord;
-  const reverseEnabled = purchaseInvoiceCanReverse(invoiceRecord);
   const reissueEnabled = purchaseInvoiceCanReissue(invoiceRecord);
   const proofEnabled =
     open &&
@@ -319,6 +328,21 @@ export default function PurchaseInvoiceDrawer({
   });
   const proofResult = proofEnabled && proofQuery.data && typeof proofQuery.data === "object" ? proofQuery.data : null;
   const proofStatus = typeof proofResult?.status === "string" ? proofResult.status : null;
+  const reverseEnabled = purchaseInvoiceCanReverse(invoiceRecord, proofStatus);
+  const messages = useMessages();
+  const tamperMessage =
+    proofStatus === "tampered"
+      ? describeTamper(
+          tSales,
+          disclosureFieldLabels(messages),
+          proofResult?.tamper_reason,
+          proofResult?.tampered_fields,
+        )
+      : null;
+  const tamperedPaths =
+    proofResult?.tamper_reason === "snapshot" && Array.isArray(proofResult?.tampered_fields)
+      ? proofResult.tampered_fields.map(String)
+      : [];
 
   useEffect(() => {
     const previous = previousProofStatusRef.current;
@@ -338,11 +362,35 @@ export default function PurchaseInvoiceDrawer({
     tamperedToastKeyRef.current = invoiceId;
     notification.error({
       title: tSales("proofStatusTampered"),
-      description: tSales("verifySuccessTampered"),
+      description: tamperMessage || tSales("verifySuccessTampered"),
     });
-  }, [open, invoiceId, invoiceProofAccess.canView, proofStatus, notification, tSales]);
+  }, [open, invoiceId, invoiceProofAccess.canView, proofStatus, tamperMessage, notification, tSales]);
 
   const formValuesWatch = Form.useWatch([], form);
+  const linkedDraftProofId =
+    isPurchaseInvoiceDraft(effectiveStatus) && formValuesWatch?.use_linked_proof
+      ? String(formValuesWatch?.linked_proof_id ?? "").trim()
+      : "";
+  const linkedDraftProofReady = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    linkedDraftProofId,
+  );
+  const linkedDraftProofQuery = useQuery({
+    queryKey: ["tenant", "purchase-invoices", "linked-proof", linkedDraftProofId],
+    queryFn: () => fetchLinkedPurchaseProof(linkedDraftProofId),
+    enabled: open && linkedDraftProofReady,
+    retry: false,
+    staleTime: 15_000,
+  });
+  const linkedDraftProofStatus =
+    linkedDraftProofQuery.data && typeof linkedDraftProofQuery.data === "object"
+      ? linkedDraftProofQuery.data.status
+      : null;
+  const linkedSupplierApproved = linkedPurchaseProofAllowsPost(
+    typeof linkedDraftProofStatus === "string" ? linkedDraftProofStatus : "",
+  );
+  const linkedPostWaitingForSupplier =
+    linkedDraftProofReady &&
+    (linkedDraftProofQuery.isPending || linkedDraftProofQuery.isError || !linkedSupplierApproved);
   const supplierId = formValuesWatch?.supplier_id ?? null;
   const supplierReady = supplierId != null && supplierId !== "";
   const currencyId = formValuesWatch?.currency_id ?? null;
@@ -822,6 +870,42 @@ export default function PurchaseInvoiceDrawer({
     [form],
   );
 
+  useEffect(() => {
+    if (!open || mode !== "create" || !linkedOfferId) return;
+    if (appliedOfferRef.current === linkedOfferId) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const offer = await fetchLinkedPurchaseOffer(linkedOfferId);
+        if (cancelled) return;
+        const savedId = offer?.purchase_invoice_id;
+        if (typeof savedId === "string" && savedId !== "") {
+          appliedOfferRef.current = linkedOfferId;
+          router.replace(`/main/purchase-invoices?drawer=${encodeURIComponent(savedId)}&mode=edit`);
+          return;
+        }
+        const disclosure = offer?.disclosure;
+        if (!disclosure || typeof disclosure !== "object") {
+          message.error(t("linkedProofInvalid"));
+          return;
+        }
+        const result = await importLinkedPurchaseProof(disclosure);
+        if (cancelled || !result || typeof result !== "object") return;
+        appliedOfferRef.current = linkedOfferId;
+        handleLinkedProofImported(/** @type {Record<string, unknown>} */ (result), disclosure);
+      } catch (error) {
+        if (!cancelled) {
+          message.error(getLocalizedApiErrorMessage(tApiErrors, error) || t("linkedProofInvalid"));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, mode, linkedOfferId, handleLinkedProofImported, message, router, t, tApiErrors]);
+
   const { saveMutation, postMutation, reverseMutation, reissueMutation, deleteMutation, submitting } = usePurchaseInvoiceDrawerMutations({
     form,
     message,
@@ -1116,7 +1200,19 @@ export default function PurchaseInvoiceDrawer({
       : mode === "view" || readOnly
         ? t("drawerTitleView")
         : t("drawerTitleEdit");
-  const title = loadedNumber ? `${baseTitle} # ${loadedNumber}` : baseTitle;
+  const title = loadedNumber ? (
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <span className="truncate">
+        {baseTitle}
+        {" # "}
+      </span>
+      <TamperBesideLabel path="invoice_number">
+        <span>{loadedNumber}</span>
+      </TamperBesideLabel>
+    </span>
+  ) : (
+    baseTitle
+  );
 
   const showDetailLoading = fetchRemoteDetail && detailQuery.isLoading;
   const keyboardEnabled = open && !readOnly && !submitting && !showDetailLoading;
@@ -1145,6 +1241,7 @@ export default function PurchaseInvoiceDrawer({
 
   return (
     <>
+      <InvoiceTamperProvider paths={tamperedPaths} labels={disclosureFieldLabels(messages)} t={tSales}>
       <ResourceCrudDrawer
         title={title}
         open={open}
@@ -1178,11 +1275,16 @@ export default function PurchaseInvoiceDrawer({
             requestClose={requestClose}
             submitting={submitting}
             saveDisabled={!canSubmitRequired}
-            postDisabled={!canSubmitRequired || !access.canEdit}
+            postDisabled={!canSubmitRequired || !access.canEdit || linkedPostWaitingForSupplier}
+            postDisabledReason={
+              linkedDraftProofReady && linkedDraftProofQuery.isSuccess && !linkedSupplierApproved
+                ? t("postDisabledSupplierNotApproved")
+                : ""
+            }
             showDelete={!readOnly && invoiceId != null && access.canDelete}
             showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
             reverseDisabled={!reverseEnabled}
-            reverseDisabledReason={purchaseInvoiceReverseDisabledReason(t, invoiceRecord)}
+            reverseDisabledReason={purchaseInvoiceReverseDisabledReason(t, invoiceRecord, proofStatus)}
             onReverse={handleReverse}
             postedBy={loadedPostedBy}
             postedAt={loadedPostedAt}
@@ -1195,6 +1297,7 @@ export default function PurchaseInvoiceDrawer({
             showVerify={showProofView}
             verifying={verifyMutation.isPending || (proofQuery.isFetching && !proofResult)}
             proofStatus={proofStatus}
+            tamperMessage={tamperMessage}
             chainRegisteredAt={typeof proofResult?.registered_at === "string" ? proofResult.registered_at : null}
             chainSupplierApprovedAt={
               typeof proofResult?.supplier_approved_at === "string" ? proofResult.supplier_approved_at : null
@@ -1206,7 +1309,10 @@ export default function PurchaseInvoiceDrawer({
             chainDisputeReason={typeof proofResult?.dispute_reason === "string" ? proofResult.dispute_reason : null}
             chainSupplierWallet={typeof proofResult?.supplier_wallet === "string" ? proofResult.supplier_wallet : null}
             chainBuyerWallet={typeof proofResult?.buyer_wallet === "string" ? proofResult.buyer_wallet : null}
-            chainAttestations={Array.isArray(proofResult?.attestations) ? proofResult.attestations : []}
+            chainAttestations={visibleAttestations(
+              proofResult?.attestations,
+              invoiceRecord?.linked_proof_id ? "both" : "buyer",
+            )}
             companyWalletSaved={companyWalletSaved}
             supplierWalletSaved={supplierWalletSaved}
             onOpenCompanyProfile={
@@ -1236,6 +1342,8 @@ export default function PurchaseInvoiceDrawer({
             }
             vendorLinkInvoiceId={invoiceId}
             vendorLinkInvoiceNumber={loadedNumber}
+            pdfInvoiceId={invoiceId}
+            pdfInvoiceNumber={loadedNumber}
             issueVendorLink={createVendorPortalLink}
             vendorAbsoluteUrl={purchaseInvoiceProofPortalAbsoluteUrl}
             fetchProofFields={fetchPurchaseInvoiceProofFields}
@@ -1334,6 +1442,7 @@ export default function PurchaseInvoiceDrawer({
           />
         </PurchaseInvoiceDrawerForm>
       </ResourceCrudDrawer>
+      </InvoiceTamperProvider>
       {!readOnly && supplierAccess.canAdd ? (
         <SupplierDrawer
           open={open && supplierCreateOpen}

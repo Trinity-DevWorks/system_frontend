@@ -21,6 +21,7 @@ import { fetchLinkedPurchaseProof, importLinkedPurchaseProof } from "../../api/p
 import { getPurchaseInvoiceProofStatusLabel } from "@/features/sales-invoices/utils/invoiceProofStatuses";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { PiFocusStop } from "./purchaseInvoiceDrawerKeyboard";
+import { TamperBesideLabel } from "@/features/sales-invoices/components/InvoiceTamper/InvoiceTamperMark";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, App, Col, DatePicker, Form, Input, Row, Select, Switch, Tooltip, Typography, Upload } from "antd";
 import dayjs from "dayjs";
@@ -66,7 +67,7 @@ function LinkedProofPreview({ proofId, t, tSales }) {
       <Alert
         type="error"
         showIcon
-        message={getLocalizedApiErrorMessage(tApiErrors, query.error) || t("linkedProofInvalid")}
+        title={getLocalizedApiErrorMessage(tApiErrors, query.error) || t("linkedProofInvalid")}
       />
     );
   }
@@ -129,7 +130,7 @@ function InvoiceSupplierBoundValue({ name, label, options, placeholder, empty, e
       </Form.Item>
       <Input
         readOnly
-        disabled={!enabled}
+        disabled={!enabled ? true : undefined}
         value={enabled && !loading ? (text || empty) : ""}
         placeholder={placeholder}
       />
@@ -274,7 +275,11 @@ export default function PurchaseInvoiceDrawerForm({
                   <LookupSelectWithCreate
                     form={form}
                     name="supplier_id"
-                    label={<ResourceDrawerFieldLabel text={t("fieldSupplier")} required />}
+                    label={
+                      <TamperBesideLabel path="supplier">
+                        <ResourceDrawerFieldLabel text={t("fieldSupplier")} required />
+                      </TamperBesideLabel>
+                    }
                     rules={[{ required: true, message: t("supplierRequired") }]}
                     readOnly={readOnly || supplierLocked || sealLocked}
                     addNewSentinel={PI_LOOKUP_ADD_SUPPLIER}
@@ -299,13 +304,17 @@ export default function PurchaseInvoiceDrawerForm({
                 <PiFocusStop field="invoice_date">
                   <Form.Item
                     name="invoice_date"
-                    label={<ResourceDrawerFieldLabel text={t("fieldInvoiceDate")} required />}
+                    label={
+                      <TamperBesideLabel path="invoice_date">
+                        <ResourceDrawerFieldLabel text={t("fieldInvoiceDate")} required />
+                      </TamperBesideLabel>
+                    }
                     rules={[{ required: true, message: t("invoiceDateRequired") }]}
                     getValueProps={(value) => ({
                       value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
                     })}
                   >
-                    <DatePicker className="w-full" format={dayjsDatePattern()} disabled={sealLocked} />
+                    <DatePicker className="w-full" format={dayjsDatePattern()} disabled={readOnly || sealLocked} />
                   </Form.Item>
                 </PiFocusStop>
               </Col>
@@ -357,7 +366,11 @@ export default function PurchaseInvoiceDrawerForm({
                 <PiFocusStop field="payment_terms">
                   <InvoiceSupplierBoundValue
                     name="payment_terms_id"
-                    label={<ResourceDrawerFieldLabel text={t("fieldPaymentTerms")} optional />}
+                    label={
+                      <TamperBesideLabel path="payment_terms">
+                        <ResourceDrawerFieldLabel text={t("fieldPaymentTerms")} optional />
+                      </TamperBesideLabel>
+                    }
                     options={paymentTermOptions}
                     placeholder={t("paymentTermsPlaceholder")}
                     empty={"\u2014"}
@@ -370,12 +383,16 @@ export default function PurchaseInvoiceDrawerForm({
                 <PiFocusStop field="due_on">
                   <Form.Item
                     name="due_on"
-                    label={<ResourceDrawerFieldLabel text={t("fieldDueOn")} />}
+                    label={
+                      <TamperBesideLabel path="due_on">
+                        <ResourceDrawerFieldLabel text={t("fieldDueOn")} />
+                      </TamperBesideLabel>
+                    }
                     getValueProps={(value) => ({
                       value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
                     })}
                   >
-                    <DatePicker className="w-full" format={dayjsDatePattern()} allowClear disabled={sealLocked} />
+                    <DatePicker className="w-full" format={dayjsDatePattern()} allowClear disabled={readOnly || sealLocked} />
                   </Form.Item>
                 </PiFocusStop>
               </Col>
@@ -436,7 +453,11 @@ export default function PurchaseInvoiceDrawerForm({
                 <PiFocusStop field="payment_method">
                   <InvoiceSupplierBoundValue
                     name="payment_method_id"
-                    label={<ResourceDrawerFieldLabel text={t("fieldPaymentMethod")} optional />}
+                    label={
+                      <TamperBesideLabel path="payment_method">
+                        <ResourceDrawerFieldLabel text={t("fieldPaymentMethod")} optional />
+                      </TamperBesideLabel>
+                    }
                     options={paymentMethodOptions}
                     placeholder={t("paymentMethodPlaceholder")}
                     empty={"\u2014"}
@@ -449,7 +470,11 @@ export default function PurchaseInvoiceDrawerForm({
                 <PiFocusStop field="warehouse">
                   <Form.Item
                     name="warehouse_id"
-                    label={<ResourceDrawerFieldLabel text={t("fieldWarehouse")} required />}
+                    label={
+                      <TamperBesideLabel path="warehouse">
+                        <ResourceDrawerFieldLabel text={t("fieldWarehouse")} required />
+                      </TamperBesideLabel>
+                    }
                     rules={[{ required: true, message: t("warehouseRequired") }]}
                   >
                     <Select
@@ -460,7 +485,7 @@ export default function PurchaseInvoiceDrawerForm({
                       placeholder={t("warehousePlaceholder")}
                       options={warehouseOptions}
                       loading={warehousesPending}
-                      disabled={warehouseLocked}
+                      disabled={readOnly || warehouseLocked}
                       getPopupContainer={drawerSelectGetPopup}
                     />
                   </Form.Item>
@@ -471,7 +496,14 @@ export default function PurchaseInvoiceDrawerForm({
             <Row gutter={[12, 8]}>
               <Col xs={24} sm={12} md={8}>
                 <PiFocusStop field="currency">
-                  <Form.Item name="currency_id" label={<ResourceDrawerFieldLabel text={t("fieldCurrency")} />}>
+                  <Form.Item
+                    name="currency_id"
+                    label={
+                      <TamperBesideLabel path="currency_code">
+                        <ResourceDrawerFieldLabel text={t("fieldCurrency")} />
+                      </TamperBesideLabel>
+                    }
+                  >
                     <Select
                       showSearch
                       filterOption={purchaseInvoiceSelectFilter}
@@ -479,7 +511,7 @@ export default function PurchaseInvoiceDrawerForm({
                       placeholder={t("currencyPlaceholder")}
                       options={currencyOptions}
                       loading={currenciesPending}
-                      disabled={sealLocked}
+                      disabled={readOnly || sealLocked}
                       getPopupContainer={drawerSelectGetPopup}
                     />
                   </Form.Item>
@@ -496,7 +528,9 @@ export default function PurchaseInvoiceDrawerForm({
                     }
                   >
                     <div className="sales-invoice-exchange-rate-inline">
-                      <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
+                      <TamperBesideLabel path="exchange_rate">
+                        <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
+                      </TamperBesideLabel>
                       <Tooltip title={exchangeRateHelp}>
                         <div className="sales-invoice-exchange-rate-input">
                           <Form.Item

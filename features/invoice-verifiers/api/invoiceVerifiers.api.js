@@ -10,6 +10,7 @@ import { tenantRequest } from "@/lib/axios";
  *   id: string;
  *   name: string;
  *   role: "auditor" | "tax_authority" | "financier";
+ *   party_side: "supplier" | "buyer";
  *   wallet_address: string;
  *   wallet_type: "wallet" | "safe";
  *   email: string | null;

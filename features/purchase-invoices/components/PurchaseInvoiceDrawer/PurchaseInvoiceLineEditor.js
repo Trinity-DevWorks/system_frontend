@@ -25,6 +25,7 @@ import {
   withPurchaseInvoiceLineMismatchFlags,
 } from "../../utils/purchaseInvoiceDrawerUtils";
 import { previewLineAmounts, previewLineTaxRate } from "@/features/sales-invoices/utils/salesInvoiceTax";
+import { TamperFieldWarning } from "@/features/sales-invoices/components/InvoiceTamper/InvoiceTamperMark";
 import {
   usePurchaseInvoiceItemAvailability,
   usePurchaseInvoiceLineUomOptions,
@@ -692,6 +693,7 @@ export default function PurchaseInvoiceLineEditor({
               (item) => row.item_id != null && String(item.value) === String(row.item_id),
             );
             return (
+              <TamperFieldWarning paths={[`lines.${index}.item_code`, `lines.${index}.item_name`, `lines.${index}.description`]}>
               <PiFocusStop field="item" line={index}>
                 <ServerSearchSelect
                   className="w-full"
@@ -732,10 +734,12 @@ export default function PurchaseInvoiceLineEditor({
                   }}
                 />
               </PiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "uom") {
             return (
+              <TamperFieldWarning paths={[`lines.${index}.uom_code`]}>
               <PiFocusStop field="uom" line={index}>
                 <PurchaseInvoiceLineUomField
                   itemId={row.item_id}
@@ -791,6 +795,7 @@ export default function PurchaseInvoiceLineEditor({
                   }}
                 />
               </PiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "conversion") {
@@ -806,10 +811,13 @@ export default function PurchaseInvoiceLineEditor({
             if (sourceLinked) {
               const wh = warehouseOptions.find((w) => Number(w.value) === Number(row.warehouse_id));
               return (
-                <span className="item-lines-readonly-uom">{wh?.label ?? row.warehouse_id ?? "\u2014"}</span>
+                <TamperFieldWarning paths={[`lines.${index}.warehouse`]}>
+                  <span className="item-lines-readonly-uom">{wh?.label ?? row.warehouse_id ?? "\u2014"}</span>
+                </TamperFieldWarning>
               );
             }
             return (
+              <TamperFieldWarning paths={[`lines.${index}.warehouse`]}>
               <PiFocusStop field="warehouse" line={index}>
                 <PurchaseInvoiceLineWarehouseField
                   itemId={row.item_id}
@@ -823,19 +831,28 @@ export default function PurchaseInvoiceLineEditor({
                   onChange={(value) => applyPatch(index, { warehouse_id: value, lot_id: undefined })}
                 />
               </PiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "lot") {
             if (grnLinked) {
               if (!row.track_lots) {
-                return <span className="item-lines-readonly-uom">{"\u2014"}</span>;
+                return (
+                  <TamperFieldWarning paths={[`lines.${index}.lot`]}>
+                    <span className="item-lines-readonly-uom">{"\u2014"}</span>
+                  </TamperFieldWarning>
+                );
               }
               const lotLabel = row.lot_number
                 ? row.expiry_date
                   ? `${row.lot_number} (${row.expiry_date})`
                   : String(row.lot_number)
                 : "\u2014";
-              return <span className="item-lines-readonly-uom">{lotLabel}</span>;
+              return (
+                <TamperFieldWarning paths={[`lines.${index}.lot`]}>
+                  <span className="item-lines-readonly-uom">{lotLabel}</span>
+                </TamperFieldWarning>
+              );
             }
             const lotField = (
               <PurchaseInvoiceLineLotField
@@ -848,15 +865,24 @@ export default function PurchaseInvoiceLineEditor({
                 onChange={(value) => applyPatch(index, { lot_id: value ?? null })}
               />
             );
-            if (!row.track_lots || readOnly) return lotField;
+            if (!row.track_lots || readOnly) {
+              return (
+                <TamperFieldWarning paths={[`lines.${index}.lot`]}>
+                  {lotField}
+                </TamperFieldWarning>
+              );
+            }
             return (
+              <TamperFieldWarning paths={[`lines.${index}.lot`]}>
               <PiFocusStop field="lot" line={index}>
                 {lotField}
               </PiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "unit_price") {
             return (
+              <TamperFieldWarning paths={[`lines.${index}.unit_price`]}>
               <PiFocusStop field="unit_price" line={index}>
                 <div className="flex min-w-0 items-center gap-1">
                   <LinePriceInput
@@ -888,10 +914,12 @@ export default function PurchaseInvoiceLineEditor({
                   ) : null}
                 </div>
               </PiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "discount_percent") {
             return (
+              <TamperFieldWarning paths={[`lines.${index}.discount_percent`, `lines.${index}.discount_amount`]}>
               <PiFocusStop field="discount" line={index}>
                 <TenantNumberInput
                   kind="quantity"
@@ -904,6 +932,7 @@ export default function PurchaseInvoiceLineEditor({
                   onChange={(value) => applyPatch(index, { discount_percent: value ?? 0 })}
                 />
               </PiFocusStop>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "tax_rate") {
@@ -921,11 +950,13 @@ export default function PurchaseInvoiceLineEditor({
                   customerExempt: taxContext.supplierExempt,
                 });
             return (
+              <TamperFieldWarning paths={[`lines.${index}.tax_rate`]}>
               <span className="item-lines-readonly-uom">
                 {taxRate != null
                   ? `${formatTenantNumber(taxRate, { decimals: 4, trimTrailingZeros: true })}%`
                   : "\u2014"}
               </span>
+              </TamperFieldWarning>
             );
           }
           if (columnKey === "line_total") {
@@ -952,12 +983,15 @@ export default function PurchaseInvoiceLineEditor({
               : null;
             const lineTotal = readOnly ? row.line_total : live?.line_total;
             return (
+              <TamperFieldWarning paths={[`lines.${index}.line_total`, `lines.${index}.line_subtotal`, `lines.${index}.tax_amount`]}>
               <span className="item-lines-readonly-uom">
                 {lineTotal != null ? formatTenantMoney(lineTotal) : "\u2014"}
               </span>
+              </TamperFieldWarning>
             );
           }
           return (
+            <TamperFieldWarning paths={[`lines.${index}.quantity`]}>
             <PiFocusStop field="quantity" line={index}>
               <div className="flex min-w-0 items-center gap-1">
                 <TenantNumberInput
@@ -982,6 +1016,7 @@ export default function PurchaseInvoiceLineEditor({
                 ) : null}
               </div>
             </PiFocusStop>
+            </TamperFieldWarning>
           );
         }}
       />

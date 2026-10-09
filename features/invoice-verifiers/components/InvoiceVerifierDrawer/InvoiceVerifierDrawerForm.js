@@ -2,6 +2,7 @@
 
 import WalletAddressField from "@/shared/components/inputs/WalletAddressField";
 import { Form, Input, Select } from "antd";
+import { useEffect } from "react";
 import { INVOICE_VERIFIER_ROLES } from "../../utils/invoiceVerifierDrawerUtils";
 
 /**
@@ -13,8 +14,30 @@ import { INVOICE_VERIFIER_ROLES } from "../../utils/invoiceVerifierDrawerUtils";
  * }} props
  */
 export default function InvoiceVerifierDrawerForm({ form, readOnly, isCreate, t }) {
+  const partySide = Form.useWatch("party_side", form);
+  const roles = partySide === "buyer" ? INVOICE_VERIFIER_ROLES.filter((role) => role !== "financier") : INVOICE_VERIFIER_ROLES;
+
+  useEffect(() => {
+    if (partySide === "buyer" && form.getFieldValue("role") === "financier") {
+      form.setFieldValue("role", undefined);
+    }
+  }, [form, partySide]);
+
   return (
     <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
+      <Form.Item
+        name="party_side"
+        label={t("fieldActsFor")}
+        rules={[{ required: true, message: t("fieldActsForRequired") }]}
+      >
+        <Select
+          disabled={!isCreate}
+          options={[
+            { value: "supplier", label: t("actsFor.supplier") },
+            { value: "buyer", label: t("actsFor.buyer") },
+          ]}
+        />
+      </Form.Item>
       <Form.Item
         name="name"
         label={t("fieldName")}
@@ -26,7 +49,7 @@ export default function InvoiceVerifierDrawerForm({ form, readOnly, isCreate, t 
         <Input autoComplete="off" maxLength={255} />
       </Form.Item>
       <Form.Item name="role" label={t("fieldRole")} rules={[{ required: true, message: t("fieldRoleRequired") }]}>
-        <Select options={INVOICE_VERIFIER_ROLES.map((role) => ({ value: role, label: t(`roles.${role}`) }))} />
+        <Select options={roles.map((role) => ({ value: role, label: t(`roles.${role}`) }))} />
       </Form.Item>
       {isCreate ? (
         <WalletAddressField

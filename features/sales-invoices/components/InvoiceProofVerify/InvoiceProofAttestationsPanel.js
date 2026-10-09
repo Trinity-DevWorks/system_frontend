@@ -9,6 +9,7 @@ import {
   sendAttestation,
   transactionUrl,
 } from "@/lib/invoice-registry-attestations";
+import { attestationSideLabelKey } from "../../utils/invoiceAttestationSides";
 import { useQuery } from "@tanstack/react-query";
 import { App, Alert, Button, Descriptions, Input, Result, Tag, Typography } from "antd";
 import { useFormatter, useTranslations } from "next-intl";
@@ -126,6 +127,7 @@ export default function InvoiceProofAttestationsPanel({
         safeAddress: verifier.safeAddress,
         reference,
         role: verifier.role,
+        partySide: verifier.partySide === "buyer" ? "buyer" : "supplier",
         statement,
         onStage: setProgress,
       });
@@ -265,6 +267,9 @@ export default function InvoiceProofAttestationsPanel({
           <Descriptions.Item label={t("attestRole")}>
             <Tag color={ROLE_COLORS[verifier.role]}>{roleLabel}</Tag>
           </Descriptions.Item>
+          <Descriptions.Item label={t("attestActsFor")}>
+            {t(attestationSideLabelKey(verifier.partySide, "public"))}
+          </Descriptions.Item>
           <Descriptions.Item label={t("attestReferenceHash")}>
             {referenceHash === ZERO_BYTES32 ? (
               <Typography.Text type="secondary">{t("attestNoReference")}</Typography.Text>
@@ -358,11 +363,12 @@ export default function InvoiceProofAttestationsPanel({
 
       {data?.attestations.map((attestation) => (
         <div
-          key={attestation.verifier}
+          key={`${attestation.partySide ?? "supplier"}-${attestation.verifier}`}
           className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--ant-color-border-secondary)] px-3 py-2"
         >
           <span className="flex items-center gap-2">
             <Tag color={ROLE_COLORS[attestation.role]}>{t(`attestRoles.${attestation.role}`)}</Tag>
+            <Tag>{t(attestationSideLabelKey(attestation.partySide, "public"))}</Tag>
             <Mono value={attestation.verifier} />
             {verifier && attestation.verifier === verifier.account ? <Tag color="green">{t("attestYou")}</Tag> : null}
           </span>

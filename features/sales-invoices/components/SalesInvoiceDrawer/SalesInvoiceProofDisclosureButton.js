@@ -11,6 +11,7 @@ import SalesInvoiceProofDisclosureModal from "./SalesInvoiceProofDisclosureModal
  *   invoiceNumber?: string | null;
  *   disabled?: boolean;
  *   disabledReason?: string | null;
+ *   audience?: "sales" | "purchase";
  * }} props
  */
 export default function SalesInvoiceProofDisclosureButton({
@@ -18,6 +19,7 @@ export default function SalesInvoiceProofDisclosureButton({
   invoiceNumber = null,
   disabled = false,
   disabledReason = null,
+  audience = "sales",
   fetchFields,
   createDisclosure,
 }) {

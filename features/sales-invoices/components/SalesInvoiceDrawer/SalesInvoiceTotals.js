@@ -4,6 +4,7 @@ import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/Resour
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { formatTenantMoney } from "@/lib/tenant-format";
 import { Form, Input } from "antd";
+import { TamperBesideLabel } from "../InvoiceTamper/InvoiceTamperMark";
 
 /**
  * @param {{
@@ -28,7 +29,11 @@ export default function SalesInvoiceTotals({ t, readOnly, totals = null }) {
         <Form.Item
           name="notes"
           className="sales-invoice-totals-notes"
-          label={<ResourceDrawerFieldLabel text={t("fieldNotes")} optional />}
+          label={
+            <TamperBesideLabel path="notes">
+              <ResourceDrawerFieldLabel text={t("fieldNotes")} optional />
+            </TamperBesideLabel>
+          }
         >
           <Input.TextArea rows={1} maxLength={2000} showCount={!readOnly} disabled={readOnly} />
         </Form.Item>
@@ -37,21 +42,31 @@ export default function SalesInvoiceTotals({ t, readOnly, totals = null }) {
       <div className="sales-invoice-totals-pane min-w-0 flex-1">
         <div className="resource-drawer-pricing-summary">
           <div className="resource-drawer-pricing-card">
-            <span className="resource-drawer-pricing-card-label">{t("totalSubtotal")}</span>
+            <TamperBesideLabel path="subtotal">
+              <span className="resource-drawer-pricing-card-label">{t("totalSubtotal")}</span>
+            </TamperBesideLabel>
             <span className="resource-drawer-pricing-card-value">{money(totals?.subtotal)}</span>
           </div>
           <div className="resource-drawer-pricing-card">
-            <span className="resource-drawer-pricing-card-label">{t("totalGrand")}</span>
+            <TamperBesideLabel path="grand_total">
+              <span className="resource-drawer-pricing-card-label">{t("totalGrand")}</span>
+            </TamperBesideLabel>
             <span className="resource-drawer-pricing-card-value">{money(totals?.grand_total)}</span>
           </div>
           <div className="resource-drawer-pricing-card">
-            <span className="resource-drawer-pricing-card-label">{t("totalDiscount")}</span>
+            <TamperBesideLabel path="discount_total">
+              <span className="resource-drawer-pricing-card-label">{t("totalDiscount")}</span>
+            </TamperBesideLabel>
             <span className="resource-drawer-pricing-card-value">{money(totals?.discount_total)}</span>
           </div>
           <div className="resource-drawer-pricing-card">
             <Form.Item
               name="adjustment"
-              label={<ResourceDrawerFieldLabel text={t("totalAdjustment")} />}
+              label={
+                <TamperBesideLabel path="adjustment">
+                  <ResourceDrawerFieldLabel text={t("totalAdjustment")} />
+                </TamperBesideLabel>
+              }
               className="mb-0"
               layout="horizontal"
               colon={false}
@@ -60,7 +75,9 @@ export default function SalesInvoiceTotals({ t, readOnly, totals = null }) {
             </Form.Item>
           </div>
           <div className="resource-drawer-pricing-card">
-            <span className="resource-drawer-pricing-card-label">{t("totalTax")}</span>
+            <TamperBesideLabel path="tax_total">
+              <span className="resource-drawer-pricing-card-label">{t("totalTax")}</span>
+            </TamperBesideLabel>
             <span className="resource-drawer-pricing-card-value">{money(totals?.tax_total)}</span>
           </div>
           <div className="resource-drawer-pricing-card">

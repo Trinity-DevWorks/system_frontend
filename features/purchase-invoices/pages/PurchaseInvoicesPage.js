@@ -466,6 +466,7 @@ function PurchaseInvoicesTable() {
             open={shareProofRow != null}
             invoiceId={shareProofRow?.id ?? null}
             invoiceNumber={shareProofRow?.number ?? null}
+            audience="purchase"
             onClose={() => setShareProofRow(null)}
             fetchFields={fetchPurchaseInvoiceProofFields}
             createDisclosure={createPurchaseInvoiceProofDisclosure}

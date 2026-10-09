@@ -13,6 +13,7 @@ import {
   SALES_INVOICE_CUSTOMER_SELECTOR_PARAMS,
 } from "../../api/salesInvoiceSelectors.api";
 import { SiFocusStop } from "./salesInvoiceDrawerKeyboard";
+import { TamperBesideLabel } from "../InvoiceTamper/InvoiceTamperMark";
 import { DownOutlined } from "@ant-design/icons";
 import { AutoComplete, Button, Col, ConfigProvider, DatePicker, Form, Input, Popover, Row, Select, Tooltip } from "antd";
 import dayjs from "dayjs";
@@ -31,12 +32,14 @@ function addressPopoverGetPopup(trigger) {
  *   title: string;
  *   addressIdName: "billing_address_id" | "shipping_address_id";
  *   addressPrefix: "billing_address" | "shipping_address";
+ *   tamperPath?: string;
  *   addressLabel: string;
  *   phoneLabel: string;
  *   addressPlaceholder: string;
  *   phonePlaceholder: string;
  *   options: { value: number; label: string; phone?: string; address?: Record<string, unknown> }[];
  *   disabled?: boolean;
+ *   locked?: boolean;
  * }} props
  */
 function InvoiceAddressInfoPopover({
@@ -45,12 +48,14 @@ function InvoiceAddressInfoPopover({
   title,
   addressIdName,
   addressPrefix,
+  tamperPath,
   addressLabel,
   phoneLabel,
   addressPlaceholder,
   phonePlaceholder,
   options,
   disabled = false,
+  locked = false,
 }) {
   const autoCompleteOptions = options.map((row) => ({
     value: row.label,
@@ -66,16 +71,22 @@ function InvoiceAddressInfoPopover({
   const summary = String(line ?? "").trim() || String(phone ?? "").trim();
 
   return (
-    <Form.Item label={<ResourceDrawerFieldLabel text={title} optional />}>
+    <Form.Item
+      label={
+        <TamperBesideLabel path={tamperPath}>
+          <ResourceDrawerFieldLabel text={title} optional />
+        </TamperBesideLabel>
+      }
+    >
       <Form.Item name={addressIdName} hidden>
         <Input tabIndex={-1} />
       </Form.Item>
-      <ConfigProvider componentDisabled={false}>
-        <Popover
-          trigger={disabled ? [] : "click"}
-          placement="bottomLeft"
-          arrow={false}
-          content={
+      <Popover
+        trigger={disabled ? [] : "click"}
+        placement="bottomLeft"
+        arrow={false}
+        content={
+          <ConfigProvider componentDisabled={locked}>
             <div className="w-[min(100vw-48px,360px)]">
               <Form.Item
                 name={[addressPrefix, "address_line_1"]}
@@ -118,19 +129,19 @@ function InvoiceAddressInfoPopover({
                 <Input allowClear maxLength={32} placeholder={phonePlaceholder} />
               </Form.Item>
             </div>
-          }
+          </ConfigProvider>
+        }
+      >
+        <Button
+          disabled={disabled ? true : false}
+          className="flex h-auto min-h-8 w-full items-center justify-between py-1 text-start"
         >
-          <Button
-            disabled={disabled}
-            className="flex h-auto min-h-8 w-full items-center justify-between py-1 text-start"
-          >
             <span className="min-w-0 flex-1 truncate text-sm font-normal">
               {summary || t("addressInfoEmpty")}
             </span>
             <DownOutlined className="ms-2 text-[10px] text-neutral-400" />
           </Button>
-        </Popover>
-      </ConfigProvider>
+      </Popover>
     </Form.Item>
   );
 }
@@ -158,7 +169,7 @@ function InvoiceCustomerBoundValue({ name, label, options, placeholder, empty, e
       </Form.Item>
       <Input
         readOnly
-        disabled={!enabled}
+        disabled={!enabled ? true : undefined}
         value={enabled && !loading ? (text || empty) : ""}
         placeholder={placeholder}
       />
@@ -237,7 +248,11 @@ export default function SalesInvoiceDrawerForm({
                 <LookupSelectWithCreate
                   form={form}
                   name="customer_id"
-                  label={<ResourceDrawerFieldLabel text={t("fieldCustomer")} required />}
+                  label={
+                    <TamperBesideLabel path="buyer">
+                      <ResourceDrawerFieldLabel text={t("fieldCustomer")} required />
+                    </TamperBesideLabel>
+                  }
                   rules={[{ required: true, message: t("customerRequired") }]}
                   readOnly={readOnly}
                   addNewSentinel={SI_LOOKUP_ADD_CUSTOMER}
@@ -263,7 +278,11 @@ export default function SalesInvoiceDrawerForm({
               <SiFocusStop field="invoice_date">
                 <Form.Item
                   name="invoice_date"
-                  label={<ResourceDrawerFieldLabel text={t("fieldInvoiceDate")} required />}
+                  label={
+                    <TamperBesideLabel path="invoice_date">
+                      <ResourceDrawerFieldLabel text={t("fieldInvoiceDate")} required />
+                    </TamperBesideLabel>
+                  }
                   rules={[{ required: true, message: t("invoiceDateRequired") }]}
                   getValueProps={(value) => ({
                     value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
@@ -277,7 +296,11 @@ export default function SalesInvoiceDrawerForm({
               <SiFocusStop field="salesman">
                 <InvoiceCustomerBoundValue
                   name="salesman_id"
-                  label={<ResourceDrawerFieldLabel text={t("fieldSalesman")} optional />}
+                  label={
+                    <TamperBesideLabel path="salesman">
+                      <ResourceDrawerFieldLabel text={t("fieldSalesman")} optional />
+                    </TamperBesideLabel>
+                  }
                   options={salesmanOptions}
                   placeholder={t("salesmanPlaceholder")}
                   empty={"\u2014"}
@@ -297,12 +320,14 @@ export default function SalesInvoiceDrawerForm({
                   title={t("sectionBillingInfo")}
                   addressIdName="billing_address_id"
                   addressPrefix="billing_address"
+                  tamperPath="billing_address"
                   addressLabel={t("fieldBillingAddress")}
                   phoneLabel={t("fieldBillingPhone")}
                   addressPlaceholder={t("billingAddressPlaceholder")}
                   phonePlaceholder={t("phonePlaceholder")}
                   options={billingAddressOptions}
                   disabled={!customerReady}
+                  locked={readOnly}
                 />
               </SiFocusStop>
             </Col>
@@ -314,12 +339,14 @@ export default function SalesInvoiceDrawerForm({
                   title={t("sectionShippingInfo")}
                   addressIdName="shipping_address_id"
                   addressPrefix="shipping_address"
+                  tamperPath="shipping_address"
                   addressLabel={t("fieldShippingAddress")}
                   phoneLabel={t("fieldShippingPhone")}
                   addressPlaceholder={t("shippingAddressPlaceholder")}
                   phonePlaceholder={t("phonePlaceholder")}
                   options={shippingAddressOptions}
                   disabled={!customerReady}
+                  locked={readOnly}
                 />
               </SiFocusStop>
             </Col>
@@ -327,7 +354,11 @@ export default function SalesInvoiceDrawerForm({
               <SiFocusStop field="warehouse">
                 <Form.Item
                   name="warehouse_id"
-                  label={<ResourceDrawerFieldLabel text={t("fieldWarehouse")} required />}
+                  label={
+                    <TamperBesideLabel path="warehouse">
+                      <ResourceDrawerFieldLabel text={t("fieldWarehouse")} required />
+                    </TamperBesideLabel>
+                  }
                   rules={[{ required: true, message: t("warehouseRequired") }]}
                 >
                   <Select
@@ -352,7 +383,11 @@ export default function SalesInvoiceDrawerForm({
               <SiFocusStop field="payment_terms">
                 <InvoiceCustomerBoundValue
                   name="payment_terms_id"
-                  label={<ResourceDrawerFieldLabel text={t("fieldPaymentTerms")} optional />}
+                  label={
+                    <TamperBesideLabel path="payment_terms">
+                      <ResourceDrawerFieldLabel text={t("fieldPaymentTerms")} optional />
+                    </TamperBesideLabel>
+                  }
                   options={paymentTermOptions}
                   placeholder={t("paymentTermsPlaceholder")}
                   empty={"\u2014"}
@@ -365,7 +400,11 @@ export default function SalesInvoiceDrawerForm({
               <SiFocusStop field="due_on">
                 <Form.Item
                   name="due_on"
-                  label={<ResourceDrawerFieldLabel text={t("fieldDueOn")} />}
+                  label={
+                    <TamperBesideLabel path="due_on">
+                      <ResourceDrawerFieldLabel text={t("fieldDueOn")} />
+                    </TamperBesideLabel>
+                  }
                   getValueProps={(value) => ({
                     value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined,
                   })}
@@ -386,7 +425,14 @@ export default function SalesInvoiceDrawerForm({
           <Row gutter={[12, 8]}>
             <Col xs={24} sm={12} md={8}>
               <SiFocusStop field="currency">
-                <Form.Item name="currency_id" label={<ResourceDrawerFieldLabel text={t("fieldCurrency")} />}>
+                <Form.Item
+                  name="currency_id"
+                  label={
+                    <TamperBesideLabel path="currency_code">
+                      <ResourceDrawerFieldLabel text={t("fieldCurrency")} />
+                    </TamperBesideLabel>
+                  }
+                >
                   <Select
                     showSearch
                     filterOption={salesInvoiceSelectFilter}
@@ -410,7 +456,9 @@ export default function SalesInvoiceDrawerForm({
                   }
                 >
                   <div className="sales-invoice-exchange-rate-inline">
-                    <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
+                    <TamperBesideLabel path="exchange_rate">
+                      <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
+                    </TamperBesideLabel>
                     <Tooltip title={exchangeRateHelp}>
                       <div className="sales-invoice-exchange-rate-input">
                         <Form.Item
@@ -437,7 +485,11 @@ export default function SalesInvoiceDrawerForm({
               <SiFocusStop field="payment_method">
                 <InvoiceCustomerBoundValue
                   name="payment_method_id"
-                  label={<ResourceDrawerFieldLabel text={t("fieldPaymentMethod")} optional />}
+                  label={
+                    <TamperBesideLabel path="payment_method">
+                      <ResourceDrawerFieldLabel text={t("fieldPaymentMethod")} optional />
+                    </TamperBesideLabel>
+                  }
                   options={paymentMethodOptions}
                   placeholder={t("paymentMethodPlaceholder")}
                   empty={"\u2014"}
