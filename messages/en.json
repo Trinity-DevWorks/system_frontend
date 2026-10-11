@@ -410,7 +410,7 @@
     "attachmentsUploadError": "Could not upload file."
   },
   "InvoiceVerifiers": {
-    "hint": "Auditors, tax reviewers, and a bank can be appointed for sales invoices. Purchases can appoint an auditor or a tax reviewer only. Each one attests from its own wallet, linked to the company wallet in Company profile.",
+    "hint": "Auditors, tax authorities, and a bank can be appointed for sales invoices. Purchases can appoint an auditor or a tax authority only. Each one attests from its own wallet, linked to the company wallet in Company profile.",
     "fieldActsFor": "Acts for",
     "fieldActsForRequired": "Choose whether this verifier acts for sales or purchases.",
     "columnActsFor": "Acts for",
@@ -3454,7 +3454,7 @@
     "backToPacks": "Ready files",
     "packAuditor": "Auditor",
     "packAuditorSummary": "Invoice number, dates, both parties, line amounts, and totals.",
-    "packTax": "Tax reviewer",
+    "packTax": "Tax authority",
     "packTaxSummary": "Tax numbers, the tax on each line, and the tax total.",
     "packFinancier": "Financier",
     "packFinancierSummary": "Who owes the amount, the due date, payment terms, and the total.",
