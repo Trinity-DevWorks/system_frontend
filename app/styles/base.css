@@ -104,6 +104,19 @@ html {
   contain: layout style;
 }
 
+/*
+ * List pages own their vertical scroll inside the table. The pane must not
+ * scroll as well, or the page and the table each show a scrollbar.
+ * Forms and other pages without that table keep the pane scroll.
+ */
+.app-shell-main-scroll:has(.app-data-table-scroll) {
+  overflow: hidden;
+}
+
+.app-shell-main-scroll:has(.app-data-table-scroll) > .app-shell-main-inner {
+  overflow: hidden;
+}
+
 html.dark {
   color-scheme: dark;
 }

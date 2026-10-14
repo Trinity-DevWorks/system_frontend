@@ -226,6 +226,69 @@
     border-inline-start: 1px solid var(--ant-color-border-secondary);
     padding-inline-start: 12px;
   }
+
+  .sales-invoice-header > .sales-invoice-header-pane:only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 768px) {
+  .payment-document-side-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 8px;
+    align-items: stretch;
+  }
+
+  .payment-document-notes-span {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .payment-document-notes-span .ant-form-item-row {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .payment-document-notes-span .ant-form-item-label {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    padding-bottom: 4px;
+  }
+
+  .payment-document-notes-span .ant-form-item-control,
+  .payment-document-notes-span .ant-form-item-control-input,
+  .payment-document-notes-span .ant-form-item-control-input-content {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+  }
+
+  .payment-document-notes-span .ant-form-item-control-input {
+    align-items: stretch;
+  }
+
+  .payment-document-notes-span textarea.ant-input {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100% !important;
+    min-height: 0;
+    resize: none;
+  }
 }
 
 .sales-invoice-exchange-rate-inline {
@@ -523,6 +586,11 @@
   width: auto;
 }
 
+.sales-invoice-totals .resource-drawer-pricing-card .ant-space-compact {
+  width: auto;
+  align-items: center;
+}
+
 .sales-invoice-totals .resource-drawer-pricing-card .ant-input-number {
   width: 5.5rem !important;
   height: 22px;
@@ -533,6 +601,13 @@
   height: 22px;
   min-height: 22px;
   text-align: right;
+}
+
+.sales-invoice-totals .resource-drawer-pricing-card .tenant-number-symbol.ant-input {
+  height: 22px;
+  min-height: 22px;
+  padding-block: 0;
+  line-height: 20px;
 }
 
 .sales-invoice-totals .resource-drawer-pricing-card.sales-invoice-totals-paid {
@@ -723,6 +798,16 @@
 .item-lines-yield-card .item-lines-yield-row .ant-select {
   width: 100%;
   max-width: 100%;
+}
+
+.tenant-number-symbol.ant-input {
+  field-sizing: content;
+  width: auto;
+  flex: 0 0 auto;
+  min-width: 1.75rem;
+  max-width: 4.5rem;
+  padding-inline: 6px;
+  text-align: center;
 }
 
 .item-lines-grid {

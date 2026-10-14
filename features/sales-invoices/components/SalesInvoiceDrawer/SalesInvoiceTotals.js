@@ -2,7 +2,7 @@
 
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
-import { formatTenantMoney } from "@/lib/tenant-format";
+import { formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import { Form, Input } from "antd";
 
 /**
@@ -17,10 +17,11 @@ import { Form, Input } from "antd";
  *     paid_total?: string | number;
  *     net_to_pay?: string | number;
  *   } | null;
+ *   currencySymbol?: string;
  * }} props
  */
-export default function SalesInvoiceTotals({ t, readOnly, totals = null }) {
-  const money = (value) => (value != null ? formatTenantMoney(value) : "\u2014");
+export default function SalesInvoiceTotals({ t, readOnly, totals = null, currencySymbol = "" }) {
+  const money = (value) => (value != null ? formatTenantMoneyWithSymbol(value, currencySymbol) || "\u2014" : "\u2014");
 
   return (
     <section className="sales-invoice-totals flex w-full min-w-0 flex-row">
@@ -56,7 +57,7 @@ export default function SalesInvoiceTotals({ t, readOnly, totals = null }) {
               layout="horizontal"
               colon={false}
             >
-              <TenantNumberInput kind="money" disabled={readOnly} />
+              <TenantNumberInput kind="money" disabled={readOnly} addonAfter={currencySymbol || undefined} />
             </Form.Item>
           </div>
           <div className="resource-drawer-pricing-card">

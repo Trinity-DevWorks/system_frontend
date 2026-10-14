@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  getPurchaseInvoiceStatusLabel,
-  purchaseInvoiceStatusTagColor,
-} from "../../utils/purchaseInvoiceStatuses";
+import { purchaseInvoiceStatusTag } from "../../utils/purchaseInvoiceStatuses";
 import { Tag } from "antd";
 
 /**
@@ -20,14 +17,17 @@ export function postedByDisplayName(user) {
  * @param {{
  *   t: (key: string) => string;
  *   invoiceStatus?: string | null;
+ *   paidTotal?: unknown;
+ *   netToPay?: unknown;
  * }} props
  */
-export default function PurchaseInvoiceDrawerHeaderMeta({ t, invoiceStatus = null }) {
+export default function PurchaseInvoiceDrawerHeaderMeta({ t, invoiceStatus = null, paidTotal, netToPay }) {
+  const tag = invoiceStatus ? purchaseInvoiceStatusTag(t, invoiceStatus, paidTotal, netToPay) : null;
   return (
     <div className="sales-invoice-drawer-header-meta">
-      {invoiceStatus ? (
-        <Tag className="m-0" color={purchaseInvoiceStatusTagColor(invoiceStatus)}>
-          {getPurchaseInvoiceStatusLabel(t, invoiceStatus)}
+      {tag ? (
+        <Tag className="m-0" color={tag.color}>
+          {tag.label}
         </Tag>
       ) : (
         "\u2014"

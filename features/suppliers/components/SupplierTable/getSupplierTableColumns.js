@@ -1,6 +1,6 @@
 import { formatTenantDate } from "@/lib/tenant-format";
 import { renderActiveInactiveStatus } from "@/shared/components/tables/ActiveStatusBadge";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, FileSearchOutlined, MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Typography } from "antd";
 
@@ -14,13 +14,14 @@ export function getSupplierStatusLabel(value, t) {
  * @param {(key: string) => string} t `useTranslations("Suppliers")`
  * @param {{
  *   onView?: (record: Record<string, unknown>) => void;
+ *   onLedger?: (record: Record<string, unknown>) => void;
  *   onEdit?: (record: Record<string, unknown>) => void;
  *   onDelete?: (record: Record<string, unknown>) => void;
  * }} [actions]
  * @returns {import("antd").TableProps["columns"]}
  */
 export function getSupplierTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete } = actions;
+  const { onView, onLedger, onEdit, onDelete } = actions;
 
   return [
     {
@@ -114,6 +115,13 @@ export function getSupplierTableColumns(t, actions = {}) {
                 icon: <EyeOutlined />,
                 disabled: !onView,
                 onClick: () => onView?.(record),
+              },
+              {
+                key: "ledger",
+                label: t("actionLedger"),
+                icon: <FileSearchOutlined />,
+                disabled: !onLedger,
+                onClick: () => onLedger?.(record),
               },
               {
                 key: "edit",

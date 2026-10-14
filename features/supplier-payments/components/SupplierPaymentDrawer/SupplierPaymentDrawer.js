@@ -10,9 +10,10 @@ import { supplierPaymentConfig } from "../../supplierPaymentConfig";
  *   paymentId: string | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   fromInvoiceId?: string | null;
  * }} props
  */
-export default function SupplierPaymentDrawer({ open, mode, paymentId, onClose, onCreated }) {
+export default function SupplierPaymentDrawer({ open, mode, paymentId, onClose, onCreated, fromInvoiceId = null }) {
   return (
     <PaymentDocumentDrawer
       open={open}
@@ -20,6 +21,7 @@ export default function SupplierPaymentDrawer({ open, mode, paymentId, onClose, 
       documentId={paymentId}
       onClose={onClose}
       onCreated={onCreated}
+      fromInvoiceId={fromInvoiceId}
       config={supplierPaymentConfig}
     />
   );

@@ -7,6 +7,7 @@ import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY } from "../
 import { STOCK_BALANCES_QUERY_KEY, STOCK_MOVEMENTS_QUERY_KEY } from "@/features/stock/queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
@@ -17,7 +18,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
-import { SALES_INVOICE_STATUS_VALUES, getSalesInvoiceStatusLabel } from "../utils/salesInvoiceStatuses";
+import { SALES_INVOICE_STATUS_VALUES, getSalesInvoiceStatusLabel, salesInvoiceStatusTag } from "../utils/salesInvoiceStatuses";
 import {
   formatStockFilterDateRange,
   stockFilterFieldRowClassName,
@@ -33,6 +34,8 @@ function SalesInvoicesTable() {
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const access = useResourceAccess("sales_invoices");
+  const receiptAccess = useResourceAccess("customer_receipts");
+  const { openDrawer } = useGlobalDrawer();
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [customerFilter, setCustomerFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -87,12 +90,25 @@ function SalesInvoicesTable() {
       rawTableData.map((row) => ({
         ...row,
         customer_name: row?.customer?.name ?? "",
-        status_label: getSalesInvoiceStatusLabel(t, row?.status),
+        status_label: salesInvoiceStatusTag(t, row?.status, row?.paid_total, row?.net_to_pay).label,
       })),
     [rawTableData, t],
   );
 
   const { openCreateDrawer, openEditDrawer, openViewDrawer } = usePageDrawer("salesInvoices");
+
+  const handleCreateReceipt = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({
+        featureId: "customerReceipts",
+        mode: "create",
+        extras: { fromInvoiceId: id },
+      });
+    },
+    [openDrawer],
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteSalesInvoice(id),
@@ -195,8 +211,9 @@ function SalesInvoicesTable() {
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
         onReverse: access.canReverse ? handleReverse : undefined,
+        onCreateReceipt: receiptAccess.canAdd ? handleCreateReceipt : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
+    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, receiptAccess.canAdd, openViewDrawer, openEditDrawer, handleDelete, handleReverse, handleCreateReceipt],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({

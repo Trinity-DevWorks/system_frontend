@@ -4,7 +4,7 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
+import { formatTenantMoneyWithSymbol, formatTenantNumber } from "@/lib/tenant-format";
 import { ClearOutlined, CopyOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { App, Checkbox, Input, Select } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
@@ -521,7 +521,7 @@ export default function SalesInvoiceLineEditor({
       { key: "unit_price", label: t("lineUnitPrice"), width: "120px" },
       { key: "discount_percent", label: t("lineDiscountPercent"), width: "90px" },
       { key: "tax_rate", label: t("lineTaxRate"), width: "40px" },
-      { key: "line_total", label: t("lineTotal"), width: "110px" },
+      { key: "line_total", label: t("lineTotal"), width: "140px" },
     ],
     [allLinesSelected, lines.length, readOnly, someLinesSelected, t, toggleAllLinesSelected],
   );
@@ -849,7 +849,7 @@ export default function SalesInvoiceLineEditor({
             const lineTotal = readOnly ? row.line_total : live?.line_total;
             return (
               <span className="item-lines-readonly-uom">
-                {lineTotal != null ? formatTenantMoney(lineTotal) : "\u2014"}
+                {lineTotal != null ? formatTenantMoneyWithSymbol(lineTotal, pricing.symbol) || "\u2014" : "\u2014"}
               </span>
             );
           }

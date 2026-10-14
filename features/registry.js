@@ -21,8 +21,11 @@ import {
   AccountBookOutlined,
   ApartmentOutlined,
   AppstoreOutlined,
+  AuditOutlined,
   BankOutlined,
+  BarChartOutlined,
   BellOutlined,
+  BookOutlined,
   CalculatorOutlined,
   CalendarOutlined,
   CheckSquareOutlined,
@@ -46,8 +49,11 @@ import {
   IdcardOutlined,
   InboxOutlined,
   KeyOutlined,
+  LinkOutlined,
   LockOutlined,
+  PartitionOutlined,
   PercentageOutlined,
+  ProfileOutlined,
   RetweetOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
@@ -101,6 +107,7 @@ export const NAV_SECTIONS = [
   },
   { id: "sales", labelKey: "navSales", icon: ShoppingCartOutlined },
   { id: "purchasing", labelKey: "navPurchasing", icon: ShoppingOutlined },
+  { id: "accounting", labelKey: "navAccounting", icon: AuditOutlined },
   { id: "administration", labelKey: "navAdministration", icon: SafetyCertificateOutlined },
   {
     id: "settings",
@@ -170,6 +177,11 @@ export const FEATURES = [
   { id: "purchaseInvoices", path: "/main/purchase-invoices", section: "purchasing", labelKey: "navPurchaseInvoices", icon: FileDoneOutlined, module: "purchasing", permission: "purchase_invoices" },
   { id: "supplierPayments", path: "/main/supplier-payments", section: "purchasing", labelKey: "navSupplierPayments", icon: AccountBookOutlined, module: "purchasing", permission: "supplier_payments" },
 
+  { id: "accounts", path: "/main/accounting/accounts", section: "accounting", labelKey: "navChartOfAccounts", icon: PartitionOutlined, module: "accounting", permission: "accounts" },
+  { id: "journalEntries", path: "/main/accounting/journal-entries", section: "accounting", labelKey: "navJournalEntries", icon: BookOutlined, module: "accounting", permission: "journal_entries" },
+  { id: "trialBalance", path: "/main/accounting/trial-balance", section: "accounting", labelKey: "navTrialBalance", icon: BarChartOutlined, module: "accounting", permission: "accounting_reports" },
+  { id: "accountLedger", path: "/main/accounting/account-ledger", section: "accounting", labelKey: "navAccountLedger", icon: ProfileOutlined, module: "accounting", permission: "accounting_reports" },
+
   { id: "branches", path: "/main/branches", section: "administration", labelKey: "navBranches", icon: ApartmentOutlined, module: CORE_MODULE, permission: "branches" },
   { id: "users", path: "/main/users", section: "administration", labelKey: "navUsers", icon: TeamOutlined, module: CORE_MODULE, permission: "users" },
   { id: "roles", path: "/main/roles", section: "administration", labelKey: "navRoles", icon: KeyOutlined, module: CORE_MODULE, permission: "roles" },
@@ -178,6 +190,7 @@ export const FEATURES = [
 
   { id: "settingsCompanyProfile", path: "/main/settings/company-profile", section: "settings", labelKey: "navCompanyProfile", icon: BankOutlined, groupKey: "settingsCompanyGroup", module: CORE_MODULE, permission: "company_profile" },
   { id: "settingsCompanySettings", path: "/main/settings/company-settings", section: "settings", labelKey: "navCompanySettings", icon: ControlOutlined, groupKey: "settingsCompanyGroup", module: CORE_MODULE, permission: "company_settings" },
+  { id: "settingsAccountMappings", path: "/main/settings/account-mappings", section: "settings", labelKey: "navAccountMappings", icon: LinkOutlined, groupKey: "settingsAccountingGroup", module: "accounting", permission: "account_mappings" },
   { id: "settingsPreferences", path: "/main/settings/preferences", section: "settings", labelKey: "navPreferences", icon: BellOutlined, groupKey: "settingsUserGroup", module: CORE_MODULE },
 
   // Reached from the header (avatar menu, notification bell) rather than the rail.

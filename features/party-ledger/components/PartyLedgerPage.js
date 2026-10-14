@@ -3,13 +3,23 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { CURRENCIES_LIST_QUERY_KEY, fetchCurrencyNames } from "@/features/currencies";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
+import { getLocaleFromPathname } from "@/lib/locale-path";
 import { dayjsDatePattern } from "@/lib/tenant-format";
+import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import ServerSearchSelect from "@/shared/components/selects/ServerSearchSelect";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
+import {
+  formatStockFilterDateRange,
+  stockFilterFieldRowClassName,
+  useStockTableFilters,
+} from "@/features/stock/components/StockTableFilters/StockTableFilters";
 import { useQuery } from "@tanstack/react-query";
-import { App, DatePicker, Select, Spin } from "antd";
+import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useMemo, useState } from "react";
+import { downloadPartyLedger } from "../api/partyLedger.api";
 import { usePartyLedgerQuery } from "../queries/usePartyLedgerQuery";
 import { formatLedgerAmount, getPartyLedgerColumns } from "./getPartyLedgerColumns";
 
@@ -24,7 +34,10 @@ import { formatLedgerAmount, getPartyLedgerColumns } from "./getPartyLedgerColum
  *   partyQueryParams?: Record<string, string | number | boolean | undefined>;
  *   partyRecentKind: string;
  *   partyPlaceholderKey: string;
+ *   partyQueryParam: string;
+ *   fetchPartyOption: (id: string) => Promise<Record<string, unknown> | null>;
  *   endpointFor: (partyId: string) => string;
+ *   exportEndpointFor: (partyId: string) => string;
  *   typeLabelKey: Record<string, string>;
  *   documentFeature: Record<string, string>;
  * }} config
@@ -35,8 +48,17 @@ function PartyLedgerTable({ config }) {
   const tApiErrors = useTranslations("ApiErrors");
   const { notification } = App.useApp();
   const { openDrawer } = useGlobalDrawer();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const partyFromUrl = searchParams.get(config.partyQueryParam)?.trim() || undefined;
 
-  const [partyId, setPartyId] = useState(/** @type {string | undefined} */ (undefined));
+  const [partyId, setPartyId] = useState(partyFromUrl);
+  const [seenPartyFromUrl, setSeenPartyFromUrl] = useState(partyFromUrl);
+  if (seenPartyFromUrl !== partyFromUrl) {
+    setSeenPartyFromUrl(partyFromUrl);
+    setPartyId(partyFromUrl);
+  }
   const [currencyId, setCurrencyId] = useState(/** @type {number | undefined} */ (undefined));
   const [dateRange, setDateRange] = useState(
     /** @type {[import("dayjs").Dayjs | null, import("dayjs").Dayjs | null] | null} */ (null),
@@ -45,6 +67,57 @@ function PartyLedgerTable({ config }) {
   const dateFrom = dateRange?.[0]?.format("YYYY-MM-DD");
   const dateTo = dateRange?.[1]?.format("YYYY-MM-DD");
   const ready = Boolean(partyId);
+  const [exporting, setExporting] = useState(false);
+
+  const selectParty = useCallback(
+    (nextId) => {
+      const id = nextId ? String(nextId) : undefined;
+      setPartyId(id);
+      if (id === partyFromUrl) return;
+      const params = new URLSearchParams(searchParams.toString());
+      if (id) params.set(config.partyQueryParam, id);
+      else params.delete(config.partyQueryParam);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    },
+    [partyFromUrl, searchParams, config.partyQueryParam, router, pathname],
+  );
+
+  const partySeedQuery = useQuery({
+    queryKey: [...config.partyQueryKey, "ledger-party", partyId ?? "none"],
+    queryFn: () => config.fetchPartyOption(/** @type {string} */ (partyId)),
+    enabled: Boolean(partyId),
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+  const partySeedOptions = partySeedQuery.data ? [partySeedQuery.data] : [];
+
+  const exportStatement = useCallback(
+    async (format) => {
+      if (!partyId) {
+        notification.warning({ title: t("emptyChoose") });
+        return;
+      }
+      if (exporting) return;
+      setExporting(true);
+      try {
+        await downloadPartyLedger(config.exportEndpointFor(partyId), {
+          format,
+          locale: getLocaleFromPathname(window.location.pathname),
+          currency_id: currencyId,
+          date_from: dateFrom,
+          date_to: dateTo,
+        });
+      } catch (error) {
+        notification.error({
+          title: t("exportError"),
+          description: getLocalizedApiErrorMessage(tApiErrors, error),
+        });
+      } finally {
+        setExporting(false);
+      }
+    },
+    [partyId, exporting, config, currencyId, dateFrom, dateTo, notification, t, tApiErrors],
+  );
 
   const currenciesQuery = useQuery({
     queryKey: CURRENCIES_LIST_QUERY_KEY,
@@ -94,6 +167,48 @@ function PartyLedgerTable({ config }) {
     [currenciesQuery.data],
   );
 
+  const dateRangeLabel = formatStockFilterDateRange(dateRange?.[0], dateRange?.[1]);
+  const currencyLabel = currencyOptions.find((row) => row.value === currencyId)?.label;
+  const filterSummary = [
+    currencyId != null && currencyLabel ? { label: t("filterCurrency"), value: String(currencyLabel) } : null,
+    dateRangeLabel ? { label: t("filterDateRange"), value: dateRangeLabel } : null,
+  ].filter(Boolean);
+
+  const { toggle: filterToggle, filterBar } = useStockTableFilters({
+    activeCount: filterSummary.length,
+    summary: /** @type {{ label: string; value: string }[]} */ (filterSummary),
+    onClearAll: () => {
+      setCurrencyId(undefined);
+      setDateRange(null);
+    },
+    children: (
+      <div className={stockFilterFieldRowClassName}>
+        <Form.Item label={t("filterCurrency")}>
+          <Select
+            showSearch
+            allowClear
+            optionFilterProp="label"
+            className="w-full"
+            placeholder={t("filterAllCurrencies")}
+            value={currencyId}
+            options={currencyOptions}
+            loading={currenciesQuery.isPending}
+            onChange={(value) => setCurrencyId(value == null ? undefined : Number(value))}
+          />
+        </Form.Item>
+        <Form.Item label={t("filterDateRange")}>
+          <DatePicker.RangePicker
+            className="w-full"
+            value={dateRange}
+            onChange={(range) => setDateRange(range ?? null)}
+            allowEmpty={[true, true]}
+            format={dayjsDatePattern()}
+          />
+        </Form.Item>
+      </div>
+    ),
+  });
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppDataTable
@@ -115,7 +230,13 @@ function PartyLedgerTable({ config }) {
         }}
         toolbar={{
           showSearch: false,
-          showRefresh: ready,
+          showImportExcel: false,
+          showExportExcel: true,
+          showExportPdf: true,
+          onExportExcel: () => exportStatement("xlsx"),
+          onExportPdf: () => exportStatement("pdf"),
+          showRefresh: true,
+          refreshDisabled: !ready,
           onRefresh: () => refetch(),
           extra: (
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
@@ -126,11 +247,12 @@ function PartyLedgerTable({ config }) {
                   allowClear
                   placeholder={tSelector(config.partyPlaceholderKey)}
                   value={partyId}
-                  onChange={(value) => setPartyId(value ? String(value) : undefined)}
+                  onChange={(value) => selectParty(value ? String(value) : undefined)}
                   fetchPage={config.fetchPartyPage}
                   queryKey={config.partyQueryKey}
                   queryParams={config.partyQueryParams}
                   recentKind={config.partyRecentKind}
+                  seedOptions={partySeedOptions}
                   recentLabel={tSelector("selectorRecent")}
                   clearRecentLabel={tSelector("selectorClearRecent")}
                   resultsLabel={tSelector("selectorResults")}
@@ -139,31 +261,10 @@ function PartyLedgerTable({ config }) {
                   typeToSearchLabel={tSelector("selectorTypeToSearch")}
                 />
               </label>
-              <label className="flex items-center gap-2">
-                <span className="shrink-0 text-sm">{t("filterCurrency")}</span>
-                <Select
-                  showSearch
-                  allowClear
-                  optionFilterProp="label"
-                  className="min-w-36"
-                  placeholder={t("filterAllCurrencies")}
-                  value={currencyId}
-                  options={currencyOptions}
-                  loading={currenciesQuery.isPending}
-                  onChange={(value) => setCurrencyId(value == null ? undefined : Number(value))}
-                />
-              </label>
-              <label className="flex items-center gap-2">
-                <span className="shrink-0 text-sm">{t("filterDateRange")}</span>
-                <DatePicker.RangePicker
-                  value={dateRange}
-                  onChange={(range) => setDateRange(range ?? null)}
-                  allowEmpty={[true, true]}
-                  format={dayjsDatePattern()}
-                />
-              </label>
+              {filterToggle}
             </div>
           ),
+          filterBar,
           belowTable:
             ready && summaries.length > 0 ? (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

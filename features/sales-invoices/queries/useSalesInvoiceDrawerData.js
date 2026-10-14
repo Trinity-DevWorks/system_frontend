@@ -161,6 +161,15 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
     return String(row?.code ?? row?.name ?? "");
   }
 
+  /**
+   * @param {number | null | undefined} currencyId
+   */
+  function currencySymbol(currencyId) {
+    if (currencyId == null) return "";
+    const row = (currenciesQuery.data ?? []).find((c) => Number(c.id) === Number(currencyId));
+    return String(row?.symbol ?? "").trim();
+  }
+
   return {
     warehouseOptions,
     defaultWarehouseId,
@@ -172,6 +181,7 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
     primaryCurrencyId,
     rateFromPrimary: rateFromPrimaryFor,
     currencyCode,
+    currencySymbol,
     customerDetail,
     customerDetailPending: customerLookupsPending,
     warehousesPending: warehousesQuery.isPending,

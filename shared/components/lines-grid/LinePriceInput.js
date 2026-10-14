@@ -11,6 +11,7 @@ import { Tooltip } from "antd";
  *   foreign: boolean;
  *   primaryCode: string;
  *   currencyCode: string;
+ *   symbol?: string;
  * }} LinePricing
  */
 
@@ -57,6 +58,7 @@ export default function LinePriceInput({ line, pricing, disabled, placeholder, c
         placeholder={placeholder}
         value={line.unit_price}
         disabled={disabled}
+        addonAfter={pricing.symbol || undefined}
         onChange={onChange}
       />
     </Tooltip>

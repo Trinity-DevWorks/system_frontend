@@ -10,9 +10,10 @@ import { customerReceiptConfig } from "../../customerReceiptConfig";
  *   receiptId: string | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   fromInvoiceId?: string | null;
  * }} props
  */
-export default function CustomerReceiptDrawer({ open, mode, receiptId, onClose, onCreated }) {
+export default function CustomerReceiptDrawer({ open, mode, receiptId, onClose, onCreated, fromInvoiceId = null }) {
   return (
     <PaymentDocumentDrawer
       open={open}
@@ -20,6 +21,7 @@ export default function CustomerReceiptDrawer({ open, mode, receiptId, onClose, 
       documentId={receiptId}
       onClose={onClose}
       onCreated={onCreated}
+      fromInvoiceId={fromInvoiceId}
       config={customerReceiptConfig}
     />
   );

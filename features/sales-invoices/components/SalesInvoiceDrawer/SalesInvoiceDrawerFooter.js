@@ -42,12 +42,14 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   postDisabled: boolean;
  *   showDelete: boolean;
  *   showReverse?: boolean;
+ *   showCreateReceipt?: boolean;
  *   postedBy?: unknown;
  *   postedAt?: string | null;
  *   onSave: () => void;
  *   onPost: () => void;
  *   onDelete: () => void;
  *   onReverse?: () => void;
+ *   onCreateReceipt?: () => void;
  * }} props
  */
 export default function SalesInvoiceDrawerFooter({
@@ -60,12 +62,14 @@ export default function SalesInvoiceDrawerFooter({
   postDisabled,
   showDelete,
   showReverse = false,
+  showCreateReceipt = false,
   postedBy = null,
   postedAt = null,
   onSave,
   onPost,
   onDelete,
   onReverse,
+  onCreateReceipt,
 }) {
   useDrawerSubmitShortcut({
     enabled: !readOnly,
@@ -86,6 +90,11 @@ export default function SalesInvoiceDrawerFooter({
         {showReverse ? (
           <Button className="shrink-0" danger disabled={submitting} loading={submitting} onClick={onReverse}>
             {t("actionReverse")}
+          </Button>
+        ) : null}
+        {showCreateReceipt ? (
+          <Button className="shrink-0" type="primary" onClick={onCreateReceipt}>
+            {t("actionCreateReceipt")}
           </Button>
         ) : null}
       </div>

@@ -1,12 +1,6 @@
-import {
-  getPurchaseInvoiceSettlementLabel,
-  getPurchaseInvoiceStatusLabel,
-  isPurchaseInvoiceDraft,
-  purchaseInvoiceSettlement,
-  purchaseInvoiceStatusTagColor,
-} from "../../utils/purchaseInvoiceStatuses";
-import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import { isPurchaseInvoiceDraft, purchaseInvoiceStatusTag } from "../../utils/purchaseInvoiceStatuses";
+import { formatTenantDate, formatTenantDateTime, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
+import { AccountBookOutlined, DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -19,10 +13,11 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
  *   onReverse?: (record: unknown) => void;
+ *   onCreatePayment?: (record: unknown) => void;
  * }} [actions]
  */
 export function getPurchaseInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onReverse } = actions;
+  const { onView, onEdit, onDelete, onReverse, onCreatePayment } = actions;
 
   return [
     {
@@ -74,48 +69,39 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       title: t("colStatus"),
       dataIndex: "status",
       key: "status",
-      width: 200,
+      width: 140,
       sorter: (a, b) => String(a.status ?? "").localeCompare(String(b.status ?? "")),
       render: (value, record) => {
-        const settlement = purchaseInvoiceSettlement(value, record?.paid_total, record?.net_to_pay);
-        return (
-          <span className="inline-flex flex-wrap gap-1">
-            <Tag color={purchaseInvoiceStatusTagColor(value)}>{getPurchaseInvoiceStatusLabel(t, value)}</Tag>
-            {settlement ? (
-              <Tag color={settlement === "paid" ? "success" : settlement === "partial" ? "warning" : "default"}>
-                {getPurchaseInvoiceSettlementLabel(t, settlement)}
-              </Tag>
-            ) : null}
-          </span>
-        );
+        const tag = purchaseInvoiceStatusTag(t, value, record?.paid_total, record?.net_to_pay);
+        return <Tag color={tag.color}>{tag.label}</Tag>;
       },
     },
     {
       title: t("colTotal"),
       dataIndex: "grand_total",
       key: "grand_total",
-      width: 130,
+      width: 160,
       align: "right",
       sorter: (a, b) => Number(a.grand_total ?? 0) - Number(b.grand_total ?? 0),
-      render: (value) => formatTenantMoney(value) || "\u2014",
+      render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
     },
     {
       title: t("colPaidTotal"),
       dataIndex: "paid_total",
       key: "paid_total",
-      width: 130,
+      width: 150,
       align: "right",
       sorter: (a, b) => Number(a.paid_total ?? 0) - Number(b.paid_total ?? 0),
-      render: (value) => formatTenantMoney(value) || "\u2014",
+      render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
     },
     {
       title: t("colNetToPay"),
       dataIndex: "net_to_pay",
       key: "net_to_pay",
-      width: 130,
+      width: 160,
       align: "right",
       sorter: (a, b) => Number(a.net_to_pay ?? 0) - Number(b.net_to_pay ?? 0),
-      render: (value) => formatTenantMoney(value) || "\u2014",
+      render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
     },
     {
       title: t("colCreatedAt"),
@@ -140,6 +126,16 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
+          ...(onCreatePayment && record?.status === "posted" && Number(record?.net_to_pay) > 0
+            ? [
+                {
+                  key: "create-payment",
+                  icon: <AccountBookOutlined />,
+                  label: t("actionCreatePayment"),
+                  onClick: () => onCreatePayment(record),
+                },
+              ]
+            : []),
           ...(isDraft
             ? [
                 {

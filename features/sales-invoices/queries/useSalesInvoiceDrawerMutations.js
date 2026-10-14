@@ -138,7 +138,6 @@ export function useSalesInvoiceDrawerMutations({
         onCreated?.(/** @type {Record<string, unknown>} */ (record));
       }
       onPosted?.(/** @type {Record<string, unknown>} */ (record));
-      onClose?.();
     },
   });
 

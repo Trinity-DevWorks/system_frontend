@@ -41,7 +41,7 @@ import {
   Typography,
 } from "antd";
 import { useTranslations } from "next-intl";
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ColumnDragShell, SortableTableBodyCell, SortableTableHeaderCell } from "@/shared/components/tables/AppDataTableColumnDrag";
 
 const DEFAULT_SCROLL_X = 1000;
@@ -86,6 +86,7 @@ function spaceChildren(nodes) {
  *   onAdd?: () => void,
  *   addLabel?: string,
  *   showRefresh?: boolean,
+ *   refreshDisabled?: boolean,
  *   onRefresh?: () => void,
  *   showExportExcel?: boolean,
  *   onExportExcel?: () => void,
@@ -109,6 +110,8 @@ function spaceChildren(nodes) {
  * @param {(record: any, index?: number) => string} [props.rowClassName]
  * @param {(record: any, index?: number) => object} [props.onRow]
  * @param {import("antd").TableProps["onChange"]} [props.onTableChange] Forwarded to Ant Table `onChange`.
+ * @param {import("antd").TableProps["expandable"]} [props.expandable] Forwarded to Ant Table (tree rows via `children`).
+ * @param {boolean} [props.stickyHeader] Keep the toolbar and column header fixed. The row list is the only vertical scroller.
  * @param {false | {
  *   mode?: "server",
  *   pageSize?: number,
@@ -144,6 +147,8 @@ function AppDataTable({
   rowClassName,
   onRow,
   onTableChange,
+  expandable,
+  stickyHeader = false,
 }) {
   const t = useTranslations("DataTable");
   const { message } = App.useApp();
@@ -157,6 +162,7 @@ function AppDataTable({
     onAdd,
     addLabel,
     showRefresh = true,
+    refreshDisabled = false,
     onRefresh,
     showExportExcel = true,
     onExportExcel,
@@ -409,24 +415,22 @@ function AppDataTable({
     if (!showExportExcel && !showExportPdf && !showImportExcel) return [];
     /** @type {import("antd/es/menu").MenuProps["items"]} */
     const items = [];
-    if (showExportExcel) {
-      items.push({
-        key: "export-excel",
-        icon: <FileExcelOutlined />,
-        label: t("exportExcel"),
-        disabled: !onExportExcel,
-        ...(!onExportExcel ? { title: t("transferSoon") } : {}),
-      });
-    }
-    if (showExportPdf) {
-      items.push({
-        key: "export-pdf",
-        icon: <FilePdfOutlined />,
-        label: t("exportPdf"),
-        disabled: !onExportPdf,
-        ...(!onExportPdf ? { title: t("transferSoon") } : {}),
-      });
-    }
+            if (showExportExcel) {
+              items.push({
+                key: "export-excel",
+                icon: <FileExcelOutlined />,
+                label: t("exportExcel"),
+                ...(onExportExcel ? {} : { disabled: true, title: t("transferSoon") }),
+              });
+            }
+            if (showExportPdf) {
+              items.push({
+                key: "export-pdf",
+                icon: <FilePdfOutlined />,
+                label: t("exportPdf"),
+                ...(onExportPdf ? {} : { disabled: true, title: t("transferSoon") }),
+              });
+            }
     const hasImport = showImportExcel;
     const hasExportItems = showExportExcel || showExportPdf;
     if (hasExportItems && hasImport) {
@@ -541,7 +545,45 @@ function AppDataTable({
   const tableRowSelection =
     hasMounted && rowSelection !== false ? rowSelection : undefined;
 
-  const scroll = useMemo(() => ({ x: scrollX }), [scrollX]);
+  const tableHostRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const [bodyScrollY, setBodyScrollY] = useState(/** @type {number | null} */ (null));
+
+  useLayoutEffect(() => {
+    if (!stickyHeader) return undefined;
+    const host = tableHostRef.current;
+    if (!host) return undefined;
+
+    const measure = () => {
+      const header = host.querySelector(".ant-table-header") ?? host.querySelector(".ant-table-thead");
+      const footer = host.querySelector(".app-data-table-footer");
+      const headerHeight = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+      const footerHeight = footer ? Math.ceil(footer.getBoundingClientRect().height) : 0;
+      const body = host.querySelector(".ant-table-body");
+      const contentFits = body
+        ? body.scrollHeight <= body.clientHeight + 2
+        : host.scrollHeight <= host.clientHeight + 2;
+      if (contentFits) {
+        setBodyScrollY((prev) => (prev == null ? prev : null));
+        return;
+      }
+      const next = Math.max(80, Math.floor(host.clientHeight - headerHeight - footerHeight));
+      setBodyScrollY((prev) => (prev != null && Math.abs(prev - next) < 2 ? prev : next));
+    };
+
+    measure();
+    const frame = requestAnimationFrame(measure);
+    const observer = new ResizeObserver(measure);
+    observer.observe(host);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [stickyHeader, tableSize, loading]);
+
+  const scroll = useMemo(
+    () => ({ x: scrollX, ...(stickyHeader && bodyScrollY != null ? { y: bodyScrollY } : {}) }),
+    [bodyScrollY, scrollX, stickyHeader],
+  );
 
   const renderedTable = useMemo(() => {
     const tableEl = (
@@ -561,6 +603,7 @@ function AppDataTable({
         rowClassName={rowClassName}
         onRow={onRow}
         onChange={onTableChange}
+        expandable={expandable}
         className="[&_.ant-table]:rounded-none"
         components={columnDndActive && sortableIds.length > 0 ? dragTableComponents : undefined}
       />
@@ -592,6 +635,7 @@ function AppDataTable({
     rowClassName,
     onRow,
     onTableChange,
+    expandable,
     tableId,
     columnDndActive,
     sortableIds,
@@ -604,8 +648,14 @@ function AppDataTable({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="app-data-table-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-        <div className="flex min-w-0 flex-col gap-2">
+      <div
+        className={
+          stickyHeader
+            ? "app-data-table-scroll flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+            : "app-data-table-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"
+        }
+      >
+        <div className={stickyHeader ? "flex min-h-0 min-w-0 flex-1 flex-col gap-2" : "flex min-w-0 flex-col gap-2"}>
           <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <Space wrap size="small" className="min-w-0">
               {spaceChildren([
@@ -625,7 +675,7 @@ function AppDataTable({
                     <Button
                       icon={<ReloadOutlined spin={loading || refreshFetching} />}
                       onClick={handleRefresh}
-                      disabled={loading || refreshFetching}
+                      disabled={refreshDisabled || loading || refreshFetching}
                       aria-label={t("refresh")}
                     />
                   </Tooltip>
@@ -672,8 +722,8 @@ function AppDataTable({
                       onClick: handleImportExportMenuClick,
                     }}
                   >
-                    <Button icon={<ExportOutlined />} aria-label={t("importExportMenuAria")}>
-                      {t("importExportMenu")}
+                    <Button icon={<ExportOutlined />} aria-label={showImportExcel ? t("importExportMenuAria") : t("exportMenu")}>
+                      {showImportExcel ? t("importExportMenu") : t("exportMenu")}
                     </Button>
                   </Dropdown>
                 ) : null,
@@ -725,7 +775,14 @@ function AppDataTable({
             </div>
           ) : null}
 
-          <div className="app-data-table min-w-0 overflow-x-auto rounded-lg border border-black/10 dark:border-white/10">
+          <div
+            ref={stickyHeader ? tableHostRef : undefined}
+            className={
+              stickyHeader
+                ? "app-data-table flex min-h-0 min-w-0 w-full shrink flex-col overflow-hidden"
+                : "app-data-table min-w-0 overflow-x-auto"
+            }
+          >
             {renderedTable}
             {showFooter ? (
               <div className="app-data-table-footer grid grid-cols-1 items-center gap-3 border-t border-black/10 bg-[var(--ant-color-bg-container)] px-3 py-2 sm:grid-cols-[1fr_auto_1fr] dark:border-white/10">

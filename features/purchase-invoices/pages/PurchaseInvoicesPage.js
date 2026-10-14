@@ -11,6 +11,7 @@ import {
 } from "@/features/stock/queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
@@ -32,6 +33,7 @@ import { usePurchaseInvoicesTableQuery } from "../queries/usePurchaseInvoicesTab
 import {
   PURCHASE_INVOICE_STATUS_VALUES,
   getPurchaseInvoiceStatusLabel,
+  purchaseInvoiceStatusTag,
 } from "../utils/purchaseInvoiceStatuses";
 
 function PurchaseInvoicesTable() {
@@ -40,6 +42,8 @@ function PurchaseInvoicesTable() {
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const access = useResourceAccess("purchase_invoices");
+  const paymentAccess = useResourceAccess("supplier_payments");
+  const { openDrawer } = useGlobalDrawer();
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [supplierFilter, setSupplierFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -94,12 +98,25 @@ function PurchaseInvoicesTable() {
       rawTableData.map((row) => ({
         ...row,
         supplier_name: row?.supplier?.name ?? "",
-        status_label: getPurchaseInvoiceStatusLabel(t, row?.status),
+        status_label: purchaseInvoiceStatusTag(t, row?.status, row?.paid_total, row?.net_to_pay).label,
       })),
     [rawTableData, t],
   );
 
   const { openCreateDrawer, openEditDrawer, openViewDrawer } = usePageDrawer("purchaseInvoices");
+
+  const handleCreatePayment = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({
+        featureId: "supplierPayments",
+        mode: "create",
+        extras: { fromInvoiceId: id },
+      });
+    },
+    [openDrawer],
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deletePurchaseInvoice(id),
@@ -205,8 +222,9 @@ function PurchaseInvoicesTable() {
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
         onReverse: access.canReverse ? handleReverse : undefined,
+        onCreatePayment: paymentAccess.canAdd ? handleCreatePayment : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
+    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, paymentAccess.canAdd, openViewDrawer, openEditDrawer, handleDelete, handleReverse, handleCreatePayment],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({

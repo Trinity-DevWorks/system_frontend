@@ -3,9 +3,10 @@
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
+import { useRouter } from "@/i18n/navigation";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { getCustomerTableColumns } from "../components/CustomerTable/getCustomerTableColumns";
 import { useCustomersDelete } from "../queries/useCustomersDelete";
 import { useCustomersTableQuery } from "../queries/useCustomersTableQuery";
@@ -16,6 +17,7 @@ function CustomersTable() {
   const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
   const access = useResourceAccess("customers");
+  const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   const { tableData, isPending, isFetching, refetch, pagination, onSearchChange } = useCustomersTableQuery({
@@ -45,14 +47,24 @@ function CustomersTable() {
     closeDrawer,
   });
 
+  const openLedger = useCallback(
+    (record) => {
+      const id = record?.id;
+      if (id == null || id === "") return;
+      router.push(`/main/customer-ledger?customer=${encodeURIComponent(String(id))}`);
+    },
+    [router],
+  );
+
   const columns = useMemo(
     () =>
       getCustomerTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
+        onLedger: access.canView ? openLedger : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? requestDeleteCustomer : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, requestDeleteCustomer],
+    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openLedger, openEditDrawer, requestDeleteCustomer],
   );
 
   const rowSelection = {

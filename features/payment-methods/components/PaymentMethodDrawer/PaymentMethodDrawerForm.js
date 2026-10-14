@@ -12,9 +12,19 @@ const { TextArea } = Input;
  *   t: (key: string) => string;
  *   currencyOptions: { value: number; label: string }[];
  *   currencyLoading?: boolean;
+ *   accountOptions?: { value: number; label: string }[] | null;
+ *   accountLoading?: boolean;
  * }} props
  */
-export default function PaymentMethodDrawerForm({ form, readOnly, t, currencyOptions, currencyLoading }) {
+export default function PaymentMethodDrawerForm({
+  form,
+  readOnly,
+  t,
+  currencyOptions,
+  currencyLoading,
+  accountOptions = null,
+  accountLoading,
+}) {
   return (
     <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
       <Form.Item
@@ -55,6 +65,18 @@ export default function PaymentMethodDrawerForm({ form, readOnly, t, currencyOpt
           placeholder={t("fieldCurrencyPlaceholder")}
         />
       </Form.Item>
+      {accountOptions ? (
+        <Form.Item name="account_id" label={t("fieldAccount")} extra={t("fieldAccountHelp")}>
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            loading={accountLoading}
+            options={accountOptions}
+            placeholder={t("fieldAccountPlaceholder")}
+          />
+        </Form.Item>
+      ) : null}
       <Form.Item name="requires_reference" label={t("fieldRequiresReference")} valuePropName="checked">
         <Switch checkedChildren={t("yes")} unCheckedChildren={t("no")} />
       </Form.Item>
