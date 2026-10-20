@@ -262,7 +262,6 @@ export default function BranchDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={10}
       footer={
         <ResourceDrawerFooter
           mode={mode}

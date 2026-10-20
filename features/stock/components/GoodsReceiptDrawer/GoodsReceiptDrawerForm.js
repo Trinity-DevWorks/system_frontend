@@ -17,7 +17,6 @@ import dayjs from "dayjs";
  *   warehousesPending: boolean;
  *   supplierOptions: { value: unknown; label: string }[];
  *   suppliersPending: boolean;
- *   grnNumber?: string | null;
  *   warehouseName?: string | null;
  *   supplierName?: string | null;
  *   purchaseOrderNumber?: string | null;
@@ -36,7 +35,6 @@ export default function GoodsReceiptDrawerForm({
   warehousesPending,
   supplierOptions,
   suppliersPending,
-  grnNumber,
   warehouseName,
   supplierName,
   purchaseOrderNumber,
@@ -48,12 +46,6 @@ export default function GoodsReceiptDrawerForm({
 
   return (
     <Form form={form} layout="vertical" disabled={readOnly}>
-      {!createMode && grnNumber ? (
-        <Form.Item label={t("grnFieldNumber")}>
-          <Input value={grnNumber} disabled />
-        </Form.Item>
-      ) : null}
-
       <Row gutter={[24, 0]}>
         <Col xs={24} md={12}>
           {showPoSelect ? (

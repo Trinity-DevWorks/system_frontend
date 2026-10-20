@@ -65,6 +65,10 @@ html[data-shell-sidebar-collapsed] .shell-nav {
   padding-top: 8px;
 }
 
+.shell-nav.is-collapsed .shell-rail {
+  cursor: pointer;
+}
+
 .shell-rail-footer {
   display: flex;
   width: 100%;
@@ -271,6 +275,7 @@ html[data-shell-sidebar-collapsed] .shell-nav.is-peeking .shell-panel {
   padding-block: 7px;
   padding-inline: 10px 4px;
   text-align: start;
+  text-decoration: none;
   font: inherit;
   font-size: 13px;
   color: var(--ant-color-text);

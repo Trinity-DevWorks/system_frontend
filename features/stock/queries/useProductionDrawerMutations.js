@@ -16,6 +16,7 @@ import {
   deleteProduction,
   fetchProduction,
   postProduction,
+  reverseProduction,
   syncProductionLines,
   updateProduction,
 } from "../api/productions.api";
@@ -39,6 +40,7 @@ import {
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onSaved?: (record: Record<string, unknown>) => void;
  *   onPosted?: (record: Record<string, unknown>) => void;
+ *   onReversed?: (record: Record<string, unknown>) => void;
  *   onDeleted?: () => void;
  *   onClose?: () => void;
  * }} args
@@ -54,6 +56,7 @@ export function useProductionDrawerMutations({
   onCreated,
   onSaved,
   onPosted,
+  onReversed,
   onDeleted,
   onClose,
 }) {
@@ -149,6 +152,25 @@ export function useProductionDrawerMutations({
     },
   });
 
+  const reverseMutation = useMutation({
+    mutationFn: async () => {
+      if (documentId == null) throw new Error("missing document");
+      return reverseProduction(documentId);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("reverseError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (record) => {
+      cacheDetail(normalizeEntityId(record?.id), record);
+      invalidateLedger();
+      message.success(t("reverseSuccess"));
+      onReversed?.(/** @type {Record<string, unknown>} */ (record));
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (documentId == null) throw new Error("missing document");
@@ -172,6 +194,7 @@ export function useProductionDrawerMutations({
     saveMutation,
     postMutation,
     deleteMutation,
-    submitting: saveMutation.isPending || postMutation.isPending || deleteMutation.isPending,
+    reverseMutation,
+    submitting: saveMutation.isPending || postMutation.isPending || reverseMutation.isPending || deleteMutation.isPending,
   };
 }

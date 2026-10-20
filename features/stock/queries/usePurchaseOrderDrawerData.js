@@ -4,8 +4,7 @@
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { formatUomLabel } from "../utils/formatStockQuantity";
-import { PO_BASE_UOM } from "../utils/purchaseOrderDrawerUtils";
+import { mapItemUomsToLineSelectOptions } from "../utils/itemLineUomOptions";
 import { buildLastPurchasePriceByItemId } from "../utils/purchaseOrderLastPurchasePrice";
 import { buildLeadTimeDaysByItemId } from "../utils/purchaseOrderExpectedDate";
 import { fetchItemNames, fetchItemUoms, fetchSupplierItems } from "@/features/items/index";
@@ -146,15 +145,10 @@ export function usePurchaseOrderLineUomOptions({ itemId, t, enabled = true }) {
     staleTime: QUERY_STALE_TIME.default,
   });
 
-  const options = useMemo(() => {
-    const rows = itemUomsQuery.data ?? [];
-    const result = [{ value: PO_BASE_UOM, label: t("poBaseUomOption") }];
-    for (const row of rows) {
-      const label = formatUomLabel(row?.uom) || `UOM #${row?.uom_id ?? row?.id}`;
-      result.push({ value: row.id, label });
-    }
-    return result;
-  }, [itemUomsQuery.data, t]);
+  const options = useMemo(
+    () => mapItemUomsToLineSelectOptions(itemUomsQuery.data, t),
+    [itemUomsQuery.data, t],
+  );
 
   return {
     options,

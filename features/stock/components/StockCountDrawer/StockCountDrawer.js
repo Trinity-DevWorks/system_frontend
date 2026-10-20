@@ -1,6 +1,7 @@
 "use client";
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { useResourceAccess } from "@/lib/permissions";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { STOCK_COUNT_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -8,10 +9,10 @@ import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { fetchStockCount } from "../../api/stockCounts.api";
 import { useQuery } from "@tanstack/react-query";
-import { App, Form } from "antd";
+import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isStockCountDraft } from "../../utils/stockCountStatuses";
+import { getStockCountStatusLabel, isStockCountDraft } from "../../utils/stockCountStatuses";
 import StockCountDrawerFooter from "./StockCountDrawerFooter";
 import StockCountDrawerForm from "./StockCountDrawerForm";
 import StockCountLineEditor from "./StockCountLineEditor";
@@ -48,6 +49,7 @@ export default function StockCountDrawer({
 }) {
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
+  const access = useResourceAccess("stock");
   const { message, modal, notification } = App.useApp();
   const [form] = Form.useForm();
 
@@ -181,7 +183,7 @@ export default function StockCountDrawer({
     [onCreated, syncBaselinesFromRecordAndBump],
   );
 
-  const { saveMutation, loadBalancesMutation, postMutation, deleteMutation, submitting } =
+  const { saveMutation, loadBalancesMutation, postMutation, reverseMutation, deleteMutation, submitting } =
     useStockCountDrawerMutations({
       form,
       message,
@@ -193,6 +195,7 @@ export default function StockCountDrawer({
       onCreated: handleCreated,
       onSaved: syncBaselinesFromRecordAndBump,
       onPosted: syncBaselinesFromRecordAndBump,
+      onReversed: syncBaselinesFromRecordAndBump,
       onDeleted: forceClose,
       onClose: forceClose,
     });
@@ -226,6 +229,17 @@ export default function StockCountDrawer({
       })
       .catch(() => {});
   }, [form, modal, t, postMutation]);
+
+  const handleReverse = useCallback(() => {
+    modal.confirm({
+      title: t("reverseConfirmTitle"),
+      content: t("reverseConfirmContent"),
+      okText: t("actionReverse"),
+      okButtonProps: { danger: true },
+      cancelText: t("drawerCancel"),
+      onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
+    });
+  }, [modal, t, reverseMutation]);
 
   const handleDelete = useCallback(() => {
     modal.confirm({
@@ -264,6 +278,13 @@ export default function StockCountDrawer({
     <ResourceCrudDrawer
       title={title}
       recordName={loadedNumber}
+      titleExtra={
+        effectiveStatus ? (
+          <Tag className="m-0" color={effectiveStatus === "posted" ? "green" : effectiveStatus === "reversed" ? "warning" : "default"}>
+            {getStockCountStatusLabel(t, effectiveStatus)}
+          </Tag>
+        ) : null
+      }
       open={open}
       requestClose={requestClose}
       submitting={submitting}
@@ -286,6 +307,8 @@ export default function StockCountDrawer({
           showPost={!readOnly}
           onSave={handleSave}
           onPost={handlePost}
+          showReverse={effectiveStatus === "posted" && documentId != null && access.canReverse}
+          onReverse={handleReverse}
           onDelete={handleDelete}
         />
       }
@@ -296,7 +319,6 @@ export default function StockCountDrawer({
         t={t}
         warehouseOptions={drawerData.warehouseOptions}
         warehousesPending={drawerData.warehousesPending}
-        cntNumber={loadedNumber}
       />
       <StockCountLineEditor
         lines={lines.length > 0 ? lines : [getEmptyCntLine()]}

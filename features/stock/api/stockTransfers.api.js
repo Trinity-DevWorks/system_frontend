@@ -72,12 +72,23 @@ export function dispatchStockTransfer(transferId) {
 }
 
 /**
- * Receive transfer (adds stock to destination warehouse).
+ * Receive transfer (partial or remaining open qty). Omit lines to receive all open.
  * @param {number | string} transferId
+ * @param {Record<string, unknown>} [body]
  * @returns {Promise<unknown>}
  */
-export function receiveStockTransfer(transferId) {
-  return tenantRequest("POST", `stock/transfers/${transferId}/receive`);
+export function receiveStockTransfer(transferId, body = {}) {
+  return tenantRequest("POST", `stock/transfers/${transferId}/receive`, body);
+}
+
+/**
+ * Return or write off remaining open qty.
+ * @param {number | string} transferId
+ * @param {Record<string, unknown>} body
+ * @returns {Promise<unknown>}
+ */
+export function closeStockTransferOpen(transferId, body) {
+  return tenantRequest("POST", `stock/transfers/${transferId}/close-open`, body);
 }
 
 /**

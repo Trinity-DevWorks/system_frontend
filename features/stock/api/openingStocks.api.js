@@ -62,3 +62,10 @@ export async function syncOpeningStockLines(documentId, body) {
 export function postOpeningStock(documentId) {
   return tenantRequest("POST", `stock/opening-stocks/${documentId}/post`);
 }
+
+/**
+ * @param {string} documentId
+ */
+export function reverseOpeningStock(documentId) {
+  return tenantRequest("POST", `stock/opening-stocks/${documentId}/reverse`);
+}

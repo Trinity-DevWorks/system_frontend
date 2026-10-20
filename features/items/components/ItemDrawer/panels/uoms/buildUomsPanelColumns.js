@@ -16,9 +16,7 @@ export function buildUomsPanelColumns(ctx) {
     readOnly,
     inlineEdit,
     uomOptions,
-    currencyOptions,
     uomsQueryPending,
-    currenciesQueryPending,
     getInlineValues,
     patchDraft,
     patchFlag,
@@ -173,33 +171,6 @@ export function buildUomsPanelColumns(ctx) {
       render: (_v, r) => renderPriceCell("delivery_price", _v, r),
     },
     {
-      title: t("uomColCurrency"),
-      key: "currency",
-      width: 80,
-      align: "center",
-      render: (_v, r) => {
-        const draft = getInlineValues(r);
-        if (draft) {
-          return (
-            <Select
-              size="small"
-              allowClear
-              className="w-full min-w-0"
-              placeholder={t("uomFieldCurrency")}
-              value={draft.currency_id}
-              options={currencyOptions}
-              loading={currenciesQueryPending}
-              onChange={(currency_id) => patchDraft({ currency_id: currency_id ?? undefined })}
-              getPopupContainer={drawerSelectGetPopup}
-              popupMatchSelectWidth={false}
-              listHeight={280}
-            />
-          );
-        }
-        return r.currency?.code ?? r.currency?.name ?? "—";
-      },
-    },
-    {
       title: t("uomColBase"),
       key: "base",
       width: 64,
@@ -207,7 +178,7 @@ export function buildUomsPanelColumns(ctx) {
       render: (_v, r) => {
         const draft = getInlineValues(r);
         if (draft) {
-          return <Radio checked={draft.is_base} onChange={() => patchDraft({ is_base: true })} />;
+          return <Radio checked={draft.is_base} onChange={() => patchDraft({ is_base: true, conversion_factor: 1 })} />;
         }
         return (
           <Radio

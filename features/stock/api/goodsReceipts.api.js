@@ -5,6 +5,9 @@ import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
  * @param {{
  *   status?: string;
  *   purchase_order_id?: string;
+ *   supplier_id?: string;
+ *   available_for_invoice?: boolean;
+ *   except_purchase_invoice_id?: string;
  *   warehouse_id?: number;
  *   search?: string;
  *   from?: string;
@@ -62,4 +65,9 @@ export async function syncGoodsReceiptLines(receiptId, body) {
  */
 export function postGoodsReceipt(receiptId) {
   return tenantRequest("POST", `stock/goods-receipts/${receiptId}/post`);
+}
+
+/** @param {string} receiptId */
+export function reverseGoodsReceipt(receiptId) {
+  return tenantRequest("POST", `stock/goods-receipts/${receiptId}/reverse`);
 }

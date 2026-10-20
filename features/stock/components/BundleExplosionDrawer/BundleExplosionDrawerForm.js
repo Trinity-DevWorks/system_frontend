@@ -14,7 +14,6 @@ import dayjs from "dayjs";
  *   warehousesPending: boolean;
  *   itemOptions: { value: string; label: string }[];
  *   itemsPending: boolean;
- *   bexNumber?: string | null;
  *   componentsPending: boolean;
  *   componentsEmpty: boolean;
  * }} props
@@ -27,18 +26,11 @@ export default function BundleExplosionDrawerForm({
   warehousesPending,
   itemOptions,
   itemsPending,
-  bexNumber,
   componentsPending,
   componentsEmpty,
 }) {
   return (
     <Form form={form} layout="vertical" disabled={readOnly}>
-      {bexNumber ? (
-        <Form.Item label={t("bexFieldNumber")}>
-          <Input value={bexNumber} disabled />
-        </Form.Item>
-      ) : null}
-
       <Row gutter={[24, 0]}>
         <Col xs={24} md={12}>
           <Form.Item

@@ -1,6 +1,6 @@
-/** @typedef {"draft" | "posted"} OpeningStockStatus */
+/** @typedef {"draft" | "posted" | "reversed"} OpeningStockStatus */
 
-export const OPENING_STOCK_STATUS_VALUES = /** @type {const} */ (["draft", "posted"]);
+export const OPENING_STOCK_STATUS_VALUES = /** @type {const} */ (["draft", "posted", "reversed"]);
 
 /**
  * @param {(key: string) => string} t
@@ -9,6 +9,7 @@ export const OPENING_STOCK_STATUS_VALUES = /** @type {const} */ (["draft", "post
 export function getOpeningStockStatusLabel(t, status) {
   if (status === "draft") return t("osStatusDraft");
   if (status === "posted") return t("osStatusPosted");
+  if (status === "reversed") return t("osStatusReversed");
   return status ? String(status) : "\u2014";
 }
 

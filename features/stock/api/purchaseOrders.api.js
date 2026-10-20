@@ -10,6 +10,9 @@ import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
  *   search?: string;
  *   from?: string;
  *   to?: string;
+ *   available_for_invoice?: boolean;
+ *   available_for_receipt?: boolean;
+ *   except_purchase_invoice_id?: string;
  *   page?: number;
  *   per_page?: number;
  * }} [params]

@@ -9,6 +9,34 @@ export function stockBalanceShowQueryKey(itemId, warehouseId, lotId = null) {
   return [...STOCK_BALANCES_QUERY_KEY, "show", itemId ?? null, warehouseId ?? null, lotId ?? null];
 }
 
+export const SUGGESTED_UNIT_COST_QUERY_KEY = ["tenant", "stock", "suggested-unit-cost"];
+
+/**
+ * @param {{
+ *   itemId?: string | number | null;
+ *   warehouseId?: number | null;
+ *   supplierId?: string | null;
+ *   itemUomId?: number | string | null;
+ *   lotId?: number | string | null;
+ * }} args
+ */
+export function suggestedUnitCostQueryKey({
+  itemId = null,
+  warehouseId = null,
+  supplierId = null,
+  itemUomId = null,
+  lotId = null,
+} = {}) {
+  return [
+    ...SUGGESTED_UNIT_COST_QUERY_KEY,
+    itemId ?? null,
+    warehouseId ?? null,
+    supplierId ?? null,
+    itemUomId ?? null,
+    lotId ?? null,
+  ];
+}
+
 export const STOCK_LOTS_QUERY_KEY = ["tenant", "stock", "lots"];
 
 export const STOCK_INVENTORY_LOTS_QUERY_KEY = ["tenant", "stock", "inventory-lots"];

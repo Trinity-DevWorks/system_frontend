@@ -11,7 +11,6 @@ import dayjs from "dayjs";
  *   t: (key: string) => string;
  *   warehouseOptions: { value: unknown; label: string }[];
  *   warehousesPending: boolean;
- *   cntNumber?: string | null;
  * }} props
  */
 export default function StockCountDrawerForm({
@@ -20,16 +19,9 @@ export default function StockCountDrawerForm({
   t,
   warehouseOptions,
   warehousesPending,
-  cntNumber,
 }) {
   return (
     <Form form={form} layout="vertical" disabled={readOnly}>
-      {cntNumber ? (
-        <Form.Item label={t("cntFieldNumber")}>
-          <Input value={cntNumber} disabled />
-        </Form.Item>
-      ) : null}
-
       <Row gutter={[24, 0]}>
         <Col xs={24} md={12}>
           <Form.Item

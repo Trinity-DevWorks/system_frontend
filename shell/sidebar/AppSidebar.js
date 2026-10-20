@@ -45,6 +45,9 @@ export default function AppSidebar({
   const closeTimerRef = useRef(null);
   const navRef = useRef(null);
   const pointerInsideRef = useRef(false);
+  const searchInputRef = useRef(null);
+  const prevPeekingRef = useRef(false);
+  const prevCollapsedRef = useRef(collapsed);
 
   /** Search/page rows, not a rail icon — click leaves focus on the icon. */
   const hasPanelFocus = useCallback(
@@ -75,6 +78,20 @@ export default function AppSidebar({
   }, [cancelClose]);
 
   useEffect(() => cancelClose, [cancelClose]);
+
+  useEffect(() => {
+    const openedPeek = !prevPeekingRef.current && peeking;
+    const expanded = prevCollapsedRef.current && !collapsed;
+    prevPeekingRef.current = peeking;
+    prevCollapsedRef.current = collapsed;
+    if (!openedPeek && !expanded) return undefined;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        searchInputRef.current?.focus({ preventScroll: true });
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [collapsed, peeking]);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -150,6 +167,13 @@ export default function AppSidebar({
     [collapsed, onSearchChange, openPeek, searchQuery],
   );
 
+  /** Collapsed: click empty rail chrome (not an icon) peeks the active module's page list. */
+  const handleRailBodyClick = useCallback(() => {
+    if (!collapsed) return;
+    if (activeModuleKey) setPreviewModuleKey(activeModuleKey);
+    openPeek();
+  }, [activeModuleKey, collapsed, openPeek]);
+
   const handleMouseEnter = useCallback(() => {
     pointerInsideRef.current = true;
     cancelClose();
@@ -215,6 +239,7 @@ export default function AppSidebar({
         activeModuleKey={activeModuleKey}
         previewModuleKey={previewModuleKey}
         onSelectModule={handleSelectModule}
+        onRailBodyClick={handleRailBodyClick}
         brand={brand}
         brandLogo={brandLogo}
         onBrandClick={() => {
@@ -242,6 +267,7 @@ export default function AppSidebar({
         addBookmarkAria={labels.addBookmark}
         removeBookmarkAria={labels.removeBookmark}
         ariaLabel={labels.pagesNav}
+        searchInputRef={searchInputRef}
       />
     </div>
   );

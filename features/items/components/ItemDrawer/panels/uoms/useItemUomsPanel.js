@@ -13,7 +13,6 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { fetchItemBarcodes } from "../../../../api/itemBarcodes.api";
-import { fetchCurrencyNames } from "@/features/currencies/index";
 import { createItemUom, deleteItemUom, fetchItemUoms, updateItemUom } from "../../../../api/itemUoms.api";
 import { fetchUnitOfMeasurementNames } from "@/features/unit-of-measurements/index";
 import { itemBarcodesQueryKey } from "../../../../queries/itemBarcodesQueryCache";
@@ -32,7 +31,6 @@ import {
   uomInlineValuesToBody,
 } from "../itemDrawerPanelsState";
 import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
-import { CURRENCIES_LIST_QUERY_KEY } from "@/features/currencies";
 import { UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY } from "@/features/unit-of-measurements";
 import { ITEMS_LIST_QUERY_KEY, itemDetailQueryKey } from "../../../../queries/itemsQueryKeys";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
@@ -73,13 +71,6 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     enabled: queriesEnabled,
   });
 
-  const currenciesQuery = useQuery({
-    queryKey: CURRENCIES_LIST_QUERY_KEY,
-    queryFn: fetchCurrencyNames,
-    enabled: active && isPersistedEntityId(itemId),
-    staleTime: QUERY_STALE_TIME.catalog,
-  });
-
   const uomsQuery = useQuery({
     queryKey: UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY,
     queryFn: fetchUnitOfMeasurementNames,
@@ -90,15 +81,26 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
   const saveMutation = useMutation({
     mutationFn: (/** @type {{ id?: number; body: Record<string, unknown> }} */ { id, body }) =>
       id != null ? updateItemUom(itemId, id, body) : createItemUom(itemId, body),
-    onSuccess: (saved) => {
-      if (isItemUomRow(saved)) {
+    onSuccess: (saved, variables) => {
+      const body = variables?.body;
+      const editingId = variables?.id;
+      const previousList = queryClient.getQueryData(itemUomsQueryKeyValue);
+      const previousRow =
+        editingId != null && Array.isArray(previousList)
+          ? previousList.find((row) => row?.id === editingId)
+          : null;
+      const rebased = body?.is_base === true && previousRow != null && !previousRow.is_base;
+
+      if (rebased || body?.is_base === true) {
+        void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
+      } else if (isItemUomRow(saved)) {
         setItemUomInCache(queryClient, itemId, saved);
       } else {
         void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
       }
       void queryClient.invalidateQueries({ queryKey: itemDetailQueryKey(itemId) });
       void invalidateTenantListQueries(queryClient, ITEMS_LIST_QUERY_KEY);
-      message.success(t("panelSaveSuccess"));
+      message.success(rebased ? t("uomBaseRebaseSuccess") : t("panelSaveSuccess"));
       setInlineEdit(null);
     },
     onError: (err) => message.error(getLocalizedApiErrorMessage(tApiErrors, err)),
@@ -118,6 +120,15 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     mutationFn: (/** @type {{ id: number; body: Record<string, unknown> }} */ { id, body }) =>
       updateItemUom(itemId, id, body),
     onMutate: async ({ id, body }) => {
+      // Base change rebases every conversion factor — skip optimistic UI and refetch.
+      if (body?.is_base === true) {
+        const current = queryClient.getQueryData(itemUomsQueryKeyValue);
+        const source = Array.isArray(current) ? current.find((row) => row?.id === id) : null;
+        const rebased = source != null && !source.is_base;
+        if (rebased) {
+          return { previous: undefined, rebased: true };
+        }
+      }
       await queryClient.cancelQueries({ queryKey: itemUomsQueryKeyValue });
       const previous = queryClient.getQueryData(itemUomsQueryKeyValue);
       const list = Array.isArray(previous) ? previous : [];
@@ -125,9 +136,16 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
       if (source && typeof source === "object") {
         setItemUomInCache(queryClient, itemId, { ...source, ...body });
       }
-      return { previous };
+      return { previous, rebased: false };
     },
-    onSuccess: (saved) => {
+    onSuccess: (saved, variables, context) => {
+      if (context?.rebased) {
+        void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
+        void queryClient.invalidateQueries({ queryKey: itemDetailQueryKey(itemId) });
+        void invalidateTenantListQueries(queryClient, ITEMS_LIST_QUERY_KEY);
+        message.success(t("uomBaseRebaseSuccess"));
+        return;
+      }
       if (isItemUomRow(saved)) {
         setItemUomInCache(queryClient, itemId, saved);
       }
@@ -164,19 +182,13 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
 
   const resolvedUnitGroupId = unitGroupId != null && unitGroupId !== "" ? Number(unitGroupId) : null;
 
-  const primaryCurrencyId = useMemo(
-    () => (currenciesQuery.data ?? []).find((c) => c.is_primary)?.id,
-    [currenciesQuery.data],
-  );
-
-  const usedUomCurrencyKeys = useMemo(() => {
-    const keys = new Set();
+  const usedUomIds = useMemo(() => {
+    const ids = new Set();
     for (const r of rows) {
       const uomId = r.uom?.id ?? r.uom_id;
-      const currencyId = r.currency?.id ?? r.currency_id;
-      if (uomId != null && currencyId != null) keys.add(`${uomId}:${currencyId}`);
+      if (uomId != null) ids.add(Number(uomId));
     }
-    return keys;
+    return ids;
   }, [rows]);
 
   const uomOptions = useMemo(() => {
@@ -188,17 +200,12 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
       }));
 
     if (inlineEdit?.key === "new") {
-      const currencyId = inlineEdit.values.currency_id ?? primaryCurrencyId;
       const selectedUom = inlineEdit.values.uom_id;
-      if (currencyId != null) {
-        options = options.filter(
-          (o) => o.value === selectedUom || !usedUomCurrencyKeys.has(`${o.value}:${currencyId}`),
-        );
-      }
+      options = options.filter((o) => o.value === selectedUom || !usedUomIds.has(Number(o.value)));
     }
 
     return options;
-  }, [uomsQuery.data, resolvedUnitGroupId, inlineEdit, primaryCurrencyId, usedUomCurrencyKeys]);
+  }, [uomsQuery.data, resolvedUnitGroupId, inlineEdit, usedUomIds]);
 
   const needsBaseUnit = !baseRow;
   const addDisabledReason = useMemo(() => {
@@ -206,11 +213,6 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     if (inlineEdit) return t("uomAddDisabledEditing");
     return null;
   }, [resolvedUnitGroupId, inlineEdit, t]);
-
-  const currencyOptions = useMemo(
-    () => (currenciesQuery.data ?? []).map((c) => ({ value: c.id, label: c.code ?? c.name })),
-    [currenciesQuery.data],
-  );
 
   const variantCards = useMemo(() => {
     if (!inlineEdit || inlineEdit.key !== "new") return rows;
@@ -227,7 +229,6 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
       key: "new",
       values: {
         ...defaultUomInlineValues(),
-        currency_id: primaryCurrencyId,
         is_base: needsBaseUnit,
         conversion_factor: 1,
         is_default_sale: needsBaseUnit,
@@ -259,7 +260,11 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
 
   const patchFlag = (id, body) => {
     if (readOnly || inlineEdit) return;
-    patchMutation.mutate({ id, body });
+    const nextBody =
+      body?.is_base === true
+        ? { ...body, conversion_factor: 1 }
+        : body;
+    patchMutation.mutate({ id, body: nextBody });
   };
 
   const requestDelete = (row) => {
@@ -295,9 +300,7 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
     resolvedUnitGroupId,
     addDisabledReason,
     uomOptions,
-    currencyOptions,
     uomsQueryPending: uomsQuery.isPending,
-    currenciesQueryPending: currenciesQuery.isPending,
     saveMutationPending: saveMutation.isPending,
     patchMutationPending: patchMutation.isPending,
     startCreateRow,

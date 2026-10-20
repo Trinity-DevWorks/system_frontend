@@ -13,7 +13,6 @@ import dayjs from "dayjs";
  *   warehousesPending: boolean;
  *   reasonOptions: { value: unknown; label: string; direction?: string }[];
  *   reasonsPending: boolean;
- *   adjNumber?: string | null;
  * }} props
  */
 export default function StockAdjustmentDrawerForm({
@@ -24,16 +23,9 @@ export default function StockAdjustmentDrawerForm({
   warehousesPending,
   reasonOptions,
   reasonsPending,
-  adjNumber,
 }) {
   return (
     <Form form={form} layout="vertical" disabled={readOnly}>
-      {adjNumber ? (
-        <Form.Item label={t("adjFieldNumber")}>
-          <Input value={adjNumber} disabled />
-        </Form.Item>
-      ) : null}
-
       <Row gutter={[24, 0]}>
         <Col xs={24} md={8}>
           <Form.Item

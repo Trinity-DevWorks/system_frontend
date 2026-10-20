@@ -11,11 +11,18 @@ import {
   useCompanySettings,
 } from "@/lib/company-settings";
 import { updateCompanySettings } from "@/lib/api/companySettings";
+import { formatTenantDate } from "@/lib/tenant-format";
+import { useTenantModules } from "@/lib/tenant-modules";
+import { useResourceAccess } from "@/lib/permissions";
+import { fetchAccountingPeriod, updateAccountingPeriod } from "@/features/accounting/api/accounting.api";
+import { ACCOUNTING_PERIOD_QUERY_KEY } from "@/features/accounting/queries/accountingQueryKeys";
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { EditOutlined } from "@ant-design/icons";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Card, Form, Space, Spin, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 
 const SETTINGS_FIELD_KEYS = [
   "country",
@@ -29,6 +36,8 @@ const SETTINGS_FIELD_KEYS = [
   "inventory_costing_method",
   "price_rounding_mode",
   "price_decimal_places",
+  "fiscal_year_start_month",
+  "books_closed_through",
 ];
 
 function emptyToNull(value) {
@@ -37,8 +46,8 @@ function emptyToNull(value) {
   return value;
 }
 
-/** @param {Record<string, unknown>} settings */
-function settingsToFormValues(settings) {
+/** @param {Record<string, unknown>} settings @param {string | null} booksClosedThrough */
+function settingsToFormValues(settings, booksClosedThrough = null) {
   return {
     country: settings.country,
     preferred_language: settings.preferredLanguage,
@@ -51,6 +60,8 @@ function settingsToFormValues(settings) {
     inventory_costing_method: settings.inventoryCostingMethod,
     price_rounding_mode: settings.priceRoundingMode,
     price_decimal_places: settings.priceDecimalPlaces,
+    fiscal_year_start_month: settings.fiscalYearStartMonth,
+    books_closed_through: booksClosedThrough,
   };
 }
 
@@ -62,6 +73,21 @@ export default function CompanySettingsPage() {
   const queryClient = useQueryClient();
   const { settings, raw, isLoading, isError, isReady } = useCompanySettings();
   const { countries } = useCountriesQuery();
+  const { hasModule } = useTenantModules();
+  const periodsAccess = useResourceAccess("accounting_periods");
+  const showPeriodLock = hasModule("accounting") && periodsAccess.canView;
+  const periodQuery = useQuery({
+    queryKey: ACCOUNTING_PERIOD_QUERY_KEY,
+    queryFn: fetchAccountingPeriod,
+    enabled: showPeriodLock,
+    staleTime: QUERY_STALE_TIME.ledger,
+  });
+  const period = periodQuery.data && typeof periodQuery.data === "object" ? periodQuery.data : null;
+  const savedLockDate = typeof period?.books_closed_through === "string" ? period.books_closed_through : null;
+  const openYear = period?.open_year && typeof period.open_year === "object" ? period.open_year : null;
+  const openYearHint = openYear?.starts_on && openYear?.ends_on
+    ? t("openFiscalYear", { from: formatTenantDate(openYear.starts_on), to: formatTenantDate(openYear.ends_on) })
+    : null;
 
   const hostname =
     typeof window !== "undefined" ? window.location.hostname : "";
@@ -85,8 +111,8 @@ export default function CompanySettingsPage() {
   }, [raw]);
 
   const serverBaseline = useMemo(
-    () => (isReady ? settingsToFormValues(settings) : null),
-    [isReady, settings],
+    () => (isReady ? settingsToFormValues(settings, showPeriodLock ? savedLockDate : null) : null),
+    [isReady, savedLockDate, settings, showPeriodLock],
   );
   const baseline = isEditing ? editBaseline : serverBaseline;
 
@@ -106,8 +132,8 @@ export default function CompanySettingsPage() {
   }, [form, isEditing, isReady, serverBaseline]);
 
   const saveMutation = useMutation({
-    mutationFn: (values) =>
-      updateCompanySettings({
+    mutationFn: async (values) => {
+      const data = await updateCompanySettings({
         country: emptyToNull(values.country),
         preferred_language: values.preferred_language,
         timezone: values.timezone,
@@ -119,9 +145,17 @@ export default function CompanySettingsPage() {
         inventory_costing_method: values.inventory_costing_method,
         price_rounding_mode: values.price_rounding_mode,
         price_decimal_places: Number(values.price_decimal_places),
-      }),
+        fiscal_year_start_month: Number(values.fiscal_year_start_month),
+      });
+      const nextLock = values.books_closed_through ?? null;
+      if (showPeriodLock && nextLock !== savedLockDate) {
+        await updateAccountingPeriod({ books_closed_through: nextLock });
+      }
+      return data;
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(queryKey, data);
+      queryClient.invalidateQueries({ queryKey: ACCOUNTING_PERIOD_QUERY_KEY });
       bumpCompanySettingsSync();
       setIsDirty(false);
       setIsEditing(false);
@@ -165,7 +199,7 @@ export default function CompanySettingsPage() {
     }
     return (
       <Space wrap>
-        <Button onClick={cancelEditing} disabled={saveMutation.isPending}>
+        <Button {...APP_DISMISS_BUTTON_PROPS} onClick={cancelEditing} disabled={saveMutation.isPending}>
           {t("cancel")}
         </Button>
         <Button
@@ -244,6 +278,12 @@ export default function CompanySettingsPage() {
           disabled={!isEditing}
           onValuesChange={recomputeDirty}
           onFinish={(values) => saveMutation.mutate(values)}
+          showPeriodLock={showPeriodLock}
+          canEditLock={periodsAccess.canEdit}
+          canReopenLock={periodsAccess.canReopen}
+          savedLockDate={savedLockDate}
+          fiscalYearStartLocked={Boolean(period?.fiscal_year_start_locked)}
+          openYearHint={openYearHint}
         />
       </Card>
     </div>

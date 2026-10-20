@@ -1,7 +1,10 @@
 "use client";
 
 import { inventoryCostingMethodOptions } from "@/lib/inventory-costing";
-import { Form, InputNumber, Select, Switch } from "antd";
+import { dayjsDatePattern } from "@/lib/tenant-format";
+import { DatePicker, Form, InputNumber, Select, Switch, Typography } from "antd";
+import dayjs from "dayjs";
+import { useLocale } from "next-intl";
 import { useMemo } from "react";
 import { useCountriesQuery } from "../queries/useCountriesQuery";
 
@@ -36,6 +39,12 @@ function timezoneOptions() {
  *   onFinish: (values: Record<string, unknown>) => void;
  *   disabled?: boolean;
  *   onValuesChange?: () => void;
+ *   showPeriodLock?: boolean;
+ *   canEditLock?: boolean;
+ *   canReopenLock?: boolean;
+ *   savedLockDate?: string | null;
+ *   fiscalYearStartLocked?: boolean;
+ *   openYearHint?: string | null;
  * }} props
  */
 export default function CompanySettingsForm({
@@ -44,8 +53,22 @@ export default function CompanySettingsForm({
   onFinish,
   disabled = false,
   onValuesChange,
+  showPeriodLock = false,
+  canEditLock = false,
+  canReopenLock = false,
+  savedLockDate = null,
+  fiscalYearStartLocked = false,
+  openYearHint = null,
 }) {
+  const locale = useLocale();
   const timezones = useMemo(() => timezoneOptions(), []);
+  const fiscalMonths = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat(locale, { month: "long" });
+    return Array.from({ length: 12 }, (_, index) => ({
+      value: index + 1,
+      label: formatter.format(new Date(2026, index, 1)),
+    }));
+  }, [locale]);
   const { countries, isPending: countriesLoading } = useCountriesQuery();
   const countryCodes = useMemo(
     () => new Set(countries.map((country) => country.code)),
@@ -230,6 +253,40 @@ export default function CompanySettingsForm({
           unCheckedChildren={t("switchOff")}
         />
       </Form.Item>
+
+      <Typography.Title level={5} className="!mt-2">{t("groupAccounting")}</Typography.Title>
+      <Form.Item
+        name="fiscal_year_start_month"
+        label={t("fieldFiscalYearStartMonth")}
+        extra={fiscalYearStartLocked ? t("fieldFiscalYearStartLocked") : t("fieldFiscalYearStartMonthHelp")}
+        rules={[{ required: true, message: t("fieldFiscalYearStartMonth") }]}
+      >
+        <Select options={fiscalMonths} disabled={fiscalYearStartLocked} />
+      </Form.Item>
+      {showPeriodLock ? (
+        <Form.Item
+          name="books_closed_through"
+          label={t("fieldBooksClosedThrough")}
+          extra={openYearHint ? `${t("fieldBooksClosedThroughHelp")} ${openYearHint}` : t("fieldBooksClosedThroughHelp")}
+          getValueProps={(value) => ({ value: value ? dayjs(value) : null })}
+          normalize={(value) => (value ? value.format("YYYY-MM-DD") : null)}
+        >
+          <DatePicker
+            className="w-full"
+            format={dayjsDatePattern()}
+            allowClear={canReopenLock}
+            disabled={!canEditLock && !canReopenLock}
+            disabledDate={(current) => {
+              if (!current) return false;
+              const day = current.format("YYYY-MM-DD");
+              if (!savedLockDate) return !canEditLock;
+              if (day < savedLockDate && !canReopenLock) return true;
+              if (day > savedLockDate && !canEditLock) return true;
+              return false;
+            }}
+          />
+        </Form.Item>
+      ) : null}
     </Form>
   );
 }

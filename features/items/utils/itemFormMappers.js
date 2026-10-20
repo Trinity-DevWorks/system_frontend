@@ -141,6 +141,7 @@ export function itemFormValuesToPayload(values) {
         : null,
     allow_sale: values.allow_sale === true,
     allow_purchase: values.allow_purchase === true,
+    allow_return: values.allow_return !== false,
     is_active: values.is_active !== false,
   };
 }
@@ -178,6 +179,7 @@ export function toItemCacheRow(row) {
     costing_method: row.costing_method ?? null,
     allow_sale: row.allow_sale,
     allow_purchase: row.allow_purchase,
+    allow_return: row.allow_return,
     is_active: row.is_active,
     primary_image: row.primary_image ?? null,
     created_at: row.created_at,
@@ -213,6 +215,7 @@ export function mapItemRecordToFormValues(r) {
     costing_method: r.costing_method ?? "",
     allow_sale: Boolean(r.allow_sale),
     allow_purchase: Boolean(r.allow_purchase),
+    allow_return: r.allow_return !== false,
     is_active: r.is_active !== false,
   };
 }

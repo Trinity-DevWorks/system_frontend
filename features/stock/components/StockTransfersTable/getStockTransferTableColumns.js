@@ -1,10 +1,9 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined, InboxOutlined, MoreOutlined, SendOutlined, StopOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, InboxOutlined, MoreOutlined, SendOutlined, StopOutlined, UndoOutlined } from "@ant-design/icons";
 import {
   getStockTransferStatusLabel,
-  isStockTransferCancellable,
+  getStockTransferStatusTagColor,
   isStockTransferDispatchable,
   isStockTransferDraft,
-  isStockTransferReceivable,
 } from "../../utils/stockTransferStatuses";
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import dayjs from "dayjs";
@@ -20,11 +19,12 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onDelete?: (record: unknown) => void;
  *   onDispatch?: (record: unknown) => void;
  *   onReceive?: (record: unknown) => void;
+ *   onCloseOpen?: (record: unknown) => void;
  *   onCancel?: (record: unknown) => void;
  * }} [actions]
  */
 export function getStockTransferTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onDispatch, onReceive, onCancel } = actions;
+  const { onView, onEdit, onDelete, onDispatch, onReceive, onCloseOpen, onCancel } = actions;
 
   return [
     {
@@ -65,15 +65,7 @@ export function getStockTransferTableColumns(t, actions = {}) {
       sorter: (a, b) => String(a.status ?? "").localeCompare(String(b.status ?? "")),
       render: (value) => {
         const label = getStockTransferStatusLabel(t, value);
-        const color =
-          value === "received"
-            ? "success"
-            : value === "in_transit"
-              ? "warning"
-              : value === "cancelled"
-                ? "default"
-                : "processing";
-        return <Tag color={color}>{label}</Tag>;
+        return <Tag color={getStockTransferStatusTagColor(value)}>{label}</Tag>;
       },
     },
     {
@@ -117,8 +109,9 @@ export function getStockTransferTableColumns(t, actions = {}) {
       render: (_, record) => {
         const isDraft = isStockTransferDraft(record?.status);
         const canDispatch = isStockTransferDispatchable(record?.status);
-        const canReceive = isStockTransferReceivable(record?.status);
-        const canCancel = isStockTransferCancellable(record?.status) && !isDraft;
+        const canReceive = record?.can_receive === true;
+        const canCloseOpen = record?.can_close_open === true;
+        const canCancel = record?.can_cancel_transit === true;
         const items = [
           {
             key: "view",
@@ -126,6 +119,16 @@ export function getStockTransferTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
+          ...(canReceive
+            ? [
+                {
+                  key: "receive",
+                  icon: <InboxOutlined />,
+                  label: t("actionReceiveTransfer"),
+                  onClick: () => onReceive?.(record),
+                },
+              ]
+            : []),
           ...(isDraft
             ? [
                 {
@@ -153,13 +156,13 @@ export function getStockTransferTableColumns(t, actions = {}) {
                 },
               ]
             : []),
-          ...(canReceive
+          ...(canCloseOpen
             ? [
                 {
-                  key: "receive",
-                  icon: <InboxOutlined />,
-                  label: t("actionReceiveTransfer"),
-                  onClick: () => onReceive?.(record),
+                  key: "closeOpen",
+                  icon: <UndoOutlined />,
+                  label: t("actionCloseTransferOpen"),
+                  onClick: () => onCloseOpen?.(record),
                 },
               ]
             : []),

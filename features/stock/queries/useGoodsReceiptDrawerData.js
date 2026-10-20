@@ -51,15 +51,16 @@ export function useGoodsReceiptDrawerData({
   });
 
   const confirmedPosQuery = useQuery({
-    queryKey: [...PURCHASE_ORDERS_QUERY_KEY, "receivable", "confirmed"],
-    queryFn: () => fetchPurchaseOrders({ status: "confirmed", per_page: 100 }),
+    queryKey: [...PURCHASE_ORDERS_QUERY_KEY, "receivable", "confirmed", "not-invoiced"],
+    queryFn: () =>
+      fetchPurchaseOrders({ status: "confirmed", available_for_receipt: true, per_page: 100 }),
     enabled: open && loadPurchaseOrders,
     staleTime: QUERY_STALE_TIME.default,
   });
 
   const sentPosQuery = useQuery({
-    queryKey: [...PURCHASE_ORDERS_QUERY_KEY, "receivable", "sent"],
-    queryFn: () => fetchPurchaseOrders({ status: "sent", per_page: 100 }),
+    queryKey: [...PURCHASE_ORDERS_QUERY_KEY, "receivable", "sent", "not-invoiced"],
+    queryFn: () => fetchPurchaseOrders({ status: "sent", available_for_receipt: true, per_page: 100 }),
     enabled: open && loadPurchaseOrders,
     staleTime: QUERY_STALE_TIME.default,
   });

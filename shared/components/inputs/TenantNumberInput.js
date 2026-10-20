@@ -6,7 +6,8 @@ import {
   parseTenantGroupedInput,
   tenantDecimalStep,
 } from "@/lib/tenant-format";
-import { InputNumber } from "antd";
+import { EXCHANGE_RATE_DECIMALS } from "@/lib/currency/documentExchangeRate";
+import { Input, InputNumber, Space } from "antd";
 
 /**
  * @typedef {"money" | "quantity" | "percent" | "rate" | "integer"} TenantNumberKind
@@ -20,9 +21,25 @@ import { InputNumber } from "antd";
 function decimalsForKind(kind, settings) {
   if (kind === "money") return settings.priceDecimalPlaces;
   if (kind === "percent") return 2;
-  if (kind === "rate") return 6;
+  if (kind === "rate") return EXCHANGE_RATE_DECIMALS;
   if (kind === "integer") return 0;
   return 6;
+}
+
+/**
+ * Rates keep 12 decimals (1 primary = rate × currency) but display without padding zeros.
+ *
+ * @param {string | number | undefined} value
+ * @param {{ userTyping: boolean; input: string }} info
+ */
+function formatRateInput(value, info) {
+  if (info?.userTyping) return info.input;
+  if (value === undefined || value === null || value === "") return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return formatTenantGroupedInput(value);
+  const fixed = n.toFixed(EXCHANGE_RATE_DECIMALS);
+  const trimmed = fixed.includes(".") ? fixed.replace(/\.?0+$/, "") : fixed;
+  return formatTenantGroupedInput(trimmed);
 }
 
 /**
@@ -42,18 +59,35 @@ export default function TenantNumberInput({
   precision: _precision,
   formatter,
   parser,
+  addonAfter,
+  className,
   ...rest
 }) {
   const { settings } = useCompanySettings();
   const places = decimals ?? decimalsForKind(kind, settings);
-
-  return (
+  const trimRate = kind === "rate" && decimals == null;
+  const input = (
     <InputNumber
       {...rest}
-      precision={places}
-      step={step ?? tenantDecimalStep(places)}
-      formatter={formatter ?? formatTenantGroupedInput}
+      className={addonAfter ? "min-w-0 flex-1" : className}
+      precision={trimRate ? undefined : places}
+      step={step ?? (trimRate ? 0.0001 : tenantDecimalStep(places))}
+      formatter={formatter ?? (trimRate ? formatRateInput : formatTenantGroupedInput)}
       parser={parser ?? parseTenantGroupedInput}
     />
+  );
+  if (addonAfter == null || addonAfter === "") return input;
+
+  return (
+    <Space.Compact block className={className}>
+      {input}
+      <Input
+        readOnly
+        tabIndex={-1}
+        disabled={Boolean(rest.disabled)}
+        value={String(addonAfter)}
+        className="tenant-number-symbol"
+      />
+    </Space.Compact>
   );
 }

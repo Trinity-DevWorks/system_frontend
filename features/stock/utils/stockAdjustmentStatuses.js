@@ -1,6 +1,6 @@
-/** @typedef {"draft" | "posted"} StockAdjustmentStatus */
+/** @typedef {"draft" | "posted" | "reversed"} StockAdjustmentStatus */
 
-export const STOCK_ADJUSTMENT_STATUS_VALUES = /** @type {const} */ (["draft", "posted"]);
+export const STOCK_ADJUSTMENT_STATUS_VALUES = /** @type {const} */ (["draft", "posted", "reversed"]);
 
 export const STOCK_ADJUSTMENT_REASON_DIRECTIONS = /** @type {const} */ (["increase", "decrease", "both"]);
 
@@ -11,6 +11,7 @@ export const STOCK_ADJUSTMENT_REASON_DIRECTIONS = /** @type {const} */ (["increa
 export function getStockAdjustmentStatusLabel(t, status) {
   if (status === "draft") return t("adjStatusDraft");
   if (status === "posted") return t("adjStatusPosted");
+  if (status === "reversed") return t("adjStatusReversed");
   return status ? String(status) : "\u2014";
 }
 

@@ -128,13 +128,15 @@ export function isEditDirtyVsLoaded(form, row) {
  * @param {string} shortcutName
  * @param {string} [type]
  * @param {unknown} [branchId]
+ * @param {unknown} [managerId]
  */
-export function requiredFieldsValid(name, shortcutName, type = "central", branchId = null) {
+export function requiredFieldsValid(name, shortcutName, type = "central", branchId = null, managerId = null) {
   const n = String(name ?? "").trim();
   const s = String(shortcutName ?? "").trim().toUpperCase();
   if (!n || !s) return false;
   if (!SHORTCUT_PATTERN.test(s)) return false;
   if (asType(type) === "branch" && (branchId == null || branchId === "")) return false;
+  if (managerId == null || managerId === "") return false;
   return true;
 }
 

@@ -11,7 +11,6 @@ import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { isPersistedEntityId, normalizeEntityId } from "@/lib/entityId";
-import { fetchCurrencyNames } from "@/features/currencies/index";
 import {
   createSupplierItem,
   deleteSupplierItem,
@@ -36,7 +35,6 @@ import {
 import { buildSuppliersPanelColumns } from "./buildSuppliersPanelColumns";
 import { SUPPLIER_DRAFT_ROW_ID } from "./supplierPanelConstants";
 import { SUPPLIERS_LIST_QUERY_KEY } from "@/features/suppliers";
-import { CURRENCIES_LIST_QUERY_KEY } from "@/features/currencies";
 
 /** @typedef {import("./supplierPanelConstants").SupplierInlineValues} SupplierInlineValues */
 
@@ -84,13 +82,6 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
     staleTime: QUERY_STALE_TIME.catalog,
   });
 
-  const currenciesQuery = useQuery({
-    queryKey: CURRENCIES_LIST_QUERY_KEY,
-    queryFn: fetchCurrencyNames,
-    enabled: active && !readOnly,
-    staleTime: QUERY_STALE_TIME.catalog,
-  });
-
   const supplierOptions = useMemo(
     () =>
       (suppliersQuery.data ?? [])
@@ -112,15 +103,6 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
   }, [allowPurchase, inlineEdit, suppliersQuery.isFetched, suppliersQuery.data, supplierOptions.length, t]);
 
   const addSupplierDisabled = addSupplierDisabledReason != null;
-
-  const currencyOptions = useMemo(
-    () =>
-      (currenciesQuery.data ?? []).map((c) => ({
-        value: c.id,
-        label: c.code ?? c.name ?? String(c.id),
-      })),
-    [currenciesQuery.data],
-  );
 
   const saveMutation = useMutation({
     mutationFn: (/** @type {{ supplierId: string; id?: number; body: Record<string, unknown> }} */ {
@@ -232,7 +214,6 @@ export function useItemSuppliersPanel({ itemId, readOnly, allowPurchase = true, 
     readOnly,
     inlineEdit,
     supplierOptions,
-    currencyOptions,
     getInlineValues,
     patchDraft,
     patchPreferred,

@@ -1,6 +1,6 @@
 import { formatTenantDate, formatTenantDateTime } from "@/lib/tenant-format";
 import { getBundleExplosionStatusLabel, isBundleExplosionDraft } from "../../utils/bundleExplosionStatuses";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Tag } from "antd";
 
 /**
@@ -9,10 +9,11 @@ import { Button, Dropdown, Tag } from "antd";
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
+ *   onReverse?: (record: unknown) => void;
  * }} [actions]
  */
 export function getBundleExplosionTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete } = actions;
+  const { onView, onEdit, onDelete, onReverse } = actions;
 
   return [
     {
@@ -50,7 +51,7 @@ export function getBundleExplosionTableColumns(t, actions = {}) {
       key: "status",
       width: 110,
       render: (value) => (
-        <Tag color={value === "posted" ? "green" : "default"}>{getBundleExplosionStatusLabel(t, value)}</Tag>
+        <Tag color={value === "posted" ? "green" : value === "reversed" ? "warning" : "default"}>{getBundleExplosionStatusLabel(t, value)}</Tag>
       ),
     },
     {
@@ -95,6 +96,15 @@ export function getBundleExplosionTableColumns(t, actions = {}) {
             danger: true,
             label: t("actionDelete"),
             onClick: () => onDelete(record),
+          });
+        }
+        if (onReverse && record?.status === "posted") {
+          items.push({
+            key: "reverse",
+            icon: <RollbackOutlined />,
+            danger: true,
+            label: t("actionReverse"),
+            onClick: () => onReverse(record),
           });
         }
         if (items.length === 0) return null;

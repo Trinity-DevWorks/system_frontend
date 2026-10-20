@@ -22,8 +22,16 @@ export const CUSTOMER_LOOKUP_ADD_VAT_GROUP = "__customer_drawer_add_vat_group__"
 /** @param {unknown} value */
 export function optionalRelationId(value) {
   if (value == null || value === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  const s = String(value).trim();
+  if (s === "" || s.startsWith("__")) return null;
+  if (/^-?\d+$/.test(s)) {
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+  return s;
 }
 
 /**
@@ -118,6 +126,7 @@ export function currencyBalancesFingerprint(rows) {
 export function isCreateDirtyVsDefaults(form, defaults) {
   const v = form.getFieldsValue(true);
   const name = String(v.name ?? "").trim();
+  const accountNumber = String(v.account_number ?? "").trim();
   const email = String(v.email ?? "").trim();
   const phone = String(v.phone ?? "").trim();
   const groupId = v.customer_group_id;
@@ -129,6 +138,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   const notes = String(v.notes ?? "").trim();
 
   if (name !== String(defaults.name ?? "").trim()) return true;
+  if (accountNumber !== String(defaults.account_number ?? "").trim()) return true;
   if (email !== String(defaults.email ?? "").trim()) return true;
   if (phone !== String(defaults.phone ?? "").trim()) return true;
   if (optionalRelationId(groupId) !== optionalRelationId(defaults.customer_group_id)) return true;
@@ -142,6 +152,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (isVat !== Boolean(defaults.is_vat_registered)) return true;
   if (vat !== String(defaults.vat_number ?? "").trim()) return true;
   if (notes !== String(defaults.notes ?? "").trim()) return true;
+  if (addressesFingerprint(v.addresses) !== addressesFingerprint(defaults.addresses)) return true;
   if (currencyBalancesFingerprint(
     mergeCreditAndOpeningRows(/** @type {unknown[]} */ (v.currency_credit_limits ?? []), /** @type {unknown[]} */ (v.currency_opening_balances ?? [])),
   ) !==
@@ -163,6 +174,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
 export function isEditDirtyVsLoaded(form, row) {
   const v = form.getFieldsValue(true);
   const name = String(v.name ?? "").trim();
+  const accountNumber = String(v.account_number ?? "").trim();
   const email = String(v.email ?? "").trim();
   const phone = String(v.phone ?? "").trim();
   const groupId = v.customer_group_id;
@@ -174,6 +186,7 @@ export function isEditDirtyVsLoaded(form, row) {
   const notes = String(v.notes ?? "").trim();
 
   if (name !== String(row.name ?? "").trim()) return true;
+  if (accountNumber !== String(row.account_number ?? "").trim()) return true;
   if (email !== String(row.email ?? "").trim()) return true;
   if (phone !== String(row.phone ?? "").trim()) return true;
   if (optionalRelationId(groupId) !== optionalRelationId(row.customer_group_id)) return true;
@@ -187,6 +200,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (isVat !== Boolean(row.is_vat_registered)) return true;
   if (vat !== String(row.vat_number ?? "").trim()) return true;
   if (notes !== String(row.notes ?? "").trim()) return true;
+  if (addressesFingerprint(v.addresses) !== addressesFingerprint(row.addresses)) return true;
   if (
     currencyBalancesFingerprint(
       mergeCreditAndOpeningRows(/** @type {unknown[]} */ (v.currency_credit_limits ?? []), /** @type {unknown[]} */ (v.currency_opening_balances ?? [])),
@@ -212,6 +226,7 @@ export function toCustomerCacheRow(row) {
   return {
     id: row.id,
     customer_code: row.customer_code,
+    account_number: row.account_number ?? null,
     name: row.name,
     email: row.email ?? null,
     phone: row.phone ?? null,
@@ -232,6 +247,7 @@ export function toCustomerCacheRow(row) {
     is_vat_registered: Boolean(row.is_vat_registered),
     vat_number: row.vat_number ?? null,
     notes: row.notes ?? null,
+    addresses: Array.isArray(row.addresses) ? row.addresses : [],
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -280,11 +296,67 @@ function mapMergedBalanceToPayload(row) {
 }
 
 /**
+ * @param {unknown[]} rows
+ */
+function addressesFingerprint(rows) {
+  if (!Array.isArray(rows)) return "";
+  return JSON.stringify(
+    rows.map((raw) => {
+      const r = raw && typeof raw === "object" ? /** @type {Record<string, unknown>} */ (raw) : {};
+      return {
+        id: r.id ?? null,
+        address_type: String(r.address_type ?? ""),
+        address_line_1: String(r.address_line_1 ?? "").trim(),
+        address_line_2: String(r.address_line_2 ?? "").trim(),
+        city: String(r.city ?? "").trim(),
+        state: String(r.state ?? "").trim(),
+        country: String(r.country ?? "").trim(),
+        phone: String(r.phone ?? "").trim(),
+        is_default: Boolean(r.is_default),
+      };
+    }),
+  );
+}
+
+/**
+ * @param {unknown[]} rows
+ */
+function mapAddressesToPayload(rows) {
+  if (!Array.isArray(rows)) return [];
+  /** @type {Record<string, unknown>[]} */
+  const out = [];
+  for (const raw of rows) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = /** @type {Record<string, unknown>} */ (raw);
+    const line1 = String(r.address_line_1 ?? "").trim();
+    if (!line1) continue;
+    /** @type {Record<string, unknown>} */
+    const row = {
+      address_type: r.address_type === "billing" ? "billing" : "shipping",
+      address_line_1: line1,
+      address_line_2: String(r.address_line_2 ?? "").trim() || null,
+      city: String(r.city ?? "").trim(),
+      state: String(r.state ?? "").trim(),
+      country: String(r.country ?? "").trim(),
+      phone: String(r.phone ?? "").trim() || null,
+      is_default: Boolean(r.is_default),
+    };
+    if (r.id != null && r.id !== "") {
+      const id = Number(r.id);
+      if (Number.isFinite(id) && id > 0) row.id = id;
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+/**
  * @param {Record<string, unknown>} values
  * @param {"create" | "edit"} mode
  */
 export function customerFormValuesToPayload(values, mode) {
   const name = String(values.name ?? "").trim();
+  const accountNumberRaw = String(values.account_number ?? "").trim();
   const emailRaw = String(values.email ?? "").trim();
   const phoneRaw = String(values.phone ?? "").trim();
   const vatNumRaw = String(values.vat_number ?? "").trim();
@@ -305,6 +377,7 @@ export function customerFormValuesToPayload(values, mode) {
   /** @type {Record<string, unknown>} */
   const base = {
     name,
+    account_number: accountNumberRaw === "" ? null : accountNumberRaw.slice(0, 128),
     email: emailRaw === "" ? null : emailRaw,
     phone: phoneRaw === "" ? null : phoneRaw,
     customer_group_id: optionalRelationId(values.customer_group_id),
@@ -319,6 +392,7 @@ export function customerFormValuesToPayload(values, mode) {
     is_vat_registered: isVat,
     vat_number: isVat ? (vatNumRaw === "" ? null : vatNumRaw.slice(0, 128)) : null,
     notes: notesRaw === "" ? null : notesRaw,
+    addresses: mapAddressesToPayload(/** @type {unknown[]} */ (values.addresses ?? [])),
   };
 
   if (mode === "create") {

@@ -34,6 +34,7 @@ import {
   isCreateDirtyVsDefaults,
   isEditDirtyVsLoaded,
   mapApiCurrencyBalancesToFormSplit,
+  optionalRelationId,
   requiredFieldsValid,
   toCustomerCacheRow,
 } from "../../utils/customerDrawerUtils";
@@ -55,6 +56,8 @@ const CUSTOMER_DETAIL_QUERY_PREFIX = /** @type {const} */ (CUSTOMERS_LIST_QUERY_
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
+ *   zIndex?: number;
  * }} props
  */
 export default function CustomerDrawer({
@@ -64,6 +67,8 @@ export default function CustomerDrawer({
   tableSeedRecord = null,
   onClose,
   onCreated,
+  onCreateSuccess,
+  zIndex,
 }) {
   const t = useTranslations("Customers");
   const tApiErrors = useTranslations("ApiErrors");
@@ -91,9 +96,9 @@ export default function CustomerDrawer({
      */
     (fieldName, queryKey) =>
       /** @param {Record<string, unknown>} record */ (record) => {
-        const id = record?.id;
-        if (id == null || Number.isNaN(Number(id))) return;
-        form.setFieldValue(fieldName, Number(id));
+        const id = optionalRelationId(record?.id);
+        if (id == null) return;
+        form.setFieldValue(fieldName, id);
         invalidateTenantListQueries(queryClient, queryKey);
       },
     [form, queryClient],
@@ -128,6 +133,7 @@ export default function CustomerDrawer({
   const defaults = useMemo(
     () => ({
       name: "",
+      account_number: "",
       email: "",
       phone: "",
       customer_group_id: undefined,
@@ -143,6 +149,7 @@ export default function CustomerDrawer({
       is_vat_registered: false,
       vat_number: "",
       notes: "",
+      addresses: [],
     }),
     [],
   );
@@ -152,6 +159,7 @@ export default function CustomerDrawer({
     return {
       customer_code: r.customer_code,
       name: r.name,
+      account_number: r.account_number ?? "",
       email: r.email ?? "",
       phone: r.phone ?? "",
       customer_group_id: r.customer_group_id ?? undefined,
@@ -166,6 +174,19 @@ export default function CustomerDrawer({
       is_vat_registered: r.is_vat_registered === true,
       vat_number: r.vat_number ?? "",
       notes: r.notes ?? "",
+      addresses: Array.isArray(r.addresses)
+        ? r.addresses.map((row) => ({
+            id: row.id,
+            address_type: row.address_type ?? "shipping",
+            address_line_1: row.address_line_1 ?? "",
+            address_line_2: row.address_line_2 ?? "",
+            city: row.city ?? "",
+            state: row.state ?? "",
+            country: row.country ?? "",
+            phone: row.phone ?? "",
+            is_default: Boolean(row.is_default),
+          }))
+        : [],
     };
   }, []);
 
@@ -311,6 +332,7 @@ export default function CustomerDrawer({
     tApiErrors,
     onClose: handleDrawerClose,
     onCreated,
+    onCreateSuccess,
     onSyncCreateDiscardBaseline,
     defaults,
     customerGroupsData,
@@ -409,6 +431,7 @@ export default function CustomerDrawer({
     <ResourceCrudDrawer
       title={title}
       size={800}
+      zIndex={zIndex}
       open={open}
       requestClose={requestClose}
       submitting={submitting}
@@ -416,7 +439,6 @@ export default function CustomerDrawer({
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      skeletonParagraphRows={6}
       footer={
         <ResourceDrawerFooter
           mode={mode}

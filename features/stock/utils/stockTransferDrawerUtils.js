@@ -8,7 +8,19 @@ import { normalizeEntityId } from "@/lib/entityId";
 export const STOCK_TRANSFER_BASE_UOM = "__stock_transfer_base_uom__";
 
 /**
- * @typedef {{ item_id?: string; quantity?: number; item_uom_id?: number | string; lot_id?: number; track_lots?: boolean; notes?: string }} TransferLineFormRow
+ * @typedef {{
+ *   id?: number;
+ *   item_id?: string;
+ *   quantity?: number;
+ *   received_quantity?: number;
+ *   open_quantity?: number;
+ *   returned_quantity?: number;
+ *   written_off_quantity?: number;
+ *   item_uom_id?: number | string;
+ *   lot_id?: number;
+ *   track_lots?: boolean;
+ *   notes?: string;
+ * }} TransferLineFormRow
  */
 
 export function getStockTransferDefaults() {
@@ -50,8 +62,13 @@ export function mapTransferRecordToForm(record) {
  */
 export function mapTransferLinesFromApi(lines) {
   return (lines ?? []).map((line) => ({
+    id: line.id != null ? Number(line.id) : undefined,
     item_id: normalizeEntityId(line.item_id) ?? undefined,
     quantity: line.quantity != null ? Number(line.quantity) : undefined,
+    received_quantity: line.received_quantity != null ? Number(line.received_quantity) : undefined,
+    open_quantity: line.open_quantity != null ? Number(line.open_quantity) : undefined,
+    returned_quantity: line.returned_quantity != null ? Number(line.returned_quantity) : undefined,
+    written_off_quantity: line.written_off_quantity != null ? Number(line.written_off_quantity) : undefined,
     item_uom_id: line.item_uom_id != null ? Number(line.item_uom_id) : STOCK_TRANSFER_BASE_UOM,
     lot_id: line.lot_id != null ? Number(line.lot_id) : undefined,
     track_lots: Boolean(line.item?.track_lots || line.lot_id != null),

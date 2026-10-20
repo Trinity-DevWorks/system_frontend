@@ -1,6 +1,7 @@
 "use client";
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { useResourceAccess } from "@/lib/permissions";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { STOCK_ADJUSTMENT_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -8,10 +9,10 @@ import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { fetchStockAdjustment } from "../../api/stockAdjustments.api";
 import { useQuery } from "@tanstack/react-query";
-import { App, Form } from "antd";
+import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isStockAdjustmentDraft } from "../../utils/stockAdjustmentStatuses";
+import { getStockAdjustmentStatusLabel, isStockAdjustmentDraft } from "../../utils/stockAdjustmentStatuses";
 import StockAdjustmentDrawerFooter from "./StockAdjustmentDrawerFooter";
 import StockAdjustmentDrawerForm from "./StockAdjustmentDrawerForm";
 import StockAdjustmentLineEditor from "./StockAdjustmentLineEditor";
@@ -51,6 +52,7 @@ export default function StockAdjustmentDocumentDrawer({
 }) {
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
+  const access = useResourceAccess("stock");
   const { message, modal, notification } = App.useApp();
   const [form] = Form.useForm();
 
@@ -192,7 +194,7 @@ export default function StockAdjustmentDocumentDrawer({
     [onCreated, syncBaselinesFromRecordAndBump],
   );
 
-  const { saveMutation, postMutation, deleteMutation, submitting } = useStockAdjustmentDrawerMutations({
+  const { saveMutation, postMutation, reverseMutation, deleteMutation, submitting } = useStockAdjustmentDrawerMutations({
     form,
     message,
     notification,
@@ -203,6 +205,7 @@ export default function StockAdjustmentDocumentDrawer({
     onCreated: handleCreated,
     onSaved: syncBaselinesFromRecordAndBump,
     onPosted: syncBaselinesFromRecordAndBump,
+    onReversed: syncBaselinesFromRecordAndBump,
     onDeleted: forceClose,
     onClose: forceClose,
   });
@@ -231,6 +234,17 @@ export default function StockAdjustmentDocumentDrawer({
       })
       .catch(() => {});
   }, [form, modal, t, postMutation]);
+
+  const handleReverse = useCallback(() => {
+    modal.confirm({
+      title: t("reverseConfirmTitle"),
+      content: t("reverseConfirmContent"),
+      okText: t("actionReverse"),
+      okButtonProps: { danger: true },
+      cancelText: t("drawerCancel"),
+      onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
+    });
+  }, [modal, t, reverseMutation]);
 
   const handleDelete = useCallback(() => {
     modal.confirm({
@@ -269,6 +283,13 @@ export default function StockAdjustmentDocumentDrawer({
     <ResourceCrudDrawer
       title={title}
       recordName={loadedNumber}
+      titleExtra={
+        effectiveStatus ? (
+          <Tag className="m-0" color={effectiveStatus === "posted" ? "green" : effectiveStatus === "reversed" ? "warning" : "default"}>
+            {getStockAdjustmentStatusLabel(t, effectiveStatus)}
+          </Tag>
+        ) : null
+      }
       open={open}
       requestClose={requestClose}
       submitting={submitting}
@@ -291,6 +312,8 @@ export default function StockAdjustmentDocumentDrawer({
           showPost={!readOnly}
           onSave={handleSave}
           onPost={handlePost}
+          showReverse={effectiveStatus === "posted" && documentId != null && access.canReverse}
+          onReverse={handleReverse}
           onDelete={handleDelete}
         />
       }
@@ -303,7 +326,6 @@ export default function StockAdjustmentDocumentDrawer({
         warehousesPending={drawerData.warehousesPending}
         reasonOptions={reasonSelectOptions}
         reasonsPending={drawerData.reasonsPending}
-        adjNumber={loadedNumber}
       />
       <StockAdjustmentLineEditor
         lines={lines.length > 0 ? lines : [getEmptyAdjLine()]}

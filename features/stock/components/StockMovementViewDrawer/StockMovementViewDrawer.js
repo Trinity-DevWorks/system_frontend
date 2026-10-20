@@ -17,6 +17,7 @@ import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib
 import { fetchStockMovement } from "../../api/stock.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Button, Descriptions, Typography } from "antd";
+import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { formatStockQuantity, formatUomLabel } from "../../utils/formatStockQuantity";
@@ -95,7 +96,9 @@ export default function StockMovementViewDrawer({
       submitting={false}
       footer={
         <div className="flex justify-end">
-          <Button onClick={forceClose}>{t("drawerClose")}</Button>
+          <Button {...APP_DISMISS_BUTTON_PROPS} onClick={forceClose}>
+            {t("drawerClose")}
+          </Button>
         </div>
       }
       showDetailLoading={detailEnabled && detailQuery.isPending && !record}

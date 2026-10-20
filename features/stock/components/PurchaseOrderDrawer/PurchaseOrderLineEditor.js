@@ -3,45 +3,12 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
-import { isPersistedEntityId } from "@/lib/entityId";
 import { Select } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
 import { suggestedPurchaseOrderUnitPrice } from "../../utils/purchaseOrderLastPurchasePrice";
-import { usePurchaseOrderLineUomOptions } from "../../queries/usePurchaseOrderDrawerData";
-
-/**
- * @param {{
- *   itemId?: string;
- *   value?: number | string;
- *   readOnly: boolean;
- *   t: (key: string) => string;
- *   onChange: (value: number | string) => void;
- * }} props
- */
-function PurchaseOrderLineUomField({ itemId, value, readOnly, t, onChange }) {
-  const { options, pending } = usePurchaseOrderLineUomOptions({
-    itemId,
-    t,
-    enabled: !readOnly && isPersistedEntityId(itemId),
-  });
-
-  return (
-    <Select
-      showSearch
-      optionFilterProp="label"
-      className="w-full"
-      placeholder={t("poBaseUomOption")}
-      value={value ?? PO_BASE_UOM}
-      options={options}
-      loading={pending}
-      disabled={readOnly || itemId == null}
-      getPopupContainer={drawerSelectGetPopup}
-      onChange={onChange}
-    />
-  );
-}
+import StockLineUomField from "../StockLineUomField";
 
 /**
  * @param {{
@@ -122,11 +89,12 @@ export default function PurchaseOrderLineEditor({
           }
           if (columnKey === "uom") {
             return (
-              <PurchaseOrderLineUomField
+              <StockLineUomField
                 itemId={row.item_id}
                 value={row.item_uom_id}
                 readOnly={readOnly}
                 t={t}
+                prefer="purchase"
                 onChange={(value) => onPatchLine(index, { item_uom_id: value })}
               />
             );

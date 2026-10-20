@@ -1,6 +1,7 @@
 "use client";
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { useResourceAccess } from "@/lib/permissions";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { OPENING_STOCK_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
@@ -8,10 +9,10 @@ import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { fetchOpeningStock } from "../../api/openingStocks.api";
 import { useQuery } from "@tanstack/react-query";
-import { App, Form } from "antd";
+import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { isOpeningStockDraft } from "../../utils/openingStockStatuses";
+import { getOpeningStockStatusLabel, isOpeningStockDraft } from "../../utils/openingStockStatuses";
 import OpeningStockDrawerFooter from "./OpeningStockDrawerFooter";
 import OpeningStockDrawerForm from "./OpeningStockDrawerForm";
 import OpeningStockLineEditor from "./OpeningStockLineEditor";
@@ -48,6 +49,7 @@ export default function OpeningStockDrawer({
 }) {
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
+  const access = useResourceAccess("stock");
   const { message, modal, notification } = App.useApp();
   const [form] = Form.useForm();
 
@@ -167,7 +169,7 @@ export default function OpeningStockDrawer({
     [onCreated, syncBaselinesFromRecordAndBump],
   );
 
-  const { saveMutation, postMutation, deleteMutation, submitting } = useOpeningStockDrawerMutations({
+  const { saveMutation, postMutation, reverseMutation, deleteMutation, submitting } = useOpeningStockDrawerMutations({
     form,
     message,
     notification,
@@ -178,6 +180,7 @@ export default function OpeningStockDrawer({
     onCreated: handleCreated,
     onSaved: syncBaselinesFromRecordAndBump,
     onPosted: syncBaselinesFromRecordAndBump,
+    onReversed: syncBaselinesFromRecordAndBump,
     onDeleted: forceClose,
     onClose: forceClose,
   });
@@ -206,6 +209,17 @@ export default function OpeningStockDrawer({
       })
       .catch(() => {});
   }, [form, modal, t, postMutation]);
+
+  const handleReverse = useCallback(() => {
+    modal.confirm({
+      title: t("reverseConfirmTitle"),
+      content: t("reverseConfirmContent"),
+      okText: t("actionReverse"),
+      okButtonProps: { danger: true },
+      cancelText: t("drawerCancel"),
+      onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
+    });
+  }, [modal, t, reverseMutation]);
 
   const handleDelete = useCallback(() => {
     modal.confirm({
@@ -244,6 +258,13 @@ export default function OpeningStockDrawer({
     <ResourceCrudDrawer
       title={title}
       recordName={loadedNumber}
+      titleExtra={
+        effectiveStatus ? (
+          <Tag className="m-0" color={effectiveStatus === "posted" ? "green" : effectiveStatus === "reversed" ? "warning" : "default"}>
+            {getOpeningStockStatusLabel(t, effectiveStatus)}
+          </Tag>
+        ) : null
+      }
       open={open}
       requestClose={requestClose}
       submitting={submitting}
@@ -267,6 +288,8 @@ export default function OpeningStockDrawer({
           onSave={handleSave}
           onPost={handlePost}
           onDelete={handleDelete}
+          showReverse={effectiveStatus === "posted" && documentId != null && access.canReverse}
+          onReverse={handleReverse}
         />
       }
     >
@@ -276,7 +299,6 @@ export default function OpeningStockDrawer({
         t={t}
         warehouseOptions={drawerData.warehouseOptions}
         warehousesPending={drawerData.warehousesPending}
-        osNumber={loadedNumber}
       />
       <OpeningStockLineEditor
         lines={lines.length > 0 ? lines : [getEmptyOsLine()]}

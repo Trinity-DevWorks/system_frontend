@@ -28,14 +28,14 @@ export default function WarehouseDrawerForm({
   const isBranchType = typeWatch === "branch";
 
   useEffect(() => {
-    if (readOnly) return;
+    if (readOnly || lookupsLoading) return;
     const managerId = form.getFieldValue("manager_id");
     if (managerId == null || managerId === "") return;
     const stillAllowed = userOptions.some((opt) => String(opt.value) === String(managerId));
     if (!stillAllowed) {
       form.setFieldValue("manager_id", undefined);
     }
-  }, [typeWatch, branchIdWatch, userOptions, form, readOnly]);
+  }, [typeWatch, branchIdWatch, userOptions, form, readOnly, lookupsLoading]);
 
   return (
     <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
@@ -111,7 +111,11 @@ export default function WarehouseDrawerForm({
       >
         <Input.TextArea rows={3} autoComplete="off" />
       </Form.Item>
-      <Form.Item name="manager_id" label={t("fieldManager")}>
+      <Form.Item
+        name="manager_id"
+        label={t("fieldManager")}
+        rules={[{ required: true, message: t("fieldManagerRequired") }]}
+      >
         <Select
           allowClear
           showSearch

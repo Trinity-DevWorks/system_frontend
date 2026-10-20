@@ -1,14 +1,32 @@
 "use client";
 
+import { Link } from "@/i18n/navigation";
 import { StarFilled, StarOutlined } from "@ant-design/icons";
+
+/**
+ * Plain left-clicks stay in this tab. Modified clicks and the browser's own
+ * context menu ("Open in new tab") follow the real href.
+ *
+ * @param {import("react").MouseEvent<HTMLAnchorElement>} event
+ */
+function isNewTabClick(event) {
+  return (
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  );
+}
 
 /**
  * One page row in the sidebar panel.
  *
- * Plain buttons rather than an Ant Design Menu: the panel list is flat, so rc-menu's
- * nesting, popups and unstable SSR ids buy nothing here.
+ * A real link, not a button: the panel list is flat, and only an anchor gives the
+ * browser a URL for "Open link in a new tab".
  *
  * @param {{
+ *   href: string,
  *   icon?: import("react").ReactNode,
  *   label: string,
  *   active?: boolean,
@@ -20,6 +38,7 @@ import { StarFilled, StarOutlined } from "@ant-design/icons";
  * }} props
  */
 export default function SidebarNavRow({
+  href,
   icon,
   label,
   active = false,
@@ -39,10 +58,14 @@ export default function SidebarNavRow({
 
   return (
     <div className={className}>
-      <button
-        type="button"
+      <Link
+        href={href}
         className="shell-nav-row-main"
-        onClick={onNavigate}
+        onClick={(event) => {
+          if (isNewTabClick(event)) return;
+          event.preventDefault();
+          onNavigate();
+        }}
         aria-current={active ? "page" : undefined}
         title={label}
       >
@@ -52,7 +75,7 @@ export default function SidebarNavRow({
           </span>
         ) : null}
         <span className="shell-nav-row-label">{label}</span>
-      </button>
+      </Link>
       {onToggleBookmark ? (
         <button
           type="button"

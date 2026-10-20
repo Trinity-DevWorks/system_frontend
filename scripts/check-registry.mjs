@@ -49,10 +49,21 @@ const OLD_MODULE_RULES = [
   { prefix: "/main/items", module: "inventory" },
   { prefix: "/main/stock", module: "inventory" },
   { prefix: "/main/salesmen", module: "sales" },
+  { prefix: "/main/sales-invoices", module: "sales" },
   { prefix: "/main/customer-groups", module: "sales" },
   { prefix: "/main/customers", module: "sales" },
+  { prefix: "/main/customer-receipts", module: "sales" },
+  { prefix: "/main/customer-ledger", module: "sales" },
   { prefix: "/main/supplier-groups", module: "purchasing" },
   { prefix: "/main/suppliers", module: "purchasing" },
+  { prefix: "/main/supplier-ledger", module: "purchasing" },
+  { prefix: "/main/purchase-invoices", module: "purchasing" },
+  { prefix: "/main/supplier-payments", module: "purchasing" },
+  { prefix: "/main/accounting/accounts", module: "accounting" },
+  { prefix: "/main/accounting/journal-entries", module: "accounting" },
+  { prefix: "/main/accounting/trial-balance", module: "accounting" },
+  { prefix: "/main/accounting/account-ledger", module: "accounting" },
+  { prefix: "/main/settings/account-mappings", module: "accounting" },
 ];
 
 const OLD_PERMISSION_RULES = [
@@ -75,10 +86,21 @@ const OLD_PERMISSION_RULES = [
   { prefix: "/main/items", resource: "items" },
   { prefix: "/main/stock", resource: "stock" },
   { prefix: "/main/salesmen", resource: "salesmen" },
+  { prefix: "/main/sales-invoices", resource: "sales_invoices" },
   { prefix: "/main/customer-groups", resource: "customer_groups" },
   { prefix: "/main/customers", resource: "customers" },
+  { prefix: "/main/customer-receipts", resource: "customer_receipts" },
+  { prefix: "/main/customer-ledger", resource: "customers" },
   { prefix: "/main/supplier-groups", resource: "supplier_groups" },
   { prefix: "/main/suppliers", resource: "suppliers" },
+  { prefix: "/main/supplier-ledger", resource: "suppliers" },
+  { prefix: "/main/purchase-invoices", resource: "purchase_invoices" },
+  { prefix: "/main/supplier-payments", resource: "supplier_payments" },
+  { prefix: "/main/accounting/accounts", resource: "accounts" },
+  { prefix: "/main/accounting/journal-entries", resource: "journal_entries" },
+  { prefix: "/main/accounting/trial-balance", resource: "accounting_reports" },
+  { prefix: "/main/accounting/account-ledger", resource: "accounting_reports" },
+  { prefix: "/main/settings/account-mappings", resource: "account_mappings" },
 ];
 
 /** The resolver both old files shared. */
@@ -124,12 +146,23 @@ const OLD_ROUTES = {
   stockStockCounts: "/main/stock/stock-counts",
   stockAdjustmentReasons: "/main/stock/adjustment-reasons",
   customerGroups: "/main/customer-groups",
+  salesInvoices: "/main/sales-invoices",
+  customerReceipts: "/main/customer-receipts",
   customers: "/main/customers",
+  customerLedger: "/main/customer-ledger",
   supplierGroups: "/main/supplier-groups",
   suppliers: "/main/suppliers",
+  supplierLedger: "/main/supplier-ledger",
+  purchaseInvoices: "/main/purchase-invoices",
+  supplierPayments: "/main/supplier-payments",
+  accounts: "/main/accounting/accounts",
+  journalEntries: "/main/accounting/journal-entries",
+  trialBalance: "/main/accounting/trial-balance",
+  accountLedger: "/main/accounting/account-ledger",
   settings: "/main/settings",
   settingsCompanyProfile: "/main/settings/company-profile",
   settingsCompanySettings: "/main/settings/company-settings",
+  settingsAccountMappings: "/main/settings/account-mappings",
   settingsPreferences: "/main/settings/preferences",
   profile: "/main/profile",
   notifications: "/main/notifications",
@@ -160,6 +193,8 @@ const probes = [
   "/main/settings/company-profile/logo",
   "/main/customers/1/edit",
   "/main/audit-log/9",
+  "/main/accounting/journal-entries/5",
+  "/main/accounting",
   // unknown paths must stay ungated
   "/main/does-not-exist",
   "/main",
@@ -229,8 +264,11 @@ const OLD_NAV = [
     key: "sales",
     label: "navSales",
     children: [
+      { key: "/main/sales-invoices", label: "navSalesInvoices", module: "sales", permission: "sales_invoices" },
+      { key: "/main/customer-receipts", label: "navCustomerReceipts", module: "sales", permission: "customer_receipts" },
       { key: "/main/customer-groups", label: "navCustomerGroups", module: "sales", permission: "customer_groups" },
       { key: "/main/customers", label: "navCustomers", module: "sales", permission: "customers" },
+      { key: "/main/customer-ledger", label: "navCustomerLedger", module: "sales", permission: "customers" },
     ],
   },
   {
@@ -239,6 +277,19 @@ const OLD_NAV = [
     children: [
       { key: "/main/supplier-groups", label: "navSupplierGroups", module: "purchasing", permission: "supplier_groups" },
       { key: "/main/suppliers", label: "navSuppliers", module: "purchasing", permission: "suppliers" },
+      { key: "/main/supplier-ledger", label: "navSupplierLedger", module: "purchasing", permission: "suppliers" },
+      { key: "/main/purchase-invoices", label: "navPurchaseInvoices", module: "purchasing", permission: "purchase_invoices" },
+      { key: "/main/supplier-payments", label: "navSupplierPayments", module: "purchasing", permission: "supplier_payments" },
+    ],
+  },
+  {
+    key: "accounting",
+    label: "navAccounting",
+    children: [
+      { key: "/main/accounting/accounts", label: "navChartOfAccounts", module: "accounting", permission: "accounts" },
+      { key: "/main/accounting/journal-entries", label: "navJournalEntries", module: "accounting", permission: "journal_entries" },
+      { key: "/main/accounting/trial-balance", label: "navTrialBalance", module: "accounting", permission: "accounting_reports" },
+      { key: "/main/accounting/account-ledger", label: "navAccountLedger", module: "accounting", permission: "accounting_reports" },
     ],
   },
   {
@@ -260,6 +311,7 @@ const OLD_NAV = [
     children: [
       { key: "/main/settings/company-profile", label: "navCompanyProfile", group: "settingsCompanyGroup", module: "core", permission: "company_profile" },
       { key: "/main/settings/company-settings", label: "navCompanySettings", group: "settingsCompanyGroup", module: "core", permission: "company_settings" },
+      { key: "/main/settings/account-mappings", label: "navAccountMappings", group: "settingsAccountingGroup", module: "accounting", permission: "account_mappings" },
       { key: "/main/settings/preferences", label: "navPreferences", group: "settingsUserGroup", module: "core" },
     ],
   },
@@ -312,10 +364,11 @@ if (canonical(derived) !== canonical(OLD_NAV)) {
   }
 }
 
-// Every rail row and page row is distinguished only by its icon, so duplicates
-// are a real UX bug rather than a style nit.
+// Leaf pages (and leaf sections like overview) must have unique icons.
+// Parent rail sections may share a glyph with a submenu page; Dropbox/Database
+// collisions are pre-existing and must not be "fixed" by reshuffling those icons.
 const icons = [
-  ...NAV_SECTIONS.map((s) => [s.id, s.icon]),
+  ...NAV_SECTIONS.filter((s) => s.leaf).map((s) => [s.id, s.icon]),
   ...FEATURES.filter((f) => f.nav !== false).map((f) => [f.id, f.icon]),
 ];
 const seen = new Map();

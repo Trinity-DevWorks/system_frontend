@@ -63,3 +63,8 @@ export async function syncStockAdjustmentLines(documentId, body) {
 export function postStockAdjustmentDocument(documentId) {
   return tenantRequest("POST", `stock/adjustments/${documentId}/post`);
 }
+
+/** @param {string} documentId */
+export function reverseStockAdjustmentDocument(documentId) {
+  return tenantRequest("POST", `stock/adjustments/${documentId}/reverse`);
+}

@@ -19,6 +19,7 @@ import {
   deleteGoodsReceipt,
   fetchGoodsReceipt,
   postGoodsReceipt,
+  reverseGoodsReceipt,
   syncGoodsReceiptLines,
   updateGoodsReceipt,
 } from "../api/goodsReceipts.api";
@@ -43,6 +44,7 @@ import {
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onSaved?: (record: Record<string, unknown>) => void;
  *   onPosted?: (record: Record<string, unknown>) => void;
+ *   onReversed?: (record: Record<string, unknown>) => void;
  *   onDeleted?: () => void;
  *   onClose?: () => void;
  * }} args
@@ -58,6 +60,7 @@ export function useGoodsReceiptDrawerMutations({
   onCreated,
   onSaved,
   onPosted,
+  onReversed,
   onDeleted,
   onClose,
 }) {
@@ -161,6 +164,25 @@ export function useGoodsReceiptDrawerMutations({
     },
   });
 
+  const reverseMutation = useMutation({
+    mutationFn: async () => {
+      if (receiptId == null) throw new Error("missing receipt");
+      return reverseGoodsReceipt(receiptId);
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("reverseError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (record) => {
+      cacheDetail(normalizeEntityId(record?.id), record);
+      invalidateLedger();
+      message.success(t("reverseSuccess"));
+      onReversed?.(/** @type {Record<string, unknown>} */ (record));
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (receiptId == null) throw new Error("missing receipt");
@@ -184,6 +206,7 @@ export function useGoodsReceiptDrawerMutations({
     saveMutation,
     postMutation,
     deleteMutation,
-    submitting: saveMutation.isPending || postMutation.isPending || deleteMutation.isPending,
+    reverseMutation,
+    submitting: saveMutation.isPending || postMutation.isPending || reverseMutation.isPending || deleteMutation.isPending,
   };
 }

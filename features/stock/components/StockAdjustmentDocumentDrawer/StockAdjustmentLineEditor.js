@@ -3,47 +3,15 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
-import { isPersistedEntityId } from "@/lib/entityId";
 import { Select, Typography } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
 import { formatStockQuantity } from "../../utils/formatStockQuantity";
-import { usePurchaseOrderLineUomOptions } from "../../queries/usePurchaseOrderDrawerData";
 import { useStockBalanceOnHand } from "../../queries/useStockBalanceOnHand";
+import StockLineUomField from "../StockLineUomField";
 import InboundLotFields from "../InboundLotFields";
-
-/**
- * @param {{
- *   itemId?: string;
- *   value?: number | string;
- *   readOnly: boolean;
- *   t: (key: string) => string;
- *   onChange: (value: number | string) => void;
- * }} props
- */
-function AdjLineUomField({ itemId, value, readOnly, t, onChange }) {
-  const { options, pending } = usePurchaseOrderLineUomOptions({
-    itemId,
-    t,
-    enabled: !readOnly && isPersistedEntityId(itemId),
-  });
-
-  return (
-    <Select
-      showSearch
-      optionFilterProp="label"
-      className="w-full"
-      placeholder={t("poBaseUomOption")}
-      value={value ?? PO_BASE_UOM}
-      options={options}
-      loading={pending}
-      disabled={readOnly || itemId == null}
-      getPopupContainer={drawerSelectGetPopup}
-      onChange={onChange}
-    />
-  );
-}
+import InboundSuggestedUnitCostSync from "../InboundSuggestedUnitCostSync";
 
 /**
  * @param {string | null | undefined} direction
@@ -55,6 +23,16 @@ function quantityBounds(direction, quantity) {
   if (quantity != null && Number(quantity) > 0) return { min: 0.000001, max: undefined };
   if (quantity != null && Number(quantity) < 0) return { min: undefined, max: -0.000001 };
   return { min: undefined, max: undefined };
+}
+
+/**
+ * @param {string | null | undefined} direction
+ * @param {number | undefined} quantity
+ */
+function shouldSuggestInboundCost(direction, quantity) {
+  if (direction === "decrease") return false;
+  if (direction === "increase") return true;
+  return quantity == null || Number(quantity) > 0;
 }
 
 /**
@@ -173,6 +151,7 @@ export default function StockAdjustmentLineEditor({
                     lot_id: undefined,
                     lot_number: "",
                     expiry_date: "",
+                    unit_cost: undefined,
                   });
                 }}
               />
@@ -192,12 +171,13 @@ export default function StockAdjustmentLineEditor({
           }
           if (columnKey === "uom") {
             return (
-              <AdjLineUomField
+              <StockLineUomField
                 itemId={row.item_id}
-                value={row.item_uom_id ?? PO_BASE_UOM}
+                value={row.item_uom_id}
                 readOnly={readOnly}
                 t={t}
-                onChange={(value) => onPatchLine(index, { item_uom_id: value })}
+                prefer="base"
+                onChange={(value) => onPatchLine(index, { item_uom_id: value, unit_cost: undefined })}
               />
             );
           }
@@ -223,14 +203,26 @@ export default function StockAdjustmentLineEditor({
           }
           if (columnKey === "unit_cost") {
             return (
-              <TenantNumberInput
-                kind="money"
-                className="w-full"
-                min={0}
-                value={row.unit_cost}
-                disabled={readOnly}
-                onChange={(value) => onPatchLine(index, { unit_cost: value ?? undefined })}
-              />
+              <>
+                {!readOnly && shouldSuggestInboundCost(reasonDirection, row.quantity) ? (
+                  <InboundSuggestedUnitCostSync
+                    itemId={row.item_id}
+                    warehouseId={warehouseId}
+                    itemUomId={row.item_uom_id}
+                    lotId={row.lot_id}
+                    unitCost={row.unit_cost}
+                    onApply={(cost) => onPatchLine(index, { unit_cost: cost })}
+                  />
+                ) : null}
+                <TenantNumberInput
+                  kind="money"
+                  className="w-full"
+                  min={0}
+                  value={row.unit_cost}
+                  disabled={readOnly}
+                  onChange={(value) => onPatchLine(index, { unit_cost: value ?? undefined })}
+                />
+              </>
             );
           }
           const bounds = quantityBounds(reasonDirection, row.quantity);

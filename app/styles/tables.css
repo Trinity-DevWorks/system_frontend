@@ -1,44 +1,15 @@
 /* AppDataTable / rc-table scroll and sticky-column fixes. */
 
 /*
- * Vertical scroll lives on `.app-data-table-scroll` (toolbar, rows, footer).
+ * With a sticky header, vertical scroll lives on `.ant-table-body` so the
+ * toolbar and column titles stay put. Otherwise it lives on
+ * `.app-data-table-scroll` (toolbar, rows, footer).
  * Horizontal scroll lives on the table itself (`scroll.x`) so extra columns
  * get a visible X scrollbar instead of being clipped.
  */
-.app-data-table-scroll {
-  scrollbar-width: thin;
-}
-
-.app-data-table-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.app-data-table-scroll::-webkit-scrollbar-thumb {
-  border-radius: 9999px;
-  background-color: color-mix(in srgb, currentColor 22%, transparent);
-}
-
-.app-data-table-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+.app-data-table-scroll,
 .app-data-table .ant-table-content {
   scrollbar-width: thin;
-}
-
-.app-data-table .ant-table-content::-webkit-scrollbar {
-  width: 6px;
-  height: 8px;
-}
-
-.app-data-table .ant-table-content::-webkit-scrollbar-thumb {
-  border-radius: 9999px;
-  background-color: color-mix(in srgb, currentColor 32%, transparent);
-}
-
-.app-data-table .ant-table-content::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .app-data-table th.items-table-image-cell,
@@ -52,14 +23,21 @@
   inset-inline-end: 0 !important;
 }
 
-/* Remove rc-table scrollbar spacer column that can leave a visible end gap. */
-.app-data-table .ant-table-thead .ant-table-cell-scrollbar,
-.app-data-table .ant-table-tbody .ant-table-cell-scrollbar {
+/*
+ * scroll.x adds an empty gutter even when the body does not scroll.
+ * A body scroller (scroll.y) needs that gutter so the header stays aligned.
+ */
+.app-data-table:not(:has(.ant-table-body)) .ant-table-thead .ant-table-cell-scrollbar,
+.app-data-table:not(:has(.ant-table-body)) .ant-table-tbody .ant-table-cell-scrollbar {
   width: 0 !important;
   min-width: 0 !important;
   max-width: 0 !important;
   padding: 0 !important;
   border: 0 !important;
+}
+
+.app-data-table .ant-table-body {
+  scrollbar-width: thin;
 }
 
 .app-data-table .stock-warehouse-group-row > td {
@@ -160,6 +138,93 @@
   }
 }
 
+/* Chart of accounts: sub-account rows stay mounted and ease open. */
+.coa-expand,
+.coa-expand-spacer {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-inline-end: 4px;
+}
+
+.coa-expand {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.coa-expand .anticon {
+  font-size: 12px;
+  transition: transform 0.22s ease;
+}
+
+.coa-chevron-collapsed {
+  transform: rotate(-90deg);
+}
+
+[dir="rtl"] .coa-chevron-collapsed {
+  transform: rotate(90deg);
+}
+
+.app-data-table tr.coa-tree-row {
+  visibility: visible;
+  transition: visibility 0s;
+}
+
+.app-data-table tr.coa-tree-row > td {
+  overflow: hidden;
+  transition:
+    padding-block 0.22s ease,
+    border-width 0.22s ease;
+}
+
+.coa-tree-row-inner {
+  overflow: hidden;
+  max-height: 12rem;
+  width: 100%;
+  text-align: inherit;
+  transition: max-height 0.22s ease;
+}
+
+.coa-tree-row-inner-clip {
+  overflow: hidden;
+  width: 100%;
+  text-align: inherit;
+}
+
+.app-data-table tr.coa-tree-row-collapsed {
+  pointer-events: none;
+  visibility: collapse;
+  transition: visibility 0s linear 0.22s;
+}
+
+.app-data-table tr.coa-tree-row-collapsed > td {
+  padding-block: 0 !important;
+  border-bottom-width: 0 !important;
+}
+
+.app-data-table tr.coa-tree-row-collapsed .coa-tree-row-inner {
+  max-height: 0;
+}
+
+.app-data-table tr.coa-tree-row-collapsed .coa-tree-row-inner-clip {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coa-expand .anticon,
+  .coa-tree-row-inner,
+  .app-data-table tr.coa-tree-row > td,
+  .app-data-table tr.coa-tree-row-collapsed {
+    transition: none;
+  }
+}
+
 .role-permissions-matrix .ant-table-wrapper,
 .role-permissions-matrix .ant-spin-nested-loading,
 .role-permissions-matrix .ant-spin-container,
@@ -170,19 +235,6 @@
 .role-permissions-matrix .ant-table-body {
   overflow-y: auto !important;
   scrollbar-width: thin;
-}
-
-.role-permissions-matrix .ant-table-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.role-permissions-matrix .ant-table-body::-webkit-scrollbar-thumb {
-  border-radius: 9999px;
-  background-color: color-mix(in srgb, currentColor 22%, transparent);
-}
-
-.role-permissions-matrix .ant-table-body::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .role-permissions-matrix .ant-table-thead .ant-table-cell-scrollbar,
