@@ -1,5 +1,5 @@
-import { DeleteOutlined, DollarOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
-import { isSalesInvoiceDraft, salesInvoiceStatusTag } from "../../utils/salesInvoiceStatuses";
+import { CheckOutlined, DeleteOutlined, DollarOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import { isSalesInvoiceDraft, salesInvoiceHasCreditableBalance, salesInvoiceStatusTag } from "../../utils/salesInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
@@ -11,13 +11,15 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  * @param {{
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
+ *   onPost?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
  *   onReverse?: (record: unknown) => void;
  *   onCreateReceipt?: (record: unknown) => void;
+ *   onCreateCreditNote?: (record: unknown) => void;
  * }} [actions]
  */
 export function getSalesInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onReverse, onCreateReceipt } = actions;
+  const { onView, onEdit, onPost, onDelete, onReverse, onCreateReceipt, onCreateCreditNote } = actions;
 
   return [
     {
@@ -81,6 +83,15 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
       render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
     },
     {
+      title: t("colCreditedTotal"),
+      dataIndex: "credited_total",
+      key: "credited_total",
+      width: 150,
+      align: "right",
+      sorter: (a, b) => Number(a.credited_total ?? 0) - Number(b.credited_total ?? 0),
+      render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
+    },
+    {
       title: t("colNetToPay"),
       dataIndex: "net_to_pay",
       key: "net_to_pay",
@@ -112,6 +123,16 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
+          ...(onCreateCreditNote && salesInvoiceHasCreditableBalance(record)
+            ? [
+                {
+                  key: "create-credit-note",
+                  icon: <RollbackOutlined />,
+                  label: t("actionCreateCreditNote"),
+                  onClick: () => onCreateCreditNote(record),
+                },
+              ]
+            : []),
           ...(onCreateReceipt && record?.status === "posted" && Number(record?.net_to_pay) > 0
             ? [
                 {
@@ -119,6 +140,16 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                   icon: <DollarOutlined />,
                   label: t("actionCreateReceipt"),
                   onClick: () => onCreateReceipt(record),
+                },
+              ]
+            : []),
+          ...(isDraft && onPost
+            ? [
+                {
+                  key: "post",
+                  icon: <CheckOutlined />,
+                  label: t("actionPost"),
+                  onClick: () => onPost(record),
                 },
               ]
             : []),

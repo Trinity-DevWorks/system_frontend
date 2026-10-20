@@ -141,7 +141,6 @@ export function usePurchaseOrderDrawerMutations({
         onCreated?.(/** @type {Record<string, unknown>} */ (record));
       }
       onConfirmed?.(/** @type {Record<string, unknown>} */ (record));
-      onClose?.();
     },
   });
 
@@ -161,7 +160,6 @@ export function usePurchaseOrderDrawerMutations({
       invalidateOnOrderPipeline();
       cacheOrderDetail(orderId, record);
       onCancelled?.(/** @type {Record<string, unknown>} */ (record));
-      onClose?.();
     },
   });
 

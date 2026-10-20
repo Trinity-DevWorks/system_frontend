@@ -90,6 +90,7 @@ export default function PurchaseInvoiceDrawer({
   const { message, modal, notification } = App.useApp();
   const access = useResourceAccess("purchase_invoices");
   const paymentAccess = useResourceAccess("supplier_payments");
+  const debitNoteAccess = useResourceAccess("purchase_debit_notes");
   const supplierAccess = useResourceAccess("suppliers");
   const { openDrawer } = useGlobalDrawer();
   const itemAccess = useResourceAccess("items");
@@ -153,6 +154,7 @@ export default function PurchaseInvoiceDrawer({
       tax_total: record.tax_total,
       grand_total: record.grand_total,
       paid_total: record.paid_total,
+      debited_total: record.debited_total,
       net_to_pay: record.net_to_pay,
     });
   }, []);
@@ -804,6 +806,16 @@ export default function PurchaseInvoiceDrawer({
     });
   }, [invoiceId, openDrawer]);
 
+  const handleCreateDebitNote = useCallback(() => {
+    const id = normalizeEntityId(invoiceId);
+    if (id == null) return;
+    openDrawer({
+      featureId: "purchaseDebitNotes",
+      mode: "create",
+      extras: { fromInvoiceId: id },
+    });
+  }, [invoiceId, openDrawer]);
+
   const handleDelete = useCallback(() => {
     const name = loadedNumber ?? String(invoiceId ?? "");
     modal.confirm(
@@ -973,8 +985,10 @@ export default function PurchaseInvoiceDrawer({
               paymentAccess.canAdd &&
               Number(displayTotals?.net_to_pay) > 0
             }
+            showCreateDebitNote={effectiveStatus === "posted" && invoiceId != null && debitNoteAccess.canAdd}
             onReverse={handleReverse}
             onCreatePayment={handleCreatePayment}
+            onCreateDebitNote={handleCreateDebitNote}
             postedBy={loadedPostedBy}
             postedAt={loadedPostedAt}
             onSave={handleSave}

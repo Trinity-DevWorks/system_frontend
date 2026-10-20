@@ -65,6 +65,7 @@ export function getItemDrawerDefaults() {
     costing_method: "",
     allow_sale: true,
     allow_purchase: true,
+    allow_return: true,
     is_active: true,
     ticket_name: undefined,
     kitchen_name: undefined,

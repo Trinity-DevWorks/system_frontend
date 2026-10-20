@@ -141,6 +141,7 @@ export default function PaymentDocumentDrawer({
   const { settings } = useCompanySettings();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
+  const dateField = config.dateField || "payment_date";
   const [rows, setRows] = useState(/** @type {import("./PaymentAllocationGrid").AllocationRow[]} */ ([]));
   const [partySeed, setPartySeed] = useState(/** @type {{ value: unknown; label: string } | null} */ (null));
   const baselineRef = useRef("");
@@ -244,14 +245,14 @@ export default function PaymentDocumentDrawer({
         currency_id: values.currency_id ?? null,
         exchange_rate: values.exchange_rate ?? null,
         payment_method_id: values.payment_method_id ?? null,
-        payment_date: toIsoDate(values.payment_date),
+        [dateField]: toIsoDate(values[dateField]),
         amount: moneyUnits(values.amount),
         reference: values.reference ?? "",
         notes: values.notes ?? "",
         rows: nextRows.map((row) => [row.invoiceId, moneyUnits(row.amount)]),
       });
     },
-    [config.partyField, form],
+    [config.partyField, dateField, form],
   );
 
   const snapshot = useCallback(() => snapshotOf(rows), [rows, snapshotOf]);
@@ -293,7 +294,7 @@ export default function PaymentDocumentDrawer({
         currency_id: next.currency_id,
         exchange_rate: next.exchange_rate != null ? Number(next.exchange_rate) : 1,
         payment_method_id: next.payment_method_id,
-        payment_date: next.payment_date ? String(next.payment_date).slice(0, 10) : dayjs().format("YYYY-MM-DD"),
+        [dateField]: next[dateField] ? String(next[dateField]).slice(0, 10) : dayjs().format("YYYY-MM-DD"),
         amount: next.amount != null ? Number(next.amount) : undefined,
         reference: next.reference ?? "",
         notes: next.notes ?? "",
@@ -302,7 +303,7 @@ export default function PaymentDocumentDrawer({
       remember(nextRows);
       applyingRef.current = false;
     },
-    [config.invoiceIdField, config.partyField, form, remember],
+    [config.invoiceIdField, config.partyField, dateField, form, remember],
   );
 
   useEffect(() => {
@@ -340,7 +341,7 @@ export default function PaymentDocumentDrawer({
         currency_id: settings.primaryCurrencyId ?? undefined,
         exchange_rate: 1,
         payment_method_id: undefined,
-        payment_date: dayjs().format("YYYY-MM-DD"),
+        [dateField]: dayjs().format("YYYY-MM-DD"),
         amount: undefined,
         reference: "",
         notes: "",
@@ -353,7 +354,7 @@ export default function PaymentDocumentDrawer({
     if (!record?.id || sessionRef.current === String(record.id)) return;
     sessionRef.current = String(record.id);
     applyRecord(record);
-  }, [applyRecord, config.partyField, form, mode, open, record, remember, settings.primaryCurrencyId, snapshotOf]);
+  }, [applyRecord, config.partyField, dateField, form, mode, open, record, remember, settings.primaryCurrencyId, snapshotOf]);
 
   useEffect(() => {
     if (!open || mode !== "create" || defaultMethodAppliedRef.current) return;
@@ -481,12 +482,12 @@ export default function PaymentDocumentDrawer({
       currency_id: values.currency_id,
       exchange_rate: exchangeRateLocked ? 1 : values.exchange_rate,
       payment_method_id: values.payment_method_id,
-      payment_date: toIsoDate(values.payment_date),
+      [dateField]: toIsoDate(values[dateField]),
       amount: values.amount,
       reference: values.reference ? String(values.reference).trim() : null,
       notes: values.notes ? String(values.notes).trim() : null,
     }),
-    [config.partyField, exchangeRateLocked],
+    [config.partyField, dateField, exchangeRateLocked],
   );
 
   const invalidatePosted = useCallback(() => {
@@ -494,7 +495,10 @@ export default function PaymentDocumentDrawer({
     queryClient.invalidateQueries({ queryKey: config.detailPrefix });
     queryClient.invalidateQueries({ queryKey: config.invoiceQueryKey });
     queryClient.invalidateQueries({ queryKey: config.invoiceDetailPrefix });
-  }, [config.detailPrefix, config.invoiceDetailPrefix, config.invoiceQueryKey, config.queryKey, queryClient]);
+    for (const key of config.extraQueryKeys ?? []) {
+      queryClient.invalidateQueries({ queryKey: key });
+    }
+  }, [config.detailPrefix, config.extraQueryKeys, config.invoiceDetailPrefix, config.invoiceQueryKey, config.queryKey, queryClient]);
 
   const persist = useCallback(
     async (values, shouldPost, sourceRows = rows) => {
@@ -1004,7 +1008,7 @@ export default function PaymentDocumentDrawer({
               </Col>
               <Col xs={24} md={8}>
                 <Form.Item
-                  name="payment_date"
+                  name={dateField}
                   label={<ResourceDrawerFieldLabel text={t("fieldDate")} required />}
                   rules={[{ required: true, message: t("dateRequired") }]}
                   getValueProps={(value) => ({

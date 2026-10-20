@@ -158,6 +158,9 @@ function PaymentDocumentTable({ config }) {
       queryClient.invalidateQueries({ queryKey: config.detailPrefix });
       queryClient.invalidateQueries({ queryKey: config.invoiceQueryKey });
       queryClient.invalidateQueries({ queryKey: config.invoiceDetailPrefix });
+      for (const key of config.extraQueryKeys ?? []) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
     },
     onError: (err) => {
       notification.error({
@@ -216,7 +219,7 @@ function PaymentDocumentTable({ config }) {
       },
       {
         title: t("colDate"),
-        dataIndex: "payment_date",
+        dataIndex: config.dateField || "payment_date",
         width: 120,
         render: (value) => formatTenantDate(value) || "\u2014",
       },
@@ -288,7 +291,7 @@ function PaymentDocumentTable({ config }) {
         },
       },
     ],
-    [access.canDelete, access.canEdit, access.canReverse, access.canView, config.numberField, handleDelete, handleReverse, openEditDrawer, openViewDrawer, t],
+    [access.canDelete, access.canEdit, access.canReverse, access.canView, config.dateField, config.numberField, handleDelete, handleReverse, openEditDrawer, openViewDrawer, t],
   );
 
   const dateRangeLabel = formatStockFilterDateRange(dateRange?.[0], dateRange?.[1]);

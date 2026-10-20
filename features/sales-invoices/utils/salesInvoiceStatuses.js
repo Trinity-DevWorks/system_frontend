@@ -83,3 +83,13 @@ export function salesInvoiceStatusTag(t, status, paidTotal, netToPay) {
 export function isSalesInvoicePosted(status) {
   return status === "posted";
 }
+
+/**
+ * A posted invoice can take another credit note while some of its total is still unused.
+ * @param {{ status?: string, creditable_total?: unknown } | null | undefined} record
+ */
+export function salesInvoiceHasCreditableBalance(record) {
+  if (record?.status !== "posted") return false;
+  const remaining = Number(record?.creditable_total);
+  return Number.isFinite(remaining) && remaining > 0;
+}

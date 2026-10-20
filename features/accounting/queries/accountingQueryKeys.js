@@ -6,3 +6,5 @@ export const ACCOUNT_MAPPINGS_QUERY_KEY = /** @type {const} */ (["tenant", "acco
 export const JOURNAL_ENTRIES_QUERY_KEY = /** @type {const} */ (["tenant", "journal-entries"]);
 export const JOURNAL_ENTRY_DETAIL_QUERY_PREFIX = /** @type {const} */ ([...JOURNAL_ENTRIES_QUERY_KEY, "detail"]);
 export const ACCOUNTING_REPORTS_QUERY_KEY = /** @type {const} */ (["tenant", "accounting-reports"]);
+export const ACCOUNTING_PERIOD_QUERY_KEY = /** @type {const} */ (["tenant", "accounting-period"]);
+export const FISCAL_YEARS_QUERY_KEY = /** @type {const} */ (["tenant", "fiscal-years"]);

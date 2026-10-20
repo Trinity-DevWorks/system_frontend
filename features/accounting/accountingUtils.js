@@ -13,10 +13,13 @@ export const JOURNAL_SOURCE_TYPES = [
   "supplier_payment",
   "stock_adjustment",
   "stock_count",
+  "stock_transfer_closure",
   "opening_stock",
   "production",
   "customer_opening_balance",
   "supplier_opening_balance",
+  "vat_settlement",
+  "year_end_close",
 ];
 
 /** Source type → FEATURES id whose drawer shows the document. */
@@ -51,8 +54,25 @@ export function unitsToAmount(units) {
 }
 
 /**
- * @param {Record<string, unknown>} account
+ * English UI always uses `name`. Arabic UI uses `name_ar` when it is filled.
+ *
+ * @param {Record<string, unknown> | null | undefined} account
+ * @param {string} [locale]
  */
-export function accountLabel(account) {
-  return [account.code, account.name].filter(Boolean).join(" — ");
+export function accountDisplayName(account, locale = "en") {
+  if (locale === "ar") {
+    const arabic = String(account?.name_ar ?? account?.account_name_ar ?? "").trim();
+    if (arabic) return arabic;
+  }
+  const english = account?.name ?? account?.account_name;
+  return english == null ? "" : String(english);
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} account
+ * @param {string} [locale]
+ */
+export function accountLabel(account, locale = "en") {
+  const code = account?.code ?? account?.account_code;
+  return [code, accountDisplayName(account, locale)].filter(Boolean).join(" — ");
 }

@@ -11,6 +11,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
+/** Locale shell: messages, theme, and the app providers. */
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }

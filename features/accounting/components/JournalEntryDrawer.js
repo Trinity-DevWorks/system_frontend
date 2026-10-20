@@ -18,7 +18,8 @@ import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Col, ConfigProvider, DatePicker, Form, Input, Row, Select, Space, Tag, Typography } from "antd";
 import dayjs from "dayjs";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { accountDisplayName } from "../accountingUtils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createJournalEntry,
@@ -49,6 +50,7 @@ const CONTROLLED_ROLES = new Set(["receivable", "payable", "inventory", "vat_out
  *   credit: number | null;
  *   account_code?: string | null;
  *   account_name?: string | null;
+ *   account_name_ar?: string | null;
  *   currency_code?: string | null;
  *   amount_currency?: string | null;
  *   party_name?: string | null;
@@ -77,6 +79,7 @@ function lineFromRecord(line) {
     credit: credit > 0 ? credit : null,
     account_code: /** @type {string | null} */ (line.account_code ?? null),
     account_name: /** @type {string | null} */ (line.account_name ?? null),
+    account_name_ar: /** @type {string | null} */ (line.account_name_ar ?? null),
     currency_code: /** @type {string | null} */ (line.currency_code ?? null),
     amount_currency: /** @type {string | null} */ (line.amount_currency ?? null),
     party_name: /** @type {string | null} */ (line.party_name ?? null),
@@ -113,6 +116,7 @@ function toIsoDate(value) {
  */
 export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCreated }) {
   const t = useTranslations("Accounting");
+  const locale = useLocale();
   const { settings } = useCompanySettings();
   const currencySymbol = settings.primaryCurrencySymbol;
   const tApiErrors = useTranslations("ApiErrors");
@@ -345,7 +349,7 @@ export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCre
         return (
           <span className="item-lines-readonly-uom">
             <span className="tabular-nums">{row.account_code}</span>
-            <span className="ms-1">{row.account_name}</span>
+            <span className="ms-1">{accountDisplayName({ name: row.account_name, name_ar: row.account_name_ar }, locale)}</span>
           </span>
         );
       }

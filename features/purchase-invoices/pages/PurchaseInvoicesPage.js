@@ -18,7 +18,7 @@ import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { fetchSupplierNames } from "@/features/suppliers/index";
 import { SUPPLIERS_LIST_QUERY_KEY } from "@/features/suppliers/queries/suppliersQueryKeys";
-import { deletePurchaseInvoice, reversePurchaseInvoice } from "../api/purchaseInvoices.api";
+import { deletePurchaseInvoice, postPurchaseInvoice, reversePurchaseInvoice } from "../api/purchaseInvoices.api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
@@ -43,6 +43,7 @@ function PurchaseInvoicesTable() {
   const queryClient = useQueryClient();
   const access = useResourceAccess("purchase_invoices");
   const paymentAccess = useResourceAccess("supplier_payments");
+  const debitNoteAccess = useResourceAccess("purchase_debit_notes");
   const { openDrawer } = useGlobalDrawer();
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -118,6 +119,19 @@ function PurchaseInvoicesTable() {
     [openDrawer],
   );
 
+  const handleCreateDebitNote = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({
+        featureId: "purchaseDebitNotes",
+        mode: "create",
+        extras: { fromInvoiceId: id },
+      });
+    },
+    [openDrawer],
+  );
+
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deletePurchaseInvoice(id),
     onSuccess: () => {
@@ -147,6 +161,45 @@ function PurchaseInvoicesTable() {
       });
     },
     [modal, t, deleteMutation],
+  );
+
+  const postMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => postPurchaseInvoice(id),
+    onSuccess: (record) => {
+      message.success(t("postSuccess"));
+      queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICE_DETAIL_QUERY_PREFIX });
+      queryClient.invalidateQueries({ queryKey: PURCHASE_ORDERS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PURCHASE_ORDER_DETAIL_QUERY_PREFIX });
+      queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
+      const id = normalizeEntityId(record?.id);
+      if (id != null && record) {
+        queryClient.setQueryData([...PURCHASE_INVOICE_DETAIL_QUERY_PREFIX, id], record);
+      }
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("postError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
+  const handlePost = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      const hasGrn = record?.goods_receipt_id != null && record.goods_receipt_id !== "";
+      modal.confirm({
+        title: t("postConfirmTitle"),
+        content: hasGrn ? t("postConfirmContentApOnly") : t("postConfirmContentApAndStock"),
+        okText: t("postConfirmOk"),
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(postMutation.mutateAsync(id)),
+      });
+    },
+    [modal, t, postMutation],
   );
 
   const reverseMutation = useMutation({
@@ -220,11 +273,13 @@ function PurchaseInvoicesTable() {
       getPurchaseInvoiceTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
+        onPost: access.canEdit ? handlePost : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
         onReverse: access.canReverse ? handleReverse : undefined,
         onCreatePayment: paymentAccess.canAdd ? handleCreatePayment : undefined,
+        onCreateDebitNote: debitNoteAccess.canAdd ? handleCreateDebitNote : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, paymentAccess.canAdd, openViewDrawer, openEditDrawer, handleDelete, handleReverse, handleCreatePayment],
+    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, paymentAccess.canAdd, debitNoteAccess.canAdd, openViewDrawer, openEditDrawer, handlePost, handleDelete, handleReverse, handleCreatePayment, handleCreateDebitNote],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({

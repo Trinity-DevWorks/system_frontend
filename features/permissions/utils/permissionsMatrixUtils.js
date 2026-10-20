@@ -1,7 +1,7 @@
 import { isOwnerRoleName } from "@/features/roles/index";
 
-/** @typedef {"can_view" | "can_add" | "can_edit" | "can_delete" | "can_import" | "can_export" | "can_reverse"} PermFlag */
-/** @typedef {"view" | "add" | "edit" | "delete" | "import" | "export" | "reverse"} PermAction */
+/** @typedef {"can_view" | "can_add" | "can_edit" | "can_delete" | "can_import" | "can_export" | "can_reverse" | "can_reopen"} PermFlag */
+/** @typedef {"view" | "add" | "edit" | "delete" | "import" | "export" | "reverse" | "reopen"} PermAction */
 
 /** @type {readonly PermFlag[]} */
 export const PERM_FLAGS = Object.freeze([
@@ -12,6 +12,7 @@ export const PERM_FLAGS = Object.freeze([
   "can_import",
   "can_export",
   "can_reverse",
+  "can_reopen",
 ]);
 
 /** @type {readonly PermAction[]} */
@@ -23,6 +24,7 @@ export const PERM_ACTIONS = Object.freeze([
   "import",
   "export",
   "reverse",
+  "reopen",
 ]);
 
 /** @type {Readonly<Record<PermFlag, PermAction>>} */
@@ -34,6 +36,7 @@ export const FLAG_TO_ACTION = Object.freeze({
   can_import: "import",
   can_export: "export",
   can_reverse: "reverse",
+  can_reopen: "reopen",
 });
 
 /**
@@ -121,6 +124,7 @@ function flagsFromRolePerm(rolePerm) {
  *   can_import: boolean;
  *   can_export: boolean;
  *   can_reverse: boolean;
+ *   can_reopen: boolean;
  * }>}
  */
 export function buildMatrixRows(catalog, rolePermissions) {
@@ -308,6 +312,7 @@ export function matrixRowsToPayload(rows) {
     can_import: rowAllowsFlag(row, "can_import") && Boolean(row.can_import),
     can_export: rowAllowsFlag(row, "can_export") && Boolean(row.can_export),
     can_reverse: rowAllowsFlag(row, "can_reverse") && Boolean(row.can_reverse),
+    can_reopen: rowAllowsFlag(row, "can_reopen") && Boolean(row.can_reopen),
   }));
 }
 

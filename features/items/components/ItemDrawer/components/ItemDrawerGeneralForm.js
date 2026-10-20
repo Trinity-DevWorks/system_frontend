@@ -394,6 +394,12 @@ export default function ItemDrawerGeneralForm({
             <Switch />
           </Form.Item>
         </div>
+        <div className="item-general-form-toggle-cell">
+          <ResourceDrawerFieldLabel text={t("fieldAllowReturn")} help={t("fieldAllowReturnHelp")} />
+          <Form.Item name="allow_return" valuePropName="checked" noStyle>
+            <Switch />
+          </Form.Item>
+        </div>
         <div className="item-general-form-toggle-cell item-general-form-toggle-cell--status">
           <ResourceDrawerFieldLabel text={t("fieldStatus")} help={t("fieldStatusHelp")} />
           <div className="item-general-form-status-control">

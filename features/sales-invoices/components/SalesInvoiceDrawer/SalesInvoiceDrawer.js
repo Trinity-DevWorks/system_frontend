@@ -16,13 +16,13 @@ import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import CustomerDrawer from "@/features/customers/components/CustomerDrawer/CustomerDrawer";
 import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
 import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
-import { App, Form } from "antd";
+import { App, Button, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useSalesInvoiceDrawerKeyboard,
 } from "./salesInvoiceDrawerKeyboard";
-import { isSalesInvoiceDraft } from "../../utils/salesInvoiceStatuses";
+import { isSalesInvoiceDraft, salesInvoiceHasCreditableBalance } from "../../utils/salesInvoiceStatuses";
 import SalesInvoiceDrawerFooter from "./SalesInvoiceDrawerFooter";
 import SalesInvoiceDrawerForm from "./SalesInvoiceDrawerForm";
 import SalesInvoiceDrawerHeaderMeta from "./SalesInvoiceDrawerHeaderMeta";
@@ -87,6 +87,7 @@ export default function SalesInvoiceDrawer({
   const { message, modal, notification } = App.useApp();
   const access = useResourceAccess("sales_invoices");
   const receiptAccess = useResourceAccess("customer_receipts");
+  const creditNoteAccess = useResourceAccess("sales_credit_notes");
   const customerAccess = useResourceAccess("customers");
   const { openDrawer } = useGlobalDrawer();
   const itemAccess = useResourceAccess("items");
@@ -106,6 +107,7 @@ export default function SalesInvoiceDrawer({
   const [headerBaseline, setHeaderBaseline] = useState(() => getSalesInvoiceDefaults());
   const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
   const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
+  const [loadedOrder, setLoadedOrder] = useState(/** @type {{ id: string; order_number: string } | null} */ (null));
   const [loadedPostedBy, setLoadedPostedBy] = useState(/** @type {unknown} */ (null));
   const [loadedPostedAt, setLoadedPostedAt] = useState(/** @type {string | null} */ (null));
   const [totals, setTotals] = useState(/** @type {Record<string, unknown> | null} */ (null));
@@ -148,6 +150,7 @@ export default function SalesInvoiceDrawer({
       tax_total: record.tax_total,
       grand_total: record.grand_total,
       paid_total: record.paid_total,
+      credited_total: record.credited_total,
       net_to_pay: record.net_to_pay,
     });
   }, []);
@@ -168,6 +171,11 @@ export default function SalesInvoiceDrawer({
       if (nextStatus === "posted") postedHoldRef.current = true;
       setLoadedStatus(nextStatus);
       setLoadedNumber(typeof record.invoice_number === "string" ? record.invoice_number : null);
+      setLoadedOrder(
+        record.sales_order && typeof record.sales_order === "object" && record.sales_order.id != null
+          ? { id: String(record.sales_order.id), order_number: String(record.sales_order.order_number ?? "") }
+          : null,
+      );
       setLoadedPostedBy(record.posted_by ?? null);
       setLoadedPostedAt(typeof record.posted_at === "string" ? record.posted_at : null);
       applyTotals(record);
@@ -189,6 +197,7 @@ export default function SalesInvoiceDrawer({
     postedHoldRef.current = false;
     setLoadedStatus("draft");
     setLoadedNumber(null);
+    setLoadedOrder(null);
     setLoadedPostedBy(null);
     setLoadedPostedAt(null);
     setTotals(null);
@@ -227,6 +236,11 @@ export default function SalesInvoiceDrawer({
     if (tableSeedRecord && typeof tableSeedRecord === "object") {
       setLoadedStatus(typeof tableSeedRecord.status === "string" ? tableSeedRecord.status : null);
       setLoadedNumber(typeof tableSeedRecord.invoice_number === "string" ? tableSeedRecord.invoice_number : null);
+      setLoadedOrder(
+        tableSeedRecord.sales_order && typeof tableSeedRecord.sales_order === "object" && tableSeedRecord.sales_order.id != null
+          ? { id: String(tableSeedRecord.sales_order.id), order_number: String(tableSeedRecord.sales_order.order_number ?? "") }
+          : null,
+      );
       setLoadedPostedBy(tableSeedRecord.posted_by ?? null);
       setLoadedPostedAt(typeof tableSeedRecord.posted_at === "string" ? tableSeedRecord.posted_at : null);
       applyTotals(tableSeedRecord);
@@ -660,6 +674,16 @@ export default function SalesInvoiceDrawer({
     });
   }, [invoiceId, openDrawer]);
 
+  const handleCreateCreditNote = useCallback(() => {
+    const id = normalizeEntityId(invoiceId);
+    if (id == null) return;
+    openDrawer({
+      featureId: "salesCreditNotes",
+      mode: "create",
+      extras: { fromInvoiceId: id },
+    });
+  }, [invoiceId, openDrawer]);
+
   const handleDelete = useCallback(() => {
     const name = loadedNumber ?? String(invoiceId ?? "");
     modal.confirm(
@@ -788,12 +812,19 @@ export default function SalesInvoiceDrawer({
       size="100%"
       className="sales-invoice-crud-drawer"
       headerExtra={
-        <SalesInvoiceDrawerHeaderMeta
-          t={t}
-          invoiceStatus={effectiveStatus}
-          paidTotal={displayTotals?.paid_total}
-          netToPay={displayTotals?.net_to_pay}
-        />
+        <div className="flex items-center gap-3">
+          {loadedOrder ? (
+            <Button type="link" className="px-0" onClick={() => openDrawer({ featureId: "salesOrders", id: loadedOrder.id, mode: "view" })}>
+              {t("linkedOrder")} {loadedOrder.order_number}
+            </Button>
+          ) : null}
+          <SalesInvoiceDrawerHeaderMeta
+            t={t}
+            invoiceStatus={effectiveStatus}
+            paidTotal={displayTotals?.paid_total}
+            netToPay={displayTotals?.net_to_pay}
+          />
+        </div>
       }
       showDetailLoading={showDetailLoading}
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
@@ -816,7 +847,13 @@ export default function SalesInvoiceDrawer({
             receiptAccess.canAdd &&
             Number(displayTotals?.net_to_pay) > 0
           }
+          showCreateCreditNote={
+            invoiceId != null &&
+            creditNoteAccess.canAdd &&
+            salesInvoiceHasCreditableBalance(detailQuery.data ?? tableSeedRecord)
+          }
           onReverse={handleReverse}
+          onCreateCreditNote={handleCreateCreditNote}
           onCreateReceipt={handleCreateReceipt}
           postedBy={loadedPostedBy}
           postedAt={loadedPostedAt}

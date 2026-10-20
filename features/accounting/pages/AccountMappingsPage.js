@@ -7,7 +7,8 @@ import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismiss
 import { EditOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Card, Select, Space, Spin, Table, Tag, Typography } from "antd";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { accountDisplayName } from "../accountingUtils";
 import { useCallback, useMemo, useState } from "react";
 import { fetchAccountMappings, updateAccountMappings } from "../api/accounting.api";
 import { ACCOUNTS_QUERY_KEY, ACCOUNT_MAPPINGS_QUERY_KEY } from "../queries/accountingQueryKeys";
@@ -15,6 +16,7 @@ import { usePostableAccounts } from "../queries/usePostableAccounts";
 
 export default function AccountMappingsPage() {
   const t = useTranslations("Accounting");
+  const locale = useLocale();
   const tApiErrors = useTranslations("ApiErrors");
   const { message, notification } = App.useApp();
   const access = useResourceAccess("account_mappings");
@@ -86,7 +88,8 @@ export default function AccountMappingsPage() {
         if (!editing) {
           return value != null ? (
             <span>
-              <span className="tabular-nums">{row.account_code}</span> {row.account_name}
+              <span className="tabular-nums">{row.account_code}</span>{" "}
+              {accountDisplayName({ name: row.account_name, name_ar: row.account_name_ar }, locale)}
             </span>
           ) : (
             <Typography.Text type="danger">{t("mappingMissing")}</Typography.Text>

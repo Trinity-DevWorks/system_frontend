@@ -12,12 +12,13 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { App, DatePicker, Select, Spin, Typography } from "antd";
 import dayjs from "dayjs";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { downloadAccountLedger, fetchAccountLedger, fetchAccounts } from "../api/accounting.api";
-import { SOURCE_DOCUMENT_FEATURE, accountLabel } from "../accountingUtils";
+import { SOURCE_DOCUMENT_FEATURE, accountDisplayName, accountLabel } from "../accountingUtils";
 import { ACCOUNTING_REPORTS_QUERY_KEY, ACCOUNTS_QUERY_KEY } from "../queries/accountingQueryKeys";
+import { useReportBranch } from "../useReportBranch";
 
 /** @param {string | null} value */
 function parseDate(value) {
@@ -28,6 +29,7 @@ function parseDate(value) {
 
 function AccountLedgerTable() {
   const t = useTranslations("Accounting");
+  const locale = useLocale();
   const { settings } = useCompanySettings();
   const currencySymbol = settings.primaryCurrencySymbol;
   const tApiErrors = useTranslations("ApiErrors");
@@ -41,6 +43,8 @@ function AccountLedgerTable() {
   const accountId = Number(searchParams.get("account") ?? "") || undefined;
   const from = searchParams.get("from") || undefined;
   const to = searchParams.get("to") || undefined;
+  const branchFromUrl = Number(searchParams.get("branch") ?? "") || undefined;
+  const { accessibleBranches, lockedBranchId, selectedBranchId, isPending: branchesPending, isFetched: branchesFetched } = useReportBranch(branchFromUrl);
   const [exporting, setExporting] = useState(false);
 
   const setParams = useCallback(
@@ -62,15 +66,18 @@ function AccountLedgerTable() {
     staleTime: QUERY_STALE_TIME.catalog,
   });
   const accountOptions = useMemo(
-    () => (accountsQuery.data ?? []).map((account) => ({ value: Number(account.id), label: accountLabel(account) })),
-    [accountsQuery.data],
+    () => (accountsQuery.data ?? []).map((account) => ({ value: Number(account.id), label: accountLabel(account, locale) })),
+    [accountsQuery.data, locale],
   );
 
-  const params = useMemo(() => ({ account_id: /** @type {number} */ (accountId), from, to }), [accountId, from, to]);
+  const params = useMemo(
+    () => ({ account_id: /** @type {number} */ (accountId), from, to, branch_id: selectedBranchId }),
+    [accountId, from, selectedBranchId, to],
+  );
   const ledgerQuery = useQuery({
     queryKey: [...ACCOUNTING_REPORTS_QUERY_KEY, "account-ledger", params],
     queryFn: () => fetchAccountLedger(params),
-    enabled: accountId != null,
+    enabled: accountId != null && branchesFetched,
     staleTime: QUERY_STALE_TIME.ledger,
   });
 
@@ -145,7 +152,7 @@ function AccountLedgerTable() {
         },
       },
       ...(showAccount
-        ? [{ title: t("colAccount"), dataIndex: "account_code", key: "account_code", width: 200, ellipsis: true, render: (value, row) => `${value} ${row.account_name ?? ""}` }]
+        ? [{ title: t("colAccount"), dataIndex: "account_code", key: "account_code", width: 200, ellipsis: true, render: (value, row) => `${value} ${accountDisplayName({ name: row.account_name, name_ar: row.account_name_ar }, locale)}` }]
         : []),
       { title: t("colDescription"), dataIndex: "description", key: "description", ellipsis: true },
       { title: t("colParty"), dataIndex: "party_name", key: "party_name", width: 170, ellipsis: true, render: (value) => value || "\u2014" },
@@ -153,7 +160,7 @@ function AccountLedgerTable() {
       { title: t("colCredit"), dataIndex: "credit", key: "credit", width: 160, align: "right", render: (value) => (Number(value) ? formatTenantMoneyWithSymbol(value, currencySymbol) : "") },
       { title: t("colBalance"), dataIndex: "balance", key: "balance", width: 170, align: "right", render: (value) => formatTenantMoneyWithSymbol(value, currencySymbol) },
     ],
-    [currencySymbol, openDrawer, showAccount, t],
+    [currencySymbol, locale, openDrawer, showAccount, t],
   );
 
   const ledger = ledgerQuery.data;
@@ -194,6 +201,22 @@ function AccountLedgerTable() {
                 loading={accountsQuery.isPending}
                 value={accountId}
                 onChange={(value) => setParams({ account: value ? String(value) : undefined })}
+              />
+              <Select
+                className="min-w-40"
+                allowClear={lockedBranchId == null}
+                disabled={lockedBranchId != null}
+                placeholder={t("branchAll")}
+                value={selectedBranchId}
+                onChange={(value) => setParams({ branch: value ? String(value) : undefined })}
+                options={accessibleBranches
+                  .map((branch) => {
+                    const id = Number(branch.id);
+                    if (!Number.isFinite(id)) return null;
+                    return { value: id, label: String(branch.name ?? id) };
+                  })
+                  .filter(Boolean)}
+                loading={branchesPending}
               />
               <DatePicker.RangePicker
                 value={dateRange}

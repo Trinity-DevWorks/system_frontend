@@ -11,10 +11,12 @@ import { ROUTES } from "@/features/registry";
 import { useRouter } from "@/i18n/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { App, DatePicker, Select, Spin, Table } from "antd";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { accountDisplayName } from "../accountingUtils";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { downloadTrialBalance, fetchTrialBalance } from "../api/accounting.api";
 import { ACCOUNTING_REPORTS_QUERY_KEY } from "../queries/accountingQueryKeys";
+import { useReportBranch } from "../useReportBranch";
 
 /**
  * @param {unknown} value
@@ -26,6 +28,7 @@ function money(value, symbol) {
 
 function TrialBalanceTable() {
   const t = useTranslations("Accounting");
+  const locale = useLocale();
   const { settings } = useCompanySettings();
   const currencySymbol = settings.primaryCurrencySymbol;
   const tApiErrors = useTranslations("ApiErrors");
@@ -36,20 +39,24 @@ function TrialBalanceTable() {
     /** @type {[import("dayjs").Dayjs | null, import("dayjs").Dayjs | null] | null} */ (null),
   );
   const [level, setLevel] = useState(/** @type {number | undefined} */ (undefined));
+  const [branchId, setBranchId] = useState(/** @type {number | undefined} */ (undefined));
   const [exporting, setExporting] = useState(false);
+  const { accessibleBranches, lockedBranchId, selectedBranchId, isPending: branchesPending, isFetched: branchesFetched } = useReportBranch(branchId);
 
   const params = useMemo(
     () => ({
       from: dateRange?.[0]?.format("YYYY-MM-DD"),
       to: dateRange?.[1]?.format("YYYY-MM-DD"),
       level,
+      branch_id: selectedBranchId,
     }),
-    [dateRange, level],
+    [dateRange, level, selectedBranchId],
   );
 
   const query = useQuery({
     queryKey: [...ACCOUNTING_REPORTS_QUERY_KEY, "trial-balance", params],
     queryFn: () => fetchTrialBalance(params),
+    enabled: branchesFetched,
     staleTime: QUERY_STALE_TIME.ledger,
   });
 
@@ -78,9 +85,11 @@ function TrialBalanceTable() {
       const search = new URLSearchParams({ account: String(row.account_id) });
       if (params.from) search.set("from", params.from);
       if (params.to) search.set("to", params.to);
+      const branch = query.data?.branch_id ?? selectedBranchId;
+      if (branch) search.set("branch", String(branch));
       router.push(`${ROUTES.accountLedger}?${search.toString()}`);
     },
-    [params.from, params.to, router],
+    [params.from, params.to, query.data, router, selectedBranchId],
   );
 
   const showOpening = Boolean(params.from);
@@ -92,7 +101,10 @@ function TrialBalanceTable() {
         dataIndex: "name",
         key: "name",
         ellipsis: true,
-        render: (value, row) => (row.is_group ? <strong>{value}</strong> : value),
+        render: (_value, row) => {
+          const label = accountDisplayName(row, locale);
+          return row.is_group ? <strong>{label}</strong> : label;
+        },
       },
       ...(showOpening
         ? [
@@ -105,7 +117,7 @@ function TrialBalanceTable() {
       { title: t("colClosingDebit"), dataIndex: "closing_debit", key: "closing_debit", width: 160, align: "right", render: (value) => money(value, currencySymbol) },
       { title: t("colClosingCredit"), dataIndex: "closing_credit", key: "closing_credit", width: 160, align: "right", render: (value) => money(value, currencySymbol) },
     ],
-    [currencySymbol, showOpening, t],
+    [currencySymbol, locale, showOpening, t],
   );
 
   const totals = query.data?.totals ?? null;
@@ -146,6 +158,22 @@ function TrialBalanceTable() {
                 onChange={(range) => setDateRange(range ?? null)}
                 allowEmpty={[true, true]}
                 format={dayjsDatePattern()}
+              />
+              <Select
+                className="min-w-40"
+                allowClear={lockedBranchId == null}
+                disabled={lockedBranchId != null}
+                placeholder={t("branchAll")}
+                value={selectedBranchId}
+                onChange={(value) => setBranchId(value ?? undefined)}
+                options={accessibleBranches
+                  .map((branch) => {
+                    const id = Number(branch.id);
+                    if (!Number.isFinite(id)) return null;
+                    return { value: id, label: String(branch.name ?? id) };
+                  })
+                  .filter(Boolean)}
+                loading={branchesPending}
               />
               <Select
                 className="w-40"

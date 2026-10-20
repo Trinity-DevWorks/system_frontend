@@ -12,7 +12,8 @@ import { formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MinusSquareOutlined, MoreOutlined, PlusOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Dropdown, Spin, Tag, Typography } from "antd";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { accountDisplayName } from "../accountingUtils";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { deleteAccount, fetchAccountTree } from "../api/accounting.api";
 import { ACCOUNTS_QUERY_KEY, ACCOUNT_TREE_QUERY_KEY } from "../queries/accountingQueryKeys";
@@ -29,7 +30,8 @@ function filterTree(nodes, needle) {
     const children = Array.isArray(node.children) ? filterTree(node.children, needle) : [];
     const hit =
       String(node.code ?? "").toLowerCase().startsWith(needle) ||
-      String(node.name ?? "").toLowerCase().includes(needle);
+      String(node.name ?? "").toLowerCase().includes(needle) ||
+      String(node.name_ar ?? "").toLowerCase().includes(needle);
     if (hit || children.length > 0) {
       out.push({ ...node, ...(children.length > 0 ? { children } : { children: undefined }) });
     }
@@ -50,6 +52,7 @@ function groupKeys(nodes, acc = []) {
 
 function ChartOfAccountsTable() {
   const t = useTranslations("Accounting");
+  const locale = useLocale();
   const { settings } = useCompanySettings();
   const currencySymbol = settings.primaryCurrencySymbol;
   const tApiErrors = useTranslations("ApiErrors");
@@ -116,14 +119,14 @@ function ChartOfAccountsTable() {
     (record) => {
       modal.confirm({
         title: t("accountDeleteConfirmTitle"),
-        content: t("accountDeleteConfirmContent", { name: `${record.code} — ${record.name}` }),
+        content: t("accountDeleteConfirmContent", { name: `${record.code} — ${accountDisplayName(record, locale)}` }),
         okText: t("actionDelete"),
         okButtonProps: { danger: true },
         cancelText: t("drawerCancel"),
         onOk: () => closeConfirmOnError(deleteMutation.mutateAsync(Number(record.id))),
       });
     },
-    [deleteMutation, modal, t],
+    [deleteMutation, locale, modal, t],
   );
 
   const addChild = useCallback(
@@ -151,11 +154,14 @@ function ChartOfAccountsTable() {
         dataIndex: "name",
         key: "name",
         ellipsis: true,
-        render: (value, record) => (
-          <span className={record.is_active ? undefined : "text-neutral-400"}>
-            {record.is_group ? <strong>{value}</strong> : value}
-          </span>
-        ),
+        render: (_value, record) => {
+          const label = accountDisplayName(record, locale);
+          return (
+            <span className={record.is_active ? undefined : "text-neutral-400"}>
+              {record.is_group ? <strong>{label}</strong> : label}
+            </span>
+          );
+        },
       },
       {
         title: t("colType"),
@@ -212,7 +218,7 @@ function ChartOfAccountsTable() {
         },
       },
     ],
-    [access.canAdd, access.canDelete, access.canEdit, access.canView, addChild, currencySymbol, handleDelete, openEditDrawer, openViewDrawer, t],
+    [access.canAdd, access.canDelete, access.canEdit, access.canView, addChild, currencySymbol, handleDelete, locale, openEditDrawer, openViewDrawer, t],
   );
 
   return (

@@ -13,7 +13,7 @@ import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/
 import { CURRENCIES_LIST_QUERY_KEY, fetchCurrencyNames } from "@/features/currencies";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Descriptions, Form, Input, Select, Space, Switch, Tag } from "antd";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { createAccount, deleteAccount, fetchAccount, fetchAccounts, updateAccount } from "../api/accounting.api";
 import { ACCOUNT_TYPE_VALUES, NORMAL_BALANCE_VALUES, accountLabel } from "../accountingUtils";
@@ -23,6 +23,7 @@ const EMPTY = {
   parent_id: undefined,
   code: "",
   name: "",
+  name_ar: "",
   is_group: false,
   type: undefined,
   normal_balance: undefined,
@@ -38,6 +39,7 @@ function toPayload(values) {
     parent_id: values.parent_id ?? null,
     code: String(values.code ?? "").trim(),
     name: String(values.name ?? "").trim(),
+    name_ar: String(values.name_ar ?? "").trim() || null,
     is_group: Boolean(values.is_group),
     type: values.type ?? null,
     normal_balance: values.normal_balance ?? null,
@@ -53,6 +55,7 @@ function toFormValues(record) {
     parent_id: record.parent_id == null ? undefined : Number(record.parent_id),
     code: String(record.code ?? ""),
     name: String(record.name ?? ""),
+    name_ar: String(record.name_ar ?? ""),
     is_group: Boolean(record.is_group),
     type: record.type ?? undefined,
     normal_balance: record.normal_balance ?? undefined,
@@ -75,6 +78,7 @@ function toFormValues(record) {
  */
 export default function AccountDrawer({ open, mode, accountId, tableSeedRecord = null, createSeed = null, onClose, onCreated }) {
   const t = useTranslations("Accounting");
+  const locale = useLocale();
   const { settings } = useCompanySettings();
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal, notification } = App.useApp();
@@ -110,8 +114,8 @@ export default function AccountDrawer({ open, mode, accountId, tableSeedRecord =
     () =>
       (allAccountsQuery.data ?? [])
         .filter((account) => account.is_group && Number(account.id) !== Number(accountId))
-        .map((account) => ({ value: Number(account.id), label: accountLabel(account) })),
-    [accountId, allAccountsQuery.data],
+        .map((account) => ({ value: Number(account.id), label: accountLabel(account, locale) })),
+    [accountId, allAccountsQuery.data, locale],
   );
   const currencyOptions = useMemo(
     () =>
@@ -171,7 +175,9 @@ export default function AccountDrawer({ open, mode, accountId, tableSeedRecord =
         return;
       }
       message.success(t("accountUpdateSuccess"));
-      onClose();
+      if (saved && accountId != null) {
+        queryClient.setQueryData([...ACCOUNT_DETAIL_QUERY_PREFIX, accountId], saved);
+      }
     },
     onError: (err) => {
       if (!applyApiFieldErrors(form, err)) {
@@ -249,7 +255,7 @@ export default function AccountDrawer({ open, mode, accountId, tableSeedRecord =
                 onClick={() =>
                   modal.confirm({
                     title: t("accountDeleteConfirmTitle"),
-                    content: t("accountDeleteConfirmContent", { name: accountLabel(record ?? {}) }),
+                    content: t("accountDeleteConfirmContent", { name: accountLabel(record ?? {}, locale) }),
                     okText: t("actionDelete"),
                     okButtonProps: { danger: true },
                     cancelText: t("drawerCancel"),
@@ -313,6 +319,9 @@ export default function AccountDrawer({ open, mode, accountId, tableSeedRecord =
           <Input autoComplete="off" inputMode="numeric" disabled={readOnly || hasChildren} />
         </Form.Item>
         <Form.Item name="name" label={t("fieldName")} rules={[{ required: true, message: t("fieldNameRequired") }, { max: 255 }]}>
+          <Input autoComplete="off" />
+        </Form.Item>
+        <Form.Item name="name_ar" label={t("fieldNameAr")} rules={[{ max: 255 }]}>
           <Input autoComplete="off" />
         </Form.Item>
         <Form.Item name="is_group" label={t("fieldIsGroup")} valuePropName="checked" extra={t("fieldIsGroupHelp")}>

@@ -1,6 +1,6 @@
 import { isPurchaseInvoiceDraft, purchaseInvoiceStatusTag } from "../../utils/purchaseInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
-import { AccountBookOutlined, DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import { AccountBookOutlined, CheckOutlined, DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -11,13 +11,15 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  * @param {{
  *   onView?: (record: unknown) => void;
  *   onEdit?: (record: unknown) => void;
+ *   onPost?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
  *   onReverse?: (record: unknown) => void;
  *   onCreatePayment?: (record: unknown) => void;
+ *   onCreateDebitNote?: (record: unknown) => void;
  * }} [actions]
  */
 export function getPurchaseInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onReverse, onCreatePayment } = actions;
+  const { onView, onEdit, onPost, onDelete, onReverse, onCreatePayment, onCreateDebitNote } = actions;
 
   return [
     {
@@ -95,6 +97,15 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
     },
     {
+      title: t("colDebitedTotal"),
+      dataIndex: "debited_total",
+      key: "debited_total",
+      width: 150,
+      align: "right",
+      sorter: (a, b) => Number(a.debited_total ?? 0) - Number(b.debited_total ?? 0),
+      render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
+    },
+    {
       title: t("colNetToPay"),
       dataIndex: "net_to_pay",
       key: "net_to_pay",
@@ -126,6 +137,16 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
+          ...(onCreateDebitNote && record?.status === "posted"
+            ? [
+                {
+                  key: "create-debit-note",
+                  icon: <RollbackOutlined />,
+                  label: t("actionCreateDebitNote"),
+                  onClick: () => onCreateDebitNote(record),
+                },
+              ]
+            : []),
           ...(onCreatePayment && record?.status === "posted" && Number(record?.net_to_pay) > 0
             ? [
                 {
@@ -133,6 +154,16 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
                   icon: <AccountBookOutlined />,
                   label: t("actionCreatePayment"),
                   onClick: () => onCreatePayment(record),
+                },
+              ]
+            : []),
+          ...(isDraft && onPost
+            ? [
+                {
+                  key: "post",
+                  icon: <CheckOutlined />,
+                  label: t("actionPost"),
+                  onClick: () => onPost(record),
                 },
               ]
             : []),

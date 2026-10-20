@@ -2,6 +2,7 @@
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { useQuery } from "@tanstack/react-query";
+import { useLocale } from "next-intl";
 import { useMemo } from "react";
 import { fetchAccounts } from "../api/accounting.api";
 import { accountLabel } from "../accountingUtils";
@@ -13,6 +14,7 @@ import { POSTABLE_ACCOUNTS_QUERY_KEY } from "./accountingQueryKeys";
  * @param {{ enabled?: boolean; filter?: (account: Record<string, unknown>) => boolean }} [args]
  */
 export function usePostableAccounts({ enabled = true, filter } = {}) {
+  const locale = useLocale();
   const query = useQuery({
     queryKey: POSTABLE_ACCOUNTS_QUERY_KEY,
     queryFn: () => fetchAccounts({ postable: true, active: true }),
@@ -26,10 +28,10 @@ export function usePostableAccounts({ enabled = true, filter } = {}) {
         .filter((account) => (filter ? filter(account) : true))
         .map((account) => ({
           value: Number(account.id),
-          label: accountLabel(account),
+          label: accountLabel(account, locale),
           account,
         })),
-    [query.data, filter],
+    [filter, locale, query.data],
   );
 
   return { accounts: query.data ?? [], options, isPending: enabled && query.isPending };

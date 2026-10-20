@@ -118,12 +118,12 @@ export function deleteJournalEntry(id) {
   return tenantRequest("DELETE", `journal-entries/${id}`);
 }
 
-/** @param {{ from?: string; to?: string; level?: number }} params */
+/** @param {{ from?: string; to?: string; level?: number; branch_id?: number }} params */
 export function fetchTrialBalance(params) {
   return tenantRequest("GET", withQuery("accounting/trial-balance", params));
 }
 
-/** @param {{ account_id: number; from?: string; to?: string }} params */
+/** @param {{ account_id: number; from?: string; to?: string; branch_id?: number }} params */
 export function fetchAccountLedger(params) {
   return tenantRequest("GET", withQuery("accounting/account-ledger", params));
 }
@@ -136,4 +136,76 @@ export function downloadTrialBalance(params) {
 /** @param {Record<string, string | number | undefined | null>} params */
 export function downloadAccountLedger(params) {
   return downloadPartyLedger("accounting/account-ledger/export", params);
+}
+
+/** @param {{ from?: string; to?: string; branch_id?: number; level?: number; compare?: string }} params */
+export function fetchIncomeStatement(params) {
+  return tenantRequest("GET", withQuery("accounting/income-statement", params));
+}
+
+/** @param {Record<string, string | number | undefined | null>} params */
+export function downloadIncomeStatement(params) {
+  return downloadPartyLedger("accounting/income-statement/export", params);
+}
+
+/** @param {{ as_of?: string; compare_as_of?: string; level?: number }} params */
+export function fetchBalanceSheet(params) {
+  return tenantRequest("GET", withQuery("accounting/balance-sheet", params));
+}
+
+/** @param {Record<string, string | number | undefined | null>} params */
+export function downloadBalanceSheet(params) {
+  return downloadPartyLedger("accounting/balance-sheet/export", params);
+}
+
+/** @param {{ from?: string; to?: string }} params */
+export function fetchVatReport(params) {
+  return tenantRequest("GET", withQuery("accounting/vat-report", params));
+}
+
+/** @param {Record<string, string | number | undefined | null>} params */
+export function downloadVatReport(params) {
+  return downloadPartyLedger("accounting/vat-report/export", params);
+}
+
+export function fetchVatSettlements() {
+  return tenantRequest("GET", "accounting/vat-settlements");
+}
+
+/** @param {string} periodTo */
+export function previewVatSettlement(periodTo) {
+  return tenantRequest("GET", withQuery("accounting/vat-settlements/preview", { period_to: periodTo }));
+}
+
+/** @param {{ period_to: string; entry_date: string }} body */
+export function createVatSettlement(body) {
+  return tenantRequest("POST", "accounting/vat-settlements", body);
+}
+
+/** @param {string} id */
+export function reverseVatSettlement(id) {
+  return tenantRequest("POST", `accounting/vat-settlements/${id}/reverse`);
+}
+
+export function fetchAccountingPeriod() {
+  return tenantRequest("GET", "accounting/period");
+}
+
+/** @param {{ books_closed_through: string | null }} body */
+export function updateAccountingPeriod(body) {
+  return tenantRequest("PUT", "accounting/period", body);
+}
+
+export function fetchFiscalYears() {
+  return tenantRequest("GET", "accounting/fiscal-years");
+}
+
+/** @param {{ ends_on: string }} body */
+export function closeFiscalYear(body) {
+  return tenantRequest("POST", "accounting/fiscal-years/close", body);
+}
+
+/** @param {number | string} id */
+export function reverseFiscalYear(id) {
+  return tenantRequest("POST", `accounting/fiscal-years/${id}/reverse`);
 }

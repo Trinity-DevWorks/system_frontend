@@ -291,6 +291,24 @@
   }
 }
 
+@media (min-width: 768px) {
+  .sales-invoice-header-pane:has(.credit-document-header-fields) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .credit-document-header-fields {
+    flex: 1 1 auto;
+    height: 100%;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .credit-document-header-fields > .ant-form-item:last-child {
+    align-self: end;
+    margin-bottom: 0;
+  }
+}
+
 .sales-invoice-exchange-rate-inline {
   display: flex;
   align-items: center;
@@ -467,6 +485,38 @@
   min-width: 0;
 }
 
+.sales-invoice-totals-pane.sales-invoice-totals-notes-pane {
+  display: flex;
+  flex: 0 0 20%;
+  flex-direction: column;
+  width: 20%;
+  max-width: 20%;
+}
+
+.sales-invoice-totals-pane.sales-invoice-totals-amounts {
+  flex: 1 1 80%;
+  width: 80%;
+  max-width: 80%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 12px;
+  align-items: stretch;
+}
+
+.sales-invoice-totals-amount-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  height: 100%;
+}
+
+.sales-invoice-totals-amount-section + .sales-invoice-totals-amount-section {
+  border-inline-start: 1px solid var(--ant-color-border-secondary);
+  padding-inline-start: 12px;
+}
+
 .sales-invoice-totals-pane + .sales-invoice-totals-pane {
   border-inline-start: 1px solid var(--ant-color-border-secondary);
   padding-inline-start: 12px;
@@ -482,8 +532,9 @@
 
 .sales-invoice-totals-notes.ant-form-item {
   margin-bottom: 0;
-  width: 50%;
-  max-width: 50%;
+  width: 100%;
+  max-width: none;
+  height: 100%;
 }
 
 .sales-invoice-totals-notes .ant-form-item-label {
@@ -495,8 +546,10 @@
 }
 
 .sales-invoice-totals-notes .ant-input {
-  min-height: 32px;
+  min-height: 74px;
+  height: 100%;
   padding-block: 4px;
+  resize: none;
 }
 
 /* Avoid `.ant-input-data-count` — Tailwind v4 parses `-data-count` as a variant. */
@@ -610,10 +663,6 @@
   line-height: 20px;
 }
 
-.sales-invoice-totals .resource-drawer-pricing-card.sales-invoice-totals-paid {
-  grid-column-start: 2;
-}
-
 .sales-invoice-totals .resource-drawer-pricing-card.sales-invoice-totals-net {
   padding: 4px 8px;
   border-radius: 4px;
@@ -636,6 +685,24 @@
     padding-inline-start: 0;
     border-block-start: 1px solid var(--ant-color-border-secondary);
     padding-block-start: 12px;
+  }
+
+  .sales-invoice-totals-pane.sales-invoice-totals-notes-pane,
+  .sales-invoice-totals-pane.sales-invoice-totals-amounts {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+  }
+
+  .sales-invoice-totals-pane.sales-invoice-totals-amounts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sales-invoice-totals-amount-section + .sales-invoice-totals-amount-section {
+    border-inline-start: 0;
+    padding-inline-start: 0;
+    border-block-start: 1px solid var(--ant-color-border-secondary);
+    padding-block-start: 8px;
   }
 }
 

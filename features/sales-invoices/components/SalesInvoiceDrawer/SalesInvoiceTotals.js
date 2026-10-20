@@ -15,6 +15,7 @@ import { Form, Input } from "antd";
  *     tax_total?: string | number;
  *     grand_total?: string | number;
  *     paid_total?: string | number;
+ *     credited_total?: string | number;
  *     net_to_pay?: string | number;
  *   } | null;
  *   currencySymbol?: string;
@@ -24,31 +25,25 @@ export default function SalesInvoiceTotals({ t, readOnly, totals = null, currenc
   const money = (value) => (value != null ? formatTenantMoneyWithSymbol(value, currencySymbol) || "\u2014" : "\u2014");
 
   return (
-    <section className="sales-invoice-totals flex w-full min-w-0 flex-row">
-      <div className="sales-invoice-totals-pane min-w-0 flex-1">
+    <section className="sales-invoice-totals">
+      <div className="sales-invoice-totals-pane sales-invoice-totals-notes-pane">
         <Form.Item
           name="notes"
           className="sales-invoice-totals-notes"
           label={<ResourceDrawerFieldLabel text={t("fieldNotes")} optional />}
         >
-          <Input.TextArea rows={1} maxLength={2000} showCount={!readOnly} disabled={readOnly} />
+          <Input.TextArea rows={3} maxLength={2000} showCount={!readOnly} disabled={readOnly} />
         </Form.Item>
       </div>
 
-      <div className="sales-invoice-totals-pane min-w-0 flex-1">
-        <div className="resource-drawer-pricing-summary">
-          <div className="resource-drawer-pricing-card">
-            <span className="resource-drawer-pricing-card-label">{t("totalSubtotal")}</span>
-            <span className="resource-drawer-pricing-card-value">{money(totals?.subtotal)}</span>
-          </div>
-          <div className="resource-drawer-pricing-card">
-            <span className="resource-drawer-pricing-card-label">{t("totalGrand")}</span>
-            <span className="resource-drawer-pricing-card-value">{money(totals?.grand_total)}</span>
-          </div>
-          <div className="resource-drawer-pricing-card">
-            <span className="resource-drawer-pricing-card-label">{t("totalDiscount")}</span>
-            <span className="resource-drawer-pricing-card-value">{money(totals?.discount_total)}</span>
-          </div>
+      <div className="sales-invoice-totals-pane sales-invoice-totals-amounts">
+        <div className="sales-invoice-totals-amount-section">
+          <AmountRow label={t("totalSubtotal")} value={money(totals?.subtotal)} />
+          <AmountRow label={t("totalDiscount")} value={money(totals?.discount_total)} />
+          <AmountRow label={t("totalTax")} value={money(totals?.tax_total)} />
+        </div>
+        <div className="sales-invoice-totals-amount-section">
+          <AmountRow label={t("totalGrand")} value={money(totals?.grand_total)} />
           <div className="resource-drawer-pricing-card">
             <Form.Item
               name="adjustment"
@@ -60,20 +55,25 @@ export default function SalesInvoiceTotals({ t, readOnly, totals = null, currenc
               <TenantNumberInput kind="money" disabled={readOnly} addonAfter={currencySymbol || undefined} />
             </Form.Item>
           </div>
-          <div className="resource-drawer-pricing-card">
-            <span className="resource-drawer-pricing-card-label">{t("totalTax")}</span>
-            <span className="resource-drawer-pricing-card-value">{money(totals?.tax_total)}</span>
-          </div>
-          <div className="resource-drawer-pricing-card sales-invoice-totals-net">
-            <span className="resource-drawer-pricing-card-label">{t("totalNetToPay")}</span>
-            <span className="resource-drawer-pricing-card-value">{money(totals?.net_to_pay)}</span>
-          </div>
-          <div className="resource-drawer-pricing-card sales-invoice-totals-paid col-start-2">
-            <span className="resource-drawer-pricing-card-label">{t("totalPaid")}</span>
-            <span className="resource-drawer-pricing-card-value">{money(totals?.paid_total)}</span>
-          </div>
+          <AmountRow label={t("totalCredited")} value={money(totals?.credited_total)} />
+        </div>
+        <div className="sales-invoice-totals-amount-section">
+          <AmountRow label={t("totalPaid")} value={money(totals?.paid_total)} />
+          <AmountRow label={t("totalNetToPay")} value={money(totals?.net_to_pay)} emphasized />
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * @param {{ label: string; value: string; emphasized?: boolean }} props
+ */
+function AmountRow({ label, value, emphasized = false }) {
+  return (
+    <div className={emphasized ? "resource-drawer-pricing-card sales-invoice-totals-net" : "resource-drawer-pricing-card"}>
+      <span className="resource-drawer-pricing-card-label">{label}</span>
+      <span className="resource-drawer-pricing-card-value">{value}</span>
+    </div>
   );
 }

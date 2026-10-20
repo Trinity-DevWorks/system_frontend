@@ -12,7 +12,8 @@ import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { deleteSalesInvoice, reverseSalesInvoice } from "../api/salesInvoices.api";
+import { deleteSalesInvoice, postSalesInvoice, reverseSalesInvoice } from "../api/salesInvoices.api";
+import { salesOrderConfig } from "@/features/sales-orders/salesOrderConfig";
 import { fetchCustomerNames } from "@/features/customers/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
@@ -35,6 +36,7 @@ function SalesInvoicesTable() {
   const queryClient = useQueryClient();
   const access = useResourceAccess("sales_invoices");
   const receiptAccess = useResourceAccess("customer_receipts");
+  const creditNoteAccess = useResourceAccess("sales_credit_notes");
   const { openDrawer } = useGlobalDrawer();
 
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -110,6 +112,19 @@ function SalesInvoicesTable() {
     [openDrawer],
   );
 
+  const handleCreateCreditNote = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({
+        featureId: "salesCreditNotes",
+        mode: "create",
+        extras: { fromInvoiceId: id },
+      });
+    },
+    [openDrawer],
+  );
+
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteSalesInvoice(id),
     onSuccess: () => {
@@ -139,6 +154,44 @@ function SalesInvoicesTable() {
       });
     },
     [modal, t, deleteMutation],
+  );
+
+  const postMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => postSalesInvoice(id),
+    onSuccess: (record) => {
+      message.success(t("postSuccess"));
+      queryClient.invalidateQueries({ queryKey: SALES_INVOICES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: SALES_INVOICE_DETAIL_QUERY_PREFIX });
+      queryClient.invalidateQueries({ queryKey: STOCK_BALANCES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: STOCK_MOVEMENTS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: salesOrderConfig.listKey });
+      queryClient.invalidateQueries({ queryKey: salesOrderConfig.detailPrefix });
+      const id = normalizeEntityId(record?.id);
+      if (id != null && record) {
+        queryClient.setQueryData([...SALES_INVOICE_DETAIL_QUERY_PREFIX, id], record);
+      }
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("postError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+  });
+
+  const handlePost = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("postConfirmTitle"),
+        content: t("postConfirmContent"),
+        okText: t("postConfirmOk"),
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(postMutation.mutateAsync(id)),
+      });
+    },
+    [modal, t, postMutation],
   );
 
   const reverseMutation = useMutation({
@@ -209,11 +262,13 @@ function SalesInvoicesTable() {
       getSalesInvoiceTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
+        onPost: access.canEdit ? handlePost : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
         onReverse: access.canReverse ? handleReverse : undefined,
         onCreateReceipt: receiptAccess.canAdd ? handleCreateReceipt : undefined,
+        onCreateCreditNote: creditNoteAccess.canAdd ? handleCreateCreditNote : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, receiptAccess.canAdd, openViewDrawer, openEditDrawer, handleDelete, handleReverse, handleCreateReceipt],
+    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, receiptAccess.canAdd, creditNoteAccess.canAdd, openViewDrawer, openEditDrawer, handlePost, handleDelete, handleReverse, handleCreateReceipt, handleCreateCreditNote],
   );
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({

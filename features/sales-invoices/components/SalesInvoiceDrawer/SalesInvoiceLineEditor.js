@@ -580,6 +580,7 @@ export default function SalesInvoiceLineEditor({
         readOnly={readOnly}
         renderField={(line, index, columnKey) => {
           const row = /** @type {import("../../utils/salesInvoiceDrawerUtils").SalesInvoiceLineFormRow} */ (line);
+          const linkedToOrder = row.sales_order_line_id != null;
           if (columnKey === "line_no") {
             return (
               <span className="item-lines-readonly-uom item-lines-line-no">
@@ -609,6 +610,7 @@ export default function SalesInvoiceLineEditor({
                   className="w-full"
                   placeholder={t("lineBarcodePlaceholder")}
                   value={row.barcode ?? ""}
+                  disabled={readOnly || linkedToOrder}
                   onChange={(event) => {
                     onPatchLine(index, { barcode: event.target.value });
                   }}
@@ -637,7 +639,7 @@ export default function SalesInvoiceLineEditor({
                   className="w-full"
                   placeholder={t("lineItemPlaceholder")}
                   value={row.item_id != null ? String(row.item_id) : undefined}
-                  disabled={readOnly}
+                  disabled={readOnly || linkedToOrder}
                   fetchPage={fetchSalesInvoiceItemSelectorPage}
                   queryKey={ITEMS_LIST_QUERY_KEY}
                   queryParams={SALES_INVOICE_ITEM_SELECTOR_PARAMS}
@@ -675,7 +677,7 @@ export default function SalesInvoiceLineEditor({
                   itemId={row.item_id}
                   value={row.item_uom_id}
                   catalogReloadKey={row.catalogReloadKey ?? 0}
-                  readOnly={readOnly}
+                  readOnly={readOnly || linkedToOrder}
                   t={t}
                   onCatalogDefaults={(option) => {
                     /** @type {Partial<import("../../utils/salesInvoiceDrawerUtils").SalesInvoiceLineFormRow>} */
@@ -859,6 +861,7 @@ export default function SalesInvoiceLineEditor({
                 kind="quantity"
                 className="w-full"
                 min={0.000001}
+                max={row.order_remaining_quantity != null ? Number(row.order_remaining_quantity) : undefined}
                 placeholder={t("lineQtyPlaceholder")}
                 value={row.quantity}
                 disabled={readOnly}

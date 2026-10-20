@@ -228,6 +228,8 @@ export function findSalesInvoiceItemOptionByCode(options, raw) {
  *   line_total?: string | number;
  *   track_inventory?: boolean;
  *   track_lots?: boolean;
+ *   sales_order_line_id?: number;
+ *   order_remaining_quantity?: number;
  *   catalogReloadKey?: number;
  *   price_base?: number;
  *   price_rate?: number | null;
@@ -422,6 +424,9 @@ export function mapSalesInvoiceLinesFromApi(lines, exchangeRate = 1) {
     line_total: line.line_total,
     track_inventory: Boolean(line.item?.track_inventory),
     track_lots: Boolean(line.item?.track_lots),
+    sales_order_line_id: line.sales_order_line_id != null ? Number(line.sales_order_line_id) : undefined,
+    order_remaining_quantity:
+      line.order_remaining_quantity != null ? Number(line.order_remaining_quantity) : undefined,
   }));
 }
 
@@ -461,6 +466,9 @@ export function getValidSalesInvoiceLines(lines) {
     if (description) row.description = description;
     const notes = typeof line.notes === "string" ? line.notes.trim() : "";
     if (notes) row.notes = notes;
+    if (line.sales_order_line_id != null) {
+      row.sales_order_line_id = Number(line.sales_order_line_id);
+    }
     return row;
   });
 }

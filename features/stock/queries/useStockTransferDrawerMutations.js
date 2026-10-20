@@ -208,7 +208,6 @@ export function useStockTransferDrawerMutations({
       invalidateStockLedger();
       cacheTransferDetail(transferId, record);
       onCancelled?.(/** @type {Record<string, unknown>} */ (record));
-      onClose?.();
     },
   });
 
