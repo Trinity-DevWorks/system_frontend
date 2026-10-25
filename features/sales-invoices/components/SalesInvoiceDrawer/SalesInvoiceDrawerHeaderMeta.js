@@ -2,6 +2,7 @@
 
 import { getSalesInvoiceStatusLabel, salesInvoiceStatusTagColor } from "../../utils/salesInvoiceStatuses";
 import InvoiceChainIssueTag from "../InvoiceChainIssueTag";
+import SafeConfirmationChip from "@/shared/components/SafeConfirmationChip";
 import { Tag } from "antd";
 
 /**
@@ -18,15 +19,17 @@ export function postedByDisplayName(user) {
  * Compact document meta for the sales-invoice drawer header.
  *
  * @param {{
- *   t: (key: string) => string;
+ *   t: (key: string, values?: Record<string, string | number>) => string;
  *   invoiceStatus?: string | null;
  *   chainIssue?: { kind: string; checked_at: string | null } | null;
+ *   safeCompanyQueue?: import("@/lib/safe-company-approval-queue").SafeCompanyApprovalQueue | null;
  * }} props
  */
 export default function SalesInvoiceDrawerHeaderMeta({
   t,
   invoiceStatus = null,
   chainIssue = null,
+  safeCompanyQueue = null,
 }) {
   return (
     <div className="sales-invoice-drawer-header-meta gap-2">
@@ -37,6 +40,7 @@ export default function SalesInvoiceDrawerHeaderMeta({
       ) : (
         "\u2014"
       )}
+      <SafeConfirmationChip t={t} queue={safeCompanyQueue} />
       <InvoiceChainIssueTag issue={chainIssue} />
     </div>
   );

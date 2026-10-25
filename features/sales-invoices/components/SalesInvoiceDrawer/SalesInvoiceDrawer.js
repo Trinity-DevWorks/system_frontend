@@ -41,6 +41,7 @@ import {
   invoiceProofShouldPoll,
   isInvoiceChainPending,
 } from "../../utils/invoiceProofStatuses";
+import { useSafeCompanyApprovalQueue } from "../../queries/useSafeCompanyApprovalQueue";
 import SalesInvoiceDrawerFooter from "./SalesInvoiceDrawerFooter";
 import SalesInvoiceDrawerForm from "./SalesInvoiceDrawerForm";
 import SalesInvoiceDrawerHeaderMeta from "./SalesInvoiceDrawerHeaderMeta";
@@ -301,6 +302,13 @@ export default function SalesInvoiceDrawer({
   });
   const proofResult = proofEnabled && proofQuery.data && typeof proofQuery.data === "object" ? proofQuery.data : null;
   const proofStatus = typeof proofResult?.status === "string" ? proofResult.status : null;
+  const safeCompanyQueueQuery = useSafeCompanyApprovalQueue({
+    invoiceId,
+    proofResult,
+    enabled: proofEnabled && proofStatus === "waiting_company",
+  });
+  const safeCompanyQueue =
+    proofStatus === "waiting_company" ? (safeCompanyQueueQuery.data ?? null) : null;
   const messages = useMessages();
   const tamperMessage =
     proofStatus === "tampered"
@@ -997,6 +1005,7 @@ export default function SalesInvoiceDrawer({
               ? null
               : ((detailQuery.data ? detailQuery.data.chain_issue : tableSeedRecord?.chain_issue) ?? null)
           }
+          safeCompanyQueue={safeCompanyQueue}
         />
       }
       showDetailLoading={showDetailLoading}
@@ -1067,7 +1076,18 @@ export default function SalesInvoiceDrawer({
               invoiceProofAccess.canEdit &&
               proofResult?.can_approve_as_company,
           )}
+          approveCompanyDisabled={Boolean(
+            safeCompanyQueue?.alreadyConfirmedByConnected || safeCompanyQueue?.readyToExecute,
+          )}
+          approveCompanyDisabledReason={
+            safeCompanyQueue?.readyToExecute
+              ? t("approveCompanyWaitingExecute")
+              : safeCompanyQueue?.alreadyConfirmedByConnected
+                ? t("approveCompanyAlreadyConfirmed")
+                : ""
+          }
           approvingCompany={approveCompanyMutation.isPending}
+          safeCompanyQueue={safeCompanyQueue}
           showBuyerLink={showProofView && isSalesInvoicePosted(effectiveStatus)}
           buyerLinkInvoiceId={invoiceId}
           buyerLinkInvoiceNumber={loadedNumber}

@@ -9,6 +9,7 @@ import SalesInvoiceBuyerLinkPanel from "./SalesInvoiceBuyerLinkPanel";
  *   invoiceId: string;
  *   invoiceNumber?: string | null;
  *   disabled?: boolean;
+ *   nested?: boolean;
  *   t: (key: string) => string;
  * }} props
  */
@@ -16,6 +17,7 @@ export default function SalesInvoiceBuyerLinkButton({
   invoiceId,
   invoiceNumber = null,
   disabled = false,
+  nested = false,
   t,
   actionLabel,
   issueLink,
@@ -31,6 +33,7 @@ export default function SalesInvoiceBuyerLinkButton({
       trigger="click"
       placement="topRight"
       destroyOnHidden
+      getPopupContainer={nested ? (node) => node.parentElement ?? document.body : undefined}
       content={
         <SalesInvoiceBuyerLinkPanel
           invoiceId={invoiceId}
@@ -44,7 +47,7 @@ export default function SalesInvoiceBuyerLinkButton({
       }
       onOpenChange={setOpen}
     >
-      <Button className="shrink-0" disabled={disabled}>
+      <Button className="shrink-0" disabled={disabled} data-keep-popover={nested ? "true" : undefined}>
         {actionLabel ?? t("actionBuyerLink")}
       </Button>
     </Popover>

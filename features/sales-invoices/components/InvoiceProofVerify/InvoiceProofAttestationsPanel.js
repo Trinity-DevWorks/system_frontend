@@ -4,16 +4,20 @@ import {
   AttestationError,
   buildAttestationStatement,
   readAttestations,
-  readVerifierEligibility,
+  readVerifierEligibilityWithHints,
   referenceHashOf,
   sendAttestation,
   transactionUrl,
 } from "@/lib/invoice-registry-attestations";
+import { fetchInvoiceProofSafeConfig } from "../../api/salesInvoices.api";
 import { attestationSideLabelKey } from "../../utils/invoiceAttestationSides";
-import { useQuery } from "@tanstack/react-query";
-import { App, Alert, Button, Descriptions, Input, Result, Tag, Typography } from "antd";
+import SafeConfirmationChip from "@/shared/components/SafeConfirmationChip";
+import { ATTEST_SELECTOR } from "@/lib/safe-company-approval-queue";
+import { useSafeApprovalQueue } from "@/lib/useSafeApprovalQueue";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { App, Alert, Button, Descriptions, Input, Result, Tag, Tooltip, Typography } from "antd";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const ROLE_COLORS = { auditor: "blue", tax_authority: "purple", financier: "gold" };
 const ZERO_BYTES32 = `0x${"0".repeat(64)}`;
@@ -45,6 +49,7 @@ function Mono({ value }) {
  *   proofId: string;
  *   contentHash: string;
  *   invoiceNumber?: string | null;
+ *   hintedSafes?: string[];
  *   focus?: "wallet" | "sign";
  *   onStageChange?: (stage: "wallet" | "review" | "done") => void;
  * }} props
@@ -55,12 +60,14 @@ export default function InvoiceProofAttestationsPanel({
   proofId,
   contentHash,
   invoiceNumber = null,
+  hintedSafes = [],
   focus = "wallet",
   onStageChange,
 }) {
   const t = useTranslations("InvoiceProofDisclosure");
   const format = useFormatter();
   const { message } = App.useApp();
+  const queryClient = useQueryClient();
   const target = { chainId, contractAddress, proofId };
   const attestationsQuery = useQuery({
     queryKey: ["invoice-proof-attestations", chainId, contractAddress, proofId],
@@ -68,6 +75,16 @@ export default function InvoiceProofAttestationsPanel({
     retry: false,
     refetchOnWindowFocus: false,
   });
+  const safeConfigQuery = useQuery({
+    queryKey: ["invoice-proof-safe-config"],
+    queryFn: fetchInvoiceProofSafeConfig,
+    retry: false,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const safeTxServiceUrl =
+    typeof safeConfigQuery.data?.safe_tx_service_url === "string" ? safeConfigQuery.data.safe_tx_service_url : null;
+  const safeApiKey = typeof safeConfigQuery.data?.safe_api_key === "string" ? safeConfigQuery.data.safe_api_key : null;
   const data = attestationsQuery.data ?? null;
   const [verifier, setVerifier] = useState(
     /** @type {Awaited<ReturnType<typeof readVerifierEligibility>> | null} */ (null),
@@ -80,6 +97,49 @@ export default function InvoiceProofAttestationsPanel({
   const [outcome, setOutcome] = useState(
     /** @type {Awaited<ReturnType<typeof sendAttestation>> | null} */ (null),
   );
+  const [submitted, setSubmitted] = useState(false);
+  const attestSafeQueueKey = useMemo(
+    () => ["invoice-proof-attest-safe-queue", chainId, contractAddress, proofId, verifier?.safeAddress ?? ""],
+    [chainId, contractAddress, proofId, verifier?.safeAddress],
+  );
+  const onAttestSafeCleared = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["invoice-proof-attestations", chainId, contractAddress, proofId],
+    });
+  }, [chainId, contractAddress, proofId, queryClient]);
+  const attestSafeQueueQuery = useSafeApprovalQueue({
+    queryKey: attestSafeQueueKey,
+    enabled: Boolean(verifier?.safeAddress) && verifier?.blocker !== "already_attested",
+    chainId,
+    txServiceUrl: safeTxServiceUrl,
+    apiKey: safeApiKey,
+    safeAddress: verifier?.safeAddress ?? "",
+    contractAddress,
+    proofId,
+    selector: ATTEST_SELECTOR,
+    onPendingCleared: onAttestSafeCleared,
+  });
+  const attestSafeQueue = verifier?.safeAddress ? (attestSafeQueueQuery.data ?? null) : null;
+  const alreadyAttested = Boolean(
+    verifier?.blocker === "already_attested" ||
+      (verifier?.account &&
+        data?.attestations?.some(
+          (row) => String(row.verifier ?? "").toLowerCase() === String(verifier.account).toLowerCase(),
+        )),
+  );
+  const confirmationsComplete = Boolean(
+    attestSafeQueue?.readyToExecute ||
+      (outcome?.status === "proposed" && outcome?.confirmations_complete) ||
+      (attestSafeQueue?.threshold && attestSafeQueue.confirmed.length >= attestSafeQueue.threshold),
+  );
+  const attestDisabled = Boolean(
+    alreadyAttested ||
+      submitted ||
+      confirmationsComplete ||
+      attestSafeQueue?.alreadyConfirmedByConnected ||
+      attestSafeQueue?.readyToExecute,
+  );
+  const referenceLocked = alreadyAttested || confirmationsComplete || Boolean(attestSafeQueue?.safeTxHash);
 
   /**
    * @param {"wallet" | "review" | "done"} next
@@ -107,7 +167,12 @@ export default function InvoiceProofAttestationsPanel({
   const checkEligibility = async (safe) => {
     setBusy(safe ? "safe" : "connect");
     try {
-      setVerifier(await readVerifierEligibility(target, { safeAddress: safe }));
+      setVerifier(
+        await readVerifierEligibilityWithHints(target, {
+          safeAddress: safe,
+          hintedSafes,
+        }),
+      );
     } catch (err) {
       message.error(t(`attestErrors.${attestationErrorCode(err)}`));
     } finally {
@@ -116,7 +181,7 @@ export default function InvoiceProofAttestationsPanel({
   };
 
   const handleSubmit = async () => {
-    if (!verifier?.role || verifier.blocker) return;
+    if (!verifier?.role || verifier.blocker || attestDisabled) return;
     setBusy("submit");
     try {
       const sent = await sendAttestation({
@@ -129,10 +194,14 @@ export default function InvoiceProofAttestationsPanel({
         role: verifier.role,
         partySide: verifier.partySide === "buyer" ? "buyer" : "supplier",
         statement,
+        safeTxServiceUrl,
+        safeApiKey,
         onStage: setProgress,
       });
       setOutcome(sent);
+      setSubmitted(true);
       moveTo("done");
+      queryClient.invalidateQueries({ queryKey: attestSafeQueueKey });
       if (sent.status === "executed") await attestationsQuery.refetch();
     } catch (err) {
       message.error(t(`attestErrors.${attestationErrorCode(err)}`));
@@ -145,6 +214,8 @@ export default function InvoiceProofAttestationsPanel({
   const resetWallet = () => {
     setVerifier(null);
     setSafeAddress("");
+    setSubmitted(false);
+    setOutcome(null);
     moveTo("wallet");
   };
 
@@ -160,7 +231,10 @@ export default function InvoiceProofAttestationsPanel({
           </Descriptions.Item>
           {verifier.safeAddress ? (
             <Descriptions.Item label={t("attestSafe")}>
-              <Mono value={verifier.safeAddress} />
+              <div className="flex flex-wrap items-center gap-2">
+                <Mono value={verifier.safeAddress} />
+                <SafeConfirmationChip t={t} queue={attestSafeQueue} />
+              </div>
             </Descriptions.Item>
           ) : null}
           <Descriptions.Item label={t("attestRole")}>
@@ -235,12 +309,21 @@ export default function InvoiceProofAttestationsPanel({
         </label>
         <Input
           id="attestation-reference"
-          value={reference}
+          value={referenceLocked && reference.trim() === "" ? "" : reference}
           maxLength={120}
           placeholder={t("attestReferencePlaceholder")}
-          disabled={busy === "submit"}
+          disabled={busy === "submit" || referenceLocked}
           onChange={(event) => setReference(event.target.value)}
         />
+        {referenceLocked ? (
+          <Alert
+            type="info"
+            showIcon
+            title={
+              reference.trim() !== "" ? t("attestReferenceLockedOwnHint") : t("attestReferenceLockedHint")
+            }
+          />
+        ) : null}
 
         <div className="flex flex-col gap-1">
           <Typography.Text strong className="text-sm">
@@ -282,9 +365,22 @@ export default function InvoiceProofAttestationsPanel({
           </Descriptions.Item>
         </Descriptions>
 
-        <Alert type="info" showIcon title={verifier.safeAddress ? t("attestHowSafe") : t("attestHowWallet")} />
+        <Alert
+          type="info"
+          showIcon
+          title={
+            confirmationsComplete || alreadyAttested
+              ? alreadyAttested
+                ? t("attestErrors.already_attested")
+                : t("attestWaitingExecute")
+              : verifier.safeAddress
+                ? t("attestHowSafe")
+                : t("attestHowWallet")
+          }
+        />
 
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <SafeConfirmationChip t={t} queue={attestSafeQueue} />
           {progress ? (
             <Typography.Text type="secondary" className="text-sm">
               {t(`attestProgress.${progress}`)}
@@ -293,9 +389,28 @@ export default function InvoiceProofAttestationsPanel({
           <Button disabled={busy === "submit"} onClick={() => moveTo("wallet")}>
             {t("attestBack")}
           </Button>
-          <Button type="primary" loading={busy === "submit"} onClick={handleSubmit}>
-            {verifier.safeAddress ? t("attestSubmitSafe") : t("attestSubmit")}
-          </Button>
+          <Tooltip
+            title={
+              attestDisabled
+                ? alreadyAttested
+                  ? t("attestErrors.already_attested")
+                  : confirmationsComplete
+                    ? t("attestWaitingExecute")
+                    : t("attestErrors.pending_confirmations")
+                : undefined
+            }
+          >
+            <span className="inline-flex">
+              <Button
+                type="primary"
+                loading={busy === "submit"}
+                disabled={attestDisabled}
+                onClick={attestDisabled ? undefined : handleSubmit}
+              >
+                {verifier.safeAddress ? t("attestSubmitSafe") : t("attestSubmit")}
+              </Button>
+            </span>
+          </Tooltip>
         </div>
       </div>
     );
@@ -303,16 +418,27 @@ export default function InvoiceProofAttestationsPanel({
 
   const renderOutcome = () => {
     if (!outcome) return null;
-    const url = transactionUrl(chainId, outcome.txHash);
+    const url = outcome.txHash ? transactionUrl(chainId, outcome.txHash) : "";
     const proposed = outcome.status === "proposed";
+    const waitingExecute = proposed && (Boolean(outcome.confirmations_complete) || Boolean(attestSafeQueue?.readyToExecute));
 
     return (
       <Result
         status={proposed ? "info" : "success"}
-        title={proposed ? t("attestSafeProposed") : t("attestSuccess")}
+        title={
+          waitingExecute ? t("attestWaitingExecute") : proposed ? t("attestSafeProposed") : t("attestSuccess")
+        }
         subTitle={
-          <div className="flex flex-col items-center gap-1">
-            {proposed && outcome.threshold ? (
+          <div className="flex flex-col items-center gap-2">
+            <SafeConfirmationChip t={t} queue={attestSafeQueue} />
+            {proposed && attestSafeQueue?.threshold ? (
+              <span>
+                {t("attestSafeConfirmations", {
+                  confirmations: attestSafeQueue.confirmed.length,
+                  threshold: attestSafeQueue.threshold,
+                })}
+              </span>
+            ) : proposed && outcome.threshold ? (
               <span>
                 {t("attestSafeConfirmations", {
                   confirmations: outcome.confirmations ?? 1,
@@ -320,11 +446,11 @@ export default function InvoiceProofAttestationsPanel({
                 })}
               </span>
             ) : null}
-            <Mono value={outcome.txHash} />
+            {outcome.txHash ? <Mono value={outcome.txHash} /> : null}
           </div>
         }
         extra={
-          url ? (
+          url && !proposed ? (
             <Button href={url} target="_blank" rel="noopener noreferrer">
               {t("attestViewTransaction")}
             </Button>

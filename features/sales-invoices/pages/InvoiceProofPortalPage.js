@@ -17,6 +17,9 @@ import {
   fetchVendorPortalInvoicePdf,
 } from "@/features/purchase-invoices/api/purchaseInvoices.api";
 import { sendBuyerSafeApproval, sendBuyerSafeDispute } from "@/lib/invoice-registry-buyer-safe";
+import SafeConfirmationChip from "@/shared/components/SafeConfirmationChip";
+import { useSafeApprovalQueue } from "@/lib/useSafeApprovalQueue";
+import { APPROVE_BY_BUYER_SELECTOR, APPROVE_BY_SUPPLIER_SELECTOR } from "@/lib/safe-company-approval-queue";
 import {
   clearPortalSession,
   connectProofPortalAccount,
@@ -29,13 +32,13 @@ import {
 import { getApiErrorCode, getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
 import { resolveHostMode } from "@/lib/runtime-mode";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Alert, Button, Input, Modal, Spin, Tabs, Tag, Tooltip, Typography } from "antd";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { withLocalePrefix } from "@/lib/locale-path";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * @param {string | null | undefined} value
@@ -303,6 +306,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
   const locale = useLocale();
   const tApiErrors = useTranslations("ApiErrors");
   const { message, notification } = App.useApp();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const validId = isUuid(invoiceId) ? invoiceId.trim() : null;
   const isVendor = variant === "vendor";
@@ -409,7 +413,48 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
       : null;
   const proof = invoice && typeof invoice === "object" && invoice.locked !== true ? invoice : null;
   const status = typeof proof?.status === "string" ? proof.status : null;
-  const hint = statusHint(t, status, isVendor, proof?.supplier_approved_at);
+  const portalSafeWaiting = isVendor ? status === "waiting_company" : status === "waiting_buyer";
+  const portalSafeQueueKey = useMemo(
+    () => ["tenant", "invoice-proof-portal-safe-queue", validId, isVendor ? "supplier" : "buyer"],
+    [validId, isVendor],
+  );
+  const refreshPortalRef = useRef(async () => {});
+  const onPortalSafeCleared = useCallback(() => {
+    void refreshPortalRef.current();
+  }, []);
+  const portalSafeQueueQuery = useSafeApprovalQueue({
+    queryKey: portalSafeQueueKey,
+    enabled:
+      Boolean(proof) &&
+      portalSafeWaiting &&
+      (isVendor ? proof?.supplier_wallet_type !== "eoa" : proof?.buyer_wallet_type !== "eoa"),
+    chainId: Number(proof?.chain_id),
+    txServiceUrl: typeof proof?.safe_tx_service_url === "string" ? proof.safe_tx_service_url : null,
+    apiKey: typeof proof?.safe_api_key === "string" ? proof.safe_api_key : null,
+    safeAddress: isVendor
+      ? typeof proof?.supplier_wallet === "string"
+        ? proof.supplier_wallet
+        : ""
+      : typeof proof?.buyer_wallet === "string"
+        ? proof.buyer_wallet
+        : "",
+    contractAddress: typeof proof?.contract_address === "string" ? proof.contract_address : "",
+    proofId:
+      proof?.eip712 && typeof proof.eip712 === "object"
+        ? /** @type {{ message?: { proof_id?: unknown } }} */ (proof.eip712).message?.proof_id
+        : proof?.proof_id,
+    selector: isVendor ? APPROVE_BY_SUPPLIER_SELECTOR : APPROVE_BY_BUYER_SELECTOR,
+    onPendingCleared: onPortalSafeCleared,
+  });
+  const portalSafeQueue = portalSafeWaiting ? (portalSafeQueueQuery.data ?? null) : null;
+  const approveDisabled = Boolean(
+    portalSafeQueue?.alreadyConfirmedByConnected || portalSafeQueue?.readyToExecute,
+  );
+  const hint = portalSafeQueue?.readyToExecute
+    ? t("waitingCompanyExecute")
+    : portalSafeQueue?.alreadyConfirmedByConnected
+      ? t("pendingConfirmations")
+      : statusHint(t, status, isVendor, proof?.supplier_approved_at);
   const errorCode = portalQuery.isError ? getApiErrorCode(portalQuery.error) : null;
   const currencyCode = typeof proof?.currency_code === "string" ? proof.currency_code : null;
   const lines = Array.isArray(proof?.lines) ? proof.lines : [];
@@ -429,6 +474,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
     else if (code === "rejected") description = t("rejected");
     else if (code === "not_safe_owner") description = isVendor ? t("notSafeOwnerSupplier") : t("notSafeOwner");
     else if (code === "pending_confirmations") description = t("pendingConfirmations");
+    else if (code === "waiting_company_execute") description = t("waitingCompanyExecute");
     else description = getLocalizedApiErrorMessage(tApiErrors, err) || fallback;
     notification.error({ title, description });
   }
@@ -496,7 +542,14 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
       const buyerWallet = typeof proof?.buyer_wallet === "string" ? proof.buyer_wallet : "";
       if (buyerWallet === "") throw new BuyerApprovalError("failed");
       if (unlockedBy?.buyerIsSafe) {
-        const sent = await sendBuyerSafeApproval({ chainId, contractAddress, buyerWallet, eip712 });
+        const sent = await sendBuyerSafeApproval({
+          chainId,
+          contractAddress,
+          buyerWallet,
+          eip712,
+          safeTxServiceUrl: typeof proof?.safe_tx_service_url === "string" ? proof.safe_tx_service_url : null,
+          safeApiKey: typeof proof?.safe_api_key === "string" ? proof.safe_api_key : null,
+        });
         if (sent.status === "proposed") return { proposed: true, role: "buyer", approvedAt: null };
         return { proposed: false, role: "buyer", approvedAt: await buyerApprovedAtFromTx(sent.txHash) };
       }
@@ -505,6 +558,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
     },
     onError: (err) => notifyWalletError(err, t("approveError"), t("approveError")),
     onSuccess: ({ proposed, role, approvedAt }) => {
+      queryClient.invalidateQueries({ queryKey: portalSafeQueueKey });
       if (proposed) {
         message.info(t("approveSafeProposed"));
         return;
@@ -650,6 +704,7 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
     }
     await portalQuery.refetch();
   }
+  refreshPortalRef.current = refreshPortal;
 
   let body;
   if (!validId || !hasStamp || errorCode === "NOT_FOUND" || errorCode === "PROOF_LINK_INVALID") {
@@ -764,10 +819,24 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
           </div>
           <div className="mt-1 flex shrink-0 flex-col items-end gap-2">
             {status ? (
-              <Tag className="shrink-0" color={invoiceProofStatusTagColor(status)}>
-                {portalStatusLabel(t, status, isVendor)}
+              <Tag
+                className="shrink-0"
+                color={
+                  portalSafeQueue?.readyToExecute
+                    ? "gold"
+                    : portalSafeQueue?.alreadyConfirmedByConnected
+                      ? "orange"
+                      : invoiceProofStatusTagColor(status)
+                }
+              >
+                {portalSafeQueue?.readyToExecute
+                  ? t("proofStatusWaitingCompanyExecute")
+                  : portalSafeQueue?.alreadyConfirmedByConnected
+                    ? t("proofStatusWaitingOtherOwners")
+                    : portalStatusLabel(t, status, isVendor)}
               </Tag>
             ) : null}
+            <SafeConfirmationChip t={t} queue={portalSafeQueue} />
             {unlockedBy ? (
               <InvoicePdfDownloadButton
                 invoiceId={validId}
@@ -976,13 +1045,26 @@ function InvoiceProofPortalInner({ invoiceId, initialHost, variant = "buyer" }) 
             </Button>
           ) : null}
           {proof.can_approve_as_buyer || proof.can_approve_as_company ? (
-            <Button
-              type="primary"
-              loading={approveMutation.isPending}
-              onClick={() => approveMutation.mutate()}
+            <Tooltip
+              title={
+                approveDisabled
+                  ? portalSafeQueue?.readyToExecute
+                    ? t("waitingCompanyExecute")
+                    : t("pendingConfirmations")
+                  : undefined
+              }
             >
-              {t("approve")}
-            </Button>
+              <span className="inline-flex">
+                <Button
+                  type="primary"
+                  loading={approveMutation.isPending}
+                  disabled={approveDisabled}
+                  onClick={approveDisabled ? undefined : () => approveMutation.mutate()}
+                >
+                  {t("approve")}
+                </Button>
+              </span>
+            </Tooltip>
           ) : null}
         </div>
       </>

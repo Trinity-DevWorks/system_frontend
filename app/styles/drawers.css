@@ -20,6 +20,7 @@
 .sales-invoice-drawer-header-meta {
   display: flex;
   min-width: 0;
+  flex-wrap: wrap;
   align-items: center;
 }
 
@@ -610,6 +611,32 @@
   margin-inline-start: auto;
 }
 
+.invoice-drawer-footer-actions > .ant-tag,
+.invoice-drawer-footer-action-group > .ant-tag {
+  margin-inline-end: 0;
+}
+
+.invoice-drawer-footer-action-group {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.invoice-drawer-footer-popover {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 11rem;
+}
+
+.invoice-drawer-footer-popover > .ant-btn,
+.invoice-drawer-footer-popover > .inline-flex,
+.invoice-drawer-footer-popover > .inline-flex > .ant-btn {
+  width: 100%;
+}
+
 .invoice-drawer-footer-hint {
   display: flex;
   align-items: center;
@@ -627,6 +654,19 @@
   font-size: 12px;
   line-height: 1.4;
   color: var(--ant-color-text);
+}
+
+.sales-invoice-drawer-safe-queue-owners {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ant-color-text);
+}
+
+.sales-invoice-drawer-safe-queue-owners li {
+  font-variant-numeric: tabular-nums;
 }
 
 .invoice-drawer-footer-dispute.ant-alert {

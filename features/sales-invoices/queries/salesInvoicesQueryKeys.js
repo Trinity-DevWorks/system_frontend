@@ -13,6 +13,14 @@ export function salesInvoiceProofQueryKey(invoiceId) {
 }
 
 /**
+ * Off-chain company Safe confirmation queue for a sales invoice proof.
+ * @param {string | null | undefined} invoiceId
+ */
+export function safeCompanyApprovalQueueQueryKey(invoiceId) {
+  return [...salesInvoiceProofQueryKey(invoiceId), "safe-company-queue"];
+}
+
+/**
  * Public buyer portal (tenant host, no ERP session).
  * @param {string | null | undefined} invoiceId
  * @param {string | number | null | undefined} [exp]

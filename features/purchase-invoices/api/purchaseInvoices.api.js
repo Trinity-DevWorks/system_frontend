@@ -1,6 +1,9 @@
 import { tenantApiClient, tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
 
+/** Verify / portal unlock wait on several Sepolia RPC calls; keep this above BLOCKCHAIN_TIMEOUT_SECONDS. */
+const PROOF_CHAIN_TIMEOUT_MS = 60_000;
+
 /**
  * @param {{
  *   status?: string;
@@ -109,7 +112,9 @@ export function reissuePurchaseInvoice(invoiceId) {
 
 /** @param {string} invoiceId */
 export function verifyPurchaseInvoice(invoiceId) {
-  return tenantRequest("GET", `purchase-invoices/${invoiceId}/verify`);
+  return tenantRequest("GET", `purchase-invoices/${invoiceId}/verify`, null, {
+    timeout: PROOF_CHAIN_TIMEOUT_MS,
+  });
 }
 
 /** @param {string} invoiceId */
@@ -152,6 +157,7 @@ export function recordPurchaseProofDispute(invoiceId, link = {}, body) {
       reason: body.reason,
       ...(typeof body.tx_hash === "string" && body.tx_hash !== "" ? { tx_hash: body.tx_hash } : {}),
     },
+    { timeout: PROOF_CHAIN_TIMEOUT_MS },
   );
 }
 
@@ -218,6 +224,7 @@ export function resumePurchaseProofPortal(invoiceId, link = {}, body) {
     "POST",
     query ? `proofs/purchases/${invoiceId}/resume?${query}` : `proofs/purchases/${invoiceId}/resume`,
     { session: body.session, address: body.address },
+    { timeout: PROOF_CHAIN_TIMEOUT_MS },
   );
 }
 
@@ -230,6 +237,7 @@ export function unlockPurchaseProofPortal(invoiceId, link = {}, body) {
     "POST",
     query ? `proofs/purchases/${invoiceId}/unlock?${query}` : `proofs/purchases/${invoiceId}/unlock`,
     { address: body.address, signature: body.signature },
+    { timeout: PROOF_CHAIN_TIMEOUT_MS },
   );
 }
 
@@ -241,5 +249,5 @@ export function fetchVendorInvoiceHistoryChallenge() {
  * @param {{ address: string; signature: string; nonce: string }} body
  */
 export function unlockVendorInvoiceHistory(body) {
-  return tenantRequest("POST", "proofs/purchases/history", body);
+  return tenantRequest("POST", "proofs/purchases/history", body, { timeout: PROOF_CHAIN_TIMEOUT_MS });
 }

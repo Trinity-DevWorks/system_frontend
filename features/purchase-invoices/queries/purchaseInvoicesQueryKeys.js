@@ -5,3 +5,8 @@ export const PURCHASE_INVOICE_DETAIL_QUERY_PREFIX = ["tenant", "purchase-invoice
 export function purchaseInvoiceProofQueryKey(invoiceId) {
   return [...PURCHASE_INVOICE_DETAIL_QUERY_PREFIX, invoiceId, "proof"];
 }
+
+/** @param {string | null | undefined} invoiceId */
+export function purchaseInvoiceSafeApprovalQueueQueryKey(invoiceId) {
+  return [...purchaseInvoiceProofQueryKey(invoiceId), "safe-buyer-queue"];
+}

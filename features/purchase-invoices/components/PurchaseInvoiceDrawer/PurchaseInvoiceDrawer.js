@@ -12,7 +12,12 @@ import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { visibleAttestations } from "@/features/sales-invoices/utils/invoiceAttestationSides";
 import { fetchLinkedPurchaseOffer, fetchLinkedPurchaseProof, fetchPurchaseInvoice, importLinkedPurchaseProof, verifyPurchaseInvoice } from "../../api/purchaseInvoices.api";
 import { createVendorPortalLink, createPurchaseInvoiceProofDisclosure, fetchPurchaseInvoiceProofFields } from "../../api/purchaseInvoices.api";
-import { purchaseInvoiceProofQueryKey } from "../../queries/purchaseInvoicesQueryKeys";
+import {
+  purchaseInvoiceProofQueryKey,
+  purchaseInvoiceSafeApprovalQueueQueryKey,
+} from "../../queries/purchaseInvoicesQueryKeys";
+import { useSafeApprovalQueue } from "@/lib/useSafeApprovalQueue";
+import { APPROVE_BY_BUYER_SELECTOR } from "@/lib/safe-company-approval-queue";
 import { usePurchaseInvoiceProofMutations } from "../../queries/usePurchaseInvoiceProofMutations";
 import {
   INVOICE_CHAIN_PENDING_POLL_MS,
@@ -328,6 +333,27 @@ export default function PurchaseInvoiceDrawer({
   });
   const proofResult = proofEnabled && proofQuery.data && typeof proofQuery.data === "object" ? proofQuery.data : null;
   const proofStatus = typeof proofResult?.status === "string" ? proofResult.status : null;
+  const onSafePendingCleared = useCallback(() => {
+    if (invoiceId != null) {
+      queryClient.invalidateQueries({ queryKey: purchaseInvoiceProofQueryKey(invoiceId) });
+    }
+  }, [invoiceId, queryClient]);
+  const safeBuyerQueueQuery = useSafeApprovalQueue({
+    queryKey: purchaseInvoiceSafeApprovalQueueQueryKey(invoiceId),
+    enabled: proofEnabled && proofStatus === "waiting_buyer",
+    chainId: Number(proofResult?.chain_id),
+    txServiceUrl: typeof proofResult?.safe_tx_service_url === "string" ? proofResult.safe_tx_service_url : null,
+    apiKey: typeof proofResult?.safe_api_key === "string" ? proofResult.safe_api_key : null,
+    safeAddress: typeof proofResult?.buyer_wallet === "string" ? proofResult.buyer_wallet : "",
+    contractAddress: typeof proofResult?.contract_address === "string" ? proofResult.contract_address : "",
+    proofId:
+      proofResult?.eip712 && typeof proofResult.eip712 === "object"
+        ? /** @type {{ message?: { proof_id?: unknown } }} */ (proofResult.eip712).message?.proof_id
+        : undefined,
+    selector: APPROVE_BY_BUYER_SELECTOR,
+    onPendingCleared: onSafePendingCleared,
+  });
+  const safeBuyerQueue = proofStatus === "waiting_buyer" ? (safeBuyerQueueQuery.data ?? null) : null;
   const reverseEnabled = purchaseInvoiceCanReverse(invoiceRecord, proofStatus);
   const messages = useMessages();
   const tamperMessage =
@@ -1260,6 +1286,7 @@ export default function PurchaseInvoiceDrawer({
                 ? ((detailQuery.data ? detailQuery.data.chain_issue : tableSeedRecord?.chain_issue) ?? null)
                 : null
             }
+            safeBuyerQueue={safeBuyerQueue}
           />
         }
         showDetailLoading={showDetailLoading}
@@ -1324,6 +1351,17 @@ export default function PurchaseInvoiceDrawer({
             showApproveBuyer={Boolean(
               effectiveStatus === "posted" && invoiceProofAccess.canEdit && proofResult?.can_approve_as_buyer,
             )}
+            approveBuyerDisabled={Boolean(
+              safeBuyerQueue?.alreadyConfirmedByConnected || safeBuyerQueue?.readyToExecute,
+            )}
+            approveBuyerDisabledReason={
+              safeBuyerQueue?.readyToExecute
+                ? t("approveBuyerWaitingExecute")
+                : safeBuyerQueue?.alreadyConfirmedByConnected
+                  ? t("approveBuyerPendingConfirmations")
+                  : ""
+            }
+            safeBuyerQueue={safeBuyerQueue}
             approvingBuyer={approveBuyerMutation.isPending}
             onApproveBuyer={() => {
               if (invoiceId != null) approveBuyerMutation.mutate({ invoiceId, proof: proofResult });

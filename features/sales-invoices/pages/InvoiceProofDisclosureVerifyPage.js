@@ -2,7 +2,7 @@
 
 import AuthSplitShell from "@/features/auth/components/AuthSplitShell";
 import InvoiceProofAttestationsPanel from "@/features/sales-invoices/components/InvoiceProofVerify/InvoiceProofAttestationsPanel";
-import { readOnChainSeal, verifyDisclosureBundle } from "@/lib/invoice-proof-merkle";
+import { hintedVerifierSafes, readOnChainSeal, verifyDisclosureBundle } from "@/lib/invoice-proof-merkle";
 import { resolveHostMode } from "@/lib/runtime-mode";
 import { App, Alert, Button, Descriptions, Steps, Tag, Typography, Upload } from "antd";
 import { useTranslations } from "next-intl";
@@ -273,6 +273,7 @@ function InvoiceProofDisclosureVerifyInner({ initialHost }) {
             proofId={String(bundle.proof_id ?? "")}
             contentHash={result.contentHash}
             invoiceNumber={invoiceNumber}
+            hintedSafes={hintedVerifierSafes(bundle)}
             focus={screen === 4 ? "sign" : "wallet"}
             onStageChange={handleAttestStage}
           />

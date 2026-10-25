@@ -1,6 +1,10 @@
 "use client";
 
-import { PURCHASE_INVOICES_QUERY_KEY, purchaseInvoiceProofQueryKey } from "./purchaseInvoicesQueryKeys";
+import {
+  PURCHASE_INVOICES_QUERY_KEY,
+  purchaseInvoiceProofQueryKey,
+  purchaseInvoiceSafeApprovalQueueQueryKey,
+} from "./purchaseInvoicesQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { BuyerApprovalError, sendBuyerApproval, sendBuyerDispute } from "@/lib/invoice-registry-buyer-approval";
 import { sendBuyerSafeApproval, sendBuyerSafeDispute } from "@/lib/invoice-registry-buyer-safe";
@@ -39,6 +43,7 @@ function buyerWalletErrorDescription(t, tSales, tApiErrors, err, fallback) {
   if (code === "wrong_network") return tSales("approveCompanyWrongNetwork");
   if (code === "rejected") return tSales("approveCompanyRejected");
   if (code === "pending_confirmations") return t("approveBuyerPendingConfirmations");
+  if (code === "waiting_company_execute") return t("approveBuyerWaitingExecute");
   return getLocalizedApiErrorMessage(tApiErrors, err) || fallback;
 }
 
@@ -78,8 +83,16 @@ export function usePurchaseInvoiceProofMutations({ message, notification, t, tSa
   const storeProof = useCallback(
     (id, result) => {
       if (id == null || !result) return;
-      queryClient.setQueryData(purchaseInvoiceProofQueryKey(id), result);
+      const proof =
+        result && typeof result === "object"
+          ? (() => {
+              const { _proposed, _confirmationsComplete, ...rest } = result;
+              return rest;
+            })()
+          : result;
+      queryClient.setQueryData(purchaseInvoiceProofQueryKey(id), proof);
       queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: purchaseInvoiceSafeApprovalQueueQueryKey(id) });
     },
     [queryClient],
   );
@@ -109,9 +122,20 @@ export function usePurchaseInvoiceProofMutations({ message, notification, t, tSa
       }
       const walletType = typeof proof?.buyer_wallet_type === "string" ? proof.buyer_wallet_type : "";
       if (walletType === "safe") {
-        const sent = await sendBuyerSafeApproval({ chainId, contractAddress, buyerWallet, eip712 });
+        const sent = await sendBuyerSafeApproval({
+          chainId,
+          contractAddress,
+          buyerWallet,
+          eip712,
+          safeTxServiceUrl: typeof proof?.safe_tx_service_url === "string" ? proof.safe_tx_service_url : null,
+          safeApiKey: typeof proof?.safe_api_key === "string" ? proof.safe_api_key : null,
+        });
         if (sent.status === "proposed") {
-          return { ...(await verifyPurchaseInvoice(invoiceId)), _proposed: true };
+          return {
+            ...(await verifyPurchaseInvoice(invoiceId)),
+            _proposed: true,
+            _confirmationsComplete: Boolean(sent.confirmations_complete),
+          };
         }
         return verifyPurchaseInvoice(invoiceId);
       }
@@ -125,7 +149,8 @@ export function usePurchaseInvoiceProofMutations({ message, notification, t, tSa
       });
     },
     onSuccess: (result, { invoiceId }) => {
-      if (result && result._proposed) message.info(tSales("approveCompanyProposed"));
+      if (result && result._confirmationsComplete) message.info(t("approveBuyerWaitingExecute"));
+      else if (result && result._proposed) message.info(tSales("approveCompanyProposed"));
       else message.success(tSales("approveCompanySuccess"));
       storeProof(invoiceId, result);
     },

@@ -1,6 +1,6 @@
 "use client";
 
-import { SALES_INVOICES_QUERY_KEY, salesInvoiceProofQueryKey } from "./salesInvoicesQueryKeys";
+import { SALES_INVOICES_QUERY_KEY, safeCompanyApprovalQueueQueryKey, salesInvoiceProofQueryKey } from "./salesInvoicesQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { BuyerApprovalError } from "@/lib/invoice-registry-buyer-approval";
 import { sendSupplierApproval } from "@/lib/invoice-registry-supplier-safe";
@@ -29,8 +29,16 @@ export function useSalesInvoiceProofMutations({ message, notification, t, tApiEr
   const storeProof = useCallback(
     (id, result) => {
       if (id == null || !result) return;
-      queryClient.setQueryData(salesInvoiceProofQueryKey(id), result);
+      const proof =
+        result && typeof result === "object"
+          ? (() => {
+              const { _companyApprovalProposed, _confirmationsComplete, ...rest } = result;
+              return rest;
+            })()
+          : result;
+      queryClient.setQueryData(salesInvoiceProofQueryKey(id), proof);
       queryClient.invalidateQueries({ queryKey: SALES_INVOICES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: safeCompanyApprovalQueueQueryKey(id) });
     },
     [queryClient],
   );
@@ -108,7 +116,11 @@ export function useSalesInvoiceProofMutations({ message, notification, t, tApiEr
         safeApiKey,
       });
       if (result.status === "proposed") {
-        return { ...((await verifySalesInvoice(invoiceId)) ?? {}), _companyApprovalProposed: true };
+        return {
+          ...((await verifySalesInvoice(invoiceId)) ?? {}),
+          _companyApprovalProposed: true,
+          _confirmationsComplete: Boolean(result.confirmations_complete),
+        };
       }
       return verifySalesInvoice(invoiceId);
     },
@@ -120,6 +132,8 @@ export function useSalesInvoiceProofMutations({ message, notification, t, tApiEr
         description = t("approveCompanyWalletMismatch");
       else if (code === "wrong_network") description = t("approveCompanyWrongNetwork");
       else if (code === "rejected") description = t("approveCompanyRejected");
+      else if (code === "pending_confirmations") description = t("approveCompanyAlreadyConfirmed");
+      else if (code === "waiting_company_execute") description = t("approveCompanyWaitingExecute");
       else description = getLocalizedApiErrorMessage(tApiErrors, err) || t("approveCompanyError");
       notification.error({
         title: t("approveCompanyError"),
@@ -127,7 +141,9 @@ export function useSalesInvoiceProofMutations({ message, notification, t, tApiEr
       });
     },
     onSuccess: (result, { invoiceId }) => {
-      if (result && result._companyApprovalProposed) {
+      if (result && result._confirmationsComplete) {
+        message.info(t("approveCompanyWaitingExecute"));
+      } else if (result && result._companyApprovalProposed) {
         message.info(t("approveCompanyProposed"));
       } else {
         message.success(t("approveCompanySuccess"));

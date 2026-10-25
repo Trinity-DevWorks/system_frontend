@@ -229,7 +229,6 @@ export function useSalesInvoiceDrawerMutations({
     reverseMutation.isPending ||
     reissueMutation.isPending ||
     deleteMutation.isPending ||
-    verifyMutation.isPending ||
     approveCompanyMutation.isPending;
 
   return {

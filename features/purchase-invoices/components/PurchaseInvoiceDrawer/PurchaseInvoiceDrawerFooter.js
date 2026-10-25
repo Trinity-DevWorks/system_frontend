@@ -1,10 +1,12 @@
 "use client";
 
+import { Children } from "react";
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import { postedByDisplayName } from "./PurchaseInvoiceDrawerHeaderMeta";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
-import { DownOutlined, WarningOutlined } from "@ant-design/icons";
+import { DownOutlined, ReloadOutlined, WarningOutlined } from "@ant-design/icons";
 import { Alert, Button, Dropdown, Space, Tag, Tooltip, Typography } from "antd";
+import InvoiceDrawerActionPopover from "@/features/sales-invoices/components/InvoiceDrawerActionPopover";
 import InvoicePdfDownloadButton from "@/features/sales-invoices/components/InvoicePdfDownloadButton";
 import { fetchPurchaseInvoicePdf } from "../../api/purchaseInvoices.api";
 import SalesInvoiceBuyerLinkButton from "@/features/sales-invoices/components/SalesInvoiceDrawer/SalesInvoiceBuyerLinkButton";
@@ -144,6 +146,12 @@ function FooterProofHint({ hint }) {
   );
 }
 
+function FooterActionGroup({ children }) {
+  const items = Children.toArray(children).filter(Boolean);
+  if (items.length === 0) return null;
+  return <div className="invoice-drawer-footer-action-group">{items}</div>;
+}
+
 function FooterActionButton({ label, onClick, disabled = false, disabledReason = "", danger = false, submitting = false }) {
   const button = (
     <Button
@@ -248,8 +256,11 @@ export default function PurchaseInvoiceDrawerFooter({
   onOpenCompanyProfile,
   onOpenSupplier,
   showApproveBuyer = false,
+  approveBuyerDisabled = false,
+  approveBuyerDisabledReason = "",
   approvingBuyer = false,
   onApproveBuyer,
+  safeBuyerQueue = null,
   showDispute = false,
   onDispute,
   showVendorLink = false,
@@ -290,6 +301,8 @@ export default function PurchaseInvoiceDrawerFooter({
           actionLabel: t("proofActionAddSupplierAddress"),
           onAction: onOpenSupplier,
         };
+  } else if (proofStatus === "waiting_buyer" && safeBuyerQueue?.readyToExecute) {
+    proofHint = { text: t("approveBuyerWaitingExecute") };
   } else if (proofStatus === "waiting_buyer" && !chainBuyerWallet && companyWalletSaved !== null) {
     proofHint = companyWalletSaved
       ? { text: t("proofHintCompanyWalletSyncing") }
@@ -300,64 +313,110 @@ export default function PurchaseInvoiceDrawerFooter({
         };
   }
 
-  const proofTag =
-    proofStatus && tSales ? (
-      <Tag className="shrink-0" color={invoiceProofStatusTagColor(proofStatus)}>
-        {getPurchaseInvoiceProofStatusLabel(t, tSales, proofStatus)}
-      </Tag>
-    ) : null;
+  let proofTagLabel = proofStatus && tSales ? getPurchaseInvoiceProofStatusLabel(t, tSales, proofStatus) : null;
+  let proofTagColor = invoiceProofStatusTagColor(proofStatus);
+  if (proofStatus === "waiting_buyer" && safeBuyerQueue) {
+    if (safeBuyerQueue.readyToExecute) {
+      proofTagLabel = t("proofStatusWaitingCompanyExecute");
+      proofTagColor = "gold";
+    } else if (safeBuyerQueue.alreadyConfirmedByConnected) {
+      proofTagLabel = t("proofStatusWaitingOtherOwners");
+      proofTagColor = "orange";
+    }
+  }
+  const proofTag = proofTagLabel ? (
+    <Tag className="shrink-0" color={proofTagColor}>
+      {proofTagLabel}
+    </Tag>
+  ) : null;
 
-  const proofControls =
-    showVerify || showApproveBuyer || showDispute ? (
-      <>
-        {showVerify ? proofTag : null}
-        {showVerify ? (
-          <Button className="shrink-0" loading={verifying} disabled={submitting} onClick={onVerify}>
-            {t("actionVerify")}
-          </Button>
-        ) : null}
-        {showApproveBuyer ? (
-          <Button
-            className="shrink-0"
-            type="primary"
-            loading={approvingBuyer}
-            disabled={submitting}
-            onClick={onApproveBuyer}
-          >
-            {t("actionApproveAsBuyer")}
-          </Button>
-        ) : null}
-        {showDispute ? (
-          <Button className="shrink-0" danger disabled={submitting} onClick={onDispute}>
-            {t("dispute")}
-          </Button>
-        ) : null}
-        {showVerify && showVendorLink && vendorLinkInvoiceId ? (
-          <SalesInvoiceBuyerLinkButton
-            invoiceId={vendorLinkInvoiceId}
-            invoiceNumber={vendorLinkInvoiceNumber}
-            disabled={submitting}
-            t={t}
-            actionLabel={t("actionSupplierLink")}
-            issueLink={issueVendorLink}
-            absoluteUrl={vendorAbsoluteUrl}
-            copySuccessKey="copySupplierLinkSuccess"
-            copyErrorKey="copySupplierLinkError"
-          />
-        ) : null}
-        {showVerify && showVendorLink && vendorLinkInvoiceId ? (
-          <SalesInvoiceProofDisclosureButton
-            invoiceId={vendorLinkInvoiceId}
-            invoiceNumber={vendorLinkInvoiceNumber}
-            disabled={submitting || shareProofBlockReason(t, proofStatus) != null}
-            disabledReason={shareProofBlockReason(t, proofStatus)}
-            audience="purchase"
-            fetchFields={fetchProofFields}
-            createDisclosure={createProofDisclosure}
-          />
-        ) : null}
-      </>
-    ) : null;
+  const refreshButton = showVerify ? (
+    <Tooltip title={t("actionVerify")}>
+      <span className="inline-flex shrink-0">
+        <Button
+          aria-label={t("actionVerify")}
+          icon={<ReloadOutlined />}
+          loading={verifying}
+          disabled={submitting}
+          onClick={onVerify}
+        />
+      </span>
+    </Tooltip>
+  ) : null;
+
+  const proofActions = (
+    <InvoiceDrawerActionPopover label={t("footerProofMenu")}>
+      {showApproveBuyer ? (
+        <Tooltip title={approveBuyerDisabled ? approveBuyerDisabledReason : undefined}>
+          <span className="inline-flex shrink-0">
+            <Button
+              className="shrink-0"
+              type="primary"
+              loading={approvingBuyer}
+              disabled={submitting || approveBuyerDisabled}
+              onClick={approveBuyerDisabled ? undefined : onApproveBuyer}
+            >
+              {t("actionApproveAsBuyer")}
+            </Button>
+          </span>
+        </Tooltip>
+      ) : null}
+      {showDispute ? (
+        <Button className="shrink-0" danger disabled={submitting} onClick={onDispute}>
+          {t("dispute")}
+        </Button>
+      ) : null}
+      {showVerify && showVendorLink && vendorLinkInvoiceId ? (
+        <SalesInvoiceBuyerLinkButton
+          invoiceId={vendorLinkInvoiceId}
+          invoiceNumber={vendorLinkInvoiceNumber}
+          disabled={submitting}
+          nested
+          t={t}
+          actionLabel={t("actionSupplierLink")}
+          issueLink={issueVendorLink}
+          absoluteUrl={vendorAbsoluteUrl}
+          copySuccessKey="copySupplierLinkSuccess"
+          copyErrorKey="copySupplierLinkError"
+        />
+      ) : null}
+      {showVerify && showVendorLink && vendorLinkInvoiceId ? (
+        <SalesInvoiceProofDisclosureButton
+          invoiceId={vendorLinkInvoiceId}
+          invoiceNumber={vendorLinkInvoiceNumber}
+          disabled={submitting || shareProofBlockReason(t, proofStatus) != null}
+          disabledReason={shareProofBlockReason(t, proofStatus)}
+          audience="purchase"
+          fetchFields={fetchProofFields}
+          createDisclosure={createProofDisclosure}
+        />
+      ) : null}
+    </InvoiceDrawerActionPopover>
+  );
+
+  const correctionActions = (
+    <InvoiceDrawerActionPopover label={t("footerAdjustMenu")}>
+      {showReissue ? (
+        <FooterActionButton
+          label={t("actionReissue")}
+          onClick={onReissue}
+          disabled={reissueDisabled}
+          disabledReason={reissueDisabledReason}
+          submitting={submitting}
+        />
+      ) : null}
+      {showReverse ? (
+        <FooterActionButton
+          label={t("actionReverse")}
+          onClick={onReverse}
+          disabled={reverseDisabled}
+          disabledReason={reverseDisabledReason}
+          danger
+          submitting={submitting}
+        />
+      ) : null}
+    </InvoiceDrawerActionPopover>
+  );
 
   const facts = (
     <div className="sales-invoice-drawer-footer-facts">
@@ -403,30 +462,20 @@ export default function PurchaseInvoiceDrawerFooter({
         <div className="invoice-drawer-footer-row">
           {facts}
           <div className="invoice-drawer-footer-actions">
-            {proofControls}
-            {pdfButton}
-            <Button className="shrink-0" onClick={forceClose}>
-              {t("drawerClose")}
-            </Button>
-            {showReissue ? (
-              <FooterActionButton
-                label={t("actionReissue")}
-                onClick={onReissue}
-                disabled={reissueDisabled}
-                disabledReason={reissueDisabledReason}
-                submitting={submitting}
-              />
+            {showVerify ? (
+              <div className="invoice-drawer-footer-action-group">
+                {proofTag}
+                {refreshButton}
+              </div>
             ) : null}
-            {showReverse ? (
-              <FooterActionButton
-                label={t("actionReverse")}
-                onClick={onReverse}
-                disabled={reverseDisabled}
-                disabledReason={reverseDisabledReason}
-                danger
-                submitting={submitting}
-              />
-            ) : null}
+            {proofActions}
+            {pdfInvoiceId ? <FooterActionGroup>{pdfButton}</FooterActionGroup> : null}
+            {correctionActions}
+            <FooterActionGroup>
+              <Button className="shrink-0" onClick={forceClose}>
+                {t("drawerClose")}
+              </Button>
+            </FooterActionGroup>
           </div>
         </div>
         {dispute}
