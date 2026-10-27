@@ -1,6 +1,8 @@
 import { downloadPartyLedger } from "@/features/party-ledger/api/partyLedger.api";
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /**
  * @param {string} endpoint
@@ -208,4 +210,13 @@ export function closeFiscalYear(body) {
 /** @param {number | string} id */
 export function reverseFiscalYear(id) {
   return tenantRequest("POST", `accounting/fiscal-years/${id}/reverse`);
+}
+
+/**
+ * @param {string} entryId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadJournalEntryPdf(entryId, documentNumber, options = {}) {
+  await downloadPdf(`journal-entries/${entryId}/pdf`, documentPdfFilename(documentNumber, "journal-entry"), options);
 }

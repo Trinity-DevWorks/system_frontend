@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /**
  * @param {{
@@ -70,4 +72,13 @@ export function postGoodsReceipt(receiptId) {
 /** @param {string} receiptId */
 export function reverseGoodsReceipt(receiptId) {
   return tenantRequest("POST", `stock/goods-receipts/${receiptId}/reverse`);
+}
+
+/**
+ * @param {string} receiptId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadGoodsReceiptPdf(receiptId, documentNumber, options = {}) {
+  await downloadPdf(`stock/goods-receipts/${receiptId}/pdf`, documentPdfFilename(documentNumber, "goods-receipt"), options);
 }

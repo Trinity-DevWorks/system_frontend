@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /**
  * @param {string} resource
@@ -47,6 +49,14 @@ export function createCommercialApi(resource) {
      */
     action(id, action, body) {
       return tenantRequest("POST", `${resource}/${id}/${action}`, body);
+    },
+    /**
+     * @param {string} id
+     * @param {string} [documentNumber]
+     * @param {{ locale?: string }} [options]
+     */
+    async downloadPdf(id, documentNumber, options = {}) {
+      await downloadPdf(`${resource}/${id}/pdf`, documentPdfFilename(documentNumber, resource), options);
     },
   };
 }

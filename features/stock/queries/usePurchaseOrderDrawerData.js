@@ -8,12 +8,16 @@ import { mapItemUomsToLineSelectOptions } from "../utils/itemLineUomOptions";
 import { buildLastPurchasePriceByItemId } from "../utils/purchaseOrderLastPurchasePrice";
 import { buildLeadTimeDaysByItemId } from "../utils/purchaseOrderExpectedDate";
 import { fetchItemNames, fetchItemUoms, fetchSupplierItems } from "@/features/items/index";
-import { fetchSupplierNames } from "@/features/suppliers/index";
+import { fetchSupplier, fetchSupplierNames } from "@/features/suppliers/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
+import { fetchCurrencyNames, fetchCurrencyPairRates } from "@/features/currencies/index";
+import { CURRENCIES_LIST_QUERY_KEY } from "@/features/currencies";
+import { rateFromPrimary } from "@/lib/currency/documentExchangeRate";
+import { useCompanySettings } from "@/lib/company-settings";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
-import { SUPPLIERS_LIST_QUERY_KEY, supplierItemsBySupplierQueryKey } from "@/features/suppliers";
+import { SUPPLIERS_LIST_QUERY_KEY, supplierDetailQueryKey, supplierItemsBySupplierQueryKey } from "@/features/suppliers";
 import { formatItemOptionLabel } from "@/features/items/utils/formatItemLabel";
 import { ITEMS_LIST_QUERY_KEY } from "@/features/items";
 
@@ -29,6 +33,23 @@ const EMPTY_LEAD_TIMES = /** @type {Map<string, number>} */ (new Map());
  * }} args
  */
 export function usePurchaseOrderDrawerData({ open, t, supplierId = null, loadSupplierPrices = true }) {
+  const { settings } = useCompanySettings();
+  const primaryCurrencyId = settings.primaryCurrencyId;
+
+  const currenciesQuery = useQuery({
+    queryKey: CURRENCIES_LIST_QUERY_KEY,
+    queryFn: fetchCurrencyNames,
+    enabled: open,
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+
+  const pairRatesQuery = useQuery({
+    queryKey: [...CURRENCIES_LIST_QUERY_KEY, "pair-rates"],
+    queryFn: fetchCurrencyPairRates,
+    enabled: open,
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+
   const warehousesQuery = useQuery({
     queryKey: WAREHOUSES_LIST_QUERY_KEY,
     queryFn: fetchWarehouseNames,
@@ -48,6 +69,15 @@ export function usePurchaseOrderDrawerData({ open, t, supplierId = null, loadSup
     queryFn: fetchItemNames,
     enabled: open,
     staleTime: QUERY_STALE_TIME.catalog,
+  });
+
+  // Supplier detail carries the VAT exemption used by the live line totals.
+  const supplierDetailEnabled = open && isPersistedEntityId(supplierId);
+  const supplierDetailQuery = useQuery({
+    queryKey: supplierDetailQueryKey(/** @type {string} */ (supplierId)),
+    queryFn: () => fetchSupplier(/** @type {string} */ (supplierId)),
+    enabled: supplierDetailEnabled,
+    staleTime: QUERY_STALE_TIME.default,
   });
 
   const supplierPricesEnabled =
@@ -117,16 +147,47 @@ export function usePurchaseOrderDrawerData({ open, t, supplierId = null, loadSup
       purchasableItems.map((item) => ({
         value: item.id,
         label: formatItemOptionLabel(item),
+        vat_percentage: item?.vat_group?.percentage != null ? Number(item.vat_group.percentage) : 0,
       })),
     [purchasableItems],
   );
+
+  const currencyOptions = useMemo(
+    () =>
+      (currenciesQuery.data ?? [])
+        .filter((c) => c?.is_active !== false)
+        .map((c) => {
+          const code = typeof c.code === "string" ? c.code.trim() : "";
+          const name = String(c.name ?? c.id);
+          return { value: Number(c.id), label: code && code !== name ? `${code} — ${name}` : name };
+        }),
+    [currenciesQuery.data],
+  );
+
+  /**
+   * @param {number | null | undefined} currencyId
+   */
+  function currencyRow(currencyId) {
+    if (currencyId == null) return null;
+    return (currenciesQuery.data ?? []).find((c) => Number(c.id) === Number(currencyId)) ?? null;
+  }
 
   return {
     warehouseOptions,
     supplierOptions,
     itemOptions,
+    currencyOptions,
+    primaryCurrencyId,
+    /** @param {number | null | undefined} currencyId */
+    rateFromPrimary: (currencyId) => rateFromPrimary(pairRatesQuery.data ?? [], primaryCurrencyId, currencyId),
+    /** @param {number | null | undefined} currencyId */
+    currencySymbol: (currencyId) => String(currencyRow(currencyId)?.symbol ?? "").trim(),
+    /** @param {number | null | undefined} currencyId */
+    currencyCode: (currencyId) => String(currencyRow(currencyId)?.code ?? "").trim(),
+    currenciesPending: currenciesQuery.isPending,
     lastPriceByItemId,
     leadTimeByItemId,
+    supplierDetail: supplierDetailEnabled ? /** @type {Record<string, unknown> | null} */ (supplierDetailQuery.data ?? null) : null,
     supplierPricesPending: supplierPricesEnabled && supplierItemsQuery.isPending,
     warehousesPending: warehousesQuery.isPending,
     suppliersPending: suppliersQuery.isPending,

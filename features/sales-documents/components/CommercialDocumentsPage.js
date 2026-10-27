@@ -16,12 +16,15 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "@/features/stock/components/StockTableFilters/StockTableFilters";
-import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, SendOutlined, SwapOutlined } from "@ant-design/icons";
+import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MoreOutlined, PrinterOutlined, SendOutlined, SwapOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, DatePicker, Dropdown, Form, Select, Spin, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
 import { commercialStatusColor } from "../utils/commercialDocumentUtils";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 
 /**
  * @param {{
@@ -36,7 +39,7 @@ import { commercialStatusColor } from "../utils/commercialDocumentUtils";
  *     dateField: string;
  *     extraDateField: string | null;
  *     statuses: string[];
- *     api: { list: Function; remove: (id: string) => Promise<unknown>; action: (id: string, action: string) => Promise<unknown> };
+ *     api: { list: Function; downloadPdf: (id: string, documentNumber: string | undefined, options: { locale?: string }) => Promise<void>; remove: (id: string) => Promise<unknown>; action: (id: string, action: string) => Promise<unknown> };
  *   };
  * }} props
  */
@@ -103,6 +106,11 @@ function CommercialDocumentsTable({ config }) {
     },
   });
 
+  const { downloadPdf, printPdf } = useDocumentPdfDownload({
+    download: config.api.downloadPdf,
+    errorTitle: t("pdfError"),
+  });
+
   const runAction = useCallback(
     (record, /** @type {string} */ action) => {
       const id = normalizeEntityId(record?.id);
@@ -137,7 +145,7 @@ function CommercialDocumentsTable({ config }) {
     [rawTableData],
   );
 
-  const columns = useMemo(
+  const baseColumns = useMemo(
     () => [
       {
         title: t("colNumber"),
@@ -204,6 +212,22 @@ function CommercialDocumentsTable({ config }) {
             quotationActions && status === "accepted"
               ? { key: "convert", icon: <SwapOutlined />, label: t("actionConvert"), onClick: () => runAction(record, "convert") }
               : null,
+            access.canPrint && isDocumentPdfPrintable(config.kind === "quotation" ? "sales_quotation" : "sales_order", status)
+              ? {
+                  key: "print",
+                  icon: <PrinterOutlined />,
+                  label: t("actionPrint"),
+                  onClick: () => printPdf(normalizeEntityId(record?.id), record?.[config.numberField]),
+                }
+              : null,
+            access.canPrint && isDocumentPdfPrintable(config.kind === "quotation" ? "sales_quotation" : "sales_order", status)
+              ? {
+                  key: "pdf",
+                  icon: <FilePdfOutlined />,
+                  label: t("actionDownloadPdf"),
+                  onClick: () => downloadPdf(normalizeEntityId(record?.id), record?.[config.numberField]),
+                }
+              : null,
             access.canDelete && status === "draft"
               ? { key: "delete", icon: <DeleteOutlined />, danger: true, label: t("actionDelete"), onClick: () => handleDelete(record) }
               : null,
@@ -216,8 +240,9 @@ function CommercialDocumentsTable({ config }) {
         },
       },
     ],
-    [access.canDelete, access.canEdit, access.canView, config.dateField, config.extraDateField, config.kind, config.numberField, handleDelete, openEditDrawer, openViewDrawer, runAction, t],
+    [access.canDelete, access.canEdit, access.canPrint, access.canView, downloadPdf, printPdf, config.dateField, config.extraDateField, config.kind, config.numberField, handleDelete, openEditDrawer, openViewDrawer, runAction, t],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const statusOptions = [
     { value: "", label: t("filterAllStatuses") },

@@ -10,7 +10,9 @@ import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/us
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
-import { fetchPurchaseInvoice } from "../../api/purchaseInvoices.api";
+import { downloadPurchaseInvoicePdf, fetchPurchaseInvoice } from "../../api/purchaseInvoices.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { fetchGoodsReceipt } from "@/features/stock/api/goodsReceipts.api";
 import { fetchPurchaseOrder } from "@/features/stock/api/purchaseOrders.api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -467,10 +469,23 @@ export default function PurchaseInvoiceDrawer({
       try {
         const order = /** @type {Record<string, unknown>} */ (await fetchPurchaseOrder(String(poId)));
         grnApplyRef.current = null;
+        // The invoice takes the order's currency; the rate is the current one for that currency.
+        const orderCurrencyId = order.currency_id != null ? Number(order.currency_id) : null;
+        const primaryId = drawerData.primaryCurrencyId;
+        const currencyPatch =
+          orderCurrencyId == null
+            ? {}
+            : primaryId != null && orderCurrencyId === Number(primaryId)
+              ? { currency_id: orderCurrencyId, exchange_rate: 1 }
+              : {
+                  currency_id: orderCurrencyId,
+                  exchange_rate: drawerData.rateFromPrimary(orderCurrencyId) ?? Number(order.exchange_rate ?? 1),
+                };
         form.setFieldsValue({
           warehouse_id:
             order.warehouse_id != null ? Number(order.warehouse_id) : form.getFieldValue("warehouse_id"),
           goods_receipt_id: undefined,
+          ...currencyPatch,
         });
         setLines(seedLinesFromPurchaseOrder(order, sourceLinePricing()));
         poApplyRef.current = String(poId);
@@ -483,7 +498,7 @@ export default function PurchaseInvoiceDrawer({
         });
       }
     },
-    [form, notification, t, sourceLinePricing],
+    [form, notification, t, sourceLinePricing, drawerData],
   );
 
   const confirmPoChange = useCallback(
@@ -796,6 +811,19 @@ export default function PurchaseInvoiceDrawer({
     );
   }, [modal, t, reverseMutation, hasGrn]);
 
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: downloadPurchaseInvoicePdf,
+    errorTitle: t("pdfError"),
+  });
+
+  const handleDownloadPdf = useCallback(() => {
+    downloadPdf(invoiceId, loadedNumber);
+  }, [downloadPdf, invoiceId, loadedNumber]);
+
+  const handlePrint = useCallback(() => {
+    printPdf(invoiceId, loadedNumber);
+  }, [printPdf, invoiceId, loadedNumber]);
+
   const handleCreatePayment = useCallback(() => {
     const id = normalizeEntityId(invoiceId);
     if (id == null) return;
@@ -948,6 +976,7 @@ export default function PurchaseInvoiceDrawer({
   return (
     <>
       <ResourceCrudDrawer
+        documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
         title={title}
         open={open}
         requestClose={requestClose}
@@ -979,6 +1008,11 @@ export default function PurchaseInvoiceDrawer({
             postDisabled={!canSubmitRequired || !access.canEdit}
             showDelete={!readOnly && invoiceId != null && access.canDelete}
             showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
+            showPdf={invoiceId != null && access.canPrint && isDocumentPdfPrintable("purchase_invoice", effectiveStatus)}
+            pdfLoading={isDownloadPending}
+            printLoading={isPrintPending}
+            onPrint={handlePrint}
+            onDownloadPdf={handleDownloadPdf}
             showCreatePayment={
               effectiveStatus === "posted" &&
               invoiceId != null &&

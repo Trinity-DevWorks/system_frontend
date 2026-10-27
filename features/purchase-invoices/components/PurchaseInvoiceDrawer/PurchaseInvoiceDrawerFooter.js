@@ -42,6 +42,9 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   postDisabled: boolean;
  *   showDelete: boolean;
  *   showReverse?: boolean;
+ *   showPdf?: boolean;
+ *   pdfLoading?: boolean;
+ *   printLoading?: boolean;
  *   showCreatePayment?: boolean;
  *   showCreateDebitNote?: boolean;
  *   postedBy?: unknown;
@@ -50,6 +53,8 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   onPost: () => void;
  *   onDelete: () => void;
  *   onReverse?: () => void;
+ *   onPrint?: () => void;
+ *   onDownloadPdf?: () => void;
  *   onCreatePayment?: () => void;
  *   onCreateDebitNote?: () => void;
  * }} props
@@ -64,6 +69,9 @@ export default function PurchaseInvoiceDrawerFooter({
   postDisabled,
   showDelete,
   showReverse = false,
+  showPdf = false,
+  pdfLoading = false,
+  printLoading = false,
   showCreatePayment = false,
   showCreateDebitNote = false,
   postedBy = null,
@@ -72,6 +80,8 @@ export default function PurchaseInvoiceDrawerFooter({
   onPost,
   onDelete,
   onReverse,
+  onPrint,
+  onDownloadPdf,
   onCreatePayment,
   onCreateDebitNote,
 }) {
@@ -91,6 +101,18 @@ export default function PurchaseInvoiceDrawerFooter({
         <Button className="shrink-0" onClick={forceClose}>
           {t("drawerClose")}
         </Button>
+        {showPdf ? (
+          <>
+            {onPrint ? (
+              <Button className="shrink-0" loading={printLoading} disabled={submitting} onClick={onPrint}>
+                {t("actionPrint")}
+              </Button>
+            ) : null}
+            <Button className="shrink-0" loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
+              {t("actionDownloadPdf")}
+            </Button>
+          </>
+        ) : null}
         {showReverse ? (
           <Button className="shrink-0" danger disabled={submitting} loading={submitting} onClick={onReverse}>
             {t("actionReverse")}

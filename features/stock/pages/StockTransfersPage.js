@@ -37,9 +37,12 @@ import {
   useStockTableFilters,
 } from "../components/StockTableFilters/StockTableFilters";
 import { getStockTransferTableColumns } from "../components/StockTransfersTable/getStockTransferTableColumns";
+import { downloadStockTransferPdf } from "../api/stockTransfers.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
 import StockTransferReceiveModal from "../components/StockTransferDrawer/StockTransferReceiveModal";
 import { useStockTransfersTableQuery } from "../queries/useStockTransfersTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
 
 function StockTransfersTable() {
   const t = useTranslations("Stock");
@@ -313,7 +316,14 @@ function StockTransfersTable() {
     return lines;
   }, [dateRangeLabel, fromWarehouseLabel, statusLabel, t, toWarehouseLabel]);
 
-  const columns = useMemo(
+  const { downloadPdf, printPdf } = useDocumentPdfDownload({
+    download: downloadStockTransferPdf,
+    errorTitle: t("pdfError"),
+  });
+  const handlePrint = useCallback((record) => printPdf(record?.id, record?.transfer_number), [printPdf]);
+  const handleDownloadPdf = useCallback((record) => downloadPdf(record?.id, record?.transfer_number), [downloadPdf]);
+
+  const baseColumns = useMemo(
     () =>
       getStockTransferTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
@@ -323,12 +333,17 @@ function StockTransfersTable() {
         onReceive: access.canEdit ? handleReceive : undefined,
         onCloseOpen: access.canEdit ? handleCloseOpen : undefined,
         onCancel: access.canEdit ? handleCancel : undefined,
+        onPrint: access.canPrint ? handlePrint : undefined,
+        onDownloadPdf: access.canPrint ? handleDownloadPdf : undefined,
       }),
     [
       t,
       access.canView,
       access.canEdit,
       access.canDelete,
+      access.canPrint,
+      handlePrint,
+      handleDownloadPdf,
       openViewDrawer,
       openEditDrawer,
       handleDelete,
@@ -338,6 +353,7 @@ function StockTransfersTable() {
       handleCancel,
     ],
   );
+  const columns = useDocumentBranchColumns(baseColumns, { transfer: true });
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,

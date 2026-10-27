@@ -8,6 +8,7 @@ import { useLocale } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ResourceDrawerHeader from "@/shared/components/resource-drawer/ResourceDrawerHeader";
 import { focusFirstDrawerField } from "@/shared/components/resource-drawer/focusFirstDrawerField";
+import DocumentBranchTag from "@/shared/components/document-branch/DocumentBranchTag";
 
 /**
  * Shared drawer chrome: rich header, loading / detail error / body, same for every CRUD resource drawer.
@@ -32,6 +33,7 @@ import { focusFirstDrawerField } from "@/shared/components/resource-drawer/focus
  *   zIndex?: number;
  *   placement?: "top" | "bottom" | "left" | "right";
  *   titleExtra?: import("react").ReactNode;
+ *   documentBranch?: Record<string, unknown> | null;
  *   headerExtra?: import("react").ReactNode;
  *   className?: string;
  *   afterOpenChange?: (open: boolean) => void;
@@ -46,6 +48,7 @@ export default function ResourceCrudDrawer({
   statusInactiveLabel,
   showExpand = true,
   titleExtra = null,
+  documentBranch = null,
   headerExtra = null,
   open,
   requestClose,
@@ -126,7 +129,16 @@ export default function ResourceCrudDrawer({
       onClose={handleClose}
       closeDisabled={submitting}
       showExpand={showExpand}
-      titleExtra={titleExtra}
+      titleExtra={
+        documentBranch ? (
+          <span className="inline-flex items-center gap-2">
+            {titleExtra}
+            <DocumentBranchTag record={documentBranch} />
+          </span>
+        ) : (
+          titleExtra
+        )
+      }
       headerExtra={headerExtra}
     />
   );

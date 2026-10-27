@@ -36,6 +36,7 @@ import {
 import { getStockAdjustmentTableColumns } from "../components/StockAdjustmentsTable/getStockAdjustmentTableColumns";
 import { useStockAdjustmentsTableQuery } from "../queries/useStockAdjustmentsTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
 
 function StockAdjustmentsTable() {
   const t = useTranslations("Stock");
@@ -232,7 +233,7 @@ function StockAdjustmentsTable() {
     return lines;
   }, [dateRangeLabel, reasonLabel, statusLabel, t, warehouseLabel]);
 
-  const columns = useMemo(
+  const baseColumns = useMemo(
     () =>
       getStockAdjustmentTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
@@ -242,6 +243,7 @@ function StockAdjustmentsTable() {
       }),
     [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,

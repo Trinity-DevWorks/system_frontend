@@ -31,6 +31,7 @@ import {
 import { getOpeningStockTableColumns } from "../components/OpeningStocksTable/getOpeningStockTableColumns";
 import { useOpeningStocksTableQuery } from "../queries/useOpeningStocksTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
 
 function OpeningStocksTable() {
   const t = useTranslations("Stock");
@@ -201,7 +202,7 @@ function OpeningStocksTable() {
     return lines;
   }, [dateRangeLabel, statusLabel, t, warehouseLabel]);
 
-  const columns = useMemo(
+  const baseColumns = useMemo(
     () =>
       getOpeningStockTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
@@ -211,6 +212,7 @@ function OpeningStocksTable() {
       }),
     [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,

@@ -1,6 +1,7 @@
 import { isPurchaseInvoiceDraft, purchaseInvoiceStatusTag } from "../../utils/purchaseInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
-import { AccountBookOutlined, CheckOutlined, DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import { AccountBookOutlined, CheckOutlined, DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MoreOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -16,10 +17,12 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onReverse?: (record: unknown) => void;
  *   onCreatePayment?: (record: unknown) => void;
  *   onCreateDebitNote?: (record: unknown) => void;
+ *   onPrint?: (record: unknown) => void;
+ *   onDownloadPdf?: (record: unknown) => void;
  * }} [actions]
  */
 export function getPurchaseInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onPost, onDelete, onReverse, onCreatePayment, onCreateDebitNote } = actions;
+  const { onView, onEdit, onPost, onDelete, onReverse, onCreatePayment, onCreateDebitNote, onPrint, onDownloadPdf } = actions;
 
   return [
     {
@@ -137,6 +140,26 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
+          ...(onPrint && isDocumentPdfPrintable("purchase_invoice", record?.status)
+            ? [
+                {
+                  key: "print",
+                  icon: <PrinterOutlined />,
+                  label: t("actionPrint"),
+                  onClick: () => onPrint(record),
+                },
+              ]
+            : []),
+          ...(onDownloadPdf && isDocumentPdfPrintable("purchase_invoice", record?.status)
+            ? [
+                {
+                  key: "pdf",
+                  icon: <FilePdfOutlined />,
+                  label: t("actionDownloadPdf"),
+                  onClick: () => onDownloadPdf(record),
+                },
+              ]
+            : []),
           ...(onCreateDebitNote && record?.status === "posted"
             ? [
                 {

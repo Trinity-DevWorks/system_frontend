@@ -20,10 +20,13 @@ import { App, Button, Col, ConfigProvider, DatePicker, Form, Input, Row, Select,
 import dayjs from "dayjs";
 import { useLocale, useTranslations } from "next-intl";
 import { accountDisplayName } from "../accountingUtils";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createJournalEntry,
   deleteJournalEntry,
+  downloadJournalEntryPdf,
   fetchJournalEntry,
   postJournalEntry,
   replaceJournalEntryLines,
@@ -291,6 +294,11 @@ export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCre
     },
   });
 
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: downloadJournalEntryPdf,
+    errorTitle: t("pdfError"),
+  });
+
   const submitting = saveMutation.isPending || reverseMutation.isPending || deleteMutation.isPending;
 
   const runSave = useCallback(
@@ -457,6 +465,16 @@ export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCre
             <Button className="ms-auto" onClick={forceClose}>
               {t("drawerClose")}
             </Button>
+            {entryId != null && access.canPrint && isDocumentPdfPrintable("journal_entry", status) ? (
+              <>
+                <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(entryId, record?.entry_number)}>
+                  {t("actionPrint")}
+                </Button>
+                <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(entryId, record?.entry_number)}>
+                  {t("actionDownloadPdf")}
+                </Button>
+              </>
+            ) : null}
             {status === "posted" && isManual && access.canReverse ? (
               <Button
                 danger

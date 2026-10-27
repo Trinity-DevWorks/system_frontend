@@ -20,6 +20,9 @@ import { Button, Space } from "antd";
  *   showDelete?: boolean;
  *   showPrimary?: boolean;
  *   showReverse?: boolean;
+ *   showPdf?: boolean;
+ *   pdfLoading?: boolean;
+ *   printLoading?: boolean;
  *   saveLabel?: string;
  *   primaryLabel?: string;
  *   reverseLabel?: string;
@@ -31,6 +34,8 @@ import { Button, Space } from "antd";
  *   onPrimary?: () => void;
  *   onDelete?: () => void;
  *   onReverse?: () => void;
+ *   onPrint?: () => void;
+ *   onDownloadPdf?: () => void;
  * }} props
  */
 export default function StockDocumentDrawerFooter({
@@ -44,6 +49,9 @@ export default function StockDocumentDrawerFooter({
   showDelete = false,
   showPrimary = false,
   showReverse = false,
+  showPdf = false,
+  pdfLoading = false,
+  printLoading = false,
   saveLabel,
   primaryLabel,
   reverseLabel,
@@ -55,6 +63,8 @@ export default function StockDocumentDrawerFooter({
   onPrimary,
   onDelete,
   onReverse,
+  onPrint,
+  onDownloadPdf,
 }) {
   useDrawerSubmitShortcut({
     enabled: !readOnly,
@@ -73,6 +83,18 @@ export default function StockDocumentDrawerFooter({
           <Button className="shrink-0" onClick={forceClose}>
             {t("drawerClose")}
           </Button>
+          {showPdf ? (
+            <>
+              {onPrint ? (
+                <Button loading={printLoading} disabled={submitting} onClick={onPrint}>
+                  {t("actionPrint")}
+                </Button>
+              ) : null}
+              <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
+                {t("actionDownloadPdf")}
+              </Button>
+            </>
+          ) : null}
           {showReverse ? (
             <Button danger disabled={submitting} loading={submitting} onClick={onReverse}>
               {reverseLabel ?? t("actionReverse")}

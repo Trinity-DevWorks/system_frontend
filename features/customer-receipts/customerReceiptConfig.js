@@ -14,6 +14,7 @@ import {
   fetchCustomerReceiptOpenInvoices,
   fetchCustomerReceipts,
   postCustomerReceipt,
+  downloadCustomerReceiptPdf,
   reverseCustomerReceipt,
   syncCustomerReceiptAllocations,
   updateCustomerReceipt,
@@ -46,6 +47,7 @@ export const customerReceiptConfig = {
     syncAllocations: syncCustomerReceiptAllocations,
     post: postCustomerReceipt,
     reverse: reverseCustomerReceipt,
+    downloadPdf: downloadCustomerReceiptPdf,
     openInvoices: (partyId, currencyId) =>
       fetchCustomerReceiptOpenInvoices({ customerId: partyId, currencyId }),
     fetchInvoice: fetchSalesInvoice,

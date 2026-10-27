@@ -26,6 +26,8 @@ import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { CURRENCIES_LIST_QUERY_KEY, fetchCurrencyNames, fetchCurrencyPairRates } from "@/features/currencies";
 import { fetchPaymentMethodNames } from "@/features/payment-methods/api/paymentMethods.api";
 import { PAYMENT_METHODS_LIST_QUERY_KEY } from "@/features/payment-methods/queries/paymentMethodsQueryKeys";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Col, DatePicker, Form, Input, Row, Select, Space, Tag } from "antd";
 import dayjs from "dayjs";
@@ -113,6 +115,7 @@ function rowFromInvoice(invoice, invoiceIdField, amount) {
  *       syncAllocations: (id: string, body: { allocations: Array<Record<string, unknown>> }) => Promise<Record<string, unknown>>;
  *       post: (id: string) => Promise<Record<string, unknown>>;
  *       reverse: (id: string) => Promise<Record<string, unknown>>;
+ *       downloadPdf: (id: string, documentNumber: string | undefined, options: { locale?: string }) => Promise<void>;
  *       openInvoices: (partyId: string, currencyId: number | string) => Promise<Array<Record<string, unknown>>>;
  *       fetchInvoice: (id: string) => Promise<Record<string, unknown>>;
  *     };
@@ -604,6 +607,11 @@ export default function PaymentDocumentDrawer({
     },
   });
 
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: config.api.downloadPdf,
+    errorTitle: t("pdfError"),
+  });
+
   const remainderUnits = moneyUnits(headerAmount) - rows.reduce((sum, row) => sum + moneyUnits(row.amount), 0);
   const canPost =
     access.canEdit &&
@@ -837,6 +845,7 @@ export default function PaymentDocumentDrawer({
 
   return (
     <ResourceCrudDrawer
+      documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
       title={title}
       open={open}
       requestClose={requestClose}
@@ -874,6 +883,16 @@ export default function PaymentDocumentDrawer({
               </span>
             </div>
             <Button onClick={forceClose}>{t("drawerClose")}</Button>
+            {documentId != null && access.canPrint && isDocumentPdfPrintable(/** @type {any} */ (config.documentKey), status) ? (
+              <>
+                <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(documentId, number)}>
+                  {t("actionPrint")}
+                </Button>
+                <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(documentId, number)}>
+                  {t("actionDownloadPdf")}
+                </Button>
+              </>
+            ) : null}
             {status === "posted" && access.canReverse ? (
               <Button
                 danger

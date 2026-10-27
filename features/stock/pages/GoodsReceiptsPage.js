@@ -18,7 +18,8 @@ import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { deleteGoodsReceipt, reverseGoodsReceipt } from "../api/goodsReceipts.api";
+import { deleteGoodsReceipt, downloadGoodsReceiptPdf, reverseGoodsReceipt } from "../api/goodsReceipts.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
@@ -33,6 +34,7 @@ import {
 import { getGoodsReceiptTableColumns } from "../components/GoodsReceiptsTable/getGoodsReceiptTableColumns";
 import { useGoodsReceiptsTableQuery } from "../queries/useGoodsReceiptsTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
 
 function GoodsReceiptsTable() {
   const t = useTranslations("Stock");
@@ -205,16 +207,26 @@ function GoodsReceiptsTable() {
     return lines;
   }, [dateRangeLabel, statusLabel, t, warehouseLabel]);
 
-  const columns = useMemo(
+  const { downloadPdf, printPdf } = useDocumentPdfDownload({
+    download: downloadGoodsReceiptPdf,
+    errorTitle: t("pdfError"),
+  });
+  const handlePrint = useCallback((record) => printPdf(record?.id, record?.grn_number), [printPdf]);
+  const handleDownloadPdf = useCallback((record) => downloadPdf(record?.id, record?.grn_number), [downloadPdf]);
+
+  const baseColumns = useMemo(
     () =>
       getGoodsReceiptTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
         onReverse: access.canReverse ? handleReverse : undefined,
+        onPrint: access.canPrint ? handlePrint : undefined,
+        onDownloadPdf: access.canPrint ? handleDownloadPdf : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
+    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, access.canPrint, handlePrint, handleDownloadPdf, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,

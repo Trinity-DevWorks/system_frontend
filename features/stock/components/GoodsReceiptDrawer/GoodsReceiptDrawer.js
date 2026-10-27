@@ -8,7 +8,9 @@ import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/us
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { fetchGoodsReceipt } from "../../api/goodsReceipts.api";
+import { downloadGoodsReceiptPdf, fetchGoodsReceipt } from "../../api/goodsReceipts.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { fetchPurchaseOrder } from "../../api/purchaseOrders.api";
 import { mapPurchaseOrderToGrnCreateSeed } from "../../utils/goodsReceiptFromPurchaseOrder";
 import { useQuery } from "@tanstack/react-query";
@@ -181,6 +183,19 @@ export default function GoodsReceiptDrawer({
 
   const effectiveStatus = loadedStatus ?? (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
   const readOnly = mode === "view" || !isGoodsReceiptDraft(effectiveStatus);
+
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: downloadGoodsReceiptPdf,
+    errorTitle: t("pdfError"),
+  });
+
+  const handleDownloadPdf = useCallback(() => {
+    downloadPdf(receiptId, loadedNumber);
+  }, [downloadPdf, receiptId, loadedNumber]);
+
+  const handlePrint = useCallback(() => {
+    printPdf(receiptId, loadedNumber);
+  }, [printPdf, receiptId, loadedNumber]);
 
   const formValuesWatch = Form.useWatch([], form);
   const watchedPoId = Form.useWatch("purchase_order_id", form);
@@ -366,6 +381,7 @@ export default function GoodsReceiptDrawer({
 
   return (
     <ResourceCrudDrawer
+      documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
       title={title}
       recordName={loadedNumber}
       titleExtra={
@@ -403,6 +419,11 @@ export default function GoodsReceiptDrawer({
           onSave={handleSave}
           onPost={handlePost}
           showReverse={effectiveStatus === "posted" && receiptId != null && access.canReverse}
+          showPdf={receiptId != null && access.canPrint && isDocumentPdfPrintable("goods_receipt", effectiveStatus)}
+          pdfLoading={isDownloadPending}
+          printLoading={isPrintPending}
+          onPrint={handlePrint}
+          onDownloadPdf={handleDownloadPdf}
           onReverse={handleReverse}
           onDelete={handleDelete}
         />

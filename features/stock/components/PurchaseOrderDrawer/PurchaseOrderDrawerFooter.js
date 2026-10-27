@@ -2,7 +2,6 @@
 
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import { Button, Space } from "antd";
-import StockDocumentDrawerFooter from "../StockDocumentDrawerFooter";
 
 /**
  * @param {unknown} user
@@ -15,165 +14,143 @@ function userDisplayName(user) {
 }
 
 /**
- * @param {{
- *   t: (key: string) => string;
- *   createdBy?: unknown;
- *   createdAt?: string | null;
- *   sentBy?: unknown;
- *   sentAt?: string | null;
- * }} props
+ * @param {{ label: string; value: string }} props
  */
-function PurchaseOrderFooterAuditMeta({
-  t,
-  createdBy = null,
-  createdAt = null,
-  sentBy = null,
-  sentAt = null,
-}) {
+function AuditItem({ label, value }) {
   return (
-    <div className="sales-invoice-drawer-footer-posted stock-transfer-drawer-footer-audit">
-      <span className="sales-invoice-drawer-footer-posted-item">
-        <span className="sales-invoice-drawer-footer-posted-label">{t("poFieldCreatedBy")}</span>
-        <span className="sales-invoice-drawer-footer-posted-value">
-          {userDisplayName(createdBy) || "\u2014"}
-        </span>
-      </span>
-      <span className="sales-invoice-drawer-footer-posted-item">
-        <span className="sales-invoice-drawer-footer-posted-label">{t("poFieldCreatedAt")}</span>
-        <span className="sales-invoice-drawer-footer-posted-value">
-          {formatTenantDateTime(createdAt) || "\u2014"}
-        </span>
-      </span>
-      <span className="sales-invoice-drawer-footer-posted-item">
-        <span className="sales-invoice-drawer-footer-posted-label">{t("poFieldSentBy")}</span>
-        <span className="sales-invoice-drawer-footer-posted-value">
-          {userDisplayName(sentBy) || "\u2014"}
-        </span>
-      </span>
-      <span className="sales-invoice-drawer-footer-posted-item">
-        <span className="sales-invoice-drawer-footer-posted-label">{t("poFieldSentIn")}</span>
-        <span className="sales-invoice-drawer-footer-posted-value">
-          {formatTenantDateTime(sentAt) || "\u2014"}
-        </span>
-      </span>
-    </div>
+    <span className="sales-invoice-drawer-footer-posted-item">
+      <span className="sales-invoice-drawer-footer-posted-label">{label}</span>
+      <span className="sales-invoice-drawer-footer-posted-value">{value || "\u2014"}</span>
+    </span>
   );
 }
 
 /**
+ * Purchase order footer, laid out like the sales order footer: audit info on the start side,
+ * document actions on the end side.
+ *
  * @param {{
- *   readOnly: boolean;
  *   t: (key: string) => string;
- *   forceClose: () => void;
- *   requestClose: () => void;
+ *   editable: boolean;
+ *   isNew: boolean;
  *   submitting: boolean;
  *   saveDisabled: boolean;
  *   confirmDisabled: boolean;
  *   showDelete: boolean;
+ *   showConfirm: boolean;
  *   showCancelOrder: boolean;
- *   showSupplierActions?: boolean;
- *   canMarkSent?: boolean;
- *   canReceive?: boolean;
+ *   showPdf: boolean;
+ *   showMarkSent: boolean;
+ *   showReceive: boolean;
  *   pdfLoading?: boolean;
- *   receiveLoading?: boolean;
+ *   printLoading?: boolean;
  *   createdBy?: unknown;
  *   createdAt?: string | null;
  *   sentBy?: unknown;
  *   sentAt?: string | null;
+ *   forceClose: () => void;
+ *   requestClose: () => void;
  *   onSave: () => void;
  *   onConfirm: () => void;
  *   onCancelOrder: () => void;
  *   onDelete: () => void;
- *   onDownloadPdf?: () => void;
- *   onMarkSent?: () => void;
- *   onReceive?: () => void;
+ *   onPrint?: () => void;
+ *   onDownloadPdf: () => void;
+ *   onMarkSent: () => void;
+ *   onReceive: () => void;
  * }} props
  */
 export default function PurchaseOrderDrawerFooter({
-  readOnly,
   t,
-  forceClose,
-  requestClose,
+  editable,
+  isNew,
   submitting,
   saveDisabled,
   confirmDisabled,
   showDelete,
+  showConfirm,
   showCancelOrder,
-  showSupplierActions = false,
-  canMarkSent = false,
-  canReceive = false,
+  showPdf,
+  showMarkSent,
+  showReceive,
   pdfLoading = false,
-  receiveLoading = false,
+  printLoading = false,
   createdBy = null,
   createdAt = null,
   sentBy = null,
   sentAt = null,
+  forceClose,
+  requestClose,
   onSave,
   onConfirm,
   onCancelOrder,
   onDelete,
+  onPrint,
   onDownloadPdf,
   onMarkSent,
   onReceive,
 }) {
-  const viewExtras =
-    showSupplierActions || showCancelOrder ? (
-      <Space wrap>
-        {showSupplierActions ? (
-          <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
-            {t("actionDownloadPoPdf")}
+  return (
+    <div className="flex w-full min-w-0 items-center gap-3">
+      {!isNew ? (
+        <div className="sales-invoice-drawer-footer-posted">
+          <AuditItem label={t("poFieldCreatedBy")} value={userDisplayName(createdBy) ?? ""} />
+          <AuditItem label={t("poFieldCreatedAt")} value={formatTenantDateTime(createdAt) ?? ""} />
+          {sentAt ? (
+            <>
+              <AuditItem label={t("poFieldSentBy")} value={userDisplayName(sentBy) ?? ""} />
+              <AuditItem label={t("poFieldSentIn")} value={formatTenantDateTime(sentAt) ?? ""} />
+            </>
+          ) : null}
+        </div>
+      ) : null}
+      <Space className="ms-auto shrink-0">
+        {showDelete ? (
+          <Button danger disabled={submitting} onClick={onDelete}>
+            {t("actionDelete")}
           </Button>
         ) : null}
-        {canMarkSent ? (
+        <Button onClick={editable ? requestClose : forceClose} disabled={submitting}>
+          {editable ? t("drawerCancel") : t("drawerClose")}
+        </Button>
+        {editable ? (
+          <Button disabled={saveDisabled || submitting} loading={submitting} onClick={onSave}>
+            {t("drawerSave")}
+          </Button>
+        ) : null}
+        {showCancelOrder ? (
+          <Button danger disabled={submitting} onClick={onCancelOrder}>
+            {t("actionCancelPo")}
+          </Button>
+        ) : null}
+        {showPdf ? (
+          <>
+            {onPrint ? (
+              <Button loading={printLoading} disabled={submitting} onClick={onPrint}>
+                {t("actionPrint")}
+              </Button>
+            ) : null}
+            <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
+              {t("actionDownloadPdf")}
+            </Button>
+          </>
+        ) : null}
+        {showMarkSent ? (
           <Button disabled={submitting} onClick={onMarkSent}>
             {t("actionMarkPoSent")}
           </Button>
         ) : null}
-        {showCancelOrder ? (
-          <Button disabled={submitting} onClick={onCancelOrder}>
-            {t("actionCancelPo")}
+        {showConfirm ? (
+          <Button type="primary" disabled={confirmDisabled || submitting} onClick={onConfirm}>
+            {t("actionConfirmPo")}
           </Button>
         ) : null}
-        {canReceive ? (
-          <Button type="primary" disabled={submitting} loading={receiveLoading} onClick={onReceive}>
+        {showReceive ? (
+          <Button type="primary" disabled={submitting} onClick={onReceive}>
             {t("actionReceiveGoods")}
           </Button>
         ) : null}
       </Space>
-    ) : null;
-
-  return (
-    <StockDocumentDrawerFooter
-      readOnly={readOnly}
-      t={t}
-      forceClose={forceClose}
-      requestClose={requestClose}
-      submitting={submitting}
-      saveDisabled={saveDisabled}
-      primaryDisabled={confirmDisabled}
-      showDelete={showDelete}
-      showPrimary
-      primaryLabel={t("actionConfirmPo")}
-      meta={
-        <PurchaseOrderFooterAuditMeta
-          t={t}
-          createdBy={createdBy}
-          createdAt={createdAt}
-          sentBy={sentBy}
-          sentAt={sentAt}
-        />
-      }
-      startExtras={
-        showCancelOrder ? (
-          <Button disabled={submitting} onClick={onCancelOrder}>
-            {t("actionCancelPo")}
-          </Button>
-        ) : null
-      }
-      readOnlyExtras={viewExtras}
-      onSave={onSave}
-      onPrimary={onConfirm}
-      onDelete={onDelete}
-    />
+    </div>
   );
 }

@@ -15,12 +15,14 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "@/features/stock/components/StockTableFilters/StockTableFilters";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MoreOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Button, DatePicker, Dropdown, Form, Select, Spin, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
-import { deleteJournalEntry, fetchJournalEntries, reverseJournalEntry } from "../api/accounting.api";
+import { deleteJournalEntry, downloadJournalEntryPdf, fetchJournalEntries, reverseJournalEntry } from "../api/accounting.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import {
   JOURNAL_SOURCE_TYPES,
   JOURNAL_STATUS_VALUES,
@@ -131,6 +133,11 @@ function JournalEntriesTable() {
     [openDrawer],
   );
 
+  const { downloadPdf, printPdf } = useDocumentPdfDownload({
+    download: downloadJournalEntryPdf,
+    errorTitle: t("pdfError"),
+  });
+
   const columns = useMemo(
     () => [
       {
@@ -201,6 +208,12 @@ function JournalEntriesTable() {
           const editable = record.is_manual && record.status === "draft";
           const items = [
             access.canView ? { key: "view", icon: <EyeOutlined />, label: t("actionView"), onClick: () => openViewDrawer(record) } : null,
+            access.canPrint && isDocumentPdfPrintable("journal_entry", record.status)
+              ? { key: "print", icon: <PrinterOutlined />, label: t("actionPrint"), onClick: () => printPdf(record.id, record.entry_number) }
+              : null,
+            access.canPrint && isDocumentPdfPrintable("journal_entry", record.status)
+              ? { key: "pdf", icon: <FilePdfOutlined />, label: t("actionDownloadPdf"), onClick: () => downloadPdf(record.id, record.entry_number) }
+              : null,
             editable && access.canEdit
               ? { key: "edit", icon: <EditOutlined />, label: t("actionEdit"), onClick: () => openEditDrawer(record) }
               : null,
@@ -219,7 +232,7 @@ function JournalEntriesTable() {
         },
       },
     ],
-    [access.canDelete, access.canEdit, access.canReverse, access.canView, confirmDelete, confirmReverse, currencySymbol, openEditDrawer, openSource, openViewDrawer, t],
+    [access.canDelete, access.canEdit, access.canPrint, access.canReverse, access.canView, downloadPdf, printPdf, confirmDelete, confirmReverse, currencySymbol, openEditDrawer, openSource, openViewDrawer, t],
   );
 
   const statusOptions = [

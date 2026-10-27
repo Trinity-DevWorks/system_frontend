@@ -1,6 +1,6 @@
-import { tenantApiClient } from "@/lib/axios";
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
 
 /**
  * @param {{
@@ -106,18 +106,6 @@ export function cancelPurchaseOrder(orderId) {
 
 /**
  * @param {string} orderId
- * @returns {Promise<Blob>}
- */
-export async function fetchPurchaseOrderPdf(orderId) {
-  const res = await tenantApiClient.get(`stock/purchase-orders/${orderId}/pdf`, {
-    responseType: "blob",
-    timeout: 120_000,
-  });
-  return res.data;
-}
-
-/**
- * @param {string} orderId
  * @returns {Promise<unknown>}
  */
 export function markPurchaseOrderAsSent(orderId) {
@@ -125,26 +113,11 @@ export function markPurchaseOrderAsSent(orderId) {
 }
 
 /**
- * @param {Blob} blob
- * @param {string} filename
- */
-export function savePurchaseOrderPdfBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
-}
-
-/**
  * @param {string} orderId
  * @param {string} [poNumber]
+ * @param {{ locale?: string }} [options]
  */
-export async function downloadPurchaseOrderPdf(orderId, poNumber) {
-  const blob = await fetchPurchaseOrderPdf(orderId);
+export async function downloadPurchaseOrderPdf(orderId, poNumber, options = {}) {
   const baseName = typeof poNumber === "string" && poNumber.trim() ? poNumber.trim() : "purchase-order";
-  savePurchaseOrderPdfBlob(blob, `${baseName}.pdf`);
+  await downloadPdf(`stock/purchase-orders/${orderId}/pdf`, `${baseName}.pdf`, options);
 }

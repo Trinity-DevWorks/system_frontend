@@ -14,6 +14,8 @@ import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/use
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { fetchWarehouseNames } from "@/features/warehouses/api/warehouses.api";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses/queries/warehousesQueryKeys";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Checkbox, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag } from "antd";
 import dayjs from "dayjs";
@@ -276,6 +278,11 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
     onError: (err) => notification.error({ title: t("applyError"), description: getLocalizedApiErrorMessage(tApiErrors, err) }),
   });
 
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: config.api.downloadPdf,
+    errorTitle: t("pdfError"),
+  });
+
   const submit = useCallback(
     (shouldPost) => {
       form.validateFields().then((values) => {
@@ -361,6 +368,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
   return (
     <>
       <ResourceCrudDrawer
+        documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
         title={title}
         open={open}
         requestClose={requestClose}
@@ -387,6 +395,16 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
               </span>
             </div>
             {readOnly ? <Button className="shrink-0" onClick={forceClose}>{t("drawerClose")}</Button> : null}
+            {documentId != null && access.canPrint && isDocumentPdfPrintable(config.documentKey, status) ? (
+              <>
+                <Button className="shrink-0" loading={isPrintPending} disabled={submitting} onClick={() => printPdf(documentId, record?.[config.numberField])}>
+                  {t("actionPrint")}
+                </Button>
+                <Button className="shrink-0" loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(documentId, record?.[config.numberField])}>
+                  {t("actionDownloadPdf")}
+                </Button>
+              </>
+            ) : null}
             {readOnly && status === "posted" && access.canReverse ? (
               <Button className="shrink-0" danger loading={reverseMutation.isPending} onClick={() => modal.confirm({ title: t("reverseConfirmTitle"), content: t("reverseConfirmContent"), okText: t("actionReverse"), okButtonProps: { danger: true }, cancelText: t("drawerCancel"), onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()) })}>
                 {t("actionReverse")}

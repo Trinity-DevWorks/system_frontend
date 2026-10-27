@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /**
  * @param {{
@@ -83,4 +85,13 @@ export async function fetchSalesInvoiceItemAvailability(itemId) {
     `sales-invoices/item-availability?item_id=${encodeURIComponent(itemId)}`,
   );
   return Array.isArray(data) ? data : [];
+}
+
+/**
+ * @param {string} invoiceId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadSalesInvoicePdf(invoiceId, documentNumber, options = {}) {
+  await downloadPdf(`sales-invoices/${invoiceId}/pdf`, documentPdfFilename(documentNumber, "sales-invoice"), options);
 }

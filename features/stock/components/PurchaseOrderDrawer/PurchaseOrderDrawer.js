@@ -10,6 +10,8 @@ import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
+import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
+import { customerIsExemptOnDate, previewInvoiceTotals } from "@/features/sales-invoices/utils/salesInvoiceTax";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { goodsReceiptFromPoDrawerArgs } from "../../utils/goodsReceiptFromPurchaseOrder";
 import {
@@ -17,6 +19,7 @@ import {
   fetchPurchaseOrder,
   markPurchaseOrderAsSent,
 } from "../../api/purchaseOrders.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
@@ -32,6 +35,9 @@ import {
 import PurchaseOrderDrawerFooter from "./PurchaseOrderDrawerFooter";
 import PurchaseOrderDrawerForm from "./PurchaseOrderDrawerForm";
 import PurchaseOrderLineEditor from "./PurchaseOrderLineEditor";
+import PurchaseOrderTotals from "./PurchaseOrderTotals";
+import { useCompanySettings } from "@/lib/company-settings";
+import { positiveRate } from "@/lib/currency/documentExchangeRate";
 import {
   arePurchaseOrderLinesDirty,
   canAddPurchaseOrderLine,
@@ -42,7 +48,10 @@ import {
   mapPurchaseOrderLinesFromApi,
   mapPurchaseOrderRecordToForm,
 } from "../../utils/purchaseOrderDrawerUtils";
-import { applySuggestedPurchaseOrderUnitPrices } from "../../utils/purchaseOrderLastPurchasePrice";
+import {
+  applySuggestedPurchaseOrderUnitPrices,
+  lastPurchasePricesAtRate,
+} from "../../utils/purchaseOrderLastPurchasePrice";
 import {
   expectedDateKey,
   maxLeadTimeDaysForLines,
@@ -88,6 +97,8 @@ export default function PurchaseOrderDrawer({
   const [loadedCreatedAt, setLoadedCreatedAt] = useState(/** @type {string | null} */ (null));
   const [loadedCreatedBy, setLoadedCreatedBy] = useState(/** @type {unknown} */ (null));
   const [canReceive, setCanReceive] = useState(false);
+  const [loadedTotals, setLoadedTotals] = useState(/** @type {Record<string, unknown> | null} */ (null));
+  const { settings } = useCompanySettings();
 
   const queryClient = useQueryClient();
   const hydrateSupplierPricesRef = useRef(true);
@@ -130,6 +141,12 @@ export default function PurchaseOrderDrawer({
       setLoadedCreatedAt(typeof record.created_at === "string" ? record.created_at : null);
       setLoadedCreatedBy(record.created_by ?? null);
       setCanReceive(Boolean(record.can_receive));
+      setLoadedTotals({
+        subtotal: record.subtotal,
+        discount_total: record.discount_total,
+        tax_total: record.tax_total,
+        grand_total: record.grand_total,
+      });
       form.setFieldsValue(mapPurchaseOrderRecordToForm(record));
       prevSupplierIdRef.current = record.supplier_id;
       hydrateSupplierPricesRef.current = false;
@@ -154,6 +171,7 @@ export default function PurchaseOrderDrawer({
     setLoadedCreatedAt(null);
     setLoadedCreatedBy(null);
     setCanReceive(false);
+    setLoadedTotals(null);
     loadedDetailVersionRef.current = 0;
   }, [form, defaults]);
 
@@ -215,6 +233,34 @@ export default function PurchaseOrderDrawer({
     loadSupplierPrices: !readOnly,
   });
 
+  const currencyId = formValuesWatch?.currency_id ?? null;
+  const exchangeRateLocked =
+    currencyId == null ||
+    drawerData.primaryCurrencyId == null ||
+    Number(currencyId) === Number(drawerData.primaryCurrencyId);
+  const headerRate = exchangeRateLocked ? 1 : positiveRate(formValuesWatch?.exchange_rate);
+  const documentCurrencySymbol = drawerData.currencySymbol(currencyId);
+  const primaryCurrencyCode = drawerData.currencyCode(drawerData.primaryCurrencyId);
+  const documentCurrencyCode = drawerData.currencyCode(currencyId);
+  const exchangeRateHelp =
+    !exchangeRateLocked && primaryCurrencyCode && documentCurrencyCode
+      ? `1 ${primaryCurrencyCode} = ${headerRate ?? "?"} ${documentCurrencyCode}`
+      : "";
+
+  // Supplier last purchase prices are in the primary currency; suggest them in the order currency.
+  const lastPriceByItemId = useMemo(
+    () => lastPurchasePricesAtRate(drawerData.lastPriceByItemId, headerRate, settings.priceDecimalPlaces),
+    [drawerData.lastPriceByItemId, headerRate, settings.priceDecimalPlaces],
+  );
+
+  const primaryCurrencyId = drawerData.primaryCurrencyId;
+  useEffect(() => {
+    if (!open || readOnly || mode !== "create") return;
+    if (form.getFieldValue("currency_id") != null) return;
+    if (primaryCurrencyId == null) return;
+    form.setFieldsValue({ currency_id: primaryCurrencyId, exchange_rate: 1 });
+  }, [open, readOnly, mode, primaryCurrencyId, form]);
+
   useEffect(() => {
     if (hydrateSupplierPricesRef.current) {
       hydrateSupplierPricesRef.current = false;
@@ -232,14 +278,14 @@ export default function PurchaseOrderDrawer({
     if (pendingSupplierPriceOverwriteRef.current) {
       pendingSupplierPriceOverwriteRef.current = false;
       setLines((prev) =>
-        applySuggestedPurchaseOrderUnitPrices(prev, drawerData.lastPriceByItemId, { overwrite: true }),
+        applySuggestedPurchaseOrderUnitPrices(prev, lastPriceByItemId, { overwrite: true }),
       );
       return;
     }
     setLines((prev) =>
-      applySuggestedPurchaseOrderUnitPrices(prev, drawerData.lastPriceByItemId, { overwrite: false }),
+      applySuggestedPurchaseOrderUnitPrices(prev, lastPriceByItemId, { overwrite: false }),
     );
-  }, [drawerData.lastPriceByItemId, drawerData.supplierPricesPending, readOnly]);
+  }, [lastPriceByItemId, drawerData.supplierPricesPending, readOnly]);
 
   useEffect(() => {
     if (readOnly || drawerData.supplierPricesPending) return;
@@ -338,6 +384,8 @@ export default function PurchaseOrderDrawer({
     () => ({
       supplier_id: formValuesWatch?.supplier_id,
       warehouse_id: formValuesWatch?.warehouse_id,
+      currency_id: formValuesWatch?.currency_id,
+      exchange_rate: formValuesWatch?.exchange_rate,
       order_date: formValuesWatch?.order_date,
       expected_date: formValuesWatch?.expected_date,
       notes: formValuesWatch?.notes ?? "",
@@ -396,17 +444,9 @@ export default function PurchaseOrderDrawer({
     });
   }, [modal, t, deleteMutation, loadedNumber, orderId]);
 
-  const pdfMutation = useMutation({
-    mutationFn: async () => {
-      if (orderId == null) throw new Error("Missing purchase order id");
-      await downloadPurchaseOrderPdf(orderId, loadedNumber ?? undefined);
-    },
-    onError: (err) => {
-      notification.error({
-        title: t("poPdfError"),
-        description: getLocalizedApiErrorMessage(tApiErrors, err),
-      });
-    },
+  const { downloadPdf, printPdf, isPending: pdfPending, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: downloadPurchaseOrderPdf,
+    errorTitle: t("poPdfError"),
   });
 
   const markSentMutation = useMutation({
@@ -428,8 +468,12 @@ export default function PurchaseOrderDrawer({
   });
 
   const handleDownloadPdf = useCallback(() => {
-    pdfMutation.mutate();
-  }, [pdfMutation]);
+    downloadPdf(orderId, loadedNumber);
+  }, [downloadPdf, orderId, loadedNumber]);
+
+  const handlePrint = useCallback(() => {
+    printPdf(orderId, loadedNumber);
+  }, [printPdf, orderId, loadedNumber]);
 
   const handleMarkSent = useCallback(() => {
     modal.confirm({
@@ -448,15 +492,21 @@ export default function PurchaseOrderDrawer({
   }, [openDrawer, orderId]);
 
   const showSupplierActions = isPurchaseOrderPrintable(effectiveStatus);
-  const canMarkSent = isPurchaseOrderConfirmed(effectiveStatus);
+  const canMarkSent = isPurchaseOrderConfirmed(effectiveStatus) && access.canEdit;
   const showReceive = access.canAdd && canReceive;
-  const supplierActionPending = pdfMutation.isPending || markSentMutation.isPending;
+  const editable = !readOnly && (mode === "create" ? access.canAdd : access.canEdit);
+  const supplierActionPending = pdfPending || markSentMutation.isPending;
 
   const patchLine = useCallback((index, patch) => {
     if (Object.prototype.hasOwnProperty.call(patch, "item_id")) {
       expectedDateAutoRef.current = true;
     }
-    setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+    // Saved VAT and line totals no longer match once the line changes; they refresh on save.
+    setLines((prev) =>
+      prev.map((line, i) =>
+        i === index ? { ...line, ...patch, saved_tax_rate: undefined, saved_line_total: undefined } : line,
+      ),
+    );
   }, []);
 
   const removeLine = useCallback((index) => {
@@ -469,98 +519,163 @@ export default function PurchaseOrderDrawer({
 
   const handleHeaderValuesChange = useCallback((changed) => {
     if (!changed || typeof changed !== "object") return;
+    if ("currency_id" in changed) {
+      const nextId = changed.currency_id;
+      if (nextId == null || primaryCurrencyId == null || Number(nextId) === Number(primaryCurrencyId)) {
+        form.setFieldsValue({ exchange_rate: 1 });
+      } else {
+        const rate = drawerData.rateFromPrimary(Number(nextId));
+        form.setFieldsValue({ exchange_rate: rate != null && rate > 0 ? rate : undefined });
+      }
+    }
     if ("order_date" in changed || "supplier_id" in changed) {
       expectedDateAutoRef.current = true;
     }
     if ("expected_date" in changed && !applyingExpectedDateRef.current) {
       expectedDateAutoRef.current = false;
     }
-  }, []);
+  }, [form, primaryCurrencyId, drawerData]);
 
   const addLine = useCallback(() => {
     setLines((prev) => [...prev, getEmptyPurchaseOrderLine()]);
   }, []);
 
-  const title =
+  const titleBase =
     mode === "create"
       ? t("poDrawerTitleCreate")
-      : mode === "view"
+      : readOnly
         ? t("poDrawerTitleView")
         : t("poDrawerTitleEdit");
+  const title = loadedNumber ? `${titleBase} # ${loadedNumber}` : titleBase;
 
   const showDetailLoading = fetchRemoteDetail && detailQuery.isLoading;
+  const busy = submitting || supplierActionPending;
+  const saveDisabled = !canSubmitRequired;
+
+  useDrawerSubmitShortcut({
+    enabled: open && editable,
+    submitting: busy,
+    onSave: handleSave,
+    saveDisabled,
+    onPost: handleConfirm,
+    postDisabled: !canSubmitRequired,
+  });
+
+  // Live totals while editing (same tax rules as the server: item VAT group, supplier exemption on the order date).
+  const supplierExempt = customerIsExemptOnDate(drawerData.supplierDetail, formValuesWatch?.order_date);
+  const itemsById = useMemo(
+    () => new Map(drawerData.itemOptions.map((row) => [String(row.value), row])),
+    [drawerData.itemOptions],
+  );
+  const pricesIncludeTax = settings.taxPriceMode === "inclusive";
+  const liveTotals = previewInvoiceTotals({
+    lines,
+    itemsById,
+    taxEnabled: settings.taxEnabled,
+    pricesIncludeTax,
+    customerExempt: supplierExempt,
+    settings,
+  });
+  const displayTotals = editable ? liveTotals : loadedTotals;
 
   return (
     <ResourceCrudDrawer
+      documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
+      className="sales-invoice-crud-drawer"
       title={title}
-      recordName={loadedNumber}
-      titleExtra={
-        effectiveStatus ? (
-          <Tag className="m-0" color={purchaseOrderStatusTagColor(effectiveStatus)}>
-            {getPurchaseOrderStatusLabel(t, effectiveStatus)}
-          </Tag>
-        ) : null
-      }
       open={open}
       requestClose={requestClose}
-      submitting={submitting || supplierActionPending}
-      showExpand
+      submitting={busy}
+      showExpand={false}
+      placement="top"
+      size="100%"
+      headerExtra={
+        effectiveStatus ? (
+          <div className="sales-invoice-drawer-header-meta">
+            <Tag className="m-0" color={purchaseOrderStatusTagColor(effectiveStatus)}>
+              {getPurchaseOrderStatusLabel(t, effectiveStatus)}
+            </Tag>
+          </div>
+        ) : null
+      }
       showDetailLoading={showDetailLoading}
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      size={1200}
       footer={
         <PurchaseOrderDrawerFooter
-          readOnly={readOnly}
           t={t}
-          forceClose={forceClose}
-          requestClose={requestClose}
-          submitting={submitting || supplierActionPending}
-          saveDisabled={!canSubmitRequired}
+          editable={editable}
+          isNew={mode === "create" || orderId == null}
+          submitting={busy}
+          saveDisabled={saveDisabled}
           confirmDisabled={!canSubmitRequired}
-          showDelete={!readOnly && orderId != null}
-          showCancelOrder={orderId != null && isPurchaseOrderCancellable(effectiveStatus)}
-          showSupplierActions={showSupplierActions}
-          canMarkSent={canMarkSent}
-          canReceive={showReceive}
-          pdfLoading={pdfMutation.isPending}
-          onSave={handleSave}
-          onConfirm={handleConfirm}
-          onCancelOrder={handleCancelOrder}
-          onDelete={handleDelete}
-          onDownloadPdf={handleDownloadPdf}
-          onMarkSent={handleMarkSent}
-          onReceive={handleReceive}
+          showDelete={editable && orderId != null && access.canDelete}
+          showConfirm={editable}
+          showCancelOrder={orderId != null && access.canEdit && isPurchaseOrderCancellable(effectiveStatus)}
+          showPdf={showSupplierActions && access.canPrint}
+          showMarkSent={canMarkSent}
+          showReceive={showReceive}
+          pdfLoading={isDownloadPending}
+          printLoading={isPrintPending}
           createdBy={loadedCreatedBy}
           createdAt={loadedCreatedAt}
           sentBy={loadedSentBy}
           sentAt={loadedSentAt}
+          forceClose={forceClose}
+          requestClose={requestClose}
+          onSave={handleSave}
+          onConfirm={handleConfirm}
+          onCancelOrder={handleCancelOrder}
+          onDelete={handleDelete}
+          onPrint={handlePrint}
+          onDownloadPdf={handleDownloadPdf}
+          onMarkSent={handleMarkSent}
+          onReceive={handleReceive}
         />
       }
     >
-      <PurchaseOrderDrawerForm
-        form={form}
-        readOnly={readOnly || submitting}
-        t={t}
-        supplierOptions={drawerData.supplierOptions}
-        warehouseOptions={drawerData.warehouseOptions}
-        suppliersPending={drawerData.suppliersPending}
-        warehousesPending={drawerData.warehousesPending}
-        onValuesChange={handleHeaderValuesChange}
-      />
-      <PurchaseOrderLineEditor
-        lines={lines}
-        readOnly={readOnly || submitting}
-        itemOptions={drawerData.itemOptions}
-        itemsPending={drawerData.itemsPending}
-        lastPriceByItemId={drawerData.lastPriceByItemId}
-        canAddLine={canAddLine}
-        onPatchLine={patchLine}
-        onRemoveLine={removeLine}
-        onAddLine={addLine}
-        t={t}
-      />
+      <div className="sales-invoice-keyboard-root">
+        <Form
+          form={form}
+          layout="vertical"
+          requiredMark={false}
+          className="item-general-form sales-invoice-form"
+          disabled={!editable || submitting}
+          onValuesChange={handleHeaderValuesChange}
+        >
+          <PurchaseOrderDrawerForm
+            readOnly={!editable || submitting}
+            t={t}
+            supplierOptions={drawerData.supplierOptions}
+            warehouseOptions={drawerData.warehouseOptions}
+            suppliersPending={drawerData.suppliersPending}
+            warehousesPending={drawerData.warehousesPending}
+            currencyOptions={drawerData.currencyOptions}
+            currenciesPending={drawerData.currenciesPending}
+            exchangeRateLocked={exchangeRateLocked}
+            exchangeRateHelp={exchangeRateHelp}
+          />
+          <PurchaseOrderLineEditor
+            lines={lines}
+            readOnly={!editable || submitting}
+            itemOptions={drawerData.itemOptions}
+            itemsPending={drawerData.itemsPending}
+            lastPriceByItemId={lastPriceByItemId}
+            canAddLine={canAddLine}
+            currencySymbol={documentCurrencySymbol}
+            taxEnabled={settings.taxEnabled}
+            pricesIncludeTax={pricesIncludeTax}
+            supplierExempt={supplierExempt}
+            settings={settings}
+            onPatchLine={patchLine}
+            onRemoveLine={removeLine}
+            onAddLine={addLine}
+            t={t}
+          />
+          <PurchaseOrderTotals t={t} totals={displayTotals} />
+        </Form>
+      </div>
     </ResourceCrudDrawer>
   );
 }

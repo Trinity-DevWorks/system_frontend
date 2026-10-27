@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /** @param {Record<string, unknown>} [params] */
 export async function fetchCustomerRefunds(params = {}) {
@@ -48,4 +50,13 @@ export async function fetchCustomerRefundOpenCreditNotes({ customerId, currencyI
   const qs = toListQuery({ customer_id: customerId, currency_id: currencyId }).toString();
   const data = await tenantRequest("GET", `customer-refunds/open-credit-notes?${qs}`);
   return Array.isArray(data) ? data : [];
+}
+
+/**
+ * @param {string} refundId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadCustomerRefundPdf(refundId, documentNumber, options = {}) {
+  await downloadPdf(`customer-refunds/${refundId}/pdf`, documentPdfFilename(documentNumber, "customer-refund"), options);
 }

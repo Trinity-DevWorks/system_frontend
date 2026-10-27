@@ -72,7 +72,13 @@ export function mapPurchaseOrderToGrnCreateSeed(order) {
       ),
       quantity: open,
       item_uom_id: line.item_uom_id != null ? Number(line.item_uom_id) : PO_BASE_UOM,
-      unit_cost: line.unit_price != null ? Number(line.unit_price) : undefined,
+      // Server-side default: net PO price converted to the primary currency at the PO rate.
+      unit_cost:
+        line.primary_unit_cost != null
+          ? Number(line.primary_unit_cost)
+          : line.unit_price != null
+            ? Number(line.unit_price)
+            : undefined,
       lot_id: undefined,
       lot_number: "",
       expiry_date: "",

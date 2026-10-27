@@ -12,7 +12,10 @@ import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/us
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { fetchStockAdjustmentReasons } from "../../api/stockAdjustmentReasons.api";
-import { fetchStockTransfer } from "../../api/stockTransfers.api";
+import { downloadStockTransferPdf, fetchStockTransfer } from "../../api/stockTransfers.api";
+import { useResourceAccess } from "@/lib/permissions";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
@@ -63,6 +66,7 @@ export default function StockTransferDrawer({
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal, notification } = App.useApp();
+  const access = useResourceAccess("stock");
   const [form] = Form.useForm();
 
   const [lines, setLines] = useState(() => [getEmptyTransferLine()]);
@@ -318,6 +322,19 @@ export default function StockTransferDrawer({
     });
   }, [modal, t, deleteMutation, loadedNumber, transferId]);
 
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: downloadStockTransferPdf,
+    errorTitle: t("pdfError"),
+  });
+
+  const handleDownloadPdf = useCallback(() => {
+    downloadPdf(transferId, loadedNumber);
+  }, [downloadPdf, transferId, loadedNumber]);
+
+  const handlePrint = useCallback(() => {
+    printPdf(transferId, loadedNumber);
+  }, [printPdf, transferId, loadedNumber]);
+
   const patchLine = useCallback((index, patch) => {
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   }, []);
@@ -381,6 +398,7 @@ export default function StockTransferDrawer({
 
   return (
     <ResourceCrudDrawer
+      documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
       title={title}
       recordName={loadedNumber}
       titleExtra={
@@ -412,6 +430,11 @@ export default function StockTransferDrawer({
           canReceive={canReceive}
           canCancelInTransit={canCancelInTransit}
           canCloseOpen={canCloseOpen}
+          showPdf={transferId != null && access.canPrint && isDocumentPdfPrintable("stock_transfer", effectiveStatus)}
+          pdfLoading={isDownloadPending}
+          printLoading={isPrintPending}
+          onPrint={handlePrint}
+          onDownloadPdf={handleDownloadPdf}
           onSave={handleSave}
           onDispatch={handleDispatch}
           onReceive={handleReceive}

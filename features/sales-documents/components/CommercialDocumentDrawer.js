@@ -13,6 +13,8 @@ import { formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import { mapSalesInvoiceCustomerOption } from "@/features/sales-invoices/utils/salesInvoiceDrawerUtils";
 import { customerIsExemptOnDate, previewInvoiceTotals } from "@/features/sales-invoices/utils/salesInvoiceTax";
 import { useSalesInvoiceDrawerData } from "@/features/sales-invoices/queries/useSalesInvoiceDrawerData";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Form, Space, Tag } from "antd";
 import { useTranslations } from "next-intl";
@@ -317,6 +319,16 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     },
   });
 
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: config.api.downloadPdf,
+    errorTitle: t("pdfError"),
+  });
+  const showPdf =
+    mode !== "create" &&
+    recordId != null &&
+    access.canPrint &&
+    isDocumentPdfPrintable(config.kind === "quotation" ? "sales_quotation" : "sales_order", status);
+
   const submitting = saveMutation.isPending || actionMutation.isPending || deleteMutation.isPending || invoiceMutation.isPending;
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly: !editable,
@@ -372,6 +384,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
 
   return (
     <ResourceCrudDrawer
+      documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
       className="sales-invoice-crud-drawer"
       title={title}
       open={open}
@@ -481,6 +494,16 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
               <Button disabled={!dirty || submitting} loading={submitting} onClick={runSave}>
                 {t("drawerSave")}
               </Button>
+            ) : null}
+            {showPdf ? (
+              <>
+                <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(recordId, number)}>
+                  {t("actionPrint")}
+                </Button>
+                <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(recordId, number)}>
+                  {t("actionDownloadPdf")}
+                </Button>
+              </>
             ) : null}
             {config.kind === "quotation" && status === "draft" && mode !== "create" && access.canEdit ? (
               <Button type="primary" disabled={submitting || dirty} onClick={() => runAction("send")}>

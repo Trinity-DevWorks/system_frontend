@@ -1,6 +1,7 @@
 import { formatTenantDate, formatTenantDateTime } from "@/lib/tenant-format";
 import { getGoodsReceiptStatusLabel, isGoodsReceiptDraft } from "../../utils/goodsReceiptStatuses";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MoreOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { Button, Dropdown, Tag } from "antd";
 
 /**
@@ -10,10 +11,12 @@ import { Button, Dropdown, Tag } from "antd";
  *   onEdit?: (record: unknown) => void;
  *   onDelete?: (record: unknown) => void;
  *   onReverse?: (record: unknown) => void;
+ *   onPrint?: (record: unknown) => void;
+ *   onDownloadPdf?: (record: unknown) => void;
  * }} [actions]
  */
 export function getGoodsReceiptTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onReverse } = actions;
+  const { onView, onEdit, onDelete, onReverse, onPrint, onDownloadPdf } = actions;
 
   return [
     {
@@ -83,6 +86,12 @@ export function getGoodsReceiptTableColumns(t, actions = {}) {
         const items = [];
         if (onView) {
           items.push({ key: "view", icon: <EyeOutlined />, label: t("actionView"), onClick: () => onView(record) });
+        }
+        if (onPrint && isDocumentPdfPrintable("goods_receipt", record?.status)) {
+          items.push({ key: "print", icon: <PrinterOutlined />, label: t("actionPrint"), onClick: () => onPrint(record) });
+        }
+        if (onDownloadPdf && isDocumentPdfPrintable("goods_receipt", record?.status)) {
+          items.push({ key: "pdf", icon: <FilePdfOutlined />, label: t("actionDownloadPdf"), onClick: () => onDownloadPdf(record) });
         }
         if (onEdit && isGoodsReceiptDraft(record?.status)) {
           items.push({ key: "edit", icon: <EditOutlined />, label: t("actionEdit"), onClick: () => onEdit(record) });

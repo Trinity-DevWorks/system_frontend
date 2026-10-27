@@ -11,6 +11,7 @@ import {
   fetchSupplierPaymentOpenInvoices,
   fetchSupplierPayments,
   postSupplierPayment,
+  downloadSupplierPaymentPdf,
   reverseSupplierPayment,
   syncSupplierPaymentAllocations,
   updateSupplierPayment,
@@ -43,6 +44,7 @@ export const supplierPaymentConfig = {
     syncAllocations: syncSupplierPaymentAllocations,
     post: postSupplierPayment,
     reverse: reverseSupplierPayment,
+    downloadPdf: downloadSupplierPaymentPdf,
     openInvoices: (partyId, currencyId) =>
       fetchSupplierPaymentOpenInvoices({ supplierId: partyId, currencyId }),
     fetchInvoice: fetchPurchaseInvoice,

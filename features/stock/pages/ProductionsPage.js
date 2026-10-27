@@ -31,6 +31,7 @@ import {
 import { getProductionTableColumns } from "../components/ProductionsTable/getProductionTableColumns";
 import { useProductionsTableQuery } from "../queries/useProductionsTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
 
 function ProductionsTable() {
   const t = useTranslations("Stock");
@@ -201,7 +202,7 @@ function ProductionsTable() {
     return lines;
   }, [dateRangeLabel, statusLabel, t, warehouseLabel]);
 
-  const columns = useMemo(
+  const baseColumns = useMemo(
     () =>
       getProductionTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
@@ -211,6 +212,7 @@ function ProductionsTable() {
       }),
     [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,

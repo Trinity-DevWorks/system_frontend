@@ -4,6 +4,7 @@
 
 import dayjs from "dayjs";
 import { normalizeEntityId } from "@/lib/entityId";
+import { formatItemOptionLabel } from "@/features/items/utils/formatItemLabel";
 
 /** Select value when the line uses the item's base UOM (API omits item_uom_id). */
 export const PO_BASE_UOM = "__po_base_uom__";
@@ -11,11 +12,16 @@ export const PO_BASE_UOM = "__po_base_uom__";
 /**
  * @typedef {{
  *   item_id?: string;
+ *   item_label?: string;
+ *   vat_percentage?: number;
  *   quantity?: number;
  *   item_uom_id?: number | string;
  *   unit_price?: number;
+ *   discount_percent?: number;
  *   unitPriceAuto?: boolean;
  *   notes?: string;
+ *   saved_tax_rate?: number;
+ *   saved_line_total?: number;
  * }} PurchaseOrderLineFormRow
  */
 
@@ -23,6 +29,8 @@ export function getPurchaseOrderDefaults() {
   return {
     supplier_id: undefined,
     warehouse_id: undefined,
+    currency_id: undefined,
+    exchange_rate: 1,
     order_date: dayjs(),
     expected_date: undefined,
     notes: "",
@@ -38,6 +46,7 @@ export function getEmptyPurchaseOrderLine() {
     quantity: undefined,
     item_uom_id: PO_BASE_UOM,
     unit_price: undefined,
+    discount_percent: undefined,
     notes: "",
   };
 }
@@ -49,6 +58,8 @@ export function mapPurchaseOrderRecordToForm(record) {
   return {
     supplier_id: record.supplier_id,
     warehouse_id: record.warehouse_id,
+    currency_id: record.currency_id != null ? Number(record.currency_id) : undefined,
+    exchange_rate: record.exchange_rate != null ? Number(record.exchange_rate) : 1,
     order_date: record.order_date ? dayjs(String(record.order_date)) : dayjs(),
     expected_date: record.expected_date ? dayjs(String(record.expected_date)) : undefined,
     notes: record.notes ?? "",
@@ -62,10 +73,16 @@ export function mapPurchaseOrderRecordToForm(record) {
 export function mapPurchaseOrderLinesFromApi(lines) {
   return (lines ?? []).map((line) => ({
     item_id: normalizeEntityId(line.item_id) ?? undefined,
+    item_label: line.item && typeof line.item === "object" ? formatItemOptionLabel(line.item) : "",
+    vat_percentage: line.item?.vat_group?.percentage != null ? Number(line.item.vat_group.percentage) : undefined,
     quantity: line.quantity != null ? Number(line.quantity) : undefined,
     item_uom_id: line.item_uom_id != null ? Number(line.item_uom_id) : PO_BASE_UOM,
     unit_price: line.unit_price != null ? Number(line.unit_price) : undefined,
+    discount_percent:
+      line.discount_percent != null && Number(line.discount_percent) > 0 ? Number(line.discount_percent) : undefined,
     notes: typeof line.notes === "string" ? line.notes : "",
+    saved_tax_rate: line.tax_rate != null ? Number(line.tax_rate) : undefined,
+    saved_line_total: line.line_total != null ? Number(line.line_total) : undefined,
   }));
 }
 
@@ -86,6 +103,9 @@ export function getValidPurchaseOrderLines(lines) {
       }
       if (line.unit_price != null && Number(line.unit_price) >= 0) {
         row.unit_price = Number(line.unit_price);
+      }
+      if (line.discount_percent != null && Number(line.discount_percent) > 0) {
+        row.discount_percent = Number(line.discount_percent);
       }
       const notes = typeof line.notes === "string" ? line.notes.trim() : "";
       if (notes) row.notes = notes;
@@ -138,6 +158,8 @@ export function isPurchaseOrderHeaderDirtyVsBaseline(form, baseline) {
   const values = form.getFieldsValue(true);
   const supplierId = values.supplier_id ?? undefined;
   const warehouseId = values.warehouse_id ?? undefined;
+  const currencyId = values.currency_id ?? undefined;
+  const rate = Number(values.exchange_rate ?? 1);
   const notes = String(values.notes ?? "").trim();
   const orderDate = values.order_date?.format?.("YYYY-MM-DD") ?? values.order_date ?? "";
   const expectedDate = values.expected_date?.format?.("YYYY-MM-DD") ?? values.expected_date ?? "";
@@ -148,6 +170,8 @@ export function isPurchaseOrderHeaderDirtyVsBaseline(form, baseline) {
 
   if (supplierId !== (baseline.supplier_id ?? undefined)) return true;
   if (warehouseId !== (baseline.warehouse_id ?? undefined)) return true;
+  if (baseline.currency_id != null && currencyId !== baseline.currency_id) return true;
+  if (baseline.currency_id != null && rate !== Number(baseline.exchange_rate ?? 1)) return true;
   if (notes !== String(baseline.notes ?? "").trim()) return true;
   if (orderDate !== baselineOrderDate) return true;
   if (expectedDate !== baselineExpectedDate) return true;
@@ -182,6 +206,8 @@ export function purchaseOrderHeaderToPayload(values) {
   return {
     supplier_id: values.supplier_id,
     warehouse_id: values.warehouse_id,
+    currency_id: values.currency_id ?? null,
+    exchange_rate: values.exchange_rate != null && Number(values.exchange_rate) > 0 ? Number(values.exchange_rate) : null,
     order_date: orderDate,
     expected_date: expectedDate || null,
     notes: typeof values.notes === "string" && values.notes.trim() ? values.notes.trim() : null,

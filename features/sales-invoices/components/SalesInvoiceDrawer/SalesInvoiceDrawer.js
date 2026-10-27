@@ -10,7 +10,9 @@ import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/us
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
-import { fetchSalesInvoice } from "../../api/salesInvoices.api";
+import { downloadSalesInvoicePdf, fetchSalesInvoice } from "../../api/salesInvoices.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import CustomerDrawer from "@/features/customers/components/CustomerDrawer/CustomerDrawer";
@@ -664,6 +666,19 @@ export default function SalesInvoiceDrawer({
     );
   }, [modal, t, reverseMutation]);
 
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: downloadSalesInvoicePdf,
+    errorTitle: t("pdfError"),
+  });
+
+  const handleDownloadPdf = useCallback(() => {
+    downloadPdf(invoiceId, loadedNumber);
+  }, [downloadPdf, invoiceId, loadedNumber]);
+
+  const handlePrint = useCallback(() => {
+    printPdf(invoiceId, loadedNumber);
+  }, [printPdf, invoiceId, loadedNumber]);
+
   const handleCreateReceipt = useCallback(() => {
     const id = normalizeEntityId(invoiceId);
     if (id == null) return;
@@ -803,6 +818,7 @@ export default function SalesInvoiceDrawer({
   return (
     <>
     <ResourceCrudDrawer
+      documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
       title={title}
       open={open}
       requestClose={requestClose}
@@ -841,6 +857,11 @@ export default function SalesInvoiceDrawer({
           postDisabled={!canSubmitRequired || !access.canEdit}
           showDelete={!readOnly && invoiceId != null && access.canDelete}
           showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
+          showPdf={invoiceId != null && access.canPrint && isDocumentPdfPrintable("sales_invoice", effectiveStatus)}
+          pdfLoading={isDownloadPending}
+          printLoading={isPrintPending}
+          onPrint={handlePrint}
+          onDownloadPdf={handleDownloadPdf}
           showCreateReceipt={
             effectiveStatus === "posted" &&
             invoiceId != null &&
