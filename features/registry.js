@@ -17,11 +17,16 @@
  */
 
 import {
+  PrinterOutlined,
   AlertOutlined,
   AccountBookOutlined,
   ApartmentOutlined,
   AppstoreOutlined,
   AuditOutlined,
+  CarOutlined,
+  NumberOutlined,
+  WalletOutlined,
+  InteractionOutlined,
   BankOutlined,
   BarChartOutlined,
   BellOutlined,
@@ -160,6 +165,7 @@ export const FEATURES = [
   { id: "salesmen", path: "/main/salesmen", section: "master-data", labelKey: "navSalesmen", icon: IdcardOutlined, module: "sales", permission: "salesmen" },
 
   { id: "items", path: "/main/items", section: "inventory", labelKey: "navItems", icon: AppstoreOutlined, groupKey: "navGroupCatalog", module: "inventory", permission: "items" },
+  { id: "itemAttributes", path: "/main/item-attributes", section: "inventory", labelKey: "navItemAttributes", icon: TagsOutlined, groupKey: "navGroupCatalog", module: "inventory", permission: "item_attributes" },
   { id: "stockAdjustmentReasons", path: "/main/stock/adjustment-reasons", section: "inventory", labelKey: "navAdjustmentReasons", icon: FlagOutlined, groupKey: "navGroupCatalog", module: "inventory", permission: "stock" },
   { id: "stockBalances", path: "/main/stock/balances", section: "inventory", labelKey: "navStockBalances", icon: InboxOutlined, groupKey: "navGroupStockLevels", module: "inventory", permission: "stock" },
   { id: "stockPurchasingAlerts", path: "/main/stock/purchasing-alerts", section: "inventory", labelKey: "navPurchasingAlerts", icon: AlertOutlined, groupKey: "navGroupStockLevels", module: "inventory", permission: "stock" },
@@ -177,10 +183,12 @@ export const FEATURES = [
 
   { id: "salesQuotations", path: "/main/sales-quotations", section: "sales", labelKey: "navSalesQuotations", icon: FileTextOutlined, module: "sales", permission: "sales_quotations" },
   { id: "salesOrders", path: "/main/sales-orders", section: "sales", labelKey: "navSalesOrders", icon: AuditOutlined, module: "sales", permission: "sales_orders" },
+  { id: "deliveryNotes", path: "/main/delivery-notes", section: "sales", labelKey: "navDeliveryNotes", icon: CarOutlined, module: "sales", permission: "delivery_notes" },
   { id: "salesInvoices", path: "/main/sales-invoices", section: "sales", labelKey: "navSalesInvoices", icon: FileDoneOutlined, module: "sales", permission: "sales_invoices" },
   { id: "salesCreditNotes", path: "/main/sales-credit-notes", section: "sales", labelKey: "navSalesCreditNotes", icon: RollbackOutlined, module: "sales", permission: "sales_credit_notes" },
   { id: "customerReceipts", path: "/main/customer-receipts", section: "sales", labelKey: "navCustomerReceipts", icon: DollarOutlined, module: "sales", permission: "customer_receipts" },
   { id: "customerRefunds", path: "/main/customer-refunds", section: "sales", labelKey: "navCustomerRefunds", icon: SwapOutlined, module: "sales", permission: "customer_refunds" },
+  { id: "priceLists", path: "/main/price-lists", section: "sales", labelKey: "navPriceLists", icon: TagsOutlined, module: "sales", permission: "price_lists" },
   { id: "customerGroups", path: "/main/customer-groups", section: "sales", labelKey: "navCustomerGroups", icon: UsergroupAddOutlined, module: "sales", permission: "customer_groups" },
   { id: "customers", path: "/main/customers", section: "sales", labelKey: "navCustomers", icon: UserOutlined, module: "sales", permission: "customers" },
   { id: "customerLedger", path: "/main/customer-ledger", section: "sales", labelKey: "navCustomerLedger", icon: FileSearchOutlined, module: "sales", permission: "customers" },
@@ -200,13 +208,23 @@ export const FEATURES = [
   { id: "balanceSheet", path: "/main/accounting/balance-sheet", section: "accounting", labelKey: "navBalanceSheet", icon: CalculatorOutlined, module: "accounting", permission: "accounting_reports" },
   { id: "vatReport", path: "/main/accounting/vat-report", section: "accounting", labelKey: "navVatReport", icon: PercentageOutlined, module: "accounting", permission: "accounting_reports" },
   { id: "fiscalYears", path: "/main/accounting/fiscal-years", section: "accounting", labelKey: "navFiscalYears", icon: CalendarOutlined, module: "accounting", permission: "accounting_periods" },
+  { id: "cashBankAccounts", path: "/main/cash-bank-accounts", section: "accounting", labelKey: "navCashBankAccounts", icon: BankOutlined, module: "accounting", permission: "cash_bank_accounts" },
+  { id: "treasuryTransfers", path: "/main/treasury-transfers", section: "accounting", labelKey: "navTreasuryTransfers", icon: InteractionOutlined, module: "accounting", permission: "treasury_transfers" },
+  { id: "expenseVouchers", path: "/main/expense-vouchers", section: "accounting", labelKey: "navExpenseVouchers", icon: WalletOutlined, module: "accounting", permission: "expense_vouchers" },
   { id: "accountLedger", path: "/main/accounting/account-ledger", section: "accounting", labelKey: "navAccountLedger", icon: ProfileOutlined, module: "accounting", permission: "accounting_reports" },
+  { id: "generalLedger", path: "/main/accounting/general-ledger", section: "accounting", labelKey: "navGeneralLedger", icon: ProfileOutlined, module: "accounting", permission: "accounting_reports" },
+  { id: "cashFlow", path: "/main/accounting/cash-flow", section: "accounting", labelKey: "navCashFlow", icon: FundOutlined, module: "accounting", permission: "accounting_reports" },
 
   { id: "salesByPeriod", path: "/main/reports/sales-by-period", section: "reports", labelKey: "navSalesByPeriod", icon: LineChartOutlined, module: "sales", permission: "business_reports" },
   { id: "purchasesByPeriod", path: "/main/reports/purchases-by-period", section: "reports", labelKey: "navPurchasesByPeriod", icon: FundOutlined, module: "purchasing", permission: "business_reports" },
   { id: "stockValuation", path: "/main/reports/stock-valuation", section: "reports", labelKey: "navStockValuation", icon: GoldOutlined, module: "inventory", permission: "business_reports" },
   { id: "customerAging", path: "/main/reports/customer-aging", section: "reports", labelKey: "navCustomerAging", icon: ClockCircleOutlined, module: "sales", permission: "business_reports" },
   { id: "supplierAging", path: "/main/reports/supplier-aging", section: "reports", labelKey: "navSupplierAging", icon: HourglassOutlined, module: "purchasing", permission: "business_reports" },
+  { id: "itemMovement", path: "/main/reports/item-movement", section: "reports", labelKey: "navItemMovement", icon: SwapOutlined, module: "inventory", permission: "business_reports" },
+  { id: "deadStock", path: "/main/reports/dead-stock", section: "reports", labelKey: "navDeadStock", icon: ClockCircleOutlined, module: "inventory", permission: "business_reports" },
+  { id: "lotExpiry", path: "/main/reports/lot-expiry", section: "reports", labelKey: "navLotExpiry", icon: AlertOutlined, module: "inventory", permission: "business_reports" },
+  { id: "salesProfitability", path: "/main/reports/sales-profitability", section: "reports", labelKey: "navSalesProfitability", icon: RiseOutlined, module: "sales", permission: "business_reports" },
+  { id: "salesAnalysis", path: "/main/reports/sales-analysis", section: "reports", labelKey: "navSalesAnalysis", icon: BarChartOutlined, module: "sales", permission: "business_reports" },
 
   { id: "branches", path: "/main/branches", section: "administration", labelKey: "navBranches", icon: ApartmentOutlined, module: CORE_MODULE, permission: "branches" },
   { id: "users", path: "/main/users", section: "administration", labelKey: "navUsers", icon: TeamOutlined, module: CORE_MODULE, permission: "users" },
@@ -216,6 +234,8 @@ export const FEATURES = [
 
   { id: "settingsCompanyProfile", path: "/main/settings/company-profile", section: "settings", labelKey: "navCompanyProfile", icon: BankOutlined, groupKey: "settingsCompanyGroup", module: CORE_MODULE, permission: "company_profile" },
   { id: "settingsCompanySettings", path: "/main/settings/company-settings", section: "settings", labelKey: "navCompanySettings", icon: ControlOutlined, groupKey: "settingsCompanyGroup", module: CORE_MODULE, permission: "company_settings" },
+  { id: "settingsDocumentNumbering", path: "/main/settings/document-numbering", section: "settings", labelKey: "navDocumentNumbering", icon: NumberOutlined, groupKey: "settingsCompanyGroup", module: CORE_MODULE, permission: "document_numbering" },
+  { id: "settingsPrint", path: "/main/settings/print-settings", section: "settings", labelKey: "navPrintSettings", icon: PrinterOutlined, groupKey: "settingsCompanyGroup", module: CORE_MODULE, permission: "print_settings" },
   { id: "settingsAccountMappings", path: "/main/settings/account-mappings", section: "settings", labelKey: "navAccountMappings", icon: LinkOutlined, groupKey: "settingsAccountingGroup", module: "accounting", permission: "account_mappings" },
   { id: "settingsPreferences", path: "/main/settings/preferences", section: "settings", labelKey: "navPreferences", icon: BellOutlined, groupKey: "settingsUserGroup", module: CORE_MODULE },
 

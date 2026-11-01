@@ -3,6 +3,7 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
+import { useStackedLookupCreate } from "@/lib/drawer/useStackedLookupCreate";
 import { useResourceDrawerHeaderFields } from "@/shared/components/resource-drawer/useResourceDrawerHeaderFields";
 import ResourceAttachmentsPanel from "@/shared/components/resource-drawer/ResourceAttachmentsPanel";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
@@ -10,23 +11,18 @@ import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/us
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { fetchCurrencyNames } from "@/features/currencies/index";
 import { fetchPaymentMethodNames } from "@/features/payment-methods/index";
 import { fetchPaymentTermNames } from "@/features/payment-terms/index";
 import { fetchSupplierGroupNames } from "@/features/supplier-groups/index";
 import { fetchVatGroupNames } from "@/features/vat-groups/index";
 import { fetchSupplier } from "../../api/suppliers.api";
-import PaymentMethodDrawer from "@/features/payment-methods/components/PaymentMethodDrawer/PaymentMethodDrawer";
-import PaymentTermDrawer from "@/features/payment-terms/components/PaymentTermDrawer/PaymentTermDrawer";
-import SupplierGroupDrawer from "@/features/supplier-groups/components/SupplierGroupDrawer/SupplierGroupDrawer";
-import VatGroupDrawer from "@/features/vat-groups/components/VatGroupDrawer/VatGroupDrawer";
 import { suppliersAttachmentsApi } from "../../api/suppliersAttachments.api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import SupplierDrawerForm from "./SupplierDrawerForm";
 import {
   SUPPLIER_CREATE_SAVE_INTENT_EVENT,
@@ -55,6 +51,7 @@ const SUPPLIER_DETAIL_QUERY_PREFIX = /** @type {const} */ (SUPPLIERS_LIST_QUERY_
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
 export default function SupplierDrawer({
@@ -64,57 +61,17 @@ export default function SupplierDrawer({
   tableSeedRecord = null,
   onClose,
   onCreated,
+  onCreateSuccess,
 }) {
   const t = useTranslations("Suppliers");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const [form] = Form.useForm();
-  const [nestedCreate, setNestedCreate] = useState(
-    /** @type {import("../../utils/supplierDrawerUtils").SupplierNestedCreateKey | null} */ (null),
-  );
   const lastCreateIntent = usePersistedSaveIntent(SUPPLIER_CREATE_SAVE_INTENT_KEY, SUPPLIER_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
 
-  const closeNestedCreate = useCallback(() => setNestedCreate(null), []);
-
-  const handleDrawerClose = useCallback(() => {
-    setNestedCreate(null);
-    onClose();
-  }, [onClose]);
-
-  const makeNestedCreatedHandler = useCallback(
-    /**
-     * @param {string} fieldName
-     * @param {readonly string[]} queryKey
-     */
-    (fieldName, queryKey) =>
-      /** @param {Record<string, unknown>} record */ (record) => {
-        const id = record?.id;
-        if (id == null || Number.isNaN(Number(id))) return;
-        form.setFieldValue(fieldName, Number(id));
-        invalidateTenantListQueries(queryClient, queryKey);
-      },
-    [form, queryClient],
-  );
-
-  const onNestedSupplierGroupCreated = useMemo(
-    () => makeNestedCreatedHandler("supplier_group_id", SUPPLIER_GROUPS_LIST_QUERY_KEY),
-    [makeNestedCreatedHandler],
-  );
-  const onNestedPaymentMethodCreated = useMemo(
-    () => makeNestedCreatedHandler("payment_method_id", PAYMENT_METHODS_LIST_QUERY_KEY),
-    [makeNestedCreatedHandler],
-  );
-  const onNestedPaymentTermsCreated = useMemo(
-    () => makeNestedCreatedHandler("payment_terms_id", PAYMENT_TERMS_LIST_QUERY_KEY),
-    [makeNestedCreatedHandler],
-  );
-  const onNestedVatGroupCreated = useMemo(
-    () => makeNestedCreatedHandler("vat_group_id", VAT_GROUPS_LIST_QUERY_KEY),
-    [makeNestedCreatedHandler],
-  );
+  const openLookupCreate = useStackedLookupCreate(form);
 
   const supplierAttachmentsQueryKey = useMemo(
     () => /** @type {const} */ ([...SUPPLIERS_LIST_QUERY_KEY, supplierId, "attachments"]),
@@ -289,8 +246,9 @@ export default function SupplierDrawer({
     message,
     t,
     tApiErrors,
-    onClose: handleDrawerClose,
+    onClose,
     onCreated,
+    onCreateSuccess,
     onSyncCreateDiscardBaseline,
     defaults,
     supplierGroupsData,
@@ -320,7 +278,7 @@ export default function SupplierDrawer({
     readOnly,
     modal,
     t,
-    onClose: handleDrawerClose,
+    onClose,
     shouldConfirmDiscard,
   });
 
@@ -433,51 +391,19 @@ export default function SupplierDrawer({
         t={t}
         supplierGroupOptions={supplierGroupOptions}
         supplierGroupsPending={supplierGroupsQuery.isPending}
-        onOpenSupplierGroupDrawer={readOnly ? undefined : () => setNestedCreate("supplier-group")}
+        onOpenSupplierGroupDrawer={readOnly ? undefined : () => openLookupCreate("supplierGroups", "supplier_group_id", SUPPLIER_GROUPS_LIST_QUERY_KEY)}
         paymentMethodOptions={paymentMethodOptions}
         paymentMethodsPending={paymentMethodsQuery.isPending}
-        onOpenPaymentMethodDrawer={readOnly ? undefined : () => setNestedCreate("payment-method")}
+        onOpenPaymentMethodDrawer={readOnly ? undefined : () => openLookupCreate("paymentMethods", "payment_method_id", PAYMENT_METHODS_LIST_QUERY_KEY)}
         paymentTermOptions={paymentTermOptions}
         paymentTermsPending={paymentTermsQuery.isPending}
-        onOpenPaymentTermsDrawer={readOnly ? undefined : () => setNestedCreate("payment-terms")}
+        onOpenPaymentTermsDrawer={readOnly ? undefined : () => openLookupCreate("paymentTerms", "payment_terms_id", PAYMENT_TERMS_LIST_QUERY_KEY)}
         vatGroupOptions={vatGroupOptions}
         vatGroupsPending={vatGroupsQuery.isPending}
-        onOpenVatGroupDrawer={readOnly ? undefined : () => setNestedCreate("vat-group")}
+        onOpenVatGroupDrawer={readOnly ? undefined : () => openLookupCreate("vatGroups", "vat_group_id", VAT_GROUPS_LIST_QUERY_KEY)}
         currencies={currenciesData ?? []}
         currenciesPending={currenciesQuery.isPending}
       />
-      {!readOnly ? (
-        <>
-          <SupplierGroupDrawer
-            open={open && nestedCreate === "supplier-group"}
-            mode="create"
-            supplierGroupId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={onNestedSupplierGroupCreated}
-          />
-          <PaymentMethodDrawer
-            open={open && nestedCreate === "payment-method"}
-            mode="create"
-            paymentMethodId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={onNestedPaymentMethodCreated}
-          />
-          <PaymentTermDrawer
-            open={open && nestedCreate === "payment-terms"}
-            mode="create"
-            paymentTermId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={onNestedPaymentTermsCreated}
-          />
-          <VatGroupDrawer
-            open={open && nestedCreate === "vat-group"}
-            mode="create"
-            vatGroupId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={onNestedVatGroupCreated}
-          />
-        </>
-      ) : null}
       <ResourceAttachmentsPanel
         open={open}
         recordId={supplierId}

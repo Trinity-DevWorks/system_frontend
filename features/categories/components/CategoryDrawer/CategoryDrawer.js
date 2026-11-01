@@ -3,19 +3,19 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
+import { useStackedLookupCreate } from "@/lib/drawer/useStackedLookupCreate";
 import { useResourceDrawerHeaderFields } from "@/shared/components/resource-drawer/useResourceDrawerHeaderFields";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { fetchCategory, fetchCategoryNames } from "../../api/categories.api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { DEFAULT_CATEGORY_COLOR } from "@/lib/app-theme";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import {
   CATEGORY_CREATE_SAVE_INTENT_EVENT,
   CATEGORY_CREATE_SAVE_INTENT_KEY,
@@ -55,32 +55,12 @@ export default function CategoryDrawer({
   const t = useTranslations("Categories");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const [form] = Form.useForm();
-  const [parentCreateDrawerOpen, setParentCreateDrawerOpen] = useState(false);
   const lastCreateIntent = usePersistedSaveIntent(CATEGORY_CREATE_SAVE_INTENT_KEY, CATEGORY_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
 
-  const closeParentCreateDrawer = useCallback(() => setParentCreateDrawerOpen(false), []);
-
-  const handleDrawerClose = useCallback(() => {
-    setParentCreateDrawerOpen(false);
-    onClose();
-  }, [onClose]);
-
-  const nestedParentDrawerOpen = open && parentCreateDrawerOpen;
-
-  const handleNestedParentCreated = useCallback(
-    /** @param {Record<string, unknown>} record */
-    (record) => {
-      const id = record?.id;
-      if (id == null || Number.isNaN(Number(id))) return;
-      form.setFieldValue("parent_id", Number(id));
-      invalidateTenantListQueries(queryClient, CATEGORIES_LIST_QUERY_KEY);
-    },
-    [form, queryClient],
-  );
+  const openLookupCreate = useStackedLookupCreate(form);
 
   const defaults = useMemo(
     () => ({
@@ -160,7 +140,7 @@ export default function CategoryDrawer({
     message,
     t,
     tApiErrors,
-    onClose: handleDrawerClose,
+    onClose,
     onCreated,
     onCreateSuccess,
     onSyncCreateDiscardBaseline,
@@ -190,7 +170,7 @@ export default function CategoryDrawer({
     readOnly,
     modal,
     t,
-    onClose: handleDrawerClose,
+    onClose,
     shouldConfirmDiscard,
   });
 
@@ -300,17 +280,8 @@ export default function CategoryDrawer({
         categories={categoriesQuery.data ?? []}
         categoriesPending={categoriesQuery.isPending}
         excludeCategoryId={mode === "edit" || mode === "view" ? categoryId : null}
-        onOpenParentCategoryDrawer={readOnly ? undefined : () => setParentCreateDrawerOpen(true)}
+        onOpenParentCategoryDrawer={readOnly ? undefined : () => openLookupCreate("categories", "parent_id", CATEGORIES_LIST_QUERY_KEY)}
       />
-      {!readOnly ? (
-        <CategoryDrawer
-          open={nestedParentDrawerOpen}
-          mode="create"
-          categoryId={null}
-          onClose={closeParentCreateDrawer}
-          onCreateSuccess={handleNestedParentCreated}
-        />
-      ) : null}
     </ResourceCrudDrawer>
   );
 }

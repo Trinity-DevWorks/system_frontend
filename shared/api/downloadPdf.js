@@ -25,12 +25,15 @@ async function errorFromBlob(blob) {
 
 /**
  * @param {string} url
- * @param {{ locale?: string }} [options]
+ * @param {{ locale?: string, template?: "receipt" }} [options]
  */
 function withLocaleQuery(url, options = {}) {
   const search = new URLSearchParams();
   if (options.locale === "en" || options.locale === "ar") {
     search.set("locale", options.locale);
+  }
+  if (options.template === "receipt") {
+    search.set("template", "receipt");
   }
   const qs = search.toString();
   return qs ? `${url}${url.includes("?") ? "&" : "?"}${qs}` : url;
@@ -38,7 +41,7 @@ function withLocaleQuery(url, options = {}) {
 
 /**
  * @param {string} url
- * @param {{ locale?: string }} [options]
+ * @param {{ locale?: string, template?: "receipt" }} [options]
  * @returns {Promise<Blob>}
  */
 export async function fetchPdfBlob(url, options = {}) {
@@ -118,7 +121,7 @@ export async function openPdfBlobForPrint(blob) {
 /**
  * @param {string} url
  * @param {string} filename
- * @param {{ locale?: string, mode?: "download" | "print" }} [options]
+ * @param {{ locale?: string, mode?: "download" | "print", template?: "receipt" }} [options]
  */
 export async function downloadPdf(url, filename, options = {}) {
   if (options.mode === "print") {
@@ -133,7 +136,7 @@ export async function downloadPdf(url, filename, options = {}) {
  * Fetch the document PDF and open the system print dialog.
  *
  * @param {string} url
- * @param {{ locale?: string }} [options]
+ * @param {{ locale?: string, template?: "receipt" }} [options]
  */
 export async function printPdf(url, options = {}) {
   const blob = await fetchPdfBlob(url, options);

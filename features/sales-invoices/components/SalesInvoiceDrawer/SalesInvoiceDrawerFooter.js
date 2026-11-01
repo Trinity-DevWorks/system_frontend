@@ -54,6 +54,8 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   onDelete: () => void;
  *   onReverse?: () => void;
  *   onPrint?: () => void;
+ *   onPrintReceipt?: () => void;
+ *   receiptLoading?: boolean;
  *   onDownloadPdf?: () => void;
  *   onCreateReceipt?: () => void;
  *   onCreateCreditNote?: () => void;
@@ -81,6 +83,8 @@ export default function SalesInvoiceDrawerFooter({
   onDelete,
   onReverse,
   onPrint,
+  onPrintReceipt,
+  receiptLoading = false,
   onDownloadPdf,
   onCreateReceipt,
   onCreateCreditNote,
@@ -106,6 +110,11 @@ export default function SalesInvoiceDrawerFooter({
             {onPrint ? (
               <Button className="shrink-0" loading={printLoading} disabled={submitting} onClick={onPrint}>
                 {t("actionPrint")}
+              </Button>
+            ) : null}
+            {onPrintReceipt ? (
+              <Button className="shrink-0" loading={receiptLoading} disabled={submitting} onClick={onPrintReceipt}>
+                {t("actionPrintReceipt")}
               </Button>
             ) : null}
             <Button className="shrink-0" loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>

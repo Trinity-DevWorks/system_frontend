@@ -1,5 +1,6 @@
 "use client";
 
+import PriceListSelect from "@/features/price-lists/components/PriceListSelect";
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { dayjsDatePattern } from "@/lib/tenant-format";
@@ -162,6 +163,10 @@ export default function CustomerDrawerForm({
         loading={customerGroupsPending}
         placeholder={t("fieldCustomerGroupPlaceholder")}
       />
+
+      <Form.Item name="price_list_id" label={t("fieldPriceList")} extra={t("fieldPriceListHint")}>
+        <PriceListSelect disabled={readOnly} />
+      </Form.Item>
 
       <Divider titlePlacement="start" className="!mt-6">
         {t("drawerSectionCommercial")}

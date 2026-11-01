@@ -607,7 +607,7 @@ export default function PaymentDocumentDrawer({
     },
   });
 
-  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+  const { downloadPdf, printPdf, printReceipt, isPrintPending, isDownloadPending, isReceiptPending } = useDocumentPdfDownload({
     download: config.api.downloadPdf,
     errorTitle: t("pdfError"),
   });
@@ -888,6 +888,11 @@ export default function PaymentDocumentDrawer({
                 <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(documentId, number)}>
                   {t("actionPrint")}
                 </Button>
+                {config.receiptPrint ? (
+                  <Button loading={isReceiptPending} disabled={submitting} onClick={() => printReceipt(documentId, number)}>
+                    {t("actionPrintReceipt")}
+                  </Button>
+                ) : null}
                 <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(documentId, number)}>
                   {t("actionDownloadPdf")}
                 </Button>

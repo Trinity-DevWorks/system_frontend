@@ -17,9 +17,7 @@ import { fetchGoodsReceipt } from "@/features/stock/api/goodsReceipts.api";
 import { fetchPurchaseOrder } from "@/features/stock/api/purchaseOrders.api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
-import SupplierDrawer from "@/features/suppliers/components/SupplierDrawer/SupplierDrawer";
 import { SUPPLIERS_LIST_QUERY_KEY } from "@/features/suppliers/queries/suppliersQueryKeys";
-import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -94,18 +92,11 @@ export default function PurchaseInvoiceDrawer({
   const paymentAccess = useResourceAccess("supplier_payments");
   const debitNoteAccess = useResourceAccess("purchase_debit_notes");
   const supplierAccess = useResourceAccess("suppliers");
-  const { openDrawer } = useGlobalDrawer();
+  const { openDrawer, openStackedDrawer } = useGlobalDrawer();
   const itemAccess = useResourceAccess("items");
   const queryClient = useQueryClient();
   const { settings } = useCompanySettings();
   const [form] = Form.useForm();
-  const [supplierCreateOpen, setSupplierCreateOpen] = useState(false);
-  const [itemViewId, setItemViewId] = useState(/** @type {string | null} */ (null));
-  const [itemViewTrackedOpen, setItemViewTrackedOpen] = useState(open);
-  if (open !== itemViewTrackedOpen) {
-    setItemViewTrackedOpen(open);
-    if (!open) setItemViewId(null);
-  }
 
   const [lines, setLines] = useState(() => [getEmptyPurchaseInvoiceLine()]);
   const [linesBaseline, setLinesBaseline] = useState(() => [getEmptyPurchaseInvoiceLine()]);
@@ -693,7 +684,6 @@ export default function PurchaseInvoiceDrawer({
       );
       if (recent) rememberRecentSelectorOption(PURCHASE_INVOICE_SUPPLIER_RECENT_KIND, recent);
       invalidateTenantListQueries(queryClient, SUPPLIERS_LIST_QUERY_KEY);
-      setSupplierCreateOpen(false);
     },
     [form, queryClient],
   );
@@ -900,8 +890,8 @@ export default function PurchaseInvoiceDrawer({
   const viewLineItem = useCallback((itemId) => {
     const id = normalizeEntityId(itemId);
     if (id == null) return;
-    setItemViewId(String(id));
-  }, []);
+    openStackedDrawer({ featureId: "items", id: String(id), mode: "view" });
+  }, [openStackedDrawer]);
 
   const handleHeaderValuesChange = useCallback(
     (changed) => {
@@ -1054,7 +1044,7 @@ export default function PurchaseInvoiceDrawer({
           poDisabled={!supplierReady}
           invoiceId={invoiceId}
           onOpenSupplierDrawer={
-            !readOnly && supplierAccess.canAdd ? () => setSupplierCreateOpen(true) : undefined
+            !readOnly && supplierAccess.canAdd ? () => openStackedDrawer({ featureId: "suppliers", mode: "create", onCreated: onSupplierCreated }) : undefined
           }
           onValuesChange={handleHeaderValuesChange}
           keyboardRootRef={keyboardRootRef}
@@ -1096,25 +1086,6 @@ export default function PurchaseInvoiceDrawer({
           />
         </PurchaseInvoiceDrawerForm>
       </ResourceCrudDrawer>
-      {!readOnly && supplierAccess.canAdd ? (
-        <SupplierDrawer
-          open={open && supplierCreateOpen}
-          mode="create"
-          supplierId={null}
-          zIndex={1100}
-          onClose={() => setSupplierCreateOpen(false)}
-          onCreated={onSupplierCreated}
-        />
-      ) : null}
-      {itemAccess.canView ? (
-        <ItemDrawer
-          open={open && itemViewId != null}
-          mode="view"
-          itemId={itemViewId}
-          zIndex={1100}
-          onClose={() => setItemViewId(null)}
-        />
-      ) : null}
     </>
   );
 }

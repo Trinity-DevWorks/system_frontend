@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Items CRUD drawer shell — wires form, tabs, mutations, footer, and nested lookup drawers.
+ * Items CRUD drawer shell — wires form, tabs, mutations, and footer. Lookup "Add" buttons open stacked drawers.
  *
  * Used by:
  * - app/[locale]/main/items/page.js
@@ -10,7 +10,6 @@
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { useQueryClient } from "@tanstack/react-query";
 import ResourceDrawerTabs from "@/shared/components/resource-drawer/ResourceDrawerTabs";
 import { useResourceDrawerHeaderFields } from "@/shared/components/resource-drawer/useResourceDrawerHeaderFields";
 import { Alert, App, Form } from "antd";
@@ -33,7 +32,6 @@ import { useItemDrawerNestedCreate } from "../../hooks/useItemDrawerNestedCreate
 import { useItemDrawerMutations } from "../../queries/useItemDrawerMutations";
 import { useItemDrawerController } from "../../hooks/useItemDrawerController";
 import ItemDrawerFooter from "./components/ItemDrawerFooter";
-import ItemDrawerNestedDrawers from "./components/ItemDrawerNestedDrawers";
 import { useItemDrawerActions } from "../../hooks/useItemDrawerActions";
 import { useItemDrawerEditBaseline } from "../../hooks/useItemDrawerEditBaseline";
 import { useItemDrawerData } from "../../hooks/useItemDrawerData";
@@ -49,7 +47,6 @@ import { normalizeEntityId } from "@/lib/entityId";
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  *   onSaveAndNew?: () => void;
- *   zIndex?: number;
  * }} props
  */
 export default function ItemDrawer({
@@ -61,19 +58,17 @@ export default function ItemDrawer({
   onCreateSuccess,
   onSaveAndNew,
   editSeedRecord = null,
-  zIndex,
 }) {
   const t = useTranslations("Items");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState("general");
   const [savedEditBaseline, setSavedEditBaseline] = useState(
     /** @type {{ itemId: string; row: ReturnType<typeof toItemCacheRow> } | null} */ (null),
   );
 
-  const nestedCreate = useItemDrawerNestedCreate({ form, queryClient, open });
+  const nestedCreate = useItemDrawerNestedCreate({ form });
   const lastCreateIntent = usePersistedSaveIntent(ITEM_CREATE_SAVE_INTENT_KEY, ITEM_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
@@ -121,9 +116,13 @@ export default function ItemDrawer({
     return trackInventory && allowPurchase;
   }, [trackInventoryWatch, allowPurchaseWatch, detailRecord]);
 
+  // Same rule as the tab list: only top-level stock items hold variants.
+  const showVariantsTab =
+    detailRecord != null && detailRecord.parent_item_id == null && Boolean(trackInventoryWatch ?? detailRecord?.track_inventory ?? true);
+
   const allowedTabKeys = useMemo(
-    () => getAllowedTabKeys(tabsEnabled, showRecipeTab, showBundleTab, showReplenishmentTab),
-    [tabsEnabled, showBundleTab, showRecipeTab, showReplenishmentTab],
+    () => getAllowedTabKeys(tabsEnabled, showRecipeTab, showBundleTab, showReplenishmentTab, showVariantsTab),
+    [tabsEnabled, showBundleTab, showRecipeTab, showReplenishmentTab, showVariantsTab],
   );
   const resolvedActiveTab = resolveActiveTab(activeTab, allowedTabKeys);
 
@@ -180,7 +179,6 @@ export default function ItemDrawer({
     form,
     isCreateDirty,
     editBaselineForDirty,
-    clearNestedCreate: nestedCreate.clearNestedCreate,
     setActiveTab,
     onClose,
     modal,
@@ -207,7 +205,7 @@ export default function ItemDrawer({
     seedRow: editSeedRecord,
   });
 
-  const { tabItems, footerProps, nestedDrawersProps, showSaveGeneralFirstAlert } = useItemDrawerController({
+  const { tabItems, footerProps, showSaveGeneralFirstAlert } = useItemDrawerController({
     t,
     tApiErrors,
     form,
@@ -259,17 +257,6 @@ export default function ItemDrawer({
       handleEditSubmit: actions.handleEditSubmit,
       editSaveDisabled: actions.editSaveDisabled,
     },
-    nestedDrawers: {
-      nestedCategoryDrawerOpen: nestedCreate.nestedCategoryDrawerOpen,
-      nestedBrandDrawerOpen: nestedCreate.nestedBrandDrawerOpen,
-      nestedUnitGroupDrawerOpen: nestedCreate.nestedUnitGroupDrawerOpen,
-      nestedVatGroupDrawerOpen: nestedCreate.nestedVatGroupDrawerOpen,
-      closeNestedCreate: nestedCreate.closeNestedCreate,
-      onNestedCategoryCreated: nestedCreate.onNestedCategoryCreated,
-      onNestedBrandCreated: nestedCreate.onNestedBrandCreated,
-      onNestedUnitGroupCreated: nestedCreate.onNestedUnitGroupCreated,
-      onNestedVatGroupCreated: nestedCreate.onNestedVatGroupCreated,
-    },
   });
 
   return (
@@ -283,7 +270,6 @@ export default function ItemDrawer({
       requestClose={actions.requestClose}
       submitting={submitting}
       size={1170}
-      zIndex={zIndex}
       showDetailLoading={fetchRemoteDetail && detailQuery.isPending}
       detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
@@ -294,7 +280,6 @@ export default function ItemDrawer({
         <Alert type="info" showIcon className="mb-4" title={t("saveGeneralFirst")} />
       ) : null}
       <ResourceDrawerTabs activeKey={resolvedActiveTab} onChange={setActiveTab} items={tabItems} />
-      <ItemDrawerNestedDrawers {...nestedDrawersProps} />
     </ResourceCrudDrawer>
   );
 }

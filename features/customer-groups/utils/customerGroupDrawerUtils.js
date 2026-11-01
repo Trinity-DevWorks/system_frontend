@@ -22,6 +22,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (code !== String(defaults.code ?? "").trim().toUpperCase()) return true;
   if (name !== String(defaults.name ?? "").trim()) return true;
   if (isActive !== Boolean(defaults.is_active)) return true;
+  if ((v.price_list_id ?? null) !== (defaults.price_list_id ?? null)) return true;
   return false;
 }
 
@@ -38,6 +39,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (code !== String(row.code ?? "").trim().toUpperCase()) return true;
   if (name !== String(row.name ?? "").trim()) return true;
   if (isActive !== Boolean(row.is_active)) return true;
+  if (v.price_list_id !== undefined && row.price_list_id !== undefined && (v.price_list_id ?? null) !== (row.price_list_id ?? null)) return true;
   return false;
 }
 
@@ -60,6 +62,7 @@ export function toCustomerGroupCacheRow(row) {
     code: row.code,
     name: row.name,
     is_active: row.is_active !== false,
+    price_list_id: row.price_list_id,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -82,5 +85,6 @@ export function customerGroupFormValuesToPayload(values) {
     code: String(values.code ?? "").trim().toUpperCase(),
     name: String(values.name ?? "").trim(),
     is_active: values.is_active !== false,
+    ...(values.price_list_id !== undefined ? { price_list_id: values.price_list_id == null ? null : Number(values.price_list_id) } : {}),
   };
 }

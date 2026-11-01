@@ -229,6 +229,7 @@ export function findSalesInvoiceItemOptionByCode(options, raw) {
  *   track_inventory?: boolean;
  *   track_lots?: boolean;
  *   sales_order_line_id?: number;
+ *   delivery_note_line_id?: number;
  *   order_remaining_quantity?: number;
  *   catalogReloadKey?: number;
  *   price_base?: number;
@@ -425,6 +426,7 @@ export function mapSalesInvoiceLinesFromApi(lines, exchangeRate = 1) {
     track_inventory: Boolean(line.item?.track_inventory),
     track_lots: Boolean(line.item?.track_lots),
     sales_order_line_id: line.sales_order_line_id != null ? Number(line.sales_order_line_id) : undefined,
+    delivery_note_line_id: line.delivery_note_line_id != null ? Number(line.delivery_note_line_id) : undefined,
     order_remaining_quantity:
       line.order_remaining_quantity != null ? Number(line.order_remaining_quantity) : undefined,
   }));
@@ -468,6 +470,9 @@ export function getValidSalesInvoiceLines(lines) {
     if (notes) row.notes = notes;
     if (line.sales_order_line_id != null) {
       row.sales_order_line_id = Number(line.sales_order_line_id);
+    }
+    if (line.delivery_note_line_id != null) {
+      row.delivery_note_line_id = Number(line.delivery_note_line_id);
     }
     return row;
   });

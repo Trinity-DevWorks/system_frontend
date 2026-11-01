@@ -20,6 +20,7 @@
 import { featureById } from "@/features/registry";
 import { canOpenFeatureDrawer } from "@/lib/drawer/drawerAccess";
 import { DrawerHostPresenceProvider } from "@/lib/drawer/DrawerHostPresence";
+import { DrawerStackDepthProvider } from "@/lib/drawer/DrawerStackDepth";
 import { getDrawerRegistration, renderRegisteredDrawer } from "@/lib/drawer/drawerRegistry";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import {
@@ -46,7 +47,7 @@ export default function GlobalDrawerHost() {
   const { message } = App.useApp();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { session, closeDrawer, resetForeignDrawer, dropRedundantOpenParam, openDrawer } =
+  const { session, closeDrawer, resetForeignDrawer, dropRedundantOpenParam, openDrawer, clearStackedDrawers, stack } =
     useGlobalDrawer();
 
   const { moduleSet, isLoading: modulesLoading, isError: modulesError } = useTenantModules();
@@ -238,6 +239,17 @@ export default function GlobalDrawerHost() {
     liveDrawerRef.current = hostState != null;
   }, [hostState]);
 
+  // Stacked drawers belong to the base drawer: when it closes, close them too.
+  const hadBaseDrawerRef = useRef(false);
+  useEffect(() => {
+    if (hostState) {
+      hadBaseDrawerRef.current = true;
+    } else if (hadBaseDrawerRef.current) {
+      hadBaseDrawerRef.current = false;
+      clearStackedDrawers();
+    }
+  }, [hostState, clearStackedDrawers]);
+
   useEffect(() => {
     if (!exiting) return undefined;
     const timer = window.setTimeout(() => {
@@ -288,11 +300,13 @@ export default function GlobalDrawerHost() {
   const { Component, props } = rendered;
   return (
     <DrawerHostPresenceProvider afterOpenChange={handleAfterOpenChange}>
-      {/* Record id is not in the key so Save (keep) can change ?drawer=new → ?drawer=:id without remounting. */}
-      <Component
-        key={`${renderState.featureId}:${renderState.remountKey}`}
-        {...props}
-      />
+      <DrawerStackDepthProvider depth={stack.filter((e) => e.open).length}>
+        {/* Record id is not in the key so Save (keep) can change ?drawer=new → ?drawer=:id without remounting. */}
+        <Component
+          key={`${renderState.featureId}:${renderState.remountKey}`}
+          {...props}
+        />
+      </DrawerStackDepthProvider>
     </DrawerHostPresenceProvider>
   );
 }

@@ -16,8 +16,6 @@ export const SUPPLIER_LOOKUP_ADD_PAYMENT_METHOD = "__supplier_drawer_add_payment
 export const SUPPLIER_LOOKUP_ADD_PAYMENT_TERMS = "__supplier_drawer_add_payment_terms__";
 export const SUPPLIER_LOOKUP_ADD_VAT_GROUP = "__supplier_drawer_add_vat_group__";
 
-/** @typedef {"supplier-group" | "payment-method" | "payment-terms" | "vat-group"} SupplierNestedCreateKey */
-
 function optionalRelationId(value) {
   if (value == null || value === "") return null;
   const n = Number(value);

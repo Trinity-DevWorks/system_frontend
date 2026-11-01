@@ -1,5 +1,6 @@
 "use client";
 
+import PriceListSelect from "@/features/price-lists/components/PriceListSelect";
 import { Form, Input, Select, Switch, TimePicker } from "antd";
 
 /**
@@ -99,6 +100,9 @@ export default function BranchDrawerForm({
           unCheckedChildren={t("statusInactive")}
           disabled={statusLocked}
         />
+      </Form.Item>
+      <Form.Item name="price_list_id" label={t("fieldPriceList")} extra={t("fieldPriceListHint")}>
+        <PriceListSelect disabled={readOnly} />
       </Form.Item>
       <Form.Item name="is_default" label={t("fieldDefault")} valuePropName="checked">
         <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />

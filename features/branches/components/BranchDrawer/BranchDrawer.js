@@ -107,6 +107,7 @@ export default function BranchDrawer({
     (r) => ({
       name: r.name,
       shortcut_name: r.shortcut_name,
+      price_list_id: r.price_list_id === undefined ? undefined : (r.price_list_id ?? null),
       address: r.address ?? "",
       phone: r.phone ?? "",
       email: r.email ?? "",

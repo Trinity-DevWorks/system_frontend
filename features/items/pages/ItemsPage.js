@@ -2,7 +2,7 @@
 
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { useResourceAccess } from "@/lib/permissions";
-import { App, Spin } from "antd";
+import { App, Checkbox, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useMemo, useState } from "react";
 import { getItemTableColumns } from "../components/ItemTable/getItemTableColumns";
@@ -17,11 +17,13 @@ function ItemsTable() {
   const { notification, modal, message } = App.useApp();
   const access = useResourceAccess("items");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [hideVariants, setHideVariants] = useState(false);
 
   const { tableData, isPending, refetch, handleRefresh, refreshFetching, pagination, onSearchChange } = useItemsTableQuery({
     t,
     tApiErrors,
     notification,
+    hideVariants,
   });
 
   const drawer = useItemsPageDrawerState();
@@ -68,6 +70,11 @@ function ItemsTable() {
           onAdd: drawer.openCreateDrawer,
           showRefresh: true,
           onRefresh: handleRefresh,
+          extra: (
+            <Checkbox checked={hideVariants} onChange={(e) => setHideVariants(e.target.checked)}>
+              {t("hideVariants")}
+            </Checkbox>
+          ),
         }}
         rowSelection={
           access.canDelete

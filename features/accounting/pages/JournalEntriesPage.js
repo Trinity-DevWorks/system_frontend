@@ -102,7 +102,7 @@ function JournalEntriesTable() {
     (record) =>
       modal.confirm({
         title: t("entryDeleteConfirmTitle"),
-        content: t("entryDeleteConfirmContent", { name: String(record.entry_number) }),
+        content: t("entryDeleteConfirmContent", { name: String(record.entry_number ?? record.entry_date ?? record.id) }),
         okText: t("actionDelete"),
         okButtonProps: { danger: true },
         cancelText: t("drawerCancel"),

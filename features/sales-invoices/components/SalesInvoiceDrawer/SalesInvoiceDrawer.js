@@ -1,5 +1,6 @@
 "use client";
 
+import { useListPrices } from "@/features/price-lists/hooks/useListPrices";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
@@ -15,9 +16,7 @@ import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
 import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
-import CustomerDrawer from "@/features/customers/components/CustomerDrawer/CustomerDrawer";
 import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
-import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
 import { App, Button, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -91,18 +90,11 @@ export default function SalesInvoiceDrawer({
   const receiptAccess = useResourceAccess("customer_receipts");
   const creditNoteAccess = useResourceAccess("sales_credit_notes");
   const customerAccess = useResourceAccess("customers");
-  const { openDrawer } = useGlobalDrawer();
+  const { openDrawer, openStackedDrawer } = useGlobalDrawer();
   const itemAccess = useResourceAccess("items");
   const queryClient = useQueryClient();
   const { settings } = useCompanySettings();
   const [form] = Form.useForm();
-  const [customerCreateOpen, setCustomerCreateOpen] = useState(false);
-  const [itemViewId, setItemViewId] = useState(/** @type {string | null} */ (null));
-  const [itemViewDrawerOpen, setItemViewDrawerOpen] = useState(open);
-  if (open !== itemViewDrawerOpen) {
-    setItemViewDrawerOpen(open);
-    if (!open) setItemViewId(null);
-  }
 
   const [lines, setLines] = useState(() => [getEmptySalesInvoiceLine()]);
   const [linesBaseline, setLinesBaseline] = useState(() => [getEmptySalesInvoiceLine()]);
@@ -405,6 +397,15 @@ export default function SalesInvoiceDrawer({
     }),
     [headerRate, exchangeRateLocked, primaryCode, documentCurrencyCode, documentCurrencySymbol],
   );
+  useListPrices({
+    lines,
+    setLines,
+    customerId,
+    currencyId,
+    exchangeRate: headerRate,
+    date: formValuesWatch?.invoice_date ?? null,
+    enabled: !readOnly && customerReady,
+  });
   const exchangeRateHelp = exchangeRateLocked
     ? undefined
     : t("fieldExchangeRateHelp", {
@@ -528,7 +529,6 @@ export default function SalesInvoiceDrawer({
       );
       if (recent) rememberRecentSelectorOption(SALES_INVOICE_CUSTOMER_RECENT_KIND, recent);
       invalidateTenantListQueries(queryClient, CUSTOMERS_LIST_QUERY_KEY);
-      setCustomerCreateOpen(false);
     },
     [form, queryClient],
   );
@@ -666,7 +666,7 @@ export default function SalesInvoiceDrawer({
     );
   }, [modal, t, reverseMutation]);
 
-  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+  const { downloadPdf, printPdf, printReceipt, isPrintPending, isDownloadPending, isReceiptPending } = useDocumentPdfDownload({
     download: downloadSalesInvoicePdf,
     errorTitle: t("pdfError"),
   });
@@ -678,6 +678,10 @@ export default function SalesInvoiceDrawer({
   const handlePrint = useCallback(() => {
     printPdf(invoiceId, loadedNumber);
   }, [printPdf, invoiceId, loadedNumber]);
+
+  const handlePrintReceipt = useCallback(() => {
+    printReceipt(invoiceId, loadedNumber);
+  }, [printReceipt, invoiceId, loadedNumber]);
 
   const handleCreateReceipt = useCallback(() => {
     const id = normalizeEntityId(invoiceId);
@@ -749,8 +753,8 @@ export default function SalesInvoiceDrawer({
   const viewLineItem = useCallback((itemId) => {
     const id = normalizeEntityId(itemId);
     if (id == null) return;
-    setItemViewId(String(id));
-  }, []);
+    openStackedDrawer({ featureId: "items", id: String(id), mode: "view" });
+  }, [openStackedDrawer]);
 
   const handleHeaderValuesChange = useCallback((changed) => {
     if (!changed || typeof changed !== "object") return;
@@ -861,6 +865,8 @@ export default function SalesInvoiceDrawer({
           pdfLoading={isDownloadPending}
           printLoading={isPrintPending}
           onPrint={handlePrint}
+          onPrintReceipt={handlePrintReceipt}
+          receiptLoading={isReceiptPending}
           onDownloadPdf={handleDownloadPdf}
           showCreateReceipt={
             effectiveStatus === "posted" &&
@@ -904,7 +910,7 @@ export default function SalesInvoiceDrawer({
         billingAddressOptions={billingAddressOptions}
         shippingAddressOptions={shippingAddressOptions}
         onOpenCustomerDrawer={
-          !readOnly && customerAccess.canAdd ? () => setCustomerCreateOpen(true) : undefined
+          !readOnly && customerAccess.canAdd ? () => openStackedDrawer({ featureId: "customers", mode: "create", onCreated: onCustomerCreated }) : undefined
         }
         onValuesChange={handleHeaderValuesChange}
         keyboardRootRef={keyboardRootRef}
@@ -946,25 +952,6 @@ export default function SalesInvoiceDrawer({
         />
       </SalesInvoiceDrawerForm>
     </ResourceCrudDrawer>
-    {!readOnly && customerAccess.canAdd ? (
-      <CustomerDrawer
-        open={open && customerCreateOpen}
-        mode="create"
-        customerId={null}
-        zIndex={1100}
-        onClose={() => setCustomerCreateOpen(false)}
-        onCreateSuccess={onCustomerCreated}
-      />
-    ) : null}
-    {itemAccess.canView ? (
-      <ItemDrawer
-        open={open && itemViewId != null}
-        mode="view"
-        itemId={itemViewId}
-        zIndex={1100}
-        onClose={() => setItemViewId(null)}
-      />
-    ) : null}
     </>
   );
 }

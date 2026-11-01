@@ -72,3 +72,21 @@ export function downloadStockValuation(params) {
 
 export const REPORTS_QUERY_KEY = ["tenant", "reports"];
 export const OVERVIEW_QUERY_KEY = ["tenant", "overview"];
+
+/**
+ * Analytics reports share one shape: { columns: [{key, type}], rows, totals, meta }.
+ *
+ * @param {string} name e.g. "sales-analysis"
+ * @param {Record<string, string | number | boolean | undefined | null>} params
+ */
+export function fetchAnalyticsReport(name, params) {
+  return tenantRequest("GET", withQuery(`reports/${name}`, params));
+}
+
+/**
+ * @param {string} name
+ * @param {Record<string, string | number | boolean | undefined | null>} params
+ */
+export function downloadAnalyticsReport(name, params) {
+  return downloadPartyLedger(`reports/${name}/export`, params);
+}

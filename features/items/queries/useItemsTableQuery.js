@@ -18,10 +18,12 @@ import { getItemStatusLabel } from "../components/ItemTable/getItemTableColumns"
  *   t: (key: string) => string;
  *   tApiErrors: (key: string) => string;
  *   notification: ReturnType<typeof import("antd").App.useApp>["notification"];
+ *   hideVariants?: boolean;
  * }} args
  */
-export function useItemsTableQuery({ t, tApiErrors, notification }) {
+export function useItemsTableQuery({ t, tApiErrors, notification, hideVariants = false }) {
   const table = useTenantPaginatedTable({
+    extraParams: hideVariants ? { hide_variants: 1 } : undefined,
     queryKey: ITEMS_LIST_QUERY_KEY,
     queryFn: fetchItems,
     staleTime: QUERY_STALE_TIME.items,

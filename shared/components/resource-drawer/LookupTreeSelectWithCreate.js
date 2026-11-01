@@ -2,7 +2,7 @@
 
 import LookupFieldWithAddFooter from "@/shared/components/resource-drawer/LookupFieldWithAddFooter";
 import { Form, TreeSelect } from "antd";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 /**
  * TreeSelect with optional "add new" — in the tree (default) or as a footer inside the field box.
@@ -63,15 +63,21 @@ export default function LookupTreeSelectWithCreate({
       ? (/** @type {unknown} */ v) => (v === sentinel ? form.getFieldValue(name) : v)
       : undefined;
 
+  // Picking "Add new" must not leave that option shown: an empty field passes value={undefined},
+  // which Ant Design treats as uncontrolled, so remount the select to drop its internal pick.
+  const [addNewResetKey, setAddNewResetKey] = useState(0);
   const onSelect =
     sentinel && onAddNew && !addNewAsLink
       ? (/** @type {unknown} */ value) => {
-          if (value === sentinel) onAddNew();
+          if (value !== sentinel) return;
+          setAddNewResetKey((k) => k + 1);
+          onAddNew();
         }
       : undefined;
 
   const treeSelect = (
     <TreeSelect
+      key={addNewResetKey}
       allowClear={allowClear}
       showSearch={showSearch}
       treeNodeFilterProp="title"

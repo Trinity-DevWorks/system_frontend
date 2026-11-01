@@ -16,7 +16,23 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "@/features/stock/components/StockTableFilters/StockTableFilters";
-import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MoreOutlined, PrinterOutlined, SendOutlined, SwapOutlined } from "@ant-design/icons";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
+import {
+  CarOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  FileDoneOutlined,
+  FilePdfOutlined,
+  LockOutlined,
+  MoreOutlined,
+  PrinterOutlined,
+  SendOutlined,
+  StopOutlined,
+  SwapOutlined,
+} from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, DatePicker, Dropdown, Form, Select, Spin, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
@@ -49,6 +65,9 @@ function CommercialDocumentsTable({ config }) {
   const { notification, modal, message } = App.useApp();
   const queryClient = useQueryClient();
   const access = useResourceAccess(config.permission);
+  const invoiceAccess = useResourceAccess("sales_invoices");
+  const deliveryAccess = useResourceAccess("delivery_notes");
+  const { openDrawer } = useGlobalDrawer();
   const { openCreateDrawer, openEditDrawer, openViewDrawer } = usePageDrawer(config.featureId);
   const [statusFilter, setStatusFilter] = useState(/** @type {string | undefined} */ (undefined));
   const [customerFilter, setCustomerFilter] = useState(/** @type {string | undefined} */ (undefined));
@@ -118,6 +137,68 @@ function CommercialDocumentsTable({ config }) {
       actionMutation.mutate({ id, action });
     },
     [actionMutation],
+  );
+
+  // Same flow as the drawer: create the invoice from the order, then open it.
+  const invoiceMutation = useMutation({
+    mutationFn: (/** @type {string} */ id) => config.api.action(id, "invoice"),
+    onSuccess: (invoice) => {
+      message.success(t("invoiceSuccess"));
+      queryClient.invalidateQueries({ queryKey: config.listKey });
+      const id = invoice && typeof invoice === "object" && "id" in invoice ? invoice.id : null;
+      if (id != null) openDrawer({ featureId: "salesInvoices", id: String(id), mode: "edit" });
+    },
+    onError: (err) => {
+      notification.error({ title: t("saveError"), description: getLocalizedApiErrorMessage(tApiErrors, err) });
+    },
+  });
+
+  const handleCreateInvoice = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id != null) invoiceMutation.mutate(id);
+    },
+    [invoiceMutation],
+  );
+
+  const handleCreateDeliveryNote = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({ featureId: "deliveryNotes", mode: "create", extras: { fromSalesOrderId: String(id) } });
+    },
+    [openDrawer],
+  );
+
+  const handleCancelOrder = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("cancelConfirmTitle"),
+        content: t("cancelConfirmContent"),
+        okText: t("actionCancelOrder"),
+        okButtonProps: { danger: true },
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(actionMutation.mutateAsync({ id, action: "cancel" })),
+      });
+    },
+    [actionMutation, modal, t],
+  );
+
+  const handleCloseOrder = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      modal.confirm({
+        title: t("closeConfirmTitle"),
+        content: t("closeConfirmContent"),
+        okText: t("actionCloseOrder"),
+        cancelText: t("drawerCancel"),
+        onOk: () => closeConfirmOnError(actionMutation.mutateAsync({ id, action: "close" })),
+      });
+    },
+    [actionMutation, modal, t],
   );
 
   const handleDelete = useCallback(
@@ -195,6 +276,8 @@ function CommercialDocumentsTable({ config }) {
         render: (_, record) => {
           const status = String(record.status ?? "");
           const quotationActions = config.kind === "quotation" && access.canEdit;
+          const isOrder = config.kind === "order";
+          const orderOpen = isOrder && (status === "confirmed" || status === "partially_invoiced");
           const items = [
             access.canView ? { key: "view", icon: <EyeOutlined />, label: t("actionView"), onClick: () => openViewDrawer(record) } : null,
             access.canEdit && status === "draft"
@@ -211,6 +294,18 @@ function CommercialDocumentsTable({ config }) {
               : null,
             quotationActions && status === "accepted"
               ? { key: "convert", icon: <SwapOutlined />, label: t("actionConvert"), onClick: () => runAction(record, "convert") }
+              : null,
+            orderOpen && invoiceAccess.canAdd
+              ? { key: "invoice", icon: <FileDoneOutlined />, label: t("actionCreateInvoice"), onClick: () => handleCreateInvoice(record) }
+              : null,
+            orderOpen && deliveryAccess.canAdd
+              ? { key: "delivery", icon: <CarOutlined />, label: t("actionCreateDeliveryNote"), onClick: () => handleCreateDeliveryNote(record) }
+              : null,
+            orderOpen && access.canEdit
+              ? { key: "close", icon: <LockOutlined />, label: t("actionCloseOrder"), onClick: () => handleCloseOrder(record) }
+              : null,
+            isOrder && (status === "draft" || status === "confirmed") && access.canEdit
+              ? { key: "cancel", icon: <StopOutlined />, danger: true, label: t("actionCancelOrder"), onClick: () => handleCancelOrder(record) }
               : null,
             access.canPrint && isDocumentPdfPrintable(config.kind === "quotation" ? "sales_quotation" : "sales_order", status)
               ? {
@@ -240,7 +335,29 @@ function CommercialDocumentsTable({ config }) {
         },
       },
     ],
-    [access.canDelete, access.canEdit, access.canPrint, access.canView, downloadPdf, printPdf, config.dateField, config.extraDateField, config.kind, config.numberField, handleDelete, openEditDrawer, openViewDrawer, runAction, t],
+    [
+      access.canDelete,
+      access.canEdit,
+      access.canPrint,
+      access.canView,
+      config.dateField,
+      config.extraDateField,
+      config.kind,
+      config.numberField,
+      deliveryAccess.canAdd,
+      downloadPdf,
+      handleCancelOrder,
+      handleCloseOrder,
+      handleCreateDeliveryNote,
+      handleCreateInvoice,
+      handleDelete,
+      invoiceAccess.canAdd,
+      openEditDrawer,
+      openViewDrawer,
+      printPdf,
+      runAction,
+      t,
+    ],
   );
   const columns = useDocumentBranchColumns(baseColumns);
 

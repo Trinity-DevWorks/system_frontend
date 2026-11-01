@@ -48,6 +48,18 @@ export function useDocumentPdfDownload({ download, print, errorTitle }) {
     onError,
   });
 
+  const receiptMutation = useMutation({
+    mutationFn: (/** @type {{ id: string; number?: string | null }} */ vars) => {
+      const run = print ?? download;
+      return run(vars.id, typeof vars.number === "string" ? vars.number : undefined, {
+        locale,
+        mode: "print",
+        template: "receipt",
+      });
+    },
+    onError,
+  });
+
   const downloadPdf = useCallback(
     (/** @type {string | number | null | undefined} */ id, /** @type {unknown} */ number) => {
       if (id == null || id === "") return;
@@ -64,9 +76,20 @@ export function useDocumentPdfDownload({ download, print, errorTitle }) {
     [printMutation],
   );
 
+  /** 80mm thermal receipt (sales invoices and customer receipts only). */
+  const printReceipt = useCallback(
+    (/** @type {string | number | null | undefined} */ id, /** @type {unknown} */ number) => {
+      if (id == null || id === "") return;
+      receiptMutation.mutate({ id: String(id), number: typeof number === "string" ? number : undefined });
+    },
+    [receiptMutation],
+  );
+
   return {
     downloadPdf,
     printPdf,
+    printReceipt,
+    isReceiptPending: receiptMutation.isPending,
     isPending: downloadMutation.isPending || printMutation.isPending,
     isPrintPending: printMutation.isPending,
     isDownloadPending: downloadMutation.isPending,

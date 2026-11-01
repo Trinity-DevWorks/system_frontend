@@ -11,11 +11,19 @@
  * @param {boolean} showRecipeTab
  * @param {boolean} showBundleTab
  * @param {boolean} [showReplenishmentTab]
+ * @param {boolean} [showVariantsTab]
  */
-export function getAllowedTabKeys(tabsEnabled, showRecipeTab, showBundleTab, showReplenishmentTab = false) {
+export function getAllowedTabKeys(
+  tabsEnabled,
+  showRecipeTab,
+  showBundleTab,
+  showReplenishmentTab = false,
+  showVariantsTab = false,
+) {
   const keys = ["general"];
   if (!tabsEnabled) return keys;
   keys.push("uoms");
+  if (showVariantsTab) keys.push("variants");
   if (showRecipeTab) keys.push("recipe");
   if (showBundleTab) keys.push("bundle");
   if (showReplenishmentTab) keys.push("replenishment");

@@ -51,6 +51,7 @@ function mergeCurrencyBalancesForCache(oldRow, patchBalances) {
  *   tApiErrors: (key: string) => string;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
  *   defaults: Record<string, unknown>;
  *   supplierGroupsData: unknown[] | undefined;
@@ -64,6 +65,7 @@ export function useSupplierDrawerMutations({
   tApiErrors,
   onClose,
   onCreated,
+  onCreateSuccess,
   onSyncCreateDiscardBaseline,
   defaults,
   supplierGroupsData,
@@ -149,6 +151,10 @@ export function useSupplierDrawerMutations({
       });
       if (id != null) {
         queryClient.setQueryData(supplierDetailQueryKey(id), data);
+      }
+
+      if (typeof onCreateSuccess === "function" && id != null) {
+        onCreateSuccess(record ?? {});
       }
 
       if (intent === "keep") {

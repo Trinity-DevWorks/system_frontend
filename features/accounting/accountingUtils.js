@@ -19,8 +19,18 @@ export const JOURNAL_SOURCE_TYPES = [
   "production",
   "customer_opening_balance",
   "supplier_opening_balance",
+  "cash_bank_opening_balance",
   "vat_settlement",
   "year_end_close",
+  "sales_credit_note",
+  "delivery_note",
+  "customer_refund",
+  "purchase_debit_note",
+  "supplier_refund",
+  "treasury_transfer",
+  "expense_voucher",
+  "stock_transfer",
+  "bundle_explosion",
 ];
 
 /** Source type → FEATURES id whose drawer shows the document. */
@@ -35,6 +45,16 @@ export const SOURCE_DOCUMENT_FEATURE = {
   stock_count: "stockStockCounts",
   opening_stock: "stockOpeningStocks",
   production: "stockProductions",
+  sales_credit_note: "salesCreditNotes",
+  delivery_note: "deliveryNotes",
+  customer_refund: "customerRefunds",
+  purchase_debit_note: "purchaseDebitNotes",
+  supplier_refund: "supplierRefunds",
+  treasury_transfer: "treasuryTransfers",
+  expense_voucher: "expenseVouchers",
+  stock_transfer: "stockTransfers",
+  bundle_explosion: "stockBundleExplosions",
+  cash_bank_opening_balance: "cashBankAccounts",
 };
 
 /** @param {unknown} status */

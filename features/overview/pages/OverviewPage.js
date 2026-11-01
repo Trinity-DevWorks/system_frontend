@@ -106,7 +106,7 @@ export default function OverviewPage() {
   ];
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-auto p-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-auto">
       <div>
         <Typography.Title level={4} style={{ marginTop: 0, marginBottom: 4 }}>
           {t("title")}

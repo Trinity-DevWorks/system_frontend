@@ -29,7 +29,20 @@ export function getItemTableColumns(t, actions = {}) {
           "—"
         ),
     },
-    { title: t("colName"), dataIndex: "name", key: "name", width: 180, ellipsis: true },
+    {
+      title: t("colName"),
+      dataIndex: "name",
+      key: "name",
+      width: 200,
+      ellipsis: true,
+      render: (v, r) => (
+        <span>
+          {r?.is_variant_parent ? <Tag color="purple">{t("variantTemplate")}</Tag> : null}
+          {r?.parent_item_id ? <Tag color="geekblue">{t("variantChild")}</Tag> : null}
+          {v}
+        </span>
+      ),
+    },
     {
       title: t("colImage"),
       key: "primary_image",

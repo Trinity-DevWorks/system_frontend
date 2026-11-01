@@ -2,6 +2,7 @@
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { useDrawerHostPresence } from "@/lib/drawer/DrawerHostPresence";
+import { useDrawerStackDepth } from "@/lib/drawer/DrawerStackDepth";
 import { isRtlLocale } from "@/i18n/constants";
 import { Drawer, Spin } from "antd";
 import { useLocale } from "next-intl";
@@ -9,6 +10,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ResourceDrawerHeader from "@/shared/components/resource-drawer/ResourceDrawerHeader";
 import { focusFirstDrawerField } from "@/shared/components/resource-drawer/focusFirstDrawerField";
 import DocumentBranchTag from "@/shared/components/document-branch/DocumentBranchTag";
+
+/** "Pushed back" look when other drawers are stacked on top (per level above). */
+const STACK_SCALE_STEP = 0.04;
+const STACK_MIN_SCALE = 0.88;
+const STACK_SHIFT_STEP = 64;
+const STACK_TRANSITION = "transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), border-radius 0.3s";
+
+/** Transform origin = the edge the drawer is attached to, so it shrinks toward that edge. */
+const STACK_ORIGIN = {
+  right: "right center",
+  left: "left center",
+  top: "top center",
+  bottom: "bottom center",
+};
 
 /**
  * Shared drawer chrome: rich header, loading / detail error / body, same for every CRUD resource drawer.
@@ -117,6 +132,22 @@ export default function ResourceCrudDrawer({
     return size;
   }, [open, expanded, size, isVertical]);
 
+  // Depth effect works for any placement: shrink toward the drawer's own edge; side drawers
+  // that are not full width also shift away from it so their edge peeks out behind the top one.
+  const stackDepth = useDrawerStackDepth();
+  const stackSectionStyle = useMemo(() => {
+    /** @type {import("react").CSSProperties} */
+    const style = { transition: STACK_TRANSITION, transformOrigin: STACK_ORIGIN[placement] };
+    if (stackDepth <= 0) return style;
+    const scale = Math.max(STACK_MIN_SCALE, 1 - STACK_SCALE_STEP * stackDepth);
+    const canShift = !isVertical && drawerSize !== "100%";
+    const shift = canShift ? STACK_SHIFT_STEP * stackDepth * (placement === "right" ? -1 : 1) : 0;
+    style.transform = `${shift ? `translateX(${shift}px) ` : ""}scale(${scale})`;
+    style.borderRadius = 8;
+    style.overflow = "hidden";
+    return style;
+  }, [stackDepth, placement, isVertical, drawerSize]);
+
   const drawerTitle = (
     <ResourceDrawerHeader
       title={title}
@@ -163,6 +194,7 @@ export default function ResourceCrudDrawer({
       ]
         .filter(Boolean)
         .join(" ") || undefined}
+      styles={{ section: stackSectionStyle }}
       classNames={{
         header: "resource-crud-drawer-header",
         body: "resource-crud-drawer-body",

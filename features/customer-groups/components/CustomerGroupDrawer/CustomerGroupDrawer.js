@@ -70,6 +70,7 @@ export default function CustomerGroupDrawer({
       code: r.code,
       name: r.name,
       is_active: r.is_active !== false,
+      price_list_id: r.price_list_id === undefined ? undefined : (r.price_list_id ?? null),
     }),
     [],
   );

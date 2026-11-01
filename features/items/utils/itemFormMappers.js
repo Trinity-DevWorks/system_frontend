@@ -153,6 +153,7 @@ export function toItemCacheRow(row) {
     name: row.name,
     sku: row.sku,
     item_code: row.item_code ?? null,
+    parent_item_id: row.parent_item_id ?? null,
     plu_code: row.plu_code ?? null,
     item_type_id: row.item_type_id ?? row.item_type?.id ?? null,
     item_type: row.item_type ?? null,

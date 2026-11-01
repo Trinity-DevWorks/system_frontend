@@ -38,6 +38,8 @@ export const customerReceiptConfig = {
   partyRelation: "customer",
   invoiceIdField: "sales_invoice_id",
   documentKey: "customer_receipt",
+  /** Offers the 80mm thermal receipt next to Print. */
+  receiptPrint: true,
   api: {
     list: fetchCustomerReceipts,
     fetch: fetchCustomerReceipt,

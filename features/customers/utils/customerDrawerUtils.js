@@ -17,8 +17,6 @@ export const CUSTOMER_LOOKUP_ADD_PAYMENT_METHOD = "__customer_drawer_add_payment
 export const CUSTOMER_LOOKUP_ADD_PAYMENT_TERMS = "__customer_drawer_add_payment_terms__";
 export const CUSTOMER_LOOKUP_ADD_VAT_GROUP = "__customer_drawer_add_vat_group__";
 
-/** @typedef {"customer-group" | "salesman" | "payment-method" | "payment-terms" | "vat-group"} CustomerNestedCreateKey */
-
 /** @param {unknown} value */
 export function optionalRelationId(value) {
   if (value == null || value === "") return null;
@@ -142,6 +140,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (email !== String(defaults.email ?? "").trim()) return true;
   if (phone !== String(defaults.phone ?? "").trim()) return true;
   if (optionalRelationId(groupId) !== optionalRelationId(defaults.customer_group_id)) return true;
+  if (optionalRelationId(v.price_list_id) !== optionalRelationId(defaults.price_list_id)) return true;
   if (optionalRelationId(v.salesman_id) !== optionalRelationId(defaults.salesman_id)) return true;
   if (optionalRelationId(v.payment_method_id) !== optionalRelationId(defaults.payment_method_id)) return true;
   if (optionalRelationId(v.payment_terms_id) !== optionalRelationId(defaults.payment_terms_id)) return true;
@@ -190,6 +189,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (email !== String(row.email ?? "").trim()) return true;
   if (phone !== String(row.phone ?? "").trim()) return true;
   if (optionalRelationId(groupId) !== optionalRelationId(row.customer_group_id)) return true;
+  if (v.price_list_id !== undefined && row.price_list_id !== undefined && optionalRelationId(v.price_list_id) !== optionalRelationId(row.price_list_id)) return true;
   if (optionalRelationId(v.salesman_id) !== optionalRelationId(row.salesman_id)) return true;
   if (optionalRelationId(v.payment_method_id) !== optionalRelationId(row.payment_method_id)) return true;
   if (optionalRelationId(v.payment_terms_id) !== optionalRelationId(row.payment_terms_id)) return true;
@@ -232,6 +232,7 @@ export function toCustomerCacheRow(row) {
     phone: row.phone ?? null,
     type: row.type,
     customer_group_id: row.customer_group_id,
+    price_list_id: row.price_list_id,
     customer_group: row.customer_group && typeof row.customer_group === "object" ? row.customer_group : null,
     salesman_id: row.salesman_id ?? null,
     payment_method_id: row.payment_method_id ?? null,
@@ -381,6 +382,7 @@ export function customerFormValuesToPayload(values, mode) {
     email: emailRaw === "" ? null : emailRaw,
     phone: phoneRaw === "" ? null : phoneRaw,
     customer_group_id: optionalRelationId(values.customer_group_id),
+    ...(values.price_list_id !== undefined ? { price_list_id: values.price_list_id == null ? null : Number(values.price_list_id) } : {}),
     salesman_id: optionalRelationId(values.salesman_id),
     payment_method_id: optionalRelationId(values.payment_method_id),
     payment_terms_id: optionalRelationId(values.payment_terms_id),

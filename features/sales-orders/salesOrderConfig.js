@@ -14,6 +14,6 @@ export const salesOrderConfig = {
   dateField: "order_date",
   extraDateField: "requested_date",
   includeWarehouse: true,
-  statuses: ["draft", "confirmed", "partially_invoiced", "invoiced", "cancelled"],
+  statuses: ["draft", "confirmed", "partially_invoiced", "invoiced", "closed", "cancelled"],
   api,
 };
