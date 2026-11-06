@@ -3,8 +3,13 @@
 import { fetchCashBankAccountNames } from "@/features/cash-bank-accounts/api/cashBankAccounts.api";
 import AvailableBalanceHint from "@/features/cash-bank-accounts/components/AvailableBalanceHint";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { dayjsDatePattern } from "@/lib/tenant-format";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
+import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { useQuery } from "@tanstack/react-query";
-import { DatePicker, Form, Input, InputNumber, Select } from "antd";
+import { DatePicker, Form, Input, Select } from "antd";
+import dayjs from "dayjs";
 import { useMemo } from "react";
 
 /**
@@ -41,22 +46,27 @@ export default function TreasuryTransferDrawerForm({ form, readOnly, t }) {
   const crossCurrency = Boolean(from && to && Number(from.currency_id) !== Number(to.currency_id));
 
   return (
-    <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
-      <Form.Item name="transfer_date" label={t("fieldDate")} rules={[{ required: true, message: t("fieldDateRequired") }]}>
-        <DatePicker className="w-full" />
+    <Form form={form} layout="vertical" requiredMark={false} disabled={readOnly}>
+      <Form.Item
+        name="transfer_date"
+        label={<ResourceDrawerFieldLabel text={t("fieldDate")} required />}
+        rules={[{ required: true, message: t("fieldDateRequired") }]}
+        getValueProps={(value) => ({ value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined })}
+      >
+        <DatePicker className="w-full" format={dayjsDatePattern()} />
       </Form.Item>
       <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2">
         <Form.Item
           name="from_account_id"
-          label={t("fieldFromAccount")}
+          label={<ResourceDrawerFieldLabel text={t("fieldFromAccount")} required />}
           rules={[{ required: true, message: t("fieldAccountRequired") }]}
           extra={readOnly ? null : <AvailableBalanceHint account={from} amount={amountFrom} />}
         >
-          <Select showSearch optionFilterProp="label" loading={accountsQuery.isPending} options={options} />
+          <Select showSearch optionFilterProp="label" loading={accountsQuery.isPending} options={options} getPopupContainer={drawerSelectGetPopup} />
         </Form.Item>
         <Form.Item
           name="to_account_id"
-          label={t("fieldToAccount")}
+          label={<ResourceDrawerFieldLabel text={t("fieldToAccount")} required />}
           dependencies={["from_account_id"]}
           rules={[
             { required: true, message: t("fieldAccountRequired") },
@@ -67,40 +77,40 @@ export default function TreasuryTransferDrawerForm({ form, readOnly, t }) {
             }),
           ]}
         >
-          <Select showSearch optionFilterProp="label" loading={accountsQuery.isPending} options={options} />
+          <Select showSearch optionFilterProp="label" loading={accountsQuery.isPending} options={options} getPopupContainer={drawerSelectGetPopup} />
         </Form.Item>
         <Form.Item
           name="amount_from"
-          label={from?.currency_code ? `${t("fieldAmountSent")} (${from.currency_code})` : t("fieldAmountSent")}
+          label={<ResourceDrawerFieldLabel text={from?.currency_code ? `${t("fieldAmountSent")} (${from.currency_code})` : t("fieldAmountSent")} required />}
           rules={[{ required: true, message: t("fieldAmountRequired") }]}
         >
-          <InputNumber min={0} className="w-full" />
+          <TenantNumberInput kind="money" min={0} style={{ width: "100%" }} />
         </Form.Item>
         {crossCurrency ? (
           <Form.Item
             name="amount_to"
-            label={`${t("fieldAmountReceived")} (${to?.currency_code ?? ""})`}
+            label={<ResourceDrawerFieldLabel text={`${t("fieldAmountReceived")} (${to?.currency_code ?? ""})`} required />}
             rules={[{ required: true, message: t("fieldAmountRequired") }]}
           >
-            <InputNumber min={0} className="w-full" />
+            <TenantNumberInput kind="money" min={0} style={{ width: "100%" }} />
           </Form.Item>
         ) : null}
         {crossCurrency ? (
           <>
-            <Form.Item name="exchange_rate" label={`${t("fieldRate")} (${from?.currency_code ?? ""})`} extra={t("fieldRateHint")}>
-              <InputNumber min={0} className="w-full" stringMode />
+            <Form.Item name="exchange_rate" label={<ResourceDrawerFieldLabel text={`${t("fieldRate")} (${from?.currency_code ?? ""})`} />} extra={t("fieldRateHint")}>
+              <TenantNumberInput kind="rate" min={0} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item name="exchange_rate_to" label={`${t("fieldRate")} (${to?.currency_code ?? ""})`}>
-              <InputNumber min={0} className="w-full" stringMode />
+            <Form.Item name="exchange_rate_to" label={<ResourceDrawerFieldLabel text={`${t("fieldRate")} (${to?.currency_code ?? ""})`} />}>
+              <TenantNumberInput kind="rate" min={0} style={{ width: "100%" }} />
             </Form.Item>
           </>
         ) : null}
       </div>
-      <Form.Item name="reference" label={t("fieldReference")} rules={[{ max: 128 }]}>
+      <Form.Item name="reference" label={<ResourceDrawerFieldLabel text={t("fieldReference")} />} rules={[{ max: 128 }]}>
         <Input autoComplete="off" />
       </Form.Item>
-      <Form.Item name="notes" label={t("fieldNotes")}>
-        <Input.TextArea rows={3} />
+      <Form.Item name="notes" label={<ResourceDrawerFieldLabel text={t("fieldNotes")} />}>
+        <Input.TextArea rows={3} maxLength={2000} showCount={!readOnly} />
       </Form.Item>
     </Form>
   );

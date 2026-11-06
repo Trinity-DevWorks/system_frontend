@@ -2,184 +2,135 @@
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
-import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { createTreasuryTransfer, updateTreasuryTransfer } from "../api/treasuryTransfers.api";
-import {
-  patchTenantListCache,
-  patchTenantListCacheForCreate,
-  snapshotTenantListCache,
-  restoreTenantListCache,
-  cancelTenantListQueries,
-  invalidateTenantListQueries,
-} from "@/lib/tables/tenantListCache";
+import { normalizeEntityId } from "@/lib/entityId";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
-  TREASURY_TRANSFER_CREATE_SAVE_INTENT_EVENT,
-  TREASURY_TRANSFER_CREATE_SAVE_INTENT_KEY,
-  treasuryTransferFormValuesToPayload,
-  sortTreasuryTransfersByName,
-} from "../utils/treasuryTransferDrawerUtils";
+  createTreasuryTransfer,
+  deleteTreasuryTransfer,
+  postTreasuryTransfer,
+  reverseTreasuryTransfer,
+  updateTreasuryTransfer,
+} from "../api/treasuryTransfers.api";
+import { treasuryTransferFormValuesToPayload } from "../utils/treasuryTransferDrawerUtils";
 import { TREASURY_TRANSFERS_LIST_QUERY_KEY, treasuryTransferDetailQueryKey } from "./treasuryTransfersQueryKeys";
 
 /**
+ * Save / post / reverse / delete for the cash/bank transfer drawer (same flow as the other documents).
+ *
  * @param {{
  *   form: import("antd").FormInstance;
  *   message: import("antd").MessageInstance;
+ *   notification: import("antd").NotificationInstance;
  *   t: (key: string) => string;
  *   tApiErrors: (key: string) => string;
- *   onClose: () => void;
+ *   transferId: string | number | null;
  *   onCreated?: (record: Record<string, unknown>) => void;
- *   onCreateSuccess?: (record: Record<string, unknown>) => void;
- *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
- *   defaults: Record<string, unknown>;
+ *   onSaved?: (record: Record<string, unknown>) => void;
+ *   onPosted?: (record: Record<string, unknown>) => void;
+ *   onReversed?: (record: Record<string, unknown>) => void;
+ *   onDeleted?: () => void;
  * }} args
  */
 export function useTreasuryTransferDrawerMutations({
   form,
   message,
+  notification,
   t,
   tApiErrors,
-  onClose,
+  transferId,
   onCreated,
-  onCreateSuccess,
-  onSyncCreateDiscardBaseline,
-  defaults,
+  onSaved,
+  onPosted,
+  onReversed,
+  onDeleted,
 }) {
   const queryClient = useQueryClient();
 
-  const applyPayload = useCallback((values) => treasuryTransferFormValuesToPayload(values), []);
+  const invalidate = useCallback(() => {
+    invalidateTenantListQueries(queryClient, TREASURY_TRANSFERS_LIST_QUERY_KEY);
+    // Posting moves money between cash boxes / bank accounts.
+    queryClient.invalidateQueries({ queryKey: ["tenant", "cash-bank-accounts"] });
+  }, [queryClient]);
 
-  const createMutation = useMutation({
-    mutationFn: ({ payload }) => createTreasuryTransfer(payload),
-    onMutate: async ({ payload }) => {
-      const listKey = TREASURY_TRANSFERS_LIST_QUERY_KEY;
-      await cancelTenantListQueries(queryClient, listKey);
-      const previous = snapshotTenantListCache(queryClient, listKey);
-      const optimisticId = -Date.now();
-      const now = new Date().toISOString();
-      const optimisticRow = {
-        id: optimisticId,
-        ...payload,
-        created_at: now,
-        updated_at: now,
-      };
-      patchTenantListCacheForCreate(queryClient, listKey, (rows) => sortTreasuryTransfersByName([...rows, optimisticRow]));
-      return { previous, optimisticId };
+  const cacheDetail = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id != null) queryClient.setQueryData(treasuryTransferDetailQueryKey(id), record);
     },
-    onError: (err, _variables, context) => {
-      restoreTenantListCache(queryClient, context.previous);
+    [queryClient],
+  );
+
+  const onError = useCallback(
+    (err) => {
       if (!applyApiFieldErrors(form, err)) {
-        message.error(getLocalizedApiErrorMessage(tApiErrors, err));
+        notification.error({ title: t("actionError"), description: getLocalizedApiErrorMessage(tApiErrors, err) });
       }
     },
-    onSuccess: (data, variables, context) => {
-      const { intent } = variables;
-      const optimisticId = context?.optimisticId;
-      const listKey = TREASURY_TRANSFERS_LIST_QUERY_KEY;
+    [form, notification, t, tApiErrors],
+  );
 
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(TREASURY_TRANSFER_CREATE_SAVE_INTENT_KEY, intent);
-        } catch {
-          /* ignore */
-        }
-        notifyPersistedSaveIntent(TREASURY_TRANSFER_CREATE_SAVE_INTENT_EVENT);
-      }
-
-      const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
-      const id = record?.id;
-      patchTenantListCacheForCreate(queryClient, listKey, (rows) => {
-        const withoutTemp = optimisticId != null ? rows.filter((r) => r.id !== optimisticId) : rows;
-        if (id == null) return withoutTemp;
-        return sortTreasuryTransfersByName([...withoutTemp.filter((r) => r.id !== id), data]);
-      });
-      if (id != null) {
-        queryClient.setQueryData(treasuryTransferDetailQueryKey(id), data);
-      }
-
-      if (typeof onCreateSuccess === "function" && id != null) {
-        onCreateSuccess(record ?? {});
-      }
-
-      if (intent === "keep") {
-        onCreated?.(record ?? {});
-        message.success(t("drawerCreateSuccess"));
-        onSyncCreateDiscardBaseline?.("fromForm");
-        return;
-      }
-      if (intent === "new") {
-        form.resetFields();
-        form.setFieldsValue(defaults);
-        message.success(t("drawerCreateSuccess"));
-        onSyncCreateDiscardBaseline?.("defaults");
-        return;
-      }
-
-      form.resetFields();
-      form.setFieldsValue(defaults);
-      message.success(t("drawerCreateSuccess"));
-      onSyncCreateDiscardBaseline?.("defaults");
-      onClose();
-    },
-    onSettled: () => {
-      invalidateTenantListQueries(queryClient, TREASURY_TRANSFERS_LIST_QUERY_KEY);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, values }) => updateTreasuryTransfer(id, values),
-    onMutate: async ({ id, values }) => {
-      const listKey = TREASURY_TRANSFERS_LIST_QUERY_KEY;
-      const detailKey = treasuryTransferDetailQueryKey(id);
-      await cancelTenantListQueries(queryClient, listKey);
-      await queryClient.cancelQueries({ queryKey: detailKey });
-      const previousList = snapshotTenantListCache(queryClient, listKey);
-      const previousDetail = queryClient.getQueryData(detailKey);
-      const now = new Date().toISOString();
-      patchTenantListCache(queryClient, listKey, (rows) =>
-        rows.map((row) => (row.id === id ? { ...row, ...values, updated_at: now } : row)),
+  /** Create or update the draft; returns the saved record. */
+  const persist = useCallback(
+    async (values) => {
+      const body = treasuryTransferFormValuesToPayload(values);
+      const saved = /** @type {Record<string, any>} */ (
+        transferId != null ? await updateTreasuryTransfer(transferId, body) : await createTreasuryTransfer(body)
       );
-      queryClient.setQueryData(detailKey, (old) => {
-        if (!old || typeof old !== "object") {
-          return { id, ...values, updated_at: now };
-        }
-        return { ...old, ...values, updated_at: now };
-      });
-      return { previousList, previousDetail, id };
+      cacheDetail(saved);
+      if (transferId == null) onCreated?.(saved);
+      return saved;
     },
-    onError: (err, _variables, context) => {
-      restoreTenantListCache(queryClient, context.previousList);
-      if (context?.previousDetail !== undefined) {
-        queryClient.setQueryData(treasuryTransferDetailQueryKey(context.id), context.previousDetail);
-      }
-      if (!applyApiFieldErrors(form, err)) {
-        message.error(getLocalizedApiErrorMessage(tApiErrors, err));
-      }
-    },
-    onSuccess: (data, { id }) => {
-      const listKey = TREASURY_TRANSFERS_LIST_QUERY_KEY;
-      const detailKey = treasuryTransferDetailQueryKey(id);
-      patchTenantListCache(queryClient, listKey, (rows) => sortTreasuryTransfersByName(rows.map((row) => (row.id === id ? data : row))));
-      queryClient.setQueryData(detailKey, data);
-      message.success(t("drawerUpdateSuccess"));
-      onClose();
-    },
-    onSettled: (_data, _error, variables) => {
-      const id = variables?.id;
-      invalidateTenantListQueries(queryClient, TREASURY_TRANSFERS_LIST_QUERY_KEY);
-      if (id != null) {
-        queryClient.invalidateQueries({ queryKey: treasuryTransferDetailQueryKey(id) });
-      }
+    [transferId, cacheDetail, onCreated],
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: ({ values }) => persist(values),
+    onError,
+    onSuccess: (record) => {
+      message.success(transferId == null ? t("drawerCreateSuccess") : t("drawerUpdateSuccess"));
+      invalidate();
+      onSaved?.(record);
     },
   });
 
-  const submitting = createMutation.isPending || updateMutation.isPending;
+  const postMutation = useMutation({
+    mutationFn: async ({ values }) => {
+      const saved = await persist(values);
+      return postTreasuryTransfer(String(saved.id));
+    },
+    onError,
+    onSuccess: (record) => {
+      message.success(t("postSuccess"));
+      cacheDetail(record);
+      invalidate();
+      onPosted?.(record);
+    },
+  });
 
-  return {
-    createMutation,
-    updateMutation,
-    applyPayload,
-    submitting,
-  };
+  const reverseMutation = useMutation({
+    mutationFn: () => reverseTreasuryTransfer(String(transferId)),
+    onError,
+    onSuccess: (record) => {
+      message.success(t("reverseSuccess"));
+      cacheDetail(record);
+      invalidate();
+      onReversed?.(record);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteTreasuryTransfer(String(transferId)),
+    onError,
+    onSuccess: () => {
+      message.success(t("deleteSuccess"));
+      invalidate();
+      onDeleted?.();
+    },
+  });
+
+  const submitting = saveMutation.isPending || postMutation.isPending || reverseMutation.isPending || deleteMutation.isPending;
+
+  return { saveMutation, postMutation, reverseMutation, deleteMutation, submitting };
 }

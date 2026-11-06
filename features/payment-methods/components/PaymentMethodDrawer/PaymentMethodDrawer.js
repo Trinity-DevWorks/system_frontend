@@ -9,8 +9,6 @@ import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { CURRENCIES_LIST_QUERY_KEY, fetchCurrencyNames } from "@/features/currencies";
-import { usePostableAccounts } from "@/features/accounting/queries/usePostableAccounts";
-import { useTenantModules } from "@/lib/tenant-modules";
 import { fetchPaymentMethod } from "../../api/paymentMethods.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
@@ -67,26 +65,16 @@ export default function PaymentMethodDrawer({
       name: "",
       type: "cash",
       currency_id: undefined,
-      account_id: undefined,
       requires_reference: false,
       supports_change: true,
       is_default: false,
+      cash_bank_account_ids: [],
       is_active: true,
       notes: "",
     }),
     [],
   );
 
-  const { hasModule } = useTenantModules();
-  const accountingEnabled = hasModule("accounting");
-  const cashAccountFilter = useCallback(
-    (account) => account.type === "asset" && String(account.code ?? "").startsWith("5"),
-    [],
-  );
-  const { options: accountOptions, isPending: accountsLoading } = usePostableAccounts({
-    enabled: open && accountingEnabled,
-    filter: cashAccountFilter,
-  });
 
   const { data: currencies = [], isPending: currenciesLoading } = useQuery({
     queryKey: CURRENCIES_LIST_QUERY_KEY,
@@ -111,10 +99,12 @@ export default function PaymentMethodDrawer({
       name: r.name,
       type: String(r.type ?? "cash"),
       currency_id: r.currency_id == null ? undefined : Number(r.currency_id),
-      account_id: r.account_id == null ? undefined : Number(r.account_id),
       requires_reference: Boolean(r.requires_reference),
       supports_change: Boolean(r.supports_change),
       is_default: Boolean(r.is_default),
+      cash_bank_account_ids: Array.isArray(r.cash_bank_accounts)
+        ? r.cash_bank_accounts.map((row) => Number(row.cash_bank_account_id))
+        : [],
       is_active: Boolean(r.is_active),
       notes: r.notes ?? "",
     }),
@@ -290,8 +280,6 @@ export default function PaymentMethodDrawer({
         t={t}
         currencyOptions={currencyOptions}
         currencyLoading={currenciesLoading}
-        accountOptions={accountingEnabled ? accountOptions : null}
-        accountLoading={accountsLoading}
       />
     </ResourceCrudDrawer>
   );

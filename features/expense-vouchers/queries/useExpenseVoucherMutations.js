@@ -2,184 +2,135 @@
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
-import { notifyPersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { createExpenseVoucher, updateExpenseVoucher } from "../api/expenseVouchers.api";
-import {
-  patchTenantListCache,
-  patchTenantListCacheForCreate,
-  snapshotTenantListCache,
-  restoreTenantListCache,
-  cancelTenantListQueries,
-  invalidateTenantListQueries,
-} from "@/lib/tables/tenantListCache";
+import { normalizeEntityId } from "@/lib/entityId";
+import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
-  EXPENSE_VOUCHER_CREATE_SAVE_INTENT_EVENT,
-  EXPENSE_VOUCHER_CREATE_SAVE_INTENT_KEY,
-  expenseVoucherFormValuesToPayload,
-  sortExpenseVouchersByName,
-} from "../utils/expenseVoucherDrawerUtils";
+  createExpenseVoucher,
+  deleteExpenseVoucher,
+  postExpenseVoucher,
+  reverseExpenseVoucher,
+  updateExpenseVoucher,
+} from "../api/expenseVouchers.api";
+import { expenseVoucherFormValuesToPayload } from "../utils/expenseVoucherDrawerUtils";
 import { EXPENSE_VOUCHERS_LIST_QUERY_KEY, expenseVoucherDetailQueryKey } from "./expenseVouchersQueryKeys";
 
 /**
+ * Save / post / reverse / delete for the expense voucher drawer (same flow as the other documents).
+ *
  * @param {{
  *   form: import("antd").FormInstance;
  *   message: import("antd").MessageInstance;
+ *   notification: import("antd").NotificationInstance;
  *   t: (key: string) => string;
  *   tApiErrors: (key: string) => string;
- *   onClose: () => void;
+ *   voucherId: string | number | null;
  *   onCreated?: (record: Record<string, unknown>) => void;
- *   onCreateSuccess?: (record: Record<string, unknown>) => void;
- *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
- *   defaults: Record<string, unknown>;
+ *   onSaved?: (record: Record<string, unknown>) => void;
+ *   onPosted?: (record: Record<string, unknown>) => void;
+ *   onReversed?: (record: Record<string, unknown>) => void;
+ *   onDeleted?: () => void;
  * }} args
  */
 export function useExpenseVoucherDrawerMutations({
   form,
   message,
+  notification,
   t,
   tApiErrors,
-  onClose,
+  voucherId,
   onCreated,
-  onCreateSuccess,
-  onSyncCreateDiscardBaseline,
-  defaults,
+  onSaved,
+  onPosted,
+  onReversed,
+  onDeleted,
 }) {
   const queryClient = useQueryClient();
 
-  const applyPayload = useCallback((values) => expenseVoucherFormValuesToPayload(values), []);
+  const invalidate = useCallback(() => {
+    invalidateTenantListQueries(queryClient, EXPENSE_VOUCHERS_LIST_QUERY_KEY);
+    // Posting moves money out of a cash box / bank account.
+    queryClient.invalidateQueries({ queryKey: ["tenant", "cash-bank-accounts"] });
+  }, [queryClient]);
 
-  const createMutation = useMutation({
-    mutationFn: ({ payload }) => createExpenseVoucher(payload),
-    onMutate: async ({ payload }) => {
-      const listKey = EXPENSE_VOUCHERS_LIST_QUERY_KEY;
-      await cancelTenantListQueries(queryClient, listKey);
-      const previous = snapshotTenantListCache(queryClient, listKey);
-      const optimisticId = -Date.now();
-      const now = new Date().toISOString();
-      const optimisticRow = {
-        id: optimisticId,
-        ...payload,
-        created_at: now,
-        updated_at: now,
-      };
-      patchTenantListCacheForCreate(queryClient, listKey, (rows) => sortExpenseVouchersByName([...rows, optimisticRow]));
-      return { previous, optimisticId };
+  const cacheDetail = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id != null) queryClient.setQueryData(expenseVoucherDetailQueryKey(id), record);
     },
-    onError: (err, _variables, context) => {
-      restoreTenantListCache(queryClient, context.previous);
+    [queryClient],
+  );
+
+  const onError = useCallback(
+    (err) => {
       if (!applyApiFieldErrors(form, err)) {
-        message.error(getLocalizedApiErrorMessage(tApiErrors, err));
+        notification.error({ title: t("actionError"), description: getLocalizedApiErrorMessage(tApiErrors, err) });
       }
     },
-    onSuccess: (data, variables, context) => {
-      const { intent } = variables;
-      const optimisticId = context?.optimisticId;
-      const listKey = EXPENSE_VOUCHERS_LIST_QUERY_KEY;
+    [form, notification, t, tApiErrors],
+  );
 
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(EXPENSE_VOUCHER_CREATE_SAVE_INTENT_KEY, intent);
-        } catch {
-          /* ignore */
-        }
-        notifyPersistedSaveIntent(EXPENSE_VOUCHER_CREATE_SAVE_INTENT_EVENT);
-      }
-
-      const record = data && typeof data === "object" ? /** @type {Record<string, unknown>} */ (data) : null;
-      const id = record?.id;
-      patchTenantListCacheForCreate(queryClient, listKey, (rows) => {
-        const withoutTemp = optimisticId != null ? rows.filter((r) => r.id !== optimisticId) : rows;
-        if (id == null) return withoutTemp;
-        return sortExpenseVouchersByName([...withoutTemp.filter((r) => r.id !== id), data]);
-      });
-      if (id != null) {
-        queryClient.setQueryData(expenseVoucherDetailQueryKey(id), data);
-      }
-
-      if (typeof onCreateSuccess === "function" && id != null) {
-        onCreateSuccess(record ?? {});
-      }
-
-      if (intent === "keep") {
-        onCreated?.(record ?? {});
-        message.success(t("drawerCreateSuccess"));
-        onSyncCreateDiscardBaseline?.("fromForm");
-        return;
-      }
-      if (intent === "new") {
-        form.resetFields();
-        form.setFieldsValue(defaults);
-        message.success(t("drawerCreateSuccess"));
-        onSyncCreateDiscardBaseline?.("defaults");
-        return;
-      }
-
-      form.resetFields();
-      form.setFieldsValue(defaults);
-      message.success(t("drawerCreateSuccess"));
-      onSyncCreateDiscardBaseline?.("defaults");
-      onClose();
-    },
-    onSettled: () => {
-      invalidateTenantListQueries(queryClient, EXPENSE_VOUCHERS_LIST_QUERY_KEY);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, values }) => updateExpenseVoucher(id, values),
-    onMutate: async ({ id, values }) => {
-      const listKey = EXPENSE_VOUCHERS_LIST_QUERY_KEY;
-      const detailKey = expenseVoucherDetailQueryKey(id);
-      await cancelTenantListQueries(queryClient, listKey);
-      await queryClient.cancelQueries({ queryKey: detailKey });
-      const previousList = snapshotTenantListCache(queryClient, listKey);
-      const previousDetail = queryClient.getQueryData(detailKey);
-      const now = new Date().toISOString();
-      patchTenantListCache(queryClient, listKey, (rows) =>
-        rows.map((row) => (row.id === id ? { ...row, ...values, updated_at: now } : row)),
+  /** Create or update the draft; returns the saved record. */
+  const persist = useCallback(
+    async (values) => {
+      const body = expenseVoucherFormValuesToPayload(values);
+      const saved = /** @type {Record<string, any>} */ (
+        voucherId != null ? await updateExpenseVoucher(voucherId, body) : await createExpenseVoucher(body)
       );
-      queryClient.setQueryData(detailKey, (old) => {
-        if (!old || typeof old !== "object") {
-          return { id, ...values, updated_at: now };
-        }
-        return { ...old, ...values, updated_at: now };
-      });
-      return { previousList, previousDetail, id };
+      cacheDetail(saved);
+      if (voucherId == null) onCreated?.(saved);
+      return saved;
     },
-    onError: (err, _variables, context) => {
-      restoreTenantListCache(queryClient, context.previousList);
-      if (context?.previousDetail !== undefined) {
-        queryClient.setQueryData(expenseVoucherDetailQueryKey(context.id), context.previousDetail);
-      }
-      if (!applyApiFieldErrors(form, err)) {
-        message.error(getLocalizedApiErrorMessage(tApiErrors, err));
-      }
-    },
-    onSuccess: (data, { id }) => {
-      const listKey = EXPENSE_VOUCHERS_LIST_QUERY_KEY;
-      const detailKey = expenseVoucherDetailQueryKey(id);
-      patchTenantListCache(queryClient, listKey, (rows) => sortExpenseVouchersByName(rows.map((row) => (row.id === id ? data : row))));
-      queryClient.setQueryData(detailKey, data);
-      message.success(t("drawerUpdateSuccess"));
-      onClose();
-    },
-    onSettled: (_data, _error, variables) => {
-      const id = variables?.id;
-      invalidateTenantListQueries(queryClient, EXPENSE_VOUCHERS_LIST_QUERY_KEY);
-      if (id != null) {
-        queryClient.invalidateQueries({ queryKey: expenseVoucherDetailQueryKey(id) });
-      }
+    [voucherId, cacheDetail, onCreated],
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: ({ values }) => persist(values),
+    onError,
+    onSuccess: (record) => {
+      message.success(voucherId == null ? t("drawerCreateSuccess") : t("drawerUpdateSuccess"));
+      invalidate();
+      onSaved?.(record);
     },
   });
 
-  const submitting = createMutation.isPending || updateMutation.isPending;
+  const postMutation = useMutation({
+    mutationFn: async ({ values }) => {
+      const saved = await persist(values);
+      return postExpenseVoucher(String(saved.id));
+    },
+    onError,
+    onSuccess: (record) => {
+      message.success(t("postSuccess"));
+      cacheDetail(record);
+      invalidate();
+      onPosted?.(record);
+    },
+  });
 
-  return {
-    createMutation,
-    updateMutation,
-    applyPayload,
-    submitting,
-  };
+  const reverseMutation = useMutation({
+    mutationFn: () => reverseExpenseVoucher(String(voucherId)),
+    onError,
+    onSuccess: (record) => {
+      message.success(t("reverseSuccess"));
+      cacheDetail(record);
+      invalidate();
+      onReversed?.(record);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteExpenseVoucher(String(voucherId)),
+    onError,
+    onSuccess: () => {
+      message.success(t("deleteSuccess"));
+      invalidate();
+      onDeleted?.();
+    },
+  });
+
+  const submitting = saveMutation.isPending || postMutation.isPending || reverseMutation.isPending || deleteMutation.isPending;
+
+  return { saveMutation, postMutation, reverseMutation, deleteMutation, submitting };
 }

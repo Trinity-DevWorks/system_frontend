@@ -4,8 +4,20 @@
 
 import dayjs from "dayjs";
 
-export const TREASURY_TRANSFER_CREATE_SAVE_INTENT_KEY = "treasuryTransferDrawer:createSaveIntent";
-export const TREASURY_TRANSFER_CREATE_SAVE_INTENT_EVENT = "treasuryTransferDrawer:createSaveIntent:change";
+/** Form defaults for a new transfer. */
+export function getTreasuryTransferDefaults() {
+  return {
+    transfer_date: dayjs(),
+    from_account_id: undefined,
+    to_account_id: undefined,
+    amount_from: null,
+    amount_to: null,
+    exchange_rate: null,
+    exchange_rate_to: null,
+    reference: "",
+    notes: "",
+  };
+}
 
 /** @param {unknown} value */
 function dateString(value) {
@@ -37,19 +49,12 @@ function snapshot(v) {
 }
 
 /**
+ * True when the form differs from its baseline (defaults for a new transfer, the loaded record otherwise).
  * @param {import("antd").FormInstance} form
- * @param {Record<string, unknown>} defaults
+ * @param {Record<string, unknown>} baselineValues form-shaped values
  */
-export function isCreateDirtyVsDefaults(form, defaults) {
-  return snapshot(form.getFieldsValue(true)) !== snapshot(defaults);
-}
-
-/**
- * @param {import("antd").FormInstance} form
- * @param {Record<string, unknown>} row
- */
-export function isEditDirtyVsLoaded(form, row) {
-  return snapshot(form.getFieldsValue(true)) !== snapshot(recordToFormValues(row));
+export function isTreasuryTransferDirty(form, baselineValues) {
+  return snapshot(form.getFieldsValue(true)) !== snapshot(baselineValues);
 }
 
 /**
@@ -62,11 +67,6 @@ export function requiredFieldsValid(fromId, toId, amount) {
   if (String(fromId) === String(toId)) return false;
   const n = Number(amount);
   return Number.isFinite(n) && n > 0;
-}
-
-/** @param {Record<string, unknown>} row */
-export function toTreasuryTransferCacheRow(row) {
-  return { ...row };
 }
 
 /** @param {Record<string, unknown>} r */
@@ -82,15 +82,6 @@ export function recordToFormValues(r) {
     reference: r.reference ?? "",
     notes: r.notes ?? "",
   };
-}
-
-/** Newest first (date, then created). @param {unknown[]} list */
-export function sortTreasuryTransfersByName(list) {
-  return [...list].sort((a, b) =>
-    String(/** @type {{ transfer_date?: string }} */ (b).transfer_date ?? "").localeCompare(
-      String(/** @type {{ transfer_date?: string }} */ (a).transfer_date ?? ""),
-    ),
-  );
 }
 
 /** @param {Record<string, unknown>} values */
@@ -110,4 +101,20 @@ export function treasuryTransferFormValuesToPayload(values) {
     reference: trimOrNull(values.reference),
     notes: trimOrNull(values.notes),
   };
+}
+
+/**
+ * @param {(key: string) => string} t
+ * @param {string | null | undefined} status
+ */
+export function getTreasuryTransferStatusLabel(t, status) {
+  if (status === "draft" || status === "posted" || status === "reversed") return t(`status_${status}`);
+  return status ? String(status) : "—";
+}
+
+/** @param {string | null | undefined} status */
+export function treasuryTransferStatusColor(status) {
+  if (status === "posted") return "green";
+  if (status === "reversed") return "warning";
+  return "default";
 }

@@ -16,6 +16,7 @@ import { SiFocusStop } from "./salesInvoiceDrawerKeyboard";
 import { DownOutlined } from "@ant-design/icons";
 import { AutoComplete, Button, Col, ConfigProvider, DatePicker, Form, Input, Popover, Row, Select, Tooltip } from "antd";
 import dayjs from "dayjs";
+import { PartyBalanceLabel } from "@/shared/components/party/PartyBalancePopover";
 
 /**
  * @param {HTMLElement | null | undefined} trigger
@@ -176,6 +177,7 @@ function InvoiceCustomerBoundValue({ name, label, options, placeholder, empty, e
  *   currencyOptions: { value: number; label: string }[];
  *   salesmanOptions: { value: string; label: string }[];
  *   paymentMethodOptions: { value: number; label: string }[];
+ *   paymentMethodSelectable?: boolean;
  *   paymentTermOptions: { value: number; label: string }[];
  *   warehousesPending: boolean;
  *   currenciesPending: boolean;
@@ -201,6 +203,7 @@ export default function SalesInvoiceDrawerForm({
   currencyOptions,
   salesmanOptions,
   paymentMethodOptions,
+  paymentMethodSelectable = false,
   paymentTermOptions,
   warehousesPending,
   currenciesPending,
@@ -237,7 +240,14 @@ export default function SalesInvoiceDrawerForm({
                 <LookupSelectWithCreate
                   form={form}
                   name="customer_id"
-                  label={<ResourceDrawerFieldLabel text={t("fieldCustomer")} required />}
+                  label={
+                    <PartyBalanceLabel
+                      label={<ResourceDrawerFieldLabel text={t("fieldCustomer")} required />}
+                      party="customer"
+                      partyField="customer_id"
+                      getPopupContainer={drawerSelectGetPopup}
+                    />
+                  }
                   rules={[{ required: true, message: t("customerRequired") }]}
                   readOnly={readOnly}
                   addNewSentinel={SI_LOOKUP_ADD_CUSTOMER}
@@ -435,15 +445,32 @@ export default function SalesInvoiceDrawerForm({
             </Col>
             <Col xs={24} sm={12} md={8}>
               <SiFocusStop field="payment_method">
-                <InvoiceCustomerBoundValue
-                  name="payment_method_id"
-                  label={<ResourceDrawerFieldLabel text={t("fieldPaymentMethod")} optional />}
-                  options={paymentMethodOptions}
-                  placeholder={t("paymentMethodPlaceholder")}
-                  empty={"\u2014"}
-                  enabled={customerReady}
-                  loading={paymentMethodsPending}
-                />
+                {paymentMethodSelectable ? (
+                  <Form.Item
+                    name="payment_method_id"
+                    label={<ResourceDrawerFieldLabel text={t("fieldPaymentMethod")} optional />}
+                  >
+                    <Select
+                      showSearch
+                      allowClear
+                      filterOption={salesInvoiceSelectFilter}
+                      className="w-full"
+                      placeholder={t("paymentMethodPlaceholder")}
+                      options={paymentMethodOptions}
+                      getPopupContainer={drawerSelectGetPopup}
+                    />
+                  </Form.Item>
+                ) : (
+                  <InvoiceCustomerBoundValue
+                    name="payment_method_id"
+                    label={<ResourceDrawerFieldLabel text={t("fieldPaymentMethod")} optional />}
+                    options={paymentMethodOptions}
+                    placeholder={t("paymentMethodPlaceholder")}
+                    empty={"\u2014"}
+                    enabled={customerReady}
+                    loading={paymentMethodsPending}
+                  />
+                )}
               </SiFocusStop>
             </Col>
           </Row>

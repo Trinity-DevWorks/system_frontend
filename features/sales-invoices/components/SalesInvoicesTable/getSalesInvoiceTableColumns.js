@@ -32,11 +32,18 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
       width: 140,
       ellipsis: true,
       sorter: (a, b) => String(a.invoice_number ?? "").localeCompare(String(b.invoice_number ?? "")),
-      render: (value) =>
+      render: (value, record) =>
         value ? (
-          <Typography.Text code className="text-xs">
-            {value}
-          </Typography.Text>
+          <span className="inline-flex items-center gap-1">
+            <Typography.Text code className="text-xs">
+              {value}
+            </Typography.Text>
+            {record?.is_opening ? (
+              <Tag color="geekblue" className="m-0" title={record?.original_number ?? undefined}>
+                {t("openingTag")}
+              </Tag>
+            ) : null}
+          </span>
         ) : (
           "\u2014"
         ),
@@ -119,6 +126,8 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
       fixed: "right",
       render: (_, record) => {
         const isDraft = isSalesInvoiceDraft(record?.status);
+        // Opening invoices are managed from the customer/supplier: no print, return or reverse here.
+        const opening = record?.is_opening === true;
         const items = [
           {
             key: "view",
@@ -126,7 +135,7 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
-          ...(onPrint && isDocumentPdfPrintable("sales_invoice", record?.status)
+          ...(onPrint && !opening && isDocumentPdfPrintable("sales_invoice", record?.status)
             ? [
                 {
                   key: "print",
@@ -136,7 +145,7 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                 },
               ]
             : []),
-          ...(onDownloadPdf && isDocumentPdfPrintable("sales_invoice", record?.status)
+          ...(onDownloadPdf && !opening && isDocumentPdfPrintable("sales_invoice", record?.status)
             ? [
                 {
                   key: "pdf",
@@ -146,7 +155,7 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                 },
               ]
             : []),
-          ...(onCreateCreditNote && salesInvoiceHasCreditableBalance(record)
+          ...(onCreateCreditNote && !opening && salesInvoiceHasCreditableBalance(record)
             ? [
                 {
                   key: "create-credit-note",
@@ -193,7 +202,7 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                 },
               ]
             : []),
-          ...(onReverse && record?.status === "posted"
+          ...(onReverse && !opening && record?.status === "posted"
             ? [
                 {
                   key: "reverse",

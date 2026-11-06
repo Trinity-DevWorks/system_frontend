@@ -5,7 +5,8 @@ import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/Resou
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { Select, Typography } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
-import { formatTenantMoney } from "@/lib/tenant-format";
+import { formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
+import { getTenantFormatSettings } from "@/lib/tenant-format-runtime";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { useEffect, useMemo, useRef } from "react";
 import { formatStockQuantity } from "../../utils/formatStockQuantity";
@@ -117,7 +118,7 @@ function SrvReadOnlyCost({ value, waitingOnWarehouse, waitingOnLot, pending, t }
   if (waitingOnWarehouse) label = t("srvOnHandNeedWarehouse");
   else if (waitingOnLot) label = t("srvOnHandNeedLot");
   else if (pending) label = "…";
-  else if (value != null && Number.isFinite(value)) label = formatTenantMoney(value) || "—";
+  else if (value != null && Number.isFinite(value)) label = formatTenantMoneyWithSymbol(value, getTenantFormatSettings().primaryCurrencySymbol) || "—";
 
   return (
     <Typography.Text type="secondary" className="block truncate tabular-nums">
@@ -380,7 +381,7 @@ export default function StockRevaluationLineEditor({
               : computeSrvValueDelta(row.quantity_on_hand, row.old_unit_cost, row.new_unit_cost);
           return (
             <Typography.Text type="secondary" className="block truncate tabular-nums">
-              {delta != null && Number.isFinite(delta) ? formatTenantMoney(delta) || "—" : "—"}
+              {delta != null && Number.isFinite(delta) ? formatTenantMoneyWithSymbol(delta, getTenantFormatSettings().primaryCurrencySymbol) || "—" : "—"}
             </Typography.Text>
           );
         }}

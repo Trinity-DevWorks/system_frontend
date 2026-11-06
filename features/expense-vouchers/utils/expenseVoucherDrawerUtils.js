@@ -4,8 +4,23 @@
 
 import dayjs from "dayjs";
 
-export const EXPENSE_VOUCHER_CREATE_SAVE_INTENT_KEY = "expenseVoucherDrawer:createSaveIntent";
-export const EXPENSE_VOUCHER_CREATE_SAVE_INTENT_EVENT = "expenseVoucherDrawer:createSaveIntent:change";
+/** An empty expense line. */
+export function getEmptyExpenseLine() {
+  return { account_id: undefined, description: "", amount: null, vat_group_id: undefined };
+}
+
+/** Form defaults for a new expense voucher. */
+export function getExpenseVoucherDefaults() {
+  return {
+    voucher_date: dayjs(),
+    cash_bank_account_id: undefined,
+    exchange_rate: null,
+    payee: "",
+    reference: "",
+    notes: "",
+    lines: [getEmptyExpenseLine()],
+  };
+}
 
 /** @param {unknown} value */
 function dateString(value) {
@@ -36,19 +51,12 @@ function snapshot(v) {
 }
 
 /**
+ * True when the form differs from its baseline (defaults for a new voucher, the loaded record otherwise).
  * @param {import("antd").FormInstance} form
- * @param {Record<string, unknown>} defaults
+ * @param {Record<string, unknown>} baselineValues form-shaped values
  */
-export function isCreateDirtyVsDefaults(form, defaults) {
-  return snapshot(form.getFieldsValue(true)) !== snapshot(defaults);
-}
-
-/**
- * @param {import("antd").FormInstance} form
- * @param {Record<string, unknown>} row
- */
-export function isEditDirtyVsLoaded(form, row) {
-  return snapshot(form.getFieldsValue(true)) !== snapshot(recordToFormValues(row));
+export function isExpenseVoucherDirty(form, baselineValues) {
+  return snapshot(form.getFieldsValue(true)) !== snapshot(baselineValues);
 }
 
 /**
@@ -59,11 +67,6 @@ export function requiredFieldsValid(cashId, lines) {
   if (cashId == null || cashId === "") return false;
   const rows = Array.isArray(lines) ? lines : [];
   return rows.some((l) => l && l.account_id != null && Number(l.amount) > 0);
-}
-
-/** @param {Record<string, unknown>} row */
-export function toExpenseVoucherCacheRow(row) {
-  return { ...row };
 }
 
 /** @param {Record<string, unknown>} r */
@@ -83,15 +86,6 @@ export function recordToFormValues(r) {
       vat_group_id: l.vat_group_id ?? undefined,
     })),
   };
-}
-
-/** Newest first. @param {unknown[]} list */
-export function sortExpenseVouchersByName(list) {
-  return [...list].sort((a, b) =>
-    String(/** @type {{ voucher_date?: string }} */ (b).voucher_date ?? "").localeCompare(
-      String(/** @type {{ voucher_date?: string }} */ (a).voucher_date ?? ""),
-    ),
-  );
 }
 
 /** @param {Record<string, unknown>} values */
@@ -117,4 +111,20 @@ export function expenseVoucherFormValuesToPayload(values) {
         vat_group_id: l.vat_group_id == null || l.vat_group_id === "" ? null : Number(l.vat_group_id),
       })),
   };
+}
+
+/**
+ * @param {(key: string) => string} t
+ * @param {string | null | undefined} status
+ */
+export function getExpenseVoucherStatusLabel(t, status) {
+  if (status === "draft" || status === "posted" || status === "reversed") return t(`status_${status}`);
+  return status ? String(status) : "—";
+}
+
+/** @param {string | null | undefined} status */
+export function expenseVoucherStatusColor(status) {
+  if (status === "posted") return "green";
+  if (status === "reversed") return "warning";
+  return "default";
 }

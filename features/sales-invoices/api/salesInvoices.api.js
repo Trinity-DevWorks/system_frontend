@@ -65,8 +65,26 @@ export async function syncSalesInvoiceLines(invoiceId, body) {
 /**
  * @param {string} invoiceId
  */
-export function postSalesInvoice(invoiceId) {
-  return tenantRequest("POST", `sales-invoices/${invoiceId}/post`);
+/**
+ * Payments taken when the invoice is posted (split payment).
+ * @param {string} invoiceId
+ * @param {{ payments: Record<string, unknown>[] }} body
+ */
+export function syncSalesInvoicePayments(invoiceId, body) {
+  return tenantRequest("PUT", `sales-invoices/${invoiceId}/payments`, body);
+}
+
+/**
+ * Money received later against a posted invoice; each row becomes a receipt.
+ * @param {string} invoiceId
+ * @param {{ payments: Record<string, unknown>[]; payment_date?: string }} body
+ */
+export function recordSalesInvoicePayments(invoiceId, body) {
+  return tenantRequest("POST", `sales-invoices/${invoiceId}/payments/record`, body);
+}
+
+export function postSalesInvoice(invoiceId, body = undefined) {
+  return tenantRequest("POST", `sales-invoices/${invoiceId}/post`, body);
 }
 
 /** @param {string} invoiceId */

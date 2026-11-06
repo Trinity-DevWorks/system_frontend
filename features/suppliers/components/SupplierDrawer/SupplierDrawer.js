@@ -24,6 +24,7 @@ import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 import SupplierDrawerForm from "./SupplierDrawerForm";
+import { mapOpeningDocumentsToForm } from "@/features/party-opening/openingDocumentsUtils";
 import {
   SUPPLIER_CREATE_SAVE_INTENT_EVENT,
   SUPPLIER_CREATE_SAVE_INTENT_KEY,
@@ -89,7 +90,7 @@ export default function SupplierDrawer({
       payment_terms_id: undefined,
       vat_group_id: undefined,
       currency_credit_limits: [],
-      currency_opening_balances: [],
+      opening_documents: [],
       is_active: true,
       is_vat_registered: false,
       is_exempted: false,
@@ -115,6 +116,7 @@ export default function SupplierDrawer({
       payment_terms_id: r.payment_terms_id ?? undefined,
       vat_group_id: r.vat_group_id ?? undefined,
       ...mapApiCurrencyBalancesToFormSplit(r.currency_balances),
+      opening_documents: mapOpeningDocumentsToForm(r.opening_documents),
       is_active: r.is_active !== false,
       is_vat_registered: r.is_vat_registered === true,
       is_exempted: r.is_exempted === true,

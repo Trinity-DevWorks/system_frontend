@@ -1,8 +1,6 @@
 "use client";
 
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
-import { useMemo } from "react";
-import { getTreasuryTransferStatusLabel } from "../components/TreasuryTransferTable/getTreasuryTransferTableColumns";
 import { fetchTreasuryTransfers } from "../api/treasuryTransfers.api";
 import { TREASURY_TRANSFERS_LIST_QUERY_KEY } from "./treasuryTransfersQueryKeys";
 
@@ -23,19 +21,8 @@ export function useTreasuryTransfersTableQuery({ t, tApiErrors, notification }) 
     notification,
   });
 
-  const { rows } = table;
-
-  const tableData = useMemo(
-    () =>
-      rows.map((row) => ({
-        ...row,
-        is_active_label: getTreasuryTransferStatusLabel(row?.is_active, t),
-      })),
-    [rows, t],
-  );
-
   return {
-    tableData,
+    tableData: table.rows,
     isPending: table.isPending,
     isFetching: table.isFetching,
     refetch: table.refetch,

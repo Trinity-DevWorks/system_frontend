@@ -258,6 +258,8 @@ export default function PurchaseInvoiceDrawer({
     loadedStatus ?? (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
   const readOnly =
     mode === "view" || !isPurchaseInvoiceDraft(effectiveStatus) || (mode === "edit" && !access.canEdit);
+  // Opening invoices (old balances) are managed from the supplier: no reverse or print here.
+  const isOpeningInvoice = Boolean((detailQuery.data ?? tableSeedRecord)?.is_opening);
 
   const formValuesWatch = Form.useWatch([], form);
   const supplierId = formValuesWatch?.supplier_id ?? null;
@@ -997,8 +999,8 @@ export default function PurchaseInvoiceDrawer({
             saveDisabled={!canSubmitRequired}
             postDisabled={!canSubmitRequired || !access.canEdit}
             showDelete={!readOnly && invoiceId != null && access.canDelete}
-            showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
-            showPdf={invoiceId != null && access.canPrint && isDocumentPdfPrintable("purchase_invoice", effectiveStatus)}
+            showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse && !isOpeningInvoice}
+            showPdf={invoiceId != null && access.canPrint && !isOpeningInvoice && isDocumentPdfPrintable("purchase_invoice", effectiveStatus)}
             pdfLoading={isDownloadPending}
             printLoading={isPrintPending}
             onPrint={handlePrint}

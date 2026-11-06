@@ -34,12 +34,15 @@ export const supplierLedgerConfig = {
   endpointFor: (/** @type {string} */ partyId) => `suppliers/${partyId}/ledger-entries`,
   exportEndpointFor: (/** @type {string} */ partyId) => `suppliers/${partyId}/ledger-export`,
   typeLabelKey: {
-    opening_balance: "typeOpeningBalance",
     purchase_invoice: "typePurchaseInvoice",
     payment: "typePayment",
+    debit_note: "typeDebitNote",
+    refund: "typeRefund",
   },
   documentFeature: {
     purchase_invoice: "purchaseInvoices",
     payment: "supplierPayments",
+    debit_note: "purchaseDebitNotes",
+    refund: "supplierRefunds",
   },
 };

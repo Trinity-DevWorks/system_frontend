@@ -1,6 +1,6 @@
 "use client";
 
-import { formatTenantMoney } from "@/lib/tenant-format";
+import { formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 
 /**
  * Purchase order totals footer, same panes as the sales order drawer.
@@ -13,15 +13,16 @@ import { formatTenantMoney } from "@/lib/tenant-format";
  *     tax_total?: string | number;
  *     grand_total?: string | number;
  *   } | null;
+ *   currencySymbol?: string;
  * }} props
  */
-export default function PurchaseOrderTotals({ t, totals = null }) {
+export default function PurchaseOrderTotals({ t, totals = null, currencySymbol = "" }) {
   return (
     <div className="sales-invoice-totals">
-      <Summary label={t("poTotalSubtotal")} value={formatTenantMoney(totals?.subtotal)} />
-      <Summary label={t("poTotalDiscount")} value={formatTenantMoney(totals?.discount_total)} />
-      <Summary label={t("poTotalTax")} value={formatTenantMoney(totals?.tax_total)} />
-      <Summary label={t("poTotalGrand")} value={formatTenantMoney(totals?.grand_total)} />
+      <Summary label={t("poTotalSubtotal")} value={formatTenantMoneyWithSymbol(totals?.subtotal, currencySymbol)} />
+      <Summary label={t("poTotalDiscount")} value={formatTenantMoneyWithSymbol(totals?.discount_total, currencySymbol)} />
+      <Summary label={t("poTotalTax")} value={formatTenantMoneyWithSymbol(totals?.tax_total, currencySymbol)} />
+      <Summary label={t("poTotalGrand")} value={formatTenantMoneyWithSymbol(totals?.grand_total, currencySymbol)} />
     </div>
   );
 }

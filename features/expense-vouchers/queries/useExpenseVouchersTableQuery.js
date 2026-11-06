@@ -1,8 +1,6 @@
 "use client";
 
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
-import { useMemo } from "react";
-import { getExpenseVoucherStatusLabel } from "../components/ExpenseVoucherTable/getExpenseVoucherTableColumns";
 import { fetchExpenseVouchers } from "../api/expenseVouchers.api";
 import { EXPENSE_VOUCHERS_LIST_QUERY_KEY } from "./expenseVouchersQueryKeys";
 
@@ -23,19 +21,8 @@ export function useExpenseVouchersTableQuery({ t, tApiErrors, notification }) {
     notification,
   });
 
-  const { rows } = table;
-
-  const tableData = useMemo(
-    () =>
-      rows.map((row) => ({
-        ...row,
-        is_active_label: getExpenseVoucherStatusLabel(row?.is_active, t),
-      })),
-    [rows, t],
-  );
-
   return {
-    tableData,
+    tableData: table.rows,
     isPending: table.isPending,
     isFetching: table.isFetching,
     refetch: table.refetch,

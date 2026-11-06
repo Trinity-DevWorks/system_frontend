@@ -23,6 +23,7 @@ import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 import CustomerDrawerForm from "./CustomerDrawerForm";
+import { mapOpeningDocumentsToForm } from "@/features/party-opening/openingDocumentsUtils";
 import {
   CUSTOMER_CREATE_SAVE_INTENT_EVENT,
   CUSTOMER_CREATE_SAVE_INTENT_KEY,
@@ -91,7 +92,7 @@ export default function CustomerDrawer({
       vat_group_id: undefined,
       type: "individual",
       currency_credit_limits: [],
-      currency_opening_balances: [],
+      opening_documents: [],
       status: "active",
       blacklist_reason: "",
       is_vat_registered: false,
@@ -118,6 +119,7 @@ export default function CustomerDrawer({
       vat_group_id: r.vat_group_id ?? undefined,
       type: r.type,
       ...mapApiCurrencyBalancesToFormSplit(r.currency_balances),
+      opening_documents: mapOpeningDocumentsToForm(r.opening_documents),
       status: ["active", "suspended", "blacklisted"].includes(String(r.status)) ? r.status : "active",
       blacklist_reason: r.blacklist_reason ?? "",
       is_vat_registered: r.is_vat_registered === true,
@@ -379,7 +381,7 @@ export default function CustomerDrawer({
   return (
     <ResourceCrudDrawer
       title={title}
-      size={800}
+      size={1200}
       open={open}
       requestClose={requestClose}
       submitting={submitting}

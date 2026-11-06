@@ -21,6 +21,9 @@ import { App, Button, Form, Space, Tag } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CommercialDocumentForm from "./CommercialDocumentForm";
+import HeaderDiscountField from "./HeaderDiscountField";
+import { isDiscountApprovalError, useDiscountApproval } from "./useDiscountApproval";
+import { headerDiscountPreview } from "../utils/headerDiscount";
 import CommercialDocumentLineEditor from "./CommercialDocumentLineEditor";
 import {
   commercialDefaults,
@@ -97,6 +100,8 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
   const currencyId = Form.useWatch("currency_id", form);
   const documentDate = Form.useWatch(config.dateField, form);
   const exchangeRate = Form.useWatch("exchange_rate", form);
+  const headerDiscountType = Form.useWatch("header_discount_type", form);
+  const headerDiscountValue = Form.useWatch("header_discount_value", form);
   useListPrices({ lines, setLines, customerId, currencyId, exchangeRate, date: documentDate, enabled: Boolean(customerId) });
   const drawerData = useSalesInvoiceDrawerData({
     open,
@@ -287,25 +292,31 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     },
   });
 
+  const { withApproval, approvalModal } = useDiscountApproval();
   const actionMutation = useMutation({
-    mutationFn: (/** @type {string} */ action) => config.api.action(/** @type {string} */ (recordId), action),
+    // `action` is a name, or { action, body } (confirm with a manager's discount approval).
+    mutationFn: (/** @type {string | { action: string; body?: Record<string, unknown> }} */ arg) =>
+      typeof arg === "string"
+        ? config.api.action(/** @type {string} */ (recordId), arg)
+        : config.api.action(/** @type {string} */ (recordId), arg.action, arg.body),
     onSuccess: (saved) => {
       message.success(t("actionSuccess"));
       invalidate();
       if (saved && typeof saved === "object") applyRecord(saved);
     },
     onError: (err) => {
+      if (isDiscountApprovalError(err)) return;
       notification.error({ title: t("saveError"), description: getLocalizedApiErrorMessage(tApiErrors, err) });
     },
   });
 
   // Confirm = save the current values (create or update), then confirm, in one click.
   const saveAndConfirmMutation = useMutation({
-    mutationFn: async (values) => {
+    mutationFn: async ({ values, discountApproval = null }) => {
       const saved = /** @type {Record<string, any>} */ (await persist(values));
       const id = saved?.id != null ? String(saved.id) : recordId != null ? String(recordId) : null;
       if (id == null) throw new Error("Missing sales order id after save");
-      return config.api.action(id, "confirm");
+      return config.api.action(id, "confirm", discountApproval ? { discount_approval: discountApproval } : undefined);
     },
     onSuccess: (confirmed) => {
       message.success(t("actionSuccess"));
@@ -321,6 +332,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     onError: (err) => {
       // A create may have succeeded before confirm failed; refresh the list so the draft shows up.
       queryClient.invalidateQueries({ queryKey: config.listKey });
+      if (isDiscountApprovalError(err)) return;
       if (err instanceof Error && err.message === "lines") {
         notification.error({ title: t("saveError"), description: t("linesRequired") });
         return;
@@ -392,8 +404,11 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
   }, [form, saveMutation]);
 
   const runSaveAndConfirm = useCallback(() => {
-    form.validateFields().then((values) => saveAndConfirmMutation.mutate(values)).catch(() => {});
-  }, [form, saveAndConfirmMutation]);
+    form
+      .validateFields()
+      .then((values) => withApproval((discountApproval) => saveAndConfirmMutation.mutateAsync({ values, discountApproval })))
+      .catch(() => {});
+  }, [form, saveAndConfirmMutation, withApproval]);
 
   useDrawerSubmitShortcut({ enabled: open && editable, submitting, onSave: runSave, saveDisabled: !dirty || submitting });
 
@@ -404,6 +419,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     taxEnabled: settings.taxEnabled,
     pricesIncludeTax: settings.taxPriceMode === "inclusive",
     customerExempt,
+    headerDiscount: headerDiscountPreview({ header_discount_type: headerDiscountType, header_discount_value: headerDiscountValue }),
     settings,
   });
   const symbol = drawerData.currencySymbol(currencyId != null ? Number(currencyId) : drawerData.primaryCurrencyId);
@@ -602,7 +618,16 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
                 type="primary"
                 loading={saveAndConfirmMutation.isPending}
                 disabled={submitting}
-                onClick={dirty || mode === "create" ? runSaveAndConfirm : () => runAction("confirm")}
+                onClick={
+                  dirty || mode === "create"
+                    ? runSaveAndConfirm
+                    : () =>
+                        withApproval((discountApproval) =>
+                          actionMutation.mutateAsync(
+                            discountApproval ? { action: "confirm", body: { discount_approval: discountApproval } } : "confirm",
+                          ),
+                        ).catch(() => {})
+                }
               >
                 {t("actionConfirm")}
               </Button>
@@ -665,12 +690,14 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
           />
           <div className="sales-invoice-totals">
             <Summary label={t("subtotal")} value={formatTenantMoney(display?.subtotal)} />
+            <HeaderDiscountField readOnly={!editable} currencySymbol={symbol} />
             <Summary label={t("discountTotal")} value={formatTenantMoney(display?.discount_total)} />
             <Summary label={t("taxTotal")} value={formatTenantMoney(display?.tax_total)} />
             <Summary label={t("grandTotal")} value={formatTenantMoney(display?.grand_total)} />
           </div>
         </Form>
       </div>
+      {approvalModal}
     </ResourceCrudDrawer>
   );
 }

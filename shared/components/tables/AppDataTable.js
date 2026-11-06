@@ -716,7 +716,9 @@ function AppDataTable({
             </Space>
             <Space wrap size="small" className="shrink-0 justify-end">
               {spaceChildren([
-                showImportExportCluster && importExportMenuItems.length > 0 ? (
+                // Permission-based buttons render only after mount: permissions load in the browser,
+                // so the server HTML must not contain them (hydration mismatch otherwise).
+                hasMounted && showImportExportCluster && importExportMenuItems.length > 0 ? (
                   <Dropdown
                     key="import-export"
                     trigger={["click"]}
@@ -731,7 +733,7 @@ function AppDataTable({
                     </Button>
                   </Dropdown>
                 ) : null,
-                showAdd && onAdd ? (
+                hasMounted && showAdd && onAdd ? (
                   <Button key="add" type="primary" icon={<PlusOutlined />} onClick={onAdd}>
                     {addLabel ?? t("add")}
                   </Button>

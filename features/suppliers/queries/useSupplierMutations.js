@@ -209,8 +209,6 @@ export function useSupplierDrawerMutations({
                 ...values,
                 supplier_group: groupPatch ?? row.supplier_group,
                 credit_limit: snap.credit_limit,
-                opening_balance: snap.opening_balance,
-                balance: snap.balance,
                 currency_balances: mergeCurrencyBalancesForCache(
                   /** @type {Record<string, unknown>} */ (row),
                   /** @type {unknown[]} */ (values.currency_balances ?? []),
@@ -230,8 +228,6 @@ export function useSupplierDrawerMutations({
           ...values,
           supplier_group: groupPatch ?? prev.supplier_group,
           credit_limit: snap.credit_limit,
-          opening_balance: snap.opening_balance,
-          balance: snap.balance,
           currency_balances: mergeCurrencyBalancesForCache(
             prev,
             /** @type {unknown[]} */ (values.currency_balances ?? []),

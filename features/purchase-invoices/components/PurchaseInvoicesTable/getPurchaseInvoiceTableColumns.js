@@ -32,11 +32,18 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       width: 140,
       ellipsis: true,
       sorter: (a, b) => String(a.invoice_number ?? "").localeCompare(String(b.invoice_number ?? "")),
-      render: (value) =>
+      render: (value, record) =>
         value ? (
-          <Typography.Text code className="text-xs">
-            {value}
-          </Typography.Text>
+          <span className="inline-flex items-center gap-1">
+            <Typography.Text code className="text-xs">
+              {value}
+            </Typography.Text>
+            {record?.is_opening ? (
+              <Tag color="geekblue" className="m-0" title={record?.original_number ?? undefined}>
+                {t("openingTag")}
+              </Tag>
+            ) : null}
+          </span>
         ) : (
           "\u2014"
         ),
@@ -133,6 +140,8 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       fixed: "right",
       render: (_, record) => {
         const isDraft = isPurchaseInvoiceDraft(record?.status);
+        // Opening invoices are managed from the customer/supplier: no print, return or reverse here.
+        const opening = record?.is_opening === true;
         const items = [
           {
             key: "view",
@@ -140,7 +149,7 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
-          ...(onPrint && isDocumentPdfPrintable("purchase_invoice", record?.status)
+          ...(onPrint && !opening && isDocumentPdfPrintable("purchase_invoice", record?.status)
             ? [
                 {
                   key: "print",
@@ -150,7 +159,7 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
                 },
               ]
             : []),
-          ...(onDownloadPdf && isDocumentPdfPrintable("purchase_invoice", record?.status)
+          ...(onDownloadPdf && !opening && isDocumentPdfPrintable("purchase_invoice", record?.status)
             ? [
                 {
                   key: "pdf",
@@ -160,7 +169,7 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
                 },
               ]
             : []),
-          ...(onCreateDebitNote && record?.status === "posted"
+          ...(onCreateDebitNote && !opening && record?.status === "posted"
             ? [
                 {
                   key: "create-debit-note",
@@ -207,7 +216,7 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
                 },
               ]
             : []),
-          ...(onReverse && record?.status === "posted"
+          ...(onReverse && !opening && record?.status === "posted"
             ? [
                 {
                   key: "reverse",

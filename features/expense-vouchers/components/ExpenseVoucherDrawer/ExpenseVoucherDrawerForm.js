@@ -4,12 +4,15 @@ import { fetchAccounts } from "@/features/accounting/api/accounting.api";
 import { fetchCashBankAccountNames } from "@/features/cash-bank-accounts/api/cashBankAccounts.api";
 import AvailableBalanceHint from "@/features/cash-bank-accounts/components/AvailableBalanceHint";
 import { fetchVatGroupNames } from "@/features/vat-groups/index";
-import { formatTenantMoney } from "@/lib/tenant-format";
+import { dayjsDatePattern, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
+import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
+import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, DatePicker, Divider, Form, Input, InputNumber, Select, Typography } from "antd";
+import { DatePicker, Form, Input, Select, Typography } from "antd";
+import dayjs from "dayjs";
 import { useMemo } from "react";
+import ExpenseVoucherLineEditor from "./ExpenseVoucherLineEditor";
 
 /**
  * @param {{
@@ -31,6 +34,12 @@ export default function ExpenseVoucherDrawerForm({ form, readOnly, t }) {
     queryFn: () => fetchAccounts({ type: "expense", postable: true, active: true }),
     staleTime: QUERY_STALE_TIME.catalog,
   });
+  // Freight / customs paid in cash can go to the landed cost clearing account (spread later by a landed cost).
+  const clearingQuery = useQuery({
+    queryKey: ["tenant", "accounts", "postable-liabilities"],
+    queryFn: () => fetchAccounts({ type: "liability", postable: true, active: true }),
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
   const vatQuery = useQuery({
     queryKey: ["tenant", "vat-groups"],
     queryFn: () => fetchVatGroupNames(),
@@ -46,8 +55,13 @@ export default function ExpenseVoucherDrawerForm({ form, readOnly, t }) {
     () =>
       (expenseAccountsQuery.data ?? [])
         .filter((a) => a && a.is_group !== true)
-        .map((a) => ({ value: Number(a.id), label: [a.code, a.name].filter(Boolean).join(" — ") })),
-    [expenseAccountsQuery.data],
+        .map((a) => ({ value: Number(a.id), label: [a.code, a.name].filter(Boolean).join(" — ") }))
+        .concat(
+          (clearingQuery.data ?? [])
+            .filter((a) => a && Array.isArray(a.roles) && a.roles.includes("landed_cost_clearing"))
+            .map((a) => ({ value: Number(a.id), label: `${[a.code, a.name].filter(Boolean).join(" — ")} (${t("landedCostClearing")})` })),
+        ),
+    [expenseAccountsQuery.data, clearingQuery.data, t],
   );
   const vatGroups = useMemo(() => (Array.isArray(vatQuery.data) ? vatQuery.data : []), [vatQuery.data]);
   const vatOptions = useMemo(
@@ -55,9 +69,11 @@ export default function ExpenseVoucherDrawerForm({ form, readOnly, t }) {
     [vatGroups],
   );
 
-  const linesWatch = Form.useWatch("lines", form);
+  const linesWatch = Form.useWatch("lines", { form, preserve: true });
   const cashId = Form.useWatch("cash_bank_account_id", form);
   const cashAccount = cashAccounts.find((a) => Number(a.id) === Number(cashId));
+  // The voucher is paid in the paid-from account's currency.
+  const currencyMark = String(cashAccount?.currency_symbol || cashAccount?.currency_code || "").trim();
   const totals = useMemo(() => {
     let subtotal = 0;
     let tax = 0;
@@ -71,80 +87,56 @@ export default function ExpenseVoucherDrawerForm({ form, readOnly, t }) {
   }, [linesWatch, vatGroups]);
 
   return (
-    <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
+    <Form form={form} layout="vertical" requiredMark={false} disabled={readOnly}>
       <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2">
-        <Form.Item name="voucher_date" label={t("fieldDate")} rules={[{ required: true, message: t("fieldDateRequired") }]}>
-          <DatePicker className="w-full" />
+        <Form.Item
+          name="voucher_date"
+          label={<ResourceDrawerFieldLabel text={t("fieldDate")} required />}
+          rules={[{ required: true, message: t("fieldDateRequired") }]}
+          getValueProps={(value) => ({ value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined })}
+        >
+          <DatePicker className="w-full" format={dayjsDatePattern()} />
+        </Form.Item>
+        <Form.Item name="reference" label={<ResourceDrawerFieldLabel text={t("fieldReference")} />} rules={[{ max: 128 }]}>
+          <Input autoComplete="off" />
         </Form.Item>
         <Form.Item
           name="cash_bank_account_id"
-          label={t("fieldPaidFrom")}
+          label={<ResourceDrawerFieldLabel text={t("fieldPaidFrom")} required />}
           rules={[{ required: true, message: t("fieldAccountRequired") }]}
           extra={readOnly ? null : <AvailableBalanceHint account={cashAccount} amount={totals.total} />}
         >
-          <Select showSearch optionFilterProp="label" loading={cashQuery.isPending} options={cashOptions} />
+          <Select showSearch optionFilterProp="label" loading={cashQuery.isPending} options={cashOptions} getPopupContainer={drawerSelectGetPopup} />
         </Form.Item>
-        <Form.Item name="payee" label={t("fieldPayee")} rules={[{ max: 255 }]}>
-          <Input autoComplete="off" />
-        </Form.Item>
-        <Form.Item name="reference" label={t("fieldReference")} rules={[{ max: 128 }]}>
+        <Form.Item name="payee" label={<ResourceDrawerFieldLabel text={t("fieldPayee")} />} rules={[{ max: 255 }]}>
           <Input autoComplete="off" />
         </Form.Item>
       </div>
 
-      <Divider titlePlacement="start" className="!mt-2">
-        {t("sectionLines")}
-      </Divider>
-      <Form.List name="lines">
-        {(fields, { add, remove }) => (
-          <div className="flex flex-col gap-2">
-            {fields.map(({ key, name, ...rest }) => (
-              <div
-                key={key}
-                className="grid grid-cols-1 items-start gap-2 rounded-md border border-neutral-200 p-2 md:grid-cols-[minmax(0,2.4fr)_minmax(0,2fr)_minmax(0,1.1fr)_minmax(0,1.4fr)_32px] md:border-0 md:p-0 dark:border-neutral-700"
-              >
-                <Form.Item {...rest} name={[name, "account_id"]} className="mb-0" rules={[{ required: true, message: t("fieldExpenseAccountRequired") }]}>
-                  <Select showSearch optionFilterProp="label" loading={expenseAccountsQuery.isPending} options={expenseOptions} placeholder={t("colExpenseAccount")} />
-                </Form.Item>
-                <Form.Item {...rest} name={[name, "description"]} className="mb-0">
-                  <Input placeholder={t("colDescription")} />
-                </Form.Item>
-                <Form.Item {...rest} name={[name, "amount"]} className="mb-0" rules={[{ required: true, message: t("fieldAmountRequired") }]}>
-                  <InputNumber min={0} className="w-full" placeholder={t("colAmount")} />
-                </Form.Item>
-                <Form.Item {...rest} name={[name, "vat_group_id"]} className="mb-0">
-                  <Select allowClear options={vatOptions} placeholder={t("colVat")} />
-                </Form.Item>
-                {!readOnly ? (
-                  <Button type="text" danger icon={<DeleteOutlined />} aria-label={t("actionDelete")} onClick={() => remove(name)} disabled={fields.length <= 1} />
-                ) : (
-                  <span />
-                )}
-              </div>
-            ))}
-            {!readOnly ? (
-              <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({ account_id: undefined, description: "", amount: null, vat_group_id: undefined })} block>
-                {t("addLine")}
-              </Button>
-            ) : null}
-          </div>
-        )}
-      </Form.List>
+      <ExpenseVoucherLineEditor
+        form={form}
+        readOnly={readOnly}
+        t={t}
+        expenseOptions={expenseOptions}
+        expenseAccountsPending={expenseAccountsQuery.isPending}
+        vatOptions={vatOptions}
+        currencyMark={currencyMark}
+      />
 
       <div className="mt-4 flex flex-col items-end gap-1 text-sm">
         <Typography.Text>
-          {t("subtotal")}: {formatTenantMoney(totals.subtotal)}
+          {t("subtotal")}: {formatTenantMoneyWithSymbol(totals.subtotal, currencyMark)}
         </Typography.Text>
         <Typography.Text>
-          {t("taxTotal")}: {formatTenantMoney(totals.tax)}
+          {t("taxTotal")}: {formatTenantMoneyWithSymbol(totals.tax, currencyMark)}
         </Typography.Text>
         <Typography.Text strong>
-          {t("total")}: {formatTenantMoney(totals.total)}
+          {t("total")}: {formatTenantMoneyWithSymbol(totals.total, currencyMark)}
         </Typography.Text>
       </div>
 
-      <Form.Item name="notes" label={t("fieldNotes")} className="mt-4">
-        <Input.TextArea rows={3} />
+      <Form.Item name="notes" label={<ResourceDrawerFieldLabel text={t("fieldNotes")} />} className="mt-4">
+        <Input.TextArea rows={3} maxLength={2000} showCount={!readOnly} />
       </Form.Item>
     </Form>
   );

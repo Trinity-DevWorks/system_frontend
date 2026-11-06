@@ -14,7 +14,8 @@ import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { fetchPurchaseOrder } from "../../api/purchaseOrders.api";
 import { mapPurchaseOrderToGrnCreateSeed } from "../../utils/goodsReceiptFromPurchaseOrder";
 import { useQuery } from "@tanstack/react-query";
-import { App, Form, Tag } from "antd";
+import { App, Button, Form, Tag } from "antd";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getGoodsReceiptStatusLabel, isGoodsReceiptDraft } from "../../utils/goodsReceiptStatuses";
@@ -57,6 +58,9 @@ export default function GoodsReceiptDrawer({
   const t = useTranslations("Stock");
   const tApiErrors = useTranslations("ApiErrors");
   const access = useResourceAccess("stock");
+  const landedCostAccess = useResourceAccess("landed_costs");
+  const tLanded = useTranslations("LandedCosts");
+  const { openDrawer } = useGlobalDrawer();
   const { message, modal, notification } = App.useApp();
   const [form] = Form.useForm();
 
@@ -426,6 +430,18 @@ export default function GoodsReceiptDrawer({
           onDownloadPdf={handleDownloadPdf}
           onReverse={handleReverse}
           onDelete={handleDelete}
+          readOnlyExtras={
+            effectiveStatus === "posted" && receiptId != null && landedCostAccess.canAdd ? (
+              <Button
+                disabled={submitting}
+                onClick={() =>
+                  openDrawer({ featureId: "landedCosts", mode: "create", extras: { fromReceipt: { source_type: "goods_receipt", source_id: String(receiptId) } } })
+                }
+              >
+                {tLanded("actionCreateFromReceipt")}
+              </Button>
+            ) : null
+          }
         />
       }
     >

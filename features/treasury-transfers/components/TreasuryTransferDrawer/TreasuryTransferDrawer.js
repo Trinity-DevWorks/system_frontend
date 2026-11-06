@@ -1,234 +1,229 @@
 "use client";
 
-import dayjs from "dayjs";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import { useResourceAccess } from "@/lib/permissions";
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
-import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
-import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
-import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
-import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { fetchTreasuryTransfer } from "../../api/treasuryTransfers.api";
-import { App, Form } from "antd";
+import { useQuery } from "@tanstack/react-query";
+import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
-import TreasuryTransferDrawerForm from "./TreasuryTransferDrawerForm";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { fetchTreasuryTransfer } from "../../api/treasuryTransfers.api";
+import { treasuryTransferDetailQueryKey } from "../../queries/treasuryTransfersQueryKeys";
 import { useTreasuryTransferDrawerMutations } from "../../queries/useTreasuryTransferMutations";
 import {
-  TREASURY_TRANSFER_CREATE_SAVE_INTENT_EVENT,
-  TREASURY_TRANSFER_CREATE_SAVE_INTENT_KEY,
-  isCreateDirtyVsDefaults,
-  isEditDirtyVsLoaded,
+  treasuryTransferStatusColor,
+  getTreasuryTransferDefaults,
+  getTreasuryTransferStatusLabel,
+  isTreasuryTransferDirty,
   recordToFormValues,
   requiredFieldsValid,
-  toTreasuryTransferCacheRow,
 } from "../../utils/treasuryTransferDrawerUtils";
-import { TREASURY_TRANSFERS_LIST_QUERY_KEY } from "../../queries/treasuryTransfersQueryKeys";
-
-const TREASURY_TRANSFER_DETAIL_QUERY_PREFIX = /** @type {const} */ (TREASURY_TRANSFERS_LIST_QUERY_KEY);
+import TreasuryTransferDrawerFooter from "./TreasuryTransferDrawerFooter";
+import TreasuryTransferDrawerForm from "./TreasuryTransferDrawerForm";
 
 /**
+ * Cash/bank transfer: money moved from one cash box / bank account to another. Draft → posted → reversed,
+ * like the other documents.
+ *
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
- *   treasuryTransferId: number | null;
+ *   treasuryTransferId: string | number | null;
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
- *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
-export default function TreasuryTransferDrawer({
-  open,
-  mode,
-  treasuryTransferId,
-  tableSeedRecord = null,
-  onClose,
-  onCreated,
-  onCreateSuccess,
-}) {
+export default function TreasuryTransferDrawer({ open, mode, treasuryTransferId, tableSeedRecord = null, onClose, onCreated }) {
   const t = useTranslations("TreasuryTransfers");
   const tApiErrors = useTranslations("ApiErrors");
-  const { message, modal } = App.useApp();
+  const access = useResourceAccess("treasury_transfers");
+  const { message, modal, notification } = App.useApp();
   const [form] = Form.useForm();
-  const lastCreateIntent = usePersistedSaveIntent(
-    TREASURY_TRANSFER_CREATE_SAVE_INTENT_KEY,
-    TREASURY_TRANSFER_CREATE_SAVE_INTENT_EVENT,
-  );
 
-  const readOnly = mode === "view";
+  // A new transfer keeps its id after the first save, so Post and Delete work in the same drawer.
+  const [savedId, setSavedId] = useState(/** @type {string | null} */ (null));
+  const transferId = treasuryTransferId ?? savedId;
 
-  const defaults = useMemo(
-    () => ({ transfer_date: dayjs(), from_account_id: undefined, to_account_id: undefined, amount_from: null, amount_to: null, exchange_rate: null, exchange_rate_to: null, reference: "", notes: "" }),
-    [],
-  );
+  const [baseline, setBaseline] = useState(() => getTreasuryTransferDefaults());
+  const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
+  const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
+  const loadedDetailVersionRef = useRef(0);
 
-  const mapSeedToCacheRow = useCallback((seed) => toTreasuryTransferCacheRow(seed), []);
-  const mapRecordToFormValues = useCallback((r) => recordToFormValues(r), []);
-
-  const { detailEnabled, tableSeedMatches, fetchRemoteDetail, detailQuery } = useResourceDrawerDetailSync({
-    open,
-    mode,
-    recordId: treasuryTransferId,
-    // Table rows lack lines; always load the full record before editing.
-    tableSeedRecord: null,
-    form,
-    defaults,
-    queryKeyPrefix: TREASURY_TRANSFER_DETAIL_QUERY_PREFIX,
-    fetchDetail: fetchTreasuryTransfer,
-    mapSeedToCacheRow,
-    mapRecordToFormValues,
+  const detailEnabled = open && transferId != null;
+  const detailQuery = useQuery({
+    queryKey: treasuryTransferDetailQueryKey(/** @type {string | number} */ (transferId)),
+    queryFn: () => fetchTreasuryTransfer(String(transferId)),
+    enabled: detailEnabled,
+    staleTime: QUERY_STALE_TIME.default,
   });
+
+  const syncFromRecord = useCallback(
+    (record) => {
+      if (!record || typeof record !== "object") return;
+      const values = recordToFormValues(record);
+      setBaseline(values);
+      setLoadedStatus(typeof record.status === "string" ? record.status : null);
+      setLoadedNumber(typeof record.transfer_number === "string" ? record.transfer_number : null);
+      form.setFieldsValue(values);
+    },
+    [form],
+  );
+
+  // A new transfer starts clean each time the drawer opens.
+  useLayoutEffect(() => {
+    if (!open || mode !== "create" || treasuryTransferId != null) return;
+    const defaults = getTreasuryTransferDefaults();
+    /* eslint-disable react-hooks/set-state-in-effect -- reset the create draft when the drawer opens */
+    setSavedId(null);
+    setBaseline(defaults);
+    setLoadedStatus("draft");
+    setLoadedNumber(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    loadedDetailVersionRef.current = 0;
+    form.resetFields();
+    form.setFieldsValue(defaults);
+  }, [open, mode, treasuryTransferId, form]);
+
+  useEffect(() => {
+    if (!open || !detailQuery.isSuccess || !detailQuery.data) return;
+    const version = detailQuery.dataUpdatedAt;
+    if (loadedDetailVersionRef.current === version) return;
+    loadedDetailVersionRef.current = version;
+    syncFromRecord(/** @type {Record<string, unknown>} */ (detailQuery.data));
+  }, [open, detailQuery.isSuccess, detailQuery.data, detailQuery.dataUpdatedAt, syncFromRecord]);
+
+  const effectiveStatus = loadedStatus ?? (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
+  const readOnly = mode === "view" || effectiveStatus !== "draft" || (transferId == null ? !access.canAdd : !access.canEdit);
 
   const fromWatch = Form.useWatch("from_account_id", form);
   const toWatch = Form.useWatch("to_account_id", form);
   const amountWatch = Form.useWatch("amount_from", form);
-  const canSubmitRequired = useMemo(
-    () => requiredFieldsValid(fromWatch, toWatch, amountWatch),
-    [fromWatch, toWatch, amountWatch],
-  );
+  const canSave = requiredFieldsValid(fromWatch, toWatch, amountWatch);
 
-  const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
-    open,
-    mode,
-    form,
-    defaults,
-    isCreateDirtyVsBaseline: isCreateDirtyVsDefaults,
-  });
+  const shouldConfirmDiscard = useCallback(() => !readOnly && isTreasuryTransferDirty(form, baseline), [readOnly, form, baseline]);
+  const { forceClose, requestClose } = useResourceDrawerCloseFlow({ readOnly, modal, t, onClose, shouldConfirmDiscard });
 
-  const onSyncCreateDiscardBaseline = useCallback(
-    /** @param {"fromForm" | "defaults"} kind */
-    (kind) => {
-      if (kind === "fromForm") syncBaselineFromFormFields();
-      else resetBaselineToDefaults();
+  const afterSave = useCallback(
+    (record) => {
+      syncFromRecord(record);
+      loadedDetailVersionRef.current = Date.now();
     },
-    [syncBaselineFromFormFields, resetBaselineToDefaults],
+    [syncFromRecord],
   );
 
-  const { createMutation, updateMutation, applyPayload, submitting } = useTreasuryTransferDrawerMutations({
+  const handleCreated = useCallback(
+    (record) => {
+      if (record?.id != null) setSavedId(String(record.id));
+      onCreated?.(record);
+    },
+    [onCreated],
+  );
+
+  const { saveMutation, postMutation, reverseMutation, deleteMutation, submitting } = useTreasuryTransferDrawerMutations({
     form,
     message,
+    notification,
     t,
     tApiErrors,
-    onClose,
-    onCreated,
-    onCreateSuccess,
-    onSyncCreateDiscardBaseline,
-    defaults,
+    transferId,
+    onCreated: handleCreated,
+    onSaved: afterSave,
+    onPosted: afterSave,
+    onReversed: afterSave,
+    onDeleted: forceClose,
   });
 
-  const editBaselineForDirty = useMemo(() => {
-    if (mode !== "edit") return null;
-    if (detailQuery.data) return /** @type {Record<string, unknown>} */ (detailQuery.data);
-    if (tableSeedMatches && tableSeedRecord) {
-      return toTreasuryTransferCacheRow(/** @type {Record<string, unknown>} */ (tableSeedRecord));
-    }
-    return null;
-  }, [mode, detailQuery.data, tableSeedMatches, tableSeedRecord]);
+  const handleSave = useCallback(() => {
+    form
+      .validateFields()
+      .then((values) => saveMutation.mutate({ values }))
+      .catch(() => {});
+  }, [form, saveMutation]);
 
-  const shouldConfirmDiscard = useCallback(() => {
-    if (readOnly) return false;
-    if (mode === "create") return isCreateDirty();
-    if (mode === "edit" && editBaselineForDirty) {
-      return isEditDirtyVsLoaded(form, editBaselineForDirty);
-    }
-    if (mode === "edit") return form.isFieldsTouched(true);
-    return false;
-  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
-
-  const { forceClose, requestClose } = useResourceDrawerCloseFlow({
-    readOnly,
-    modal,
-    t,
-    onClose,
-    shouldConfirmDiscard,
-  });
-
-  const runCreate = useCallback(
-    (intent) => {
-      form
-        .validateFields()
-        .then((values) => {
-          const payload = applyPayload(values);
-          createMutation.mutate({ payload, intent });
-        })
-        .catch(() => {});
-    },
-    [form, applyPayload, createMutation],
-  );
-
-  const handleEditSubmit = useCallback(() => {
-    if (readOnly) return;
+  const handlePost = useCallback(() => {
     form
       .validateFields()
       .then((values) => {
-        const payload = applyPayload(values);
-        if (mode === "edit" && treasuryTransferId != null) {
-          updateMutation.mutate({ id: treasuryTransferId, values: payload });
-        }
+        modal.confirm({
+          title: t("postConfirmTitle"),
+          content: t("postConfirmContent"),
+          okText: t("actionPost"),
+          cancelText: t("drawerCancel"),
+          onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
+        });
       })
       .catch(() => {});
-  }, [readOnly, form, applyPayload, mode, treasuryTransferId, updateMutation]);
+  }, [form, modal, t, postMutation]);
 
-  const title =
-    mode === "create" ? t("drawerTitleCreate") : mode === "view" ? t("drawerTitleView") : t("drawerTitleEdit");
+  const handleReverse = useCallback(() => {
+    modal.confirm({
+      title: t("reverseConfirmTitle"),
+      content: t("reverseConfirmContent"),
+      okText: t("actionReverse"),
+      okButtonProps: { danger: true },
+      cancelText: t("drawerCancel"),
+      onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
+    });
+  }, [modal, t, reverseMutation]);
 
-  const showDetailLoading = fetchRemoteDetail && detailQuery.isPending;
+  const handleDelete = useCallback(() => {
+    modal.confirm({
+      title: t("deleteConfirmTitle"),
+      content: t("deleteConfirmContent", { name: loadedNumber ?? "" }),
+      okText: t("deleteConfirmOk"),
+      okButtonProps: { danger: true },
+      cancelText: t("deleteConfirmCancel"),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
+    });
+  }, [modal, t, deleteMutation, loadedNumber]);
 
-  const createSaveDisabled =
-    !canSubmitRequired || submitting || (fetchRemoteDetail && detailEnabled && detailQuery.isError);
-
-  const createIntentLabel = useCallback(
-    (/** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent} */ intent) => {
-      if (intent === "keep") return t("drawerSave");
-      if (intent === "new") return t("drawerSaveAndNew");
-      return t("drawerSaveAndClose");
-    },
-    [t],
-  );
-
-  const createSaveMenuItems = useMemo(() => {
-    /** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent[]} */
-    const all = ["keep", "new", "close"];
-    return all
-      .filter((key) => key !== lastCreateIntent)
-      .map((key) => ({
-        key,
-        label: createIntentLabel(key),
-      }));
-  }, [lastCreateIntent, createIntentLabel]);
+  const title = mode === "create" && transferId == null ? t("drawerTitleCreate") : readOnly ? t("drawerTitleView") : t("drawerTitleEdit");
+  const doc = detailQuery.data && typeof detailQuery.data === "object" ? /** @type {Record<string, unknown>} */ (detailQuery.data) : null;
 
   return (
     <ResourceCrudDrawer
+      documentBranch={doc}
       title={title}
+      recordName={loadedNumber}
+      titleExtra={
+        effectiveStatus ? (
+          <Tag className="m-0" color={treasuryTransferStatusColor(effectiveStatus)}>
+            {getTreasuryTransferStatusLabel(t, effectiveStatus)}
+          </Tag>
+        ) : null
+      }
       open={open}
       requestClose={requestClose}
       submitting={submitting}
-      showDetailLoading={showDetailLoading}
-      detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
+      showExpand
+      showDetailLoading={detailEnabled && detailQuery.isLoading}
+      detailLoadFailed={Boolean(detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
+      size={720}
       footer={
-        <ResourceDrawerFooter
-          mode={mode}
+        <TreasuryTransferDrawerFooter
           readOnly={readOnly}
           t={t}
           forceClose={forceClose}
           requestClose={requestClose}
           submitting={submitting}
-          createSaveDisabled={createSaveDisabled}
-          lastCreateIntent={lastCreateIntent}
-          runCreate={runCreate}
-          createIntentLabel={createIntentLabel}
-          createSaveMenuItems={createSaveMenuItems}
-          handleEditSubmit={handleEditSubmit}
-          canSubmitRequired={canSubmitRequired}
-          fetchRemoteDetail={fetchRemoteDetail}
-          detailEnabled={detailEnabled}
-          detailQueryError={detailQuery.isError}
+          saveDisabled={!canSave}
+          postDisabled={!canSave}
+          showDelete={!readOnly && transferId != null && access.canDelete}
+          showPost={!readOnly && access.canEdit}
+          showReverse={effectiveStatus === "posted" && transferId != null && access.canReverse}
+          onSave={handleSave}
+          onPost={handlePost}
+          onDelete={handleDelete}
+          onReverse={handleReverse}
         />
       }
     >
-      <TreasuryTransferDrawerForm form={form} readOnly={readOnly} t={t} />
+      <TreasuryTransferDrawerForm form={form} readOnly={readOnly || submitting} t={t} />
     </ResourceCrudDrawer>
   );
 }

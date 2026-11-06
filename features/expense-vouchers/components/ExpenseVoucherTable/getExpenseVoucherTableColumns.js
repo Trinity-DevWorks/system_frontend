@@ -2,10 +2,6 @@ import { formatTenantDate, formatTenantMoney } from "@/lib/tenant-format";
 import { documentActionsColumn, renderDocumentStatus } from "@/shared/components/tables/treasuryDocumentActions";
 import { Typography } from "antd";
 
-export function getExpenseVoucherStatusLabel(value, t) {
-  return t(`status_${value ?? "draft"}`);
-}
-
 /**
  * @param {(key: string) => string} t `useTranslations("ExpenseVouchers")`
  * @param {{ onView?: Function; onEdit?: Function; onDelete?: Function; onPost?: Function; onReverse?: Function }} [actions]

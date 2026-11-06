@@ -142,6 +142,9 @@ export function itemFormValuesToPayload(values) {
     allow_sale: values.allow_sale === true,
     allow_purchase: values.allow_purchase === true,
     allow_return: values.allow_return !== false,
+    is_landed_cost: values.track_inventory !== true && values.is_landed_cost === true,
+    weight: optionalMeasure(values.weight),
+    volume: optionalMeasure(values.volume),
     is_active: values.is_active !== false,
   };
 }
@@ -181,6 +184,9 @@ export function toItemCacheRow(row) {
     allow_sale: row.allow_sale,
     allow_purchase: row.allow_purchase,
     allow_return: row.allow_return,
+    is_landed_cost: row.is_landed_cost === true,
+    weight: row.weight ?? null,
+    volume: row.volume ?? null,
     is_active: row.is_active,
     primary_image: row.primary_image ?? null,
     created_at: row.created_at,
@@ -217,6 +223,9 @@ export function mapItemRecordToFormValues(r) {
     allow_sale: Boolean(r.allow_sale),
     allow_purchase: Boolean(r.allow_purchase),
     allow_return: r.allow_return !== false,
+    is_landed_cost: r.is_landed_cost === true,
+    weight: r.weight != null && r.weight !== "" ? Number(r.weight) : undefined,
+    volume: r.volume != null && r.volume !== "" ? Number(r.volume) : undefined,
     is_active: r.is_active !== false,
   };
 }
@@ -242,4 +251,15 @@ export function sortItemsByName(list) {
       { sensitivity: "base" },
     ),
   );
+}
+
+/**
+ * Weight / volume per base unit: empty means "not set".
+ * @param {unknown} value
+ * @returns {number | null}
+ */
+function optionalMeasure(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { isDiscountApprovalError } from "@/features/sales-documents/components/useDiscountApproval";
+
 import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY } from "./salesInvoicesQueryKeys";
 import { STOCK_BALANCES_QUERY_KEY, STOCK_MOVEMENTS_QUERY_KEY } from "@/features/stock/queries/stockQueryKeys";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
@@ -12,6 +14,8 @@ import {
   postSalesInvoice,
   reverseSalesInvoice,
   syncSalesInvoiceLines,
+  syncSalesInvoicePayments,
+  recordSalesInvoicePayments,
   updateSalesInvoice,
 } from "../api/salesInvoices.api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -76,14 +80,11 @@ export function useSalesInvoiceDrawerMutations({
 
   const saveMutation = useMutation({
     mutationFn: async ({ values }) => {
-      const validLines = getValidSalesInvoiceLines(lines);
       if (invoiceId == null) {
         return createSalesInvoice(salesInvoiceCreatePayload(values, lines));
       }
       await updateSalesInvoice(invoiceId, salesInvoiceHeaderToPayload(values));
-      const synced = await syncSalesInvoiceLines(invoiceId, { lines: validLines });
-      if (synced.invoice) return synced.invoice;
-      return fetchSalesInvoice(invoiceId);
+      return syncSalesInvoiceLines(invoiceId, { lines: getValidSalesInvoiceLines(lines) }).then(() => fetchSalesInvoice(invoiceId));
     },
     onError: (err) => {
       if (!applyApiFieldErrors(form, err)) {
@@ -109,7 +110,8 @@ export function useSalesInvoiceDrawerMutations({
   });
 
   const postMutation = useMutation({
-    mutationFn: async ({ values }) => {
+    // `payments`: rows from the payment modal, posted with the invoice (none = all on account).
+    mutationFn: async ({ values, payments = [], discountApproval = null }) => {
       let id = invoiceId;
       if (id == null) {
         const created = await createSalesInvoice(salesInvoiceCreatePayload(values, lines));
@@ -119,9 +121,14 @@ export function useSalesInvoiceDrawerMutations({
         await updateSalesInvoice(id, salesInvoiceHeaderToPayload(values));
         await syncSalesInvoiceLines(id, { lines: getValidSalesInvoiceLines(lines) });
       }
-      return postSalesInvoice(id);
+      // Payments go last: they are checked against the final totals.
+      await syncSalesInvoicePayments(id, { payments });
+      // A manager's login when the discount is above the poster's limit.
+      return postSalesInvoice(id, discountApproval ? { discount_approval: discountApproval } : undefined);
     },
     onError: (err) => {
+      // The approval popup shows these itself.
+      if (isDiscountApprovalError(err)) return;
       if (!applyApiFieldErrors(form, err)) {
         notification.error({
           title: t("postError"),
@@ -137,6 +144,28 @@ export function useSalesInvoiceDrawerMutations({
       if (invoiceId == null) {
         onCreated?.(/** @type {Record<string, unknown>} */ (record));
       }
+      onPosted?.(/** @type {Record<string, unknown>} */ (record));
+    },
+  });
+
+  /** Money received later against the posted invoice (each row becomes a receipt). */
+  const recordPaymentMutation = useMutation({
+    mutationFn: async ({ payments, payment_date }) => {
+      if (invoiceId == null) throw new Error("Missing sales invoice id");
+      return recordSalesInvoicePayments(invoiceId, { payments, payment_date });
+    },
+    onError: (err) => {
+      notification.error({
+        title: t("recordPaymentError"),
+        description: getLocalizedApiErrorMessage(tApiErrors, err),
+      });
+    },
+    onSuccess: (record) => {
+      message.success(t("recordPaymentSuccess"));
+      invalidateList();
+      queryClient.invalidateQueries({ queryKey: ["tenant", "cash-bank-accounts"] });
+      const id = normalizeEntityId(record?.id ?? invoiceId);
+      if (id != null) cacheDetail(id, record);
       onPosted?.(/** @type {Record<string, unknown>} */ (record));
     },
   });
@@ -180,10 +209,11 @@ export function useSalesInvoiceDrawerMutations({
     },
   });
 
-  const submitting = saveMutation.isPending || postMutation.isPending || reverseMutation.isPending || deleteMutation.isPending;
+  const submitting = saveMutation.isPending || postMutation.isPending || recordPaymentMutation.isPending || reverseMutation.isPending || deleteMutation.isPending;
 
   return {
     saveMutation,
+    recordPaymentMutation,
     postMutation,
     reverseMutation,
     deleteMutation,

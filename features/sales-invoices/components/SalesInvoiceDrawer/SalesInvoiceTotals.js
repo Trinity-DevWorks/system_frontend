@@ -4,6 +4,7 @@ import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/Resour
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import { Form, Input } from "antd";
+import HeaderDiscountField from "@/features/sales-documents/components/HeaderDiscountField";
 
 /**
  * @param {{
@@ -39,10 +40,11 @@ export default function SalesInvoiceTotals({ t, readOnly, totals = null, currenc
       <div className="sales-invoice-totals-pane sales-invoice-totals-amounts">
         <div className="sales-invoice-totals-amount-section">
           <AmountRow label={t("totalSubtotal")} value={money(totals?.subtotal)} />
+          <HeaderDiscountField readOnly={readOnly} currencySymbol={currencySymbol} />
           <AmountRow label={t("totalDiscount")} value={money(totals?.discount_total)} />
-          <AmountRow label={t("totalTax")} value={money(totals?.tax_total)} />
         </div>
         <div className="sales-invoice-totals-amount-section">
+          <AmountRow label={t("totalTax")} value={money(totals?.tax_total)} />
           <AmountRow label={t("totalGrand")} value={money(totals?.grand_total)} />
           <div className="resource-drawer-pricing-card">
             <Form.Item
@@ -55,9 +57,9 @@ export default function SalesInvoiceTotals({ t, readOnly, totals = null, currenc
               <TenantNumberInput kind="money" disabled={readOnly} addonAfter={currencySymbol || undefined} />
             </Form.Item>
           </div>
-          <AmountRow label={t("totalCredited")} value={money(totals?.credited_total)} />
         </div>
         <div className="sales-invoice-totals-amount-section">
+          <AmountRow label={t("totalCredited")} value={money(totals?.credited_total)} />
           <AmountRow label={t("totalPaid")} value={money(totals?.paid_total)} />
           <AmountRow label={t("totalNetToPay")} value={money(totals?.net_to_pay)} emphasized />
         </div>

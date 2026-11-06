@@ -13,7 +13,8 @@ import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrud
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { STOCK_MOVEMENT_DETAIL_QUERY_PREFIX } from "../../queries/stockQueryKeys";
 import { normalizeEntityId } from "@/lib/entityId";
-import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
+import { formatTenantDate, formatTenantDateTime, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
+import { getTenantFormatSettings } from "@/lib/tenant-format-runtime";
 import { fetchStockMovement } from "../../api/stock.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Button, Descriptions, Typography } from "antd";
@@ -140,10 +141,10 @@ export default function StockMovementViewDrawer({
           </Descriptions.Item>
           <Descriptions.Item label={t("colQuantityDelta")}>{quantityLabel}</Descriptions.Item>
           <Descriptions.Item label={t("colUnitCost")}>
-            {formatTenantMoney(record?.unit_cost) || "—"}
+            {formatTenantMoneyWithSymbol(record?.unit_cost, getTenantFormatSettings().primaryCurrencySymbol) || "—"}
           </Descriptions.Item>
           <Descriptions.Item label={t("colValueDelta")}>
-            {formatTenantMoney(record?.value_delta) || "—"}
+            {formatTenantMoneyWithSymbol(record?.value_delta, getTenantFormatSettings().primaryCurrencySymbol) || "—"}
           </Descriptions.Item>
           <Descriptions.Item label={t("colQuantityOnHand")}>{onHandLabel}</Descriptions.Item>
           <Descriptions.Item label={t("colLineUom")}>

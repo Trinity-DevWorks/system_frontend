@@ -1,230 +1,228 @@
 "use client";
 
-import dayjs from "dayjs";
+import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import { useResourceAccess } from "@/lib/permissions";
+import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
-import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
-import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
-import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
-import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { fetchExpenseVoucher } from "../../api/expenseVouchers.api";
-import { App, Form } from "antd";
+import { useQuery } from "@tanstack/react-query";
+import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
-import ExpenseVoucherDrawerForm from "./ExpenseVoucherDrawerForm";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { fetchExpenseVoucher } from "../../api/expenseVouchers.api";
+import { expenseVoucherDetailQueryKey } from "../../queries/expenseVouchersQueryKeys";
 import { useExpenseVoucherDrawerMutations } from "../../queries/useExpenseVoucherMutations";
 import {
-  EXPENSE_VOUCHER_CREATE_SAVE_INTENT_EVENT,
-  EXPENSE_VOUCHER_CREATE_SAVE_INTENT_KEY,
-  isCreateDirtyVsDefaults,
-  isEditDirtyVsLoaded,
+  expenseVoucherStatusColor,
+  getExpenseVoucherDefaults,
+  getExpenseVoucherStatusLabel,
+  isExpenseVoucherDirty,
   recordToFormValues,
   requiredFieldsValid,
-  toExpenseVoucherCacheRow,
 } from "../../utils/expenseVoucherDrawerUtils";
-import { EXPENSE_VOUCHERS_LIST_QUERY_KEY } from "../../queries/expenseVouchersQueryKeys";
-
-const EXPENSE_VOUCHER_DETAIL_QUERY_PREFIX = /** @type {const} */ (EXPENSE_VOUCHERS_LIST_QUERY_KEY);
+import ExpenseVoucherDrawerFooter from "./ExpenseVoucherDrawerFooter";
+import ExpenseVoucherDrawerForm from "./ExpenseVoucherDrawerForm";
 
 /**
+ * Expense voucher: money paid out of a cash box / bank account for expenses. Draft → posted → reversed,
+ * like the other documents.
+ *
  * @param {{
  *   open: boolean;
  *   mode: "create" | "edit" | "view";
- *   expenseVoucherId: number | null;
+ *   expenseVoucherId: string | number | null;
  *   tableSeedRecord?: Record<string, unknown> | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
- *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  * }} props
  */
-export default function ExpenseVoucherDrawer({
-  open,
-  mode,
-  expenseVoucherId,
-  tableSeedRecord = null,
-  onClose,
-  onCreated,
-  onCreateSuccess,
-}) {
+export default function ExpenseVoucherDrawer({ open, mode, expenseVoucherId, tableSeedRecord = null, onClose, onCreated }) {
   const t = useTranslations("ExpenseVouchers");
   const tApiErrors = useTranslations("ApiErrors");
-  const { message, modal } = App.useApp();
+  const access = useResourceAccess("expense_vouchers");
+  const { message, modal, notification } = App.useApp();
   const [form] = Form.useForm();
-  const lastCreateIntent = usePersistedSaveIntent(
-    EXPENSE_VOUCHER_CREATE_SAVE_INTENT_KEY,
-    EXPENSE_VOUCHER_CREATE_SAVE_INTENT_EVENT,
-  );
 
-  const readOnly = mode === "view";
+  // A new voucher keeps its id after the first save, so Post and Delete work in the same drawer.
+  const [savedId, setSavedId] = useState(/** @type {string | null} */ (null));
+  const voucherId = expenseVoucherId ?? savedId;
 
-  const defaults = useMemo(
-    () => ({ voucher_date: dayjs(), cash_bank_account_id: undefined, exchange_rate: null, payee: "", reference: "", notes: "", lines: [{ account_id: undefined, description: "", amount: null, vat_group_id: undefined }] }),
-    [],
-  );
+  const [baseline, setBaseline] = useState(() => getExpenseVoucherDefaults());
+  const [loadedStatus, setLoadedStatus] = useState(/** @type {string | null} */ (null));
+  const [loadedNumber, setLoadedNumber] = useState(/** @type {string | null} */ (null));
+  const loadedDetailVersionRef = useRef(0);
 
-  const mapSeedToCacheRow = useCallback((seed) => toExpenseVoucherCacheRow(seed), []);
-  const mapRecordToFormValues = useCallback((r) => recordToFormValues(r), []);
-
-  const { detailEnabled, tableSeedMatches, fetchRemoteDetail, detailQuery } = useResourceDrawerDetailSync({
-    open,
-    mode,
-    recordId: expenseVoucherId,
-    // Table rows lack lines; always load the full record before editing.
-    tableSeedRecord: null,
-    form,
-    defaults,
-    queryKeyPrefix: EXPENSE_VOUCHER_DETAIL_QUERY_PREFIX,
-    fetchDetail: fetchExpenseVoucher,
-    mapSeedToCacheRow,
-    mapRecordToFormValues,
+  const detailEnabled = open && voucherId != null;
+  const detailQuery = useQuery({
+    queryKey: expenseVoucherDetailQueryKey(/** @type {string | number} */ (voucherId)),
+    queryFn: () => fetchExpenseVoucher(String(voucherId)),
+    enabled: detailEnabled,
+    staleTime: QUERY_STALE_TIME.default,
   });
+
+  const syncFromRecord = useCallback(
+    (record) => {
+      if (!record || typeof record !== "object") return;
+      const values = recordToFormValues(record);
+      setBaseline(values);
+      setLoadedStatus(typeof record.status === "string" ? record.status : null);
+      setLoadedNumber(typeof record.voucher_number === "string" ? record.voucher_number : null);
+      form.setFieldsValue(values);
+    },
+    [form],
+  );
+
+  // A new voucher starts clean each time the drawer opens.
+  useLayoutEffect(() => {
+    if (!open || mode !== "create" || expenseVoucherId != null) return;
+    const defaults = getExpenseVoucherDefaults();
+    /* eslint-disable react-hooks/set-state-in-effect -- reset the create draft when the drawer opens */
+    setSavedId(null);
+    setBaseline(defaults);
+    setLoadedStatus("draft");
+    setLoadedNumber(null);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    loadedDetailVersionRef.current = 0;
+    form.resetFields();
+    form.setFieldsValue(defaults);
+  }, [open, mode, expenseVoucherId, form]);
+
+  useEffect(() => {
+    if (!open || !detailQuery.isSuccess || !detailQuery.data) return;
+    const version = detailQuery.dataUpdatedAt;
+    if (loadedDetailVersionRef.current === version) return;
+    loadedDetailVersionRef.current = version;
+    syncFromRecord(/** @type {Record<string, unknown>} */ (detailQuery.data));
+  }, [open, detailQuery.isSuccess, detailQuery.data, detailQuery.dataUpdatedAt, syncFromRecord]);
+
+  const effectiveStatus = loadedStatus ?? (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
+  const readOnly = mode === "view" || effectiveStatus !== "draft" || (voucherId == null ? !access.canAdd : !access.canEdit);
 
   const cashWatch = Form.useWatch("cash_bank_account_id", form);
-  const linesWatch = Form.useWatch("lines", form);
-  const canSubmitRequired = useMemo(() => requiredFieldsValid(cashWatch, linesWatch), [cashWatch, linesWatch]);
+  const linesWatch = Form.useWatch("lines", { form, preserve: true });
+  const canSave = requiredFieldsValid(cashWatch, linesWatch);
 
-  const { syncBaselineFromFormFields, resetBaselineToDefaults, isCreateDirty } = useCreateDiscardBaseline({
-    open,
-    mode,
-    form,
-    defaults,
-    isCreateDirtyVsBaseline: isCreateDirtyVsDefaults,
-  });
+  const shouldConfirmDiscard = useCallback(() => !readOnly && isExpenseVoucherDirty(form, baseline), [readOnly, form, baseline]);
+  const { forceClose, requestClose } = useResourceDrawerCloseFlow({ readOnly, modal, t, onClose, shouldConfirmDiscard });
 
-  const onSyncCreateDiscardBaseline = useCallback(
-    /** @param {"fromForm" | "defaults"} kind */
-    (kind) => {
-      if (kind === "fromForm") syncBaselineFromFormFields();
-      else resetBaselineToDefaults();
+  const afterSave = useCallback(
+    (record) => {
+      syncFromRecord(record);
+      loadedDetailVersionRef.current = Date.now();
     },
-    [syncBaselineFromFormFields, resetBaselineToDefaults],
+    [syncFromRecord],
   );
 
-  const { createMutation, updateMutation, applyPayload, submitting } = useExpenseVoucherDrawerMutations({
+  const handleCreated = useCallback(
+    (record) => {
+      if (record?.id != null) setSavedId(String(record.id));
+      onCreated?.(record);
+    },
+    [onCreated],
+  );
+
+  const { saveMutation, postMutation, reverseMutation, deleteMutation, submitting } = useExpenseVoucherDrawerMutations({
     form,
     message,
+    notification,
     t,
     tApiErrors,
-    onClose,
-    onCreated,
-    onCreateSuccess,
-    onSyncCreateDiscardBaseline,
-    defaults,
+    voucherId,
+    onCreated: handleCreated,
+    onSaved: afterSave,
+    onPosted: afterSave,
+    onReversed: afterSave,
+    onDeleted: forceClose,
   });
 
-  const editBaselineForDirty = useMemo(() => {
-    if (mode !== "edit") return null;
-    if (detailQuery.data) return /** @type {Record<string, unknown>} */ (detailQuery.data);
-    if (tableSeedMatches && tableSeedRecord) {
-      return toExpenseVoucherCacheRow(/** @type {Record<string, unknown>} */ (tableSeedRecord));
-    }
-    return null;
-  }, [mode, detailQuery.data, tableSeedMatches, tableSeedRecord]);
+  const handleSave = useCallback(() => {
+    form
+      .validateFields()
+      .then((values) => saveMutation.mutate({ values }))
+      .catch(() => {});
+  }, [form, saveMutation]);
 
-  const shouldConfirmDiscard = useCallback(() => {
-    if (readOnly) return false;
-    if (mode === "create") return isCreateDirty();
-    if (mode === "edit" && editBaselineForDirty) {
-      return isEditDirtyVsLoaded(form, editBaselineForDirty);
-    }
-    if (mode === "edit") return form.isFieldsTouched(true);
-    return false;
-  }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
-
-  const { forceClose, requestClose } = useResourceDrawerCloseFlow({
-    readOnly,
-    modal,
-    t,
-    onClose,
-    shouldConfirmDiscard,
-  });
-
-  const runCreate = useCallback(
-    (intent) => {
-      form
-        .validateFields()
-        .then((values) => {
-          const payload = applyPayload(values);
-          createMutation.mutate({ payload, intent });
-        })
-        .catch(() => {});
-    },
-    [form, applyPayload, createMutation],
-  );
-
-  const handleEditSubmit = useCallback(() => {
-    if (readOnly) return;
+  const handlePost = useCallback(() => {
     form
       .validateFields()
       .then((values) => {
-        const payload = applyPayload(values);
-        if (mode === "edit" && expenseVoucherId != null) {
-          updateMutation.mutate({ id: expenseVoucherId, values: payload });
-        }
+        modal.confirm({
+          title: t("postConfirmTitle"),
+          content: t("postConfirmContent"),
+          okText: t("actionPost"),
+          cancelText: t("drawerCancel"),
+          onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
+        });
       })
       .catch(() => {});
-  }, [readOnly, form, applyPayload, mode, expenseVoucherId, updateMutation]);
+  }, [form, modal, t, postMutation]);
 
-  const title =
-    mode === "create" ? t("drawerTitleCreate") : mode === "view" ? t("drawerTitleView") : t("drawerTitleEdit");
+  const handleReverse = useCallback(() => {
+    modal.confirm({
+      title: t("reverseConfirmTitle"),
+      content: t("reverseConfirmContent"),
+      okText: t("actionReverse"),
+      okButtonProps: { danger: true },
+      cancelText: t("drawerCancel"),
+      onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()),
+    });
+  }, [modal, t, reverseMutation]);
 
-  const showDetailLoading = fetchRemoteDetail && detailQuery.isPending;
+  const handleDelete = useCallback(() => {
+    modal.confirm({
+      title: t("deleteConfirmTitle"),
+      content: t("deleteConfirmContent", { name: loadedNumber ?? "" }),
+      okText: t("deleteConfirmOk"),
+      okButtonProps: { danger: true },
+      cancelText: t("deleteConfirmCancel"),
+      onOk: () => closeConfirmOnError(deleteMutation.mutateAsync()),
+    });
+  }, [modal, t, deleteMutation, loadedNumber]);
 
-  const createSaveDisabled =
-    !canSubmitRequired || submitting || (fetchRemoteDetail && detailEnabled && detailQuery.isError);
-
-  const createIntentLabel = useCallback(
-    (/** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent} */ intent) => {
-      if (intent === "keep") return t("drawerSave");
-      if (intent === "new") return t("drawerSaveAndNew");
-      return t("drawerSaveAndClose");
-    },
-    [t],
-  );
-
-  const createSaveMenuItems = useMemo(() => {
-    /** @type {import("@/lib/drawer/persistedSaveIntent").DrawerSaveIntent[]} */
-    const all = ["keep", "new", "close"];
-    return all
-      .filter((key) => key !== lastCreateIntent)
-      .map((key) => ({
-        key,
-        label: createIntentLabel(key),
-      }));
-  }, [lastCreateIntent, createIntentLabel]);
+  const title = mode === "create" && voucherId == null ? t("drawerTitleCreate") : readOnly ? t("drawerTitleView") : t("drawerTitleEdit");
+  const doc = detailQuery.data && typeof detailQuery.data === "object" ? /** @type {Record<string, unknown>} */ (detailQuery.data) : null;
 
   return (
     <ResourceCrudDrawer
+      documentBranch={doc}
       title={title}
+      recordName={loadedNumber}
+      titleExtra={
+        effectiveStatus ? (
+          <Tag className="m-0" color={expenseVoucherStatusColor(effectiveStatus)}>
+            {getExpenseVoucherStatusLabel(t, effectiveStatus)}
+          </Tag>
+        ) : null
+      }
       open={open}
       requestClose={requestClose}
       submitting={submitting}
-      showDetailLoading={showDetailLoading}
-      detailLoadFailed={Boolean(fetchRemoteDetail && detailEnabled && detailQuery.isError)}
+      showExpand
+      showDetailLoading={detailEnabled && detailQuery.isLoading}
+      detailLoadFailed={Boolean(detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
+      size={900}
       footer={
-        <ResourceDrawerFooter
-          mode={mode}
+        <ExpenseVoucherDrawerFooter
           readOnly={readOnly}
           t={t}
           forceClose={forceClose}
           requestClose={requestClose}
           submitting={submitting}
-          createSaveDisabled={createSaveDisabled}
-          lastCreateIntent={lastCreateIntent}
-          runCreate={runCreate}
-          createIntentLabel={createIntentLabel}
-          createSaveMenuItems={createSaveMenuItems}
-          handleEditSubmit={handleEditSubmit}
-          canSubmitRequired={canSubmitRequired}
-          fetchRemoteDetail={fetchRemoteDetail}
-          detailEnabled={detailEnabled}
-          detailQueryError={detailQuery.isError}
+          saveDisabled={!canSave}
+          postDisabled={!canSave}
+          showDelete={!readOnly && voucherId != null && access.canDelete}
+          showPost={!readOnly && access.canEdit}
+          showReverse={effectiveStatus === "posted" && voucherId != null && access.canReverse}
+          onSave={handleSave}
+          onPost={handlePost}
+          onDelete={handleDelete}
+          onReverse={handleReverse}
         />
       }
     >
-      <ExpenseVoucherDrawerForm form={form} readOnly={readOnly} t={t} />
+      <ExpenseVoucherDrawerForm form={form} readOnly={readOnly || submitting} t={t} />
     </ResourceCrudDrawer>
   );
 }

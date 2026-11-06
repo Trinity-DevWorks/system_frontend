@@ -134,7 +134,7 @@ export default function SalesInvoiceDrawerFooter({
         ) : null}
         {showCreateReceipt ? (
           <Button className="shrink-0" type="primary" onClick={onCreateReceipt}>
-            {t("actionCreateReceipt")}
+            {t("actionRecordPayment")}
           </Button>
         ) : null}
       </div>

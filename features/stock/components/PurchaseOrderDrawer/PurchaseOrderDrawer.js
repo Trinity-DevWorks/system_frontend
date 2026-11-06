@@ -673,7 +673,7 @@ export default function PurchaseOrderDrawer({
             onAddLine={addLine}
             t={t}
           />
-          <PurchaseOrderTotals t={t} totals={displayTotals} />
+          <PurchaseOrderTotals t={t} totals={displayTotals} currencySymbol={documentCurrencySymbol || documentCurrencyCode} />
         </Form>
       </div>
     </ResourceCrudDrawer>

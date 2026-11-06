@@ -29,6 +29,8 @@ import SalesInvoiceDrawerForm from "./SalesInvoiceDrawerForm";
 import SalesInvoiceDrawerHeaderMeta from "./SalesInvoiceDrawerHeaderMeta";
 import SalesInvoiceLineEditor from "./SalesInvoiceLineEditor";
 import SalesInvoiceTotals from "./SalesInvoiceTotals";
+import { getActiveBranchId } from "@/lib/active-branch";
+import SalesInvoicePaymentModal from "./SalesInvoicePaymentModal";
 import { rememberRecentSelectorOption } from "@/lib/recentSelectorOptions";
 import {
   areSalesInvoiceLinesDirty,
@@ -49,6 +51,8 @@ import {
   customerIsExemptOnDate,
   previewInvoiceTotals,
 } from "../../utils/salesInvoiceTax";
+import { headerDiscountPreview } from "@/features/sales-documents/utils/headerDiscount";
+import { useDiscountApproval } from "@/features/sales-documents/components/useDiscountApproval";
 import { useSalesInvoiceDrawerData } from "../../queries/useSalesInvoiceDrawerData";
 import { useSalesInvoiceDrawerMutations } from "../../queries/useSalesInvoiceDrawerMutations";
 import { tenantPricesIncludeTax, useCompanySettings } from "@/lib/company-settings";
@@ -258,6 +262,8 @@ export default function SalesInvoiceDrawer({
     loadedStatus ??
     (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
   const readOnly = mode === "view" || !isSalesInvoiceDraft(effectiveStatus) || (mode === "edit" && !access.canEdit);
+  // Opening invoices (old balances) are managed from the customer: no reverse or print here.
+  const isOpeningInvoice = Boolean((detailQuery.data ?? tableSeedRecord)?.is_opening);
 
   const formValuesWatch = Form.useWatch([], form);
   const customerId = formValuesWatch?.customer_id ?? null;
@@ -338,7 +344,8 @@ export default function SalesInvoiceDrawer({
     dueOnAutoRef.current = true;
     form.setFieldsValue({
       salesman_id: customer.salesman_id ?? undefined,
-      payment_method_id: customer.payment_method_id ?? undefined,
+      // The customer's own method, else the branch default.
+      payment_method_id: customer.payment_method_id ?? drawerData.branchDefaultPaymentMethodId,
       payment_terms_id: customer.payment_terms_id ?? undefined,
       billing_address_id: billing?.id != null ? Number(billing.id) : undefined,
       shipping_address_id: shipping?.id != null ? Number(shipping.id) : undefined,
@@ -376,7 +383,18 @@ export default function SalesInvoiceDrawer({
         },
       }),
     );
-  }, [open, customerId, drawerData.customerDetail, drawerData.customerDetailPending, form, readOnly, modal, t]);
+  }, [open, customerId, drawerData.customerDetail, drawerData.customerDetailPending, drawerData.branchDefaultPaymentMethodId, form, readOnly, modal, t]);
+
+  // New invoice: when the chosen customer has no payment method, use the branch default (also once it loads late).
+  useEffect(() => {
+    if (!open || readOnly || mode !== "create" || customerId == null) return;
+    const fallback = drawerData.branchDefaultPaymentMethodId;
+    if (fallback == null || form.getFieldValue("payment_method_id") != null) return;
+    const customer = drawerData.customerDetail;
+    if (drawerData.customerDetailPending || !customer || String(customer.id) !== String(customerId)) return;
+    if (customer.payment_method_id != null) return;
+    form.setFieldValue("payment_method_id", fallback);
+  }, [open, readOnly, mode, customerId, drawerData.branchDefaultPaymentMethodId, drawerData.customerDetail, drawerData.customerDetailPending, form]);
 
   const exchangeRateLocked =
     currencyId == null ||
@@ -533,7 +551,7 @@ export default function SalesInvoiceDrawer({
     [form, queryClient],
   );
 
-  const { saveMutation, postMutation, reverseMutation, deleteMutation, submitting } = useSalesInvoiceDrawerMutations({
+  const { saveMutation, postMutation, recordPaymentMutation, reverseMutation, deleteMutation, submitting } = useSalesInvoiceDrawerMutations({
     form,
     message,
     notification,
@@ -578,6 +596,8 @@ export default function SalesInvoiceDrawer({
     };
   }, [drawerData.customerDetail, formValuesWatch?.invoice_date, settings]);
 
+  const headerDiscountType = formValuesWatch?.header_discount_type;
+  const headerDiscountValue = formValuesWatch?.header_discount_value;
   const liveTotals = useMemo(
     () =>
       previewInvoiceTotals({
@@ -595,6 +615,7 @@ export default function SalesInvoiceDrawer({
             ]),
         ),
         adjustment: formValuesWatch?.adjustment ?? 0,
+        headerDiscount: headerDiscountPreview({ header_discount_type: headerDiscountType, header_discount_value: headerDiscountValue }),
         taxEnabled: taxContext.taxEnabled,
         pricesIncludeTax: taxContext.pricesIncludeTax,
         customerExempt: taxContext.customerExempt,
@@ -603,6 +624,8 @@ export default function SalesInvoiceDrawer({
     [
       lines,
       formValuesWatch?.adjustment,
+      headerDiscountType,
+      headerDiscountValue,
       taxContext,
       settings,
     ],
@@ -636,22 +659,30 @@ export default function SalesInvoiceDrawer({
       .catch(() => {});
   }, [form, saveMutation]);
 
+  const { withApproval, approvalModal } = useDiscountApproval();
+  // Post and "Record payment" both open the payment modal; Post sends the invoice and its payments together.
+  const [paymentModal, setPaymentModal] = useState(/** @type {null | { mode: "post" | "record"; values?: Record<string, unknown> }} */ (null));
   const handlePost = useCallback(() => {
     form
       .validateFields()
-      .then((values) => {
-        modal.confirm(
-          withConfirmKeyboard({
-            title: t("postConfirmTitle"),
-            content: t("postConfirmContent"),
-            okText: t("postConfirmOk"),
-            cancelText: t("drawerCancel"),
-            onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
-          }),
-        );
-      })
+      .then((values) => setPaymentModal({ mode: "post", values }))
       .catch(() => {});
-  }, [form, modal, t, postMutation]);
+  }, [form]);
+  const handleRecordPayment = useCallback(() => setPaymentModal({ mode: "record" }), []);
+  const handlePaymentSubmit = useCallback(
+    (body) => {
+      if (!paymentModal) return;
+      const run =
+        paymentModal.mode === "post"
+          ? withApproval((discountApproval) => postMutation.mutateAsync({ values: paymentModal.values, payments: body.payments, discountApproval }))
+          : recordPaymentMutation.mutateAsync(body);
+      // Errors are shown by the mutation; the modal stays open so the user can fix and retry.
+      run.then((result) => {
+        if (result) setPaymentModal(null);
+      }).catch(() => {});
+    },
+    [paymentModal, withApproval, postMutation, recordPaymentMutation],
+  );
 
   const handleReverse = useCallback(() => {
     modal.confirm(
@@ -682,16 +713,6 @@ export default function SalesInvoiceDrawer({
   const handlePrintReceipt = useCallback(() => {
     printReceipt(invoiceId, loadedNumber);
   }, [printReceipt, invoiceId, loadedNumber]);
-
-  const handleCreateReceipt = useCallback(() => {
-    const id = normalizeEntityId(invoiceId);
-    if (id == null) return;
-    openDrawer({
-      featureId: "customerReceipts",
-      mode: "create",
-      extras: { fromInvoiceId: id },
-    });
-  }, [invoiceId, openDrawer]);
 
   const handleCreateCreditNote = useCallback(() => {
     const id = normalizeEntityId(invoiceId);
@@ -794,6 +815,18 @@ export default function SalesInvoiceDrawer({
         : t("drawerTitleEdit");
   const title = loadedNumber ? `${baseTitle} # ${loadedNumber}` : baseTitle;
 
+  // Receipts created from the invoice's payments, shown as header links (one per receipt).
+  const invoiceReceiptLinks = (() => {
+    const payments = Array.isArray(detailQuery.data?.payments) ? detailQuery.data.payments : [];
+    /** @type {Map<string, { id: string; number: string }>} */
+    const byId = new Map();
+    for (const p of payments) {
+      if (p?.customer_receipt_id == null || byId.has(String(p.customer_receipt_id))) continue;
+      byId.set(String(p.customer_receipt_id), { id: String(p.customer_receipt_id), number: String(p.receipt_number ?? "") });
+    }
+    return [...byId.values()];
+  })();
+
   const showDetailLoading = fetchRemoteDetail && detailQuery.isLoading;
   const keyboardEnabled = open && !readOnly && !submitting && !showDetailLoading;
 
@@ -834,7 +867,7 @@ export default function SalesInvoiceDrawer({
       headerExtra={
         <div className="flex items-center gap-3">
           {loadedOrder ? (
-            <Button type="link" className="px-0" onClick={() => openDrawer({ featureId: "salesOrders", id: loadedOrder.id, mode: "view" })}>
+            <Button type="link" className="px-0" onClick={() => openStackedDrawer({ featureId: "salesOrders", id: String(loadedOrder.id), mode: "view" })}>
               {t("linkedOrder")} {loadedOrder.order_number}
             </Button>
           ) : null}
@@ -844,6 +877,18 @@ export default function SalesInvoiceDrawer({
             paidTotal={displayTotals?.paid_total}
             netToPay={displayTotals?.net_to_pay}
           />
+          {receiptAccess.canView
+            ? invoiceReceiptLinks.map((receipt) => (
+                <Button
+                  key={receipt.id}
+                  type="link"
+                  className="px-0"
+                  onClick={() => openStackedDrawer({ featureId: "customerReceipts", id: receipt.id, mode: "view" })}
+                >
+                  {t("linkedReceipt")} {receipt.number}
+                </Button>
+              ))
+            : null}
         </div>
       }
       showDetailLoading={showDetailLoading}
@@ -860,8 +905,8 @@ export default function SalesInvoiceDrawer({
           saveDisabled={!canSubmitRequired}
           postDisabled={!canSubmitRequired || !access.canEdit}
           showDelete={!readOnly && invoiceId != null && access.canDelete}
-          showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
-          showPdf={invoiceId != null && access.canPrint && isDocumentPdfPrintable("sales_invoice", effectiveStatus)}
+          showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse && !isOpeningInvoice}
+          showPdf={invoiceId != null && access.canPrint && !isOpeningInvoice && isDocumentPdfPrintable("sales_invoice", effectiveStatus)}
           pdfLoading={isDownloadPending}
           printLoading={isPrintPending}
           onPrint={handlePrint}
@@ -881,7 +926,7 @@ export default function SalesInvoiceDrawer({
           }
           onReverse={handleReverse}
           onCreateCreditNote={handleCreateCreditNote}
-          onCreateReceipt={handleCreateReceipt}
+          onCreateReceipt={handleRecordPayment}
           postedBy={loadedPostedBy}
           postedAt={loadedPostedAt}
           onSave={handleSave}
@@ -899,6 +944,7 @@ export default function SalesInvoiceDrawer({
         currencyOptions={drawerData.currencyOptions}
         salesmanOptions={drawerData.salesmanOptions}
         paymentMethodOptions={drawerData.paymentMethodOptions}
+        paymentMethodSelectable={drawerData.paymentMethodSelectable}
         paymentTermOptions={drawerData.paymentTermOptions}
         warehousesPending={drawerData.warehousesPending}
         currenciesPending={drawerData.currenciesPending}
@@ -951,6 +997,20 @@ export default function SalesInvoiceDrawer({
           currencySymbol={documentCurrencySymbol}
         />
       </SalesInvoiceDrawerForm>
+      {approvalModal}
+      <SalesInvoicePaymentModal
+        open={paymentModal != null}
+        mode={paymentModal?.mode ?? "post"}
+        amountDue={paymentModal?.mode === "record" ? displayTotals?.net_to_pay : displayTotals?.grand_total}
+        currencyId={currencyId}
+        exchangeRate={formValuesWatch?.exchange_rate}
+        branchId={detailQuery.data?.branch_id ?? getActiveBranchId()}
+        invoiceMethodId={formValuesWatch?.payment_method_id}
+        currencySymbol={documentCurrencySymbol || drawerData.currencyCode(currencyId)}
+        submitting={submitting}
+        onCancel={() => setPaymentModal(null)}
+        onSubmit={handlePaymentSubmit}
+      />
     </ResourceCrudDrawer>
     </>
   );

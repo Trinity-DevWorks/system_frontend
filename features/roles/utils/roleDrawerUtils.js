@@ -46,6 +46,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (name !== String(defaults.name ?? "").trim()) return true;
   if (description !== String(defaults.description ?? "").trim()) return true;
   if (isActive !== Boolean(defaults.is_active)) return true;
+  if (maxDiscountKey(v.max_discount_percent) !== maxDiscountKey(defaults.max_discount_percent)) return true;
   return false;
 }
 
@@ -63,7 +64,18 @@ export function isEditDirtyVsLoaded(form, row) {
   if (name !== String(row.name ?? "").trim()) return true;
   if (description !== rowDesc) return true;
   if (isActive !== Boolean(row.is_active)) return true;
+  if (maxDiscountKey(v.max_discount_percent) !== maxDiscountKey(row.max_discount_percent)) return true;
   return false;
+}
+
+/**
+ * Empty = no limit.
+ * @param {unknown} value
+ */
+function maxDiscountKey(value) {
+  if (value == null || value === "") return "";
+  const n = Number(value);
+  return Number.isFinite(n) ? String(n) : "";
 }
 
 /** @param {Record<string, unknown>} row */
@@ -73,6 +85,7 @@ export function toRoleCacheRow(row) {
     name: row.name,
     description: row.description ?? null,
     is_active: row.is_active,
+    max_discount_percent: row.max_discount_percent ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -102,5 +115,7 @@ export function roleFormValuesToPayload(values) {
     name: String(values.name ?? "").trim(),
     description,
     is_active: Boolean(values.is_active),
+    // Empty = no limit.
+    max_discount_percent: maxDiscountKey(values.max_discount_percent) === "" ? null : Number(values.max_discount_percent),
   };
 }

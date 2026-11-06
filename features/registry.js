@@ -17,6 +17,7 @@
  */
 
 import {
+  ContainerOutlined,
   PrinterOutlined,
   AlertOutlined,
   AccountBookOutlined,
@@ -197,6 +198,7 @@ export const FEATURES = [
   { id: "suppliers", path: "/main/suppliers", section: "purchasing", labelKey: "navSuppliers", icon: SolutionOutlined, module: "purchasing", permission: "suppliers" },
   { id: "supplierLedger", path: "/main/supplier-ledger", section: "purchasing", labelKey: "navSupplierLedger", icon: FileSearchOutlined, module: "purchasing", permission: "suppliers" },
   { id: "purchaseInvoices", path: "/main/purchase-invoices", section: "purchasing", labelKey: "navPurchaseInvoices", icon: FileDoneOutlined, module: "purchasing", permission: "purchase_invoices" },
+  { id: "landedCosts", path: "/main/landed-costs", section: "purchasing", labelKey: "navLandedCosts", icon: ContainerOutlined, module: "purchasing", permission: "landed_costs" },
   { id: "purchaseDebitNotes", path: "/main/purchase-debit-notes", section: "purchasing", labelKey: "navPurchaseDebitNotes", icon: RollbackOutlined, module: "purchasing", permission: "purchase_debit_notes" },
   { id: "supplierPayments", path: "/main/supplier-payments", section: "purchasing", labelKey: "navSupplierPayments", icon: AccountBookOutlined, module: "purchasing", permission: "supplier_payments" },
   { id: "supplierRefunds", path: "/main/supplier-refunds", section: "purchasing", labelKey: "navSupplierRefunds", icon: SwapOutlined, module: "purchasing", permission: "supplier_refunds" },

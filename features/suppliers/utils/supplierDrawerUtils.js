@@ -4,6 +4,7 @@
 
 import dayjs from "dayjs";
 import { tenantMoneyFixed } from "@/lib/tenant-format";
+import { openingDocumentsFingerprint, openingDocumentsToPayload } from "@/features/party-opening/openingDocumentsUtils";
 
 /** @typedef {"keep" | "new" | "close"} SupplierCreateSaveIntent */
 
@@ -90,23 +91,15 @@ export function mergeCreditAndOpeningRows(creditRows, openingRows) {
     });
 }
 
-/** @param {unknown[]} rows */
+/**
+ * Credit limits per currency (a limit of 0 means no limit, so it is left out).
+ * @param {unknown[]} rows
+ */
 export function currencyBalancesFingerprint(rows) {
   if (!Array.isArray(rows)) return "";
   return [...rows]
-    .filter((r) => r && r.currency_id != null && r.currency_id !== "")
-    .map((r) => {
-      const id = Number(r.currency_id);
-      const c = Number(r.credit_limit ?? 0);
-      const o = Number(r.opening_balance ?? 0);
-      const d = r.opening_date;
-      let dateKey = "";
-      if (d != null && d !== "") {
-        const parsed = dayjs(d);
-        dateKey = parsed.isValid() ? parsed.format("YYYY-MM-DD") : String(d).slice(0, 10);
-      }
-      return `${id}:${tenantMoneyFixed(c)}:${tenantMoneyFixed(o)}:${dateKey}`;
-    })
+    .filter((r) => r && r.currency_id != null && r.currency_id !== "" && Number(r.credit_limit ?? 0) !== 0)
+    .map((r) => `${Number(r.currency_id)}:${tenantMoneyFixed(Number(r.credit_limit ?? 0))}`)
     .sort()
     .join("|");
 }
@@ -145,19 +138,12 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (dateFingerprint(v.exempted_to) !== dateFingerprint(defaults.exempted_to)) return true;
   if (notes !== String(defaults.notes ?? "").trim()) return true;
   if (
-    currencyBalancesFingerprint(
-      mergeCreditAndOpeningRows(
-        /** @type {unknown[]} */ (v.currency_credit_limits ?? []),
-        /** @type {unknown[]} */ (v.currency_opening_balances ?? []),
-      ),
-    ) !==
-    currencyBalancesFingerprint(
-      mergeCreditAndOpeningRows(
-        /** @type {unknown[]} */ (defaults.currency_credit_limits ?? []),
-        /** @type {unknown[]} */ (defaults.currency_opening_balances ?? []),
-      ),
-    )
+    currencyBalancesFingerprint(/** @type {unknown[]} */ (v.currency_credit_limits ?? [])) !==
+    currencyBalancesFingerprint(/** @type {unknown[]} */ (defaults.currency_credit_limits ?? []))
   ) {
+    return true;
+  }
+  if (openingDocumentsFingerprint(v.opening_documents ?? []) !== openingDocumentsFingerprint(defaults.opening_documents ?? [])) {
     return true;
   }
   return false;
@@ -197,13 +183,13 @@ export function isEditDirtyVsLoaded(form, row) {
   if (dateFingerprint(v.exempted_to) !== dateFingerprint(row.exempted_to)) return true;
   if (notes !== String(row.notes ?? "").trim()) return true;
   if (
-    currencyBalancesFingerprint(
-      mergeCreditAndOpeningRows(
-        /** @type {unknown[]} */ (v.currency_credit_limits ?? []),
-        /** @type {unknown[]} */ (v.currency_opening_balances ?? []),
-      ),
-    ) !== currencyBalancesFingerprint(/** @type {unknown[]} */ (row.currency_balances ?? []))
+    currencyBalancesFingerprint(/** @type {unknown[]} */ (v.currency_credit_limits ?? [])) !==
+    currencyBalancesFingerprint(/** @type {unknown[]} */ (row.currency_balances ?? []))
   ) {
+    return true;
+  }
+  // The table row has no opening documents; only the loaded detail does.
+  if (Array.isArray(row.opening_documents) && openingDocumentsFingerprint(v.opening_documents ?? []) !== openingDocumentsFingerprint(row.opening_documents)) {
     return true;
   }
   return false;
@@ -264,25 +250,11 @@ function mapMergedBalanceToPayload(row) {
   const currencyId = Number(r.currency_id);
   if (!Number.isFinite(currencyId)) return null;
   const creditRaw = r.credit_limit;
-  const openRaw = r.opening_balance;
   const credit = creditRaw == null || creditRaw === "" ? 0 : Number(creditRaw);
-  const opening = openRaw == null || openRaw === "" ? 0 : Number(openRaw);
-  /** @type {Record<string, unknown>} */
-  const out = {
+  return {
     currency_id: currencyId,
     credit_limit: Number.isFinite(credit) ? credit : 0,
-    opening_balance: Number.isFinite(opening) ? opening : 0,
   };
-  const od = r.opening_date;
-  if (opening !== 0) {
-    if (od != null && od !== "") {
-      const parsed = dayjs(od);
-      out.opening_date = parsed.isValid() ? parsed.format("YYYY-MM-DD") : String(od).slice(0, 10);
-    } else {
-      out.opening_date = dayjs().format("YYYY-MM-DD");
-    }
-  }
-  return out;
 }
 
 /**
@@ -300,10 +272,7 @@ export function supplierFormValuesToPayload(values, mode) {
   const isVat = values.is_vat_registered === true;
   const isExempt = values.is_exempted === true;
 
-  const merged = mergeCreditAndOpeningRows(
-    /** @type {unknown[]} */ (values.currency_credit_limits ?? []),
-    /** @type {unknown[]} */ (values.currency_opening_balances ?? []),
-  );
+  const merged = mergeCreditAndOpeningRows(/** @type {unknown[]} */ (values.currency_credit_limits ?? []), []);
   const currency_balances = merged
     .map((row) => mapMergedBalanceToPayload(/** @type {Record<string, unknown>} */ (row)))
     .filter(Boolean);
@@ -322,6 +291,7 @@ export function supplierFormValuesToPayload(values, mode) {
     payment_terms_id: optionalRelationId(values.payment_terms_id),
     vat_group_id: optionalRelationId(values.vat_group_id),
     currency_balances,
+    opening_documents: openingDocumentsToPayload(values.opening_documents),
     is_active: values.is_active !== false,
     is_vat_registered: isVat,
     vat_number: isVat ? (vatNumRaw === "" ? null : vatNumRaw.slice(0, 128)) : null,
@@ -350,32 +320,22 @@ export function supplierFormValuesToPayload(values, mode) {
 }
 
 /**
+ * Credit limit rows for the form (a limit of 0 means no limit, so it is left out).
  * @param {unknown[]} currencyBalances from API
- * @returns {{ currency_credit_limits: unknown[]; currency_opening_balances: unknown[] }}
+ * @returns {{ currency_credit_limits: unknown[] }}
  */
 export function mapApiCurrencyBalancesToFormSplit(currencyBalances) {
   if (!Array.isArray(currencyBalances)) {
-    return { currency_credit_limits: [], currency_opening_balances: [] };
+    return { currency_credit_limits: [] };
   }
   /** @type {unknown[]} */
   const creditRows = [];
-  /** @type {unknown[]} */
-  const openingRows = [];
   for (const b of currencyBalances) {
     const row = /** @type {Record<string, unknown>} */ (b && typeof b === "object" ? b : {});
-    if (row.currency_id == null || row.currency_id === "") continue;
+    if (row.currency_id == null || row.currency_id === "" || Number(row.credit_limit ?? 0) === 0) continue;
     creditRows.push({ currency_id: row.currency_id, credit_limit: Number(row.credit_limit ?? 0) });
-    const ob = Number(row.opening_balance ?? 0);
-    if (ob !== 0) {
-      openingRows.push({
-        currency_id: row.currency_id,
-        opening_balance: ob,
-        opening_date: row.opening_date ? dayjs(String(row.opening_date)) : dayjs(),
-        ledger_balance: Number(row.balance ?? 0),
-      });
-    }
   }
-  return { currency_credit_limits: creditRows, currency_opening_balances: openingRows };
+  return { currency_credit_limits: creditRows };
 }
 
 export function primarySnapshotForOptimistic(primaryFromApi, currencyBalancesPayload, currencies) {
