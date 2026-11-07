@@ -1,12 +1,11 @@
 /**
- * Item drawer constants — type flag defaults, save-intent keys, nested-create lookup tokens.
+ * Item drawer constants — type flag defaults, save-intent keys.
  *
  * Used by:
  * - drawer/utils/itemFormMappers.js
  * - drawer/utils/itemDrawerSaveIntent.js
  * - drawer/ItemDrawer.js
  * - drawer/components/ItemDrawerGeneralForm.js
- * - drawer/hooks/useItemDrawerNestedCreate.js (JSDoc type import)
  */
 
 /** @type {Record<string, { track_inventory: boolean; allow_sale: boolean; allow_purchase: boolean; allow_return: boolean; send_to_kitchen: boolean; qr_enabled: boolean }>} */
@@ -30,4 +29,3 @@ export const ITEM_LOOKUP_ADD_VAT_GROUP = "__item_drawer_add_vat_group__";
 /** @type {RegExp} */
 export const ITEM_COLOR_PATTERN = /^#(?:[0-9A-F]{3}|[0-9A-F]{6})$/i;
 
-/** @typedef {"category" | "brand" | "unit-group" | "vat-group"} ItemNestedCreateKey */

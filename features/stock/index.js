@@ -16,6 +16,7 @@ export * from "./api/purchaseOrders.api";
 export * from "./api/goodsReceipts.api";
 export * from "./api/openingStocks.api";
 export * from "./api/stockAdjustments.api";
+export * from "./api/stockRevaluations.api";
 export * from "./api/stockAdjustmentReasons.api";
 export * from "./api/productions.api";
 export * from "./api/bundleExplosions.api";

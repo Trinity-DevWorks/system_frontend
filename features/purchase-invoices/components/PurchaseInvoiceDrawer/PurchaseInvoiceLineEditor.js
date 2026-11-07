@@ -862,12 +862,14 @@ export default function PurchaseInvoiceLineEditor({
                     <Tooltip
                       title={t(poLinked ? "priceMismatchWarningPo" : "priceMismatchWarning", {
                         grn: formatTenantMoneyWithSymbol(
-                          linePriceFromPrimary(
-                            poLinked ? row.po_unit_price : row.grn_unit_cost,
-                            positiveRate(row.price_rate) ?? pricing.rate ?? 1,
-                            priceDecimals,
-                            "document",
-                          ).unit_price,
+                          poLinked
+                            ? row.po_unit_price
+                            : linePriceFromPrimary(
+                                row.grn_unit_cost,
+                                positiveRate(row.price_rate) ?? pricing.rate ?? 1,
+                                priceDecimals,
+                                "document",
+                              ).unit_price,
                           pricing.symbol,
                         ) || "\u2014",
                       })}

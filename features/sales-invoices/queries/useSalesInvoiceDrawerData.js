@@ -29,6 +29,7 @@ import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
 import { CURRENCIES_LIST_QUERY_KEY } from "@/features/currencies";
 import { itemInvoiceLineSetupQueryKey } from "@/features/items";
 import { useCompanySettings } from "@/lib/company-settings";
+import { fetchPaymentMethodNames } from "@/features/payment-methods/api/paymentMethods.api";
 
 /**
  * @param {{
@@ -62,6 +63,18 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
     enabled: open,
     staleTime: QUERY_STALE_TIME.catalog,
   });
+
+  // `is_default` is the default of the branch the user is working in.
+  const paymentMethodsQuery = useQuery({
+    queryKey: ["tenant", "payment-methods", "names"],
+    queryFn: () => fetchPaymentMethodNames(),
+    enabled: open,
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+  const branchDefaultMethod = useMemo(
+    () => (Array.isArray(paymentMethodsQuery.data) ? paymentMethodsQuery.data : []).find((m) => m && m.is_default && m.is_active !== false) ?? null,
+    [paymentMethodsQuery.data],
+  );
 
   const customerDetailEnabled = open && isPersistedEntityId(customerId);
   const customerDetailQuery = useQuery({
@@ -123,8 +136,30 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
       mergeLookupOptions(
         salesInvoicePaymentMethodOption(/** @type {Record<string, unknown> | null} */ (customerDetail?.payment_method)),
         salesInvoicePaymentMethodOption(/** @type {Record<string, unknown> | null} */ (invoiceLookups?.payment_method)),
+        salesInvoicePaymentMethodOption(/** @type {Record<string, unknown> | null} */ (branchDefaultMethod)),
       ),
-    [customerDetail?.payment_method, invoiceLookups?.payment_method],
+    [customerDetail?.payment_method, invoiceLookups?.payment_method, branchDefaultMethod],
+  );
+
+  // Customer has no method and the branch has no default: the user picks one from all active methods.
+  const paymentMethodSelectable =
+    customerDetailEnabled &&
+    !customerLookupsPending &&
+    customerDetail != null &&
+    String(customerDetail.id) === String(customerId) &&
+    customerDetail.payment_method_id == null &&
+    branchDefaultMethod == null &&
+    !paymentMethodsQuery.isPending;
+
+  const allPaymentMethodOptions = useMemo(
+    () =>
+      mergeLookupOptions(
+        salesInvoicePaymentMethodOption(/** @type {Record<string, unknown> | null} */ (invoiceLookups?.payment_method)),
+        ...(Array.isArray(paymentMethodsQuery.data) ? paymentMethodsQuery.data : [])
+          .filter((m) => m && m.is_active !== false)
+          .map((m) => salesInvoicePaymentMethodOption(/** @type {Record<string, unknown>} */ (m))),
+      ),
+    [paymentMethodsQuery.data, invoiceLookups?.payment_method],
   );
 
   const paymentTermOptions = useMemo(
@@ -175,7 +210,9 @@ export function useSalesInvoiceDrawerData({ open, t, customerId = null, invoiceL
     defaultWarehouseId,
     customerSeedOptions,
     currencyOptions,
-    paymentMethodOptions,
+    paymentMethodOptions: paymentMethodSelectable ? allPaymentMethodOptions : paymentMethodOptions,
+    paymentMethodSelectable,
+    branchDefaultPaymentMethodId: branchDefaultMethod?.id != null ? Number(branchDefaultMethod.id) : undefined,
     paymentTermOptions,
     salesmanOptions,
     primaryCurrencyId,

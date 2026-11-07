@@ -50,6 +50,8 @@ export const AUDIT_AUDITABLE_TYPE_VALUES = Object.freeze([
   "stock_adjustment",
   "stock_adjustment_line",
   "stock_adjustment_reason",
+  "stock_revaluation",
+  "stock_revaluation_line",
   "production",
   "production_line",
   "bundle_explosion",

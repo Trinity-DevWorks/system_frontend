@@ -8,12 +8,14 @@ import {
   fetchSalesInvoiceCustomerSelectorPage,
 } from "@/features/sales-invoices/api/salesInvoiceSelectors.api";
 import {
+  applyCustomerReceiptCredit,
   createCustomerReceipt,
   deleteCustomerReceipt,
   fetchCustomerReceipt,
   fetchCustomerReceiptOpenInvoices,
   fetchCustomerReceipts,
   postCustomerReceipt,
+  downloadCustomerReceiptPdf,
   reverseCustomerReceipt,
   syncCustomerReceiptAllocations,
   updateCustomerReceipt,
@@ -37,6 +39,12 @@ export const customerReceiptConfig = {
   partyRelation: "customer",
   invoiceIdField: "sales_invoice_id",
   documentKey: "customer_receipt",
+  /** Offers the 80mm thermal receipt next to Print. */
+  receiptPrint: true,
+  /** The amount may be more than the allocations: the rest stays as customer credit, applied later. */
+  allowCredit: true,
+  /** Cheque methods ask for number, bank and due date (tracked until they clear). */
+  chequeTracking: true,
   api: {
     list: fetchCustomerReceipts,
     fetch: fetchCustomerReceipt,
@@ -46,6 +54,8 @@ export const customerReceiptConfig = {
     syncAllocations: syncCustomerReceiptAllocations,
     post: postCustomerReceipt,
     reverse: reverseCustomerReceipt,
+    applyCredit: applyCustomerReceiptCredit,
+    downloadPdf: downloadCustomerReceiptPdf,
     openInvoices: (partyId, currencyId) =>
       fetchCustomerReceiptOpenInvoices({ customerId: partyId, currencyId }),
     fetchInvoice: fetchSalesInvoice,

@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /**
  * @param {{
@@ -67,4 +69,13 @@ export async function fetchSupplierPaymentOpenInvoices({ supplierId, currencyId 
   const qs = toListQuery({ supplier_id: supplierId, currency_id: currencyId }).toString();
   const data = await tenantRequest("GET", `supplier-payments/open-invoices?${qs}`);
   return Array.isArray(data) ? data : [];
+}
+
+/**
+ * @param {string} paymentId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadSupplierPaymentPdf(paymentId, documentNumber, options = {}) {
+  await downloadPdf(`supplier-payments/${paymentId}/pdf`, documentPdfFilename(documentNumber, "supplier-payment"), options);
 }

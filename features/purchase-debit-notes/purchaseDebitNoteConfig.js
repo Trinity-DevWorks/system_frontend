@@ -14,6 +14,7 @@ import {
   fetchPurchaseDebitNoteInvoiceLines,
   fetchPurchaseDebitNotes,
   postPurchaseDebitNote,
+  downloadPurchaseDebitNotePdf,
   reversePurchaseDebitNote,
   syncPurchaseDebitNoteLines,
   updatePurchaseDebitNote,
@@ -23,6 +24,7 @@ import { PURCHASE_DEBIT_NOTE_DETAIL_QUERY_PREFIX, PURCHASE_DEBIT_NOTES_QUERY_KEY
 export const purchaseDebitNoteConfig = {
   featureId: "purchaseDebitNotes",
   resource: "purchase_debit_notes",
+  documentKey: "purchase_debit_note",
   i18n: "PurchaseDebitNotes",
   tableId: "purchase-debit-notes",
   queryKey: PURCHASE_DEBIT_NOTES_QUERY_KEY,
@@ -47,6 +49,7 @@ export const purchaseDebitNoteConfig = {
     syncLines: syncPurchaseDebitNoteLines,
     post: postPurchaseDebitNote,
     reverse: reversePurchaseDebitNote,
+    downloadPdf: downloadPurchaseDebitNotePdf,
     apply: applyPurchaseDebitNote,
     invoiceLines: fetchPurchaseDebitNoteInvoiceLines,
     listInvoices: fetchPurchaseInvoices,

@@ -84,6 +84,7 @@ export function toBranchCacheRow(row) {
     id: row.id,
     name: row.name,
     shortcut_name: row.shortcut_name,
+    price_list_id: row.price_list_id,
     address: row.address ?? null,
     phone: row.phone ?? null,
     email: row.email ?? null,
@@ -136,6 +137,7 @@ export function branchFormValuesToPayload(values) {
     manager_id: managerId == null || managerId === "" ? null : String(managerId),
     is_active: Boolean(values.is_active),
     is_default: Boolean(values.is_default),
+    ...(values.price_list_id !== undefined ? { price_list_id: values.price_list_id == null ? null : Number(values.price_list_id) } : {}),
   };
 }
 

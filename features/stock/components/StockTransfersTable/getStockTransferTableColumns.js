@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined, InboxOutlined, MoreOutlined, SendOutlined, StopOutlined, UndoOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, InboxOutlined, MoreOutlined, PrinterOutlined, SendOutlined, StopOutlined, UndoOutlined } from "@ant-design/icons";
 import {
   getStockTransferStatusLabel,
   getStockTransferStatusTagColor,
@@ -6,6 +6,7 @@ import {
   isStockTransferDraft,
 } from "../../utils/stockTransferStatuses";
 import { formatTenantDateTime } from "@/lib/tenant-format";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -21,10 +22,12 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onReceive?: (record: unknown) => void;
  *   onCloseOpen?: (record: unknown) => void;
  *   onCancel?: (record: unknown) => void;
+ *   onPrint?: (record: unknown) => void;
+ *   onDownloadPdf?: (record: unknown) => void;
  * }} [actions]
  */
 export function getStockTransferTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onDispatch, onReceive, onCloseOpen, onCancel } = actions;
+  const { onView, onEdit, onDelete, onDispatch, onReceive, onCloseOpen, onCancel, onPrint, onDownloadPdf } = actions;
 
   return [
     {
@@ -119,6 +122,26 @@ export function getStockTransferTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
+          ...(onPrint && isDocumentPdfPrintable("stock_transfer", record?.status)
+            ? [
+                {
+                  key: "print",
+                  icon: <PrinterOutlined />,
+                  label: t("actionPrint"),
+                  onClick: () => onPrint(record),
+                },
+              ]
+            : []),
+          ...(onDownloadPdf && isDocumentPdfPrintable("stock_transfer", record?.status)
+            ? [
+                {
+                  key: "pdf",
+                  icon: <FilePdfOutlined />,
+                  label: t("actionDownloadPdf"),
+                  onClick: () => onDownloadPdf(record),
+                },
+              ]
+            : []),
           ...(canReceive
             ? [
                 {

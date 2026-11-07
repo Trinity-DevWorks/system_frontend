@@ -1,3 +1,4 @@
+import { headerDiscountPayload, headerDiscountToForm } from "./headerDiscount";
 import dayjs from "dayjs";
 import { SI_BASE_UOM, toIsoDate } from "@/features/sales-invoices/utils/salesInvoiceDrawerUtils";
 
@@ -45,6 +46,8 @@ export function commercialDefaults(dateField, extraDateField, currencyId, wareho
     [dateField]: dayjs(),
     ...(extraDateField ? { [extraDateField]: undefined } : {}),
     exchange_rate: 1,
+    header_discount_type: "percent",
+    header_discount_value: 0,
     notes: "",
   };
 }
@@ -66,6 +69,7 @@ export function mapCommercialHeader(record, dateField, extraDateField) {
     [dateField]: date ? dayjs(String(date).slice(0, 10)) : dayjs(),
     ...(extraDateField ? { [extraDateField]: extra ? dayjs(String(extra).slice(0, 10)) : undefined } : {}),
     exchange_rate: record.exchange_rate != null ? Number(record.exchange_rate) : 1,
+    ...headerDiscountToForm(record),
     notes: typeof record.notes === "string" ? record.notes : "",
   };
 }
@@ -130,6 +134,7 @@ export function commercialHeaderPayload(values, dateField, extraDateField, inclu
     salesman_id: values.salesman_id || null,
     payment_terms_id: values.payment_terms_id ?? null,
     [dateField]: toIsoDate(values[dateField]),
+    ...headerDiscountPayload(values),
     notes: typeof values.notes === "string" ? values.notes : null,
   };
   if (extraDateField) {

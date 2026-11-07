@@ -35,6 +35,26 @@ export function buildLastPurchasePriceByItemId(rows) {
 }
 
 /**
+ * Last purchase prices are stored in the primary currency; show them in the order currency.
+ *
+ * @param {Map<string, number>} lastPriceByItemId
+ * @param {number | null | undefined} rate primary-to-document rate (1 primary = rate document)
+ * @param {number} decimals
+ * @returns {Map<string, number>}
+ */
+export function lastPurchasePricesAtRate(lastPriceByItemId, rate, decimals) {
+  const r = Number(rate);
+  if (!Number.isFinite(r) || r <= 0 || r === 1) return lastPriceByItemId;
+  const factor = 10 ** Math.max(0, decimals);
+  /** @type {Map<string, number>} */
+  const converted = new Map();
+  for (const [itemId, price] of lastPriceByItemId) {
+    converted.set(itemId, Math.round(price * r * factor) / factor);
+  }
+  return converted;
+}
+
+/**
  * @param {Map<string, number>} lastPriceByItemId
  * @param {unknown} itemId
  * @returns {number | undefined}
@@ -57,7 +77,8 @@ function nextLineWithSuggestedPrice(line, suggested, overwrite) {
     return { ...line, unit_price: suggested, unitPriceAuto: suggested != null };
   }
 
-  if (line.unitPriceAuto !== true || line.unit_price != null || suggested == null) {
+  // Auto-filled prices follow the suggestion (e.g. after the order currency changes); typed prices stay.
+  if (line.unitPriceAuto !== true || suggested == null || line.unit_price === suggested) {
     return line;
   }
 

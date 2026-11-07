@@ -207,8 +207,6 @@ export function useCustomerDrawerMutations({
                 ...values,
                 customer_group: groupPatch ?? row.customer_group,
                 credit_limit: snap.credit_limit,
-                opening_balance: snap.opening_balance,
-                balance: snap.balance,
                 currency_balances: mergeCurrencyBalancesForCache(
                   /** @type {Record<string, unknown>} */ (row),
                   /** @type {unknown[]} */ (values.currency_balances ?? []),
@@ -228,8 +226,6 @@ export function useCustomerDrawerMutations({
           ...values,
           customer_group: groupPatch ?? prev.customer_group,
           credit_limit: snap.credit_limit,
-          opening_balance: snap.opening_balance,
-          balance: snap.balance,
           currency_balances: mergeCurrencyBalancesForCache(prev, /** @type {unknown[]} */ (values.currency_balances ?? [])),
           updated_at: now,
         };

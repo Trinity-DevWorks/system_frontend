@@ -1,16 +1,14 @@
 "use client";
 
 import UserAvatarSection from "../UserAvatarSection";
-import BranchDrawer from "@/features/branches/components/BranchDrawer/BranchDrawer";
-import RoleDrawer from "@/features/roles/components/RoleDrawer/RoleDrawer";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
+import { useStackedLookupCreate } from "@/lib/drawer/useStackedLookupCreate";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { fetchTenantUser } from "../../api/tenantUsers.api";
-import { useQueryClient } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
@@ -28,7 +26,6 @@ import { USERS_LIST_QUERY_KEY } from "../../queries/tenantUsersQueryKeys";
 import { BRANCHES_LIST_QUERY_KEY } from "@/features/branches";
 import { ROLES_LIST_QUERY_KEY } from "@/features/roles";
 import { AUTH_ME_QUERY_KEY } from "@/lib/auth-me";
-import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 
 const USER_DETAIL_QUERY_PREFIX = /** @type {const} */ (USERS_LIST_QUERY_KEY);
 
@@ -46,11 +43,9 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
   const t = useTranslations("Users");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const lastCreateIntent = usePersistedSaveIntent(USER_CREATE_SAVE_INTENT_KEY, USER_CREATE_SAVE_INTENT_EVENT);
   /** @type {[null | { type: "branch" | "role"; rowIndex: number }, Function]} */
-  const [nestedCreate, setNestedCreate] = useState(null);
   const [pendingAvatarFile, setPendingAvatarFile] = useState(/** @type {File | null} */ (null));
 
   if ((!open || mode !== "create") && pendingAvatarFile != null) {
@@ -151,20 +146,14 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     [syncBaselineFromFormFields, resetBaselineToDefaults],
   );
 
-  const closeNestedCreate = useCallback(() => setNestedCreate(null), []);
-
-  const handleDrawerClose = useCallback(() => {
-    setNestedCreate(null);
-    onClose();
-  }, [onClose]);
-
+  const openLookupCreate = useStackedLookupCreate(form);
   const { createMutation, updateMutation, applyPayload, submitting } = useUserDrawerMutations({
     form,
     mode,
     message,
     t,
     tApiErrors,
-    onClose: handleDrawerClose,
+    onClose,
     onCreated,
     onSyncCreateDiscardBaseline,
     defaults,
@@ -194,35 +183,9 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
     readOnly,
     modal,
     t,
-    onClose: handleDrawerClose,
+    onClose,
     shouldConfirmDiscard,
   });
-
-  const handleNestedBranchCreated = useCallback(
-    /** @param {Record<string, unknown>} record */
-    (record) => {
-      const id = record?.id;
-      const rowIndex = nestedCreate?.type === "branch" ? nestedCreate.rowIndex : null;
-      if (id == null || Number.isNaN(Number(id)) || rowIndex == null) return;
-      form.setFieldValue(["branch_assignments", rowIndex, "branch_id"], Number(id));
-      invalidateTenantListQueries(queryClient, BRANCHES_LIST_QUERY_KEY);
-      setNestedCreate(null);
-    },
-    [form, nestedCreate, queryClient],
-  );
-
-  const handleNestedRoleCreated = useCallback(
-    /** @param {Record<string, unknown>} record */
-    (record) => {
-      const id = record?.id;
-      const rowIndex = nestedCreate?.type === "role" ? nestedCreate.rowIndex : null;
-      if (id == null || Number.isNaN(Number(id)) || rowIndex == null) return;
-      form.setFieldValue(["branch_assignments", rowIndex, "role_id"], Number(id));
-      invalidateTenantListQueries(queryClient, ROLES_LIST_QUERY_KEY);
-      setNestedCreate(null);
-    },
-    [form, nestedCreate, queryClient],
-  );
 
   const runCreate = useCallback(
     (intent) => {
@@ -277,9 +240,6 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
         label: createIntentLabel(key),
       }));
   }, [lastCreateIntent, createIntentLabel]);
-
-  const nestedBranchOpen = open && nestedCreate?.type === "branch";
-  const nestedRoleOpen = open && nestedCreate?.type === "role";
 
   const detailRecord =
     detailQuery.data && typeof detailQuery.data === "object"
@@ -344,27 +304,9 @@ export default function UserDrawer({ open, mode, userId, onClose, onCreated, edi
         mode={mode}
         open={open}
         t={t}
-        onOpenBranchCreate={readOnly ? undefined : (rowIndex) => setNestedCreate({ type: "branch", rowIndex })}
-        onOpenRoleCreate={readOnly ? undefined : (rowIndex) => setNestedCreate({ type: "role", rowIndex })}
+        onOpenBranchCreate={readOnly ? undefined : (rowIndex) => openLookupCreate("branches", ["branch_assignments", rowIndex, "branch_id"], BRANCHES_LIST_QUERY_KEY)}
+        onOpenRoleCreate={readOnly ? undefined : (rowIndex) => openLookupCreate("roles", ["branch_assignments", rowIndex, "role_id"], ROLES_LIST_QUERY_KEY)}
       />
-      {!readOnly ? (
-        <>
-          <BranchDrawer
-            open={Boolean(nestedBranchOpen)}
-            mode="create"
-            branchId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={handleNestedBranchCreated}
-          />
-          <RoleDrawer
-            open={Boolean(nestedRoleOpen)}
-            mode="create"
-            roleId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={handleNestedRoleCreated}
-          />
-        </>
-      ) : null}
     </ResourceCrudDrawer>
   );
 }

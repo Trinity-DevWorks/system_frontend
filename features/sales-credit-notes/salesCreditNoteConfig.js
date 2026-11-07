@@ -17,6 +17,7 @@ import {
   fetchSalesCreditNoteInvoiceLines,
   fetchSalesCreditNotes,
   postSalesCreditNote,
+  downloadSalesCreditNotePdf,
   reverseSalesCreditNote,
   syncSalesCreditNoteLines,
   updateSalesCreditNote,
@@ -26,6 +27,7 @@ import { SALES_CREDIT_NOTE_DETAIL_QUERY_PREFIX, SALES_CREDIT_NOTES_QUERY_KEY } f
 export const salesCreditNoteConfig = {
   featureId: "salesCreditNotes",
   resource: "sales_credit_notes",
+  documentKey: "sales_credit_note",
   i18n: "SalesCreditNotes",
   tableId: "sales-credit-notes",
   queryKey: SALES_CREDIT_NOTES_QUERY_KEY,
@@ -50,6 +52,7 @@ export const salesCreditNoteConfig = {
     syncLines: syncSalesCreditNoteLines,
     post: postSalesCreditNote,
     reverse: reverseSalesCreditNote,
+    downloadPdf: downloadSalesCreditNotePdf,
     apply: applySalesCreditNote,
     invoiceLines: fetchSalesCreditNoteInvoiceLines,
     listInvoices: fetchSalesInvoices,

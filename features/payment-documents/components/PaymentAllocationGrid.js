@@ -2,7 +2,7 @@
 
 import { paymentAppliedToInvoice, rateFromPrimary, settlePayment } from "@/lib/currency/documentExchangeRate";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
-import { formatTenantDate, formatTenantMoney } from "@/lib/tenant-format";
+import { formatTenantDate, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import { DeleteOutlined } from "@ant-design/icons";
 import { Button, Table, Typography } from "antd";
 import { moneyUnits, unitsToAmount } from "../paymentDocumentUtils";
@@ -57,6 +57,12 @@ export default function PaymentAllocationGrid({
   onApplyRemainder,
   onRemove,
 }) {
+  /** Currency symbol (or code when it has none) for amounts in that currency. */
+  const markFor = (currencyId, fallbackCode = "") => {
+    const currency = currencies.find((c) => Number(c.id) === Number(currencyId));
+    return String(currency?.symbol || currency?.code || fallbackCode || "").trim();
+  };
+  const receiptMark = markFor(receiptCurrencyId);
   const settlementFor = (row) => {
     if (readOnly && row.appliedAmount != null && Number.isFinite(Number(row.appliedAmount))) {
       const stored = Number(row.exchangeDifference ?? 0);
@@ -113,14 +119,14 @@ export default function PaymentAllocationGrid({
             dataIndex: "grandTotal",
             width: 130,
             align: "right",
-            render: (value) => formatTenantMoney(value) || "\u2014",
+            render: (value, row) => formatTenantMoneyWithSymbol(value, markFor(row.currencyId, row.currencyCode)) || "\u2014",
           },
           {
             title: t("colNetToPay"),
             dataIndex: "netToPay",
             width: 130,
             align: "right",
-            render: (value) => formatTenantMoney(value) || "\u2014",
+            render: (value, row) => formatTenantMoneyWithSymbol(value, markFor(row.currencyId, row.currencyCode)) || "\u2014",
           },
           {
             title: t("colApplied"),
@@ -130,8 +136,7 @@ export default function PaymentAllocationGrid({
             render: (_, row) => {
               const settlement = settlementFor(row);
               if (!Number.isFinite(settlement.applied)) return "\u2014";
-              const code = row.currencyCode ? ` ${row.currencyCode}` : "";
-              return `${formatTenantMoney(settlement.applied)}${code}`;
+              return formatTenantMoneyWithSymbol(settlement.applied, markFor(row.currencyId, row.currencyCode));
             },
           },
           {
@@ -144,8 +149,7 @@ export default function PaymentAllocationGrid({
               if (!Number.isFinite(settlement.difference) || moneyUnits(settlement.difference) === 0) {
                 return "\u2014";
               }
-              const code = row.currencyCode ? ` ${row.currencyCode}` : "";
-              return `${formatTenantMoney(settlement.difference)}${code}`;
+              return formatTenantMoneyWithSymbol(settlement.difference, markFor(row.currencyId, row.currencyCode));
             },
           },
           {
@@ -191,11 +195,11 @@ export default function PaymentAllocationGrid({
       <div className="flex flex-wrap justify-end gap-6 text-sm">
         <span>
           {t("allocatedTotal")}{" "}
-          <strong>{formatTenantMoney(unitsToAmount(allocatedUnits))}</strong>
+          <strong>{formatTenantMoneyWithSymbol(unitsToAmount(allocatedUnits), receiptMark)}</strong>
         </span>
         <span>
           {t("unallocatedRemainder")}{" "}
-          <strong>{formatTenantMoney(unitsToAmount(remainderUnits))}</strong>
+          <strong>{formatTenantMoneyWithSymbol(unitsToAmount(remainderUnits), receiptMark)}</strong>
         </span>
       </div>
     </section>

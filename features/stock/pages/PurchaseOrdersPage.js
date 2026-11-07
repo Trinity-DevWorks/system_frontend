@@ -13,6 +13,7 @@ import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { goodsReceiptFromPoDrawerArgs } from "../utils/goodsReceiptFromPurchaseOrder";
 import { cancelPurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, markPurchaseOrderAsSent } from "../api/purchaseOrders.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
 import { fetchSupplierNames } from "@/features/suppliers/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,6 +30,7 @@ import { getPurchaseOrderTableColumns } from "../components/PurchaseOrdersTable/
 import { usePurchaseOrdersTableQuery } from "../queries/usePurchaseOrdersTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
 import { SUPPLIERS_LIST_QUERY_KEY } from "@/features/suppliers";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
 
 function PurchaseOrdersTable() {
   const t = useTranslations("Stock");
@@ -184,23 +186,17 @@ function PurchaseOrdersTable() {
     [modal, t, cancelMutation],
   );
 
+  const { downloadPdf, printPdf } = useDocumentPdfDownload({
+    download: downloadPurchaseOrderPdf,
+    errorTitle: t("poPdfError"),
+  });
+  const handlePrint = useCallback(
+    (record) => printPdf(normalizeEntityId(record?.id), record?.po_number),
+    [printPdf],
+  );
   const handleDownloadPdf = useCallback(
-    async (record) => {
-      const id = normalizeEntityId(record?.id);
-      if (id == null) return;
-      try {
-        await downloadPurchaseOrderPdf(
-          id,
-          typeof record.po_number === "string" ? record.po_number : undefined,
-        );
-      } catch (err) {
-        notification.error({
-          title: t("poPdfError"),
-          description: getLocalizedApiErrorMessage(tApiErrors, err),
-        });
-      }
-    },
-    [notification, t, tApiErrors],
+    (record) => downloadPdf(normalizeEntityId(record?.id), record?.po_number),
+    [downloadPdf],
   );
 
   const markSentMutation = useMutation({
@@ -277,14 +273,15 @@ function PurchaseOrdersTable() {
     return lines;
   }, [dateRangeLabel, statusLabel, supplierLabel, t, warehouseLabel]);
 
-  const columns = useMemo(
+  const baseColumns = useMemo(
     () =>
       getPurchaseOrderTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? handleDelete : undefined,
         onCancel: access.canEdit ? handleCancel : undefined,
-        onDownloadPdf: handleDownloadPdf,
+        onPrint: access.canPrint ? handlePrint : undefined,
+        onDownloadPdf: access.canPrint ? handleDownloadPdf : undefined,
         onMarkSent: access.canEdit ? handleMarkSent : undefined,
         onReceive: access.canAdd ? handleReceive : undefined,
       }),
@@ -294,15 +291,18 @@ function PurchaseOrdersTable() {
       access.canEdit,
       access.canDelete,
       access.canAdd,
+      access.canPrint,
       openViewDrawer,
       openEditDrawer,
       handleDelete,
       handleCancel,
+      handlePrint,
       handleDownloadPdf,
       handleMarkSent,
       handleReceive,
     ],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,
@@ -381,7 +381,7 @@ function PurchaseOrdersTable() {
           filterBar,
         }}
         stickyHeader
-        scrollX={1460}
+        scrollX={1100}
         pagination={pagination}
       />
     </div>

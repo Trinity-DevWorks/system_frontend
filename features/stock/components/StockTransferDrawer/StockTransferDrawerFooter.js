@@ -88,6 +88,9 @@ function TransferFooterAuditMeta({
  *   canReceive?: boolean;
  *   canCancelInTransit?: boolean;
  *   canCloseOpen?: boolean;
+ *   showPdf?: boolean;
+ *   pdfLoading?: boolean;
+ *   printLoading?: boolean;
  *   dispatchedBy?: unknown;
  *   dispatchedAt?: string | null;
  *   receivedBy?: unknown;
@@ -98,6 +101,8 @@ function TransferFooterAuditMeta({
  *   onCloseOpen?: () => void;
  *   onCancelTransfer: () => void;
  *   onDelete: () => void;
+ *   onPrint?: () => void;
+ *   onDownloadPdf?: () => void;
  * }} props
  */
 export default function StockTransferDrawerFooter({
@@ -112,6 +117,9 @@ export default function StockTransferDrawerFooter({
   canReceive = false,
   canCancelInTransit = false,
   canCloseOpen = false,
+  showPdf = false,
+  pdfLoading = false,
+  printLoading = false,
   dispatchedBy = null,
   dispatchedAt = null,
   receivedBy = null,
@@ -122,6 +130,8 @@ export default function StockTransferDrawerFooter({
   onCloseOpen,
   onCancelTransfer,
   onDelete,
+  onPrint,
+  onDownloadPdf,
 }) {
   return (
     <StockDocumentDrawerFooter
@@ -134,6 +144,11 @@ export default function StockTransferDrawerFooter({
       primaryDisabled={dispatchDisabled}
       showDelete={showDelete}
       showPrimary
+      showPdf={showPdf}
+      pdfLoading={pdfLoading}
+      printLoading={printLoading}
+      onPrint={onPrint}
+      onDownloadPdf={onDownloadPdf}
       primaryLabel={t("actionDispatchTransfer")}
       meta={
         <TransferFooterAuditMeta

@@ -151,6 +151,7 @@ export function computeDocumentLine(
   taxRatePercent,
   pricesIncludeTax,
   settings = null,
+  headerDiscount = 0,
 ) {
   const scale = moneyScale(settings);
   const qty = Number(quantity);
@@ -161,8 +162,12 @@ export function computeDocumentLine(
 
   const merchandiseRaw = safeQty * price;
   const merchandise = money(merchandiseRaw, settings);
-  const discountAmount = money(merchandiseRaw * (discPct / 100), settings);
-  let afterDiscount = merchandiseRaw - discountAmount;
+  const lineDiscount = money(merchandiseRaw * (discPct / 100), settings);
+  const base = Math.max(0, merchandiseRaw - lineDiscount);
+  // This line's share of the whole-bill discount comes off after the line's own discount, before tax.
+  const headerShare = money(Math.max(0, Math.min(Number(headerDiscount) || 0, base)), settings);
+  const discountAmount = money(lineDiscount + headerShare, settings);
+  let afterDiscount = base - headerShare;
   if (afterDiscount < 0) afterDiscount = 0;
 
   if (pricesIncludeTax && rate > 0) {
@@ -172,6 +177,7 @@ export function computeDocumentLine(
     return {
       merchandise,
       discount_amount: discountAmount,
+      header_discount_amount: headerShare,
       line_subtotal: money(net, settings),
       tax_amount: money(tax, settings),
       line_total: money(afterDiscount, settings),
@@ -184,11 +190,45 @@ export function computeDocumentLine(
   return {
     merchandise,
     discount_amount: discountAmount,
+    header_discount_amount: headerShare,
     line_subtotal: lineSubtotal,
     tax_amount: taxAmount,
     line_total: money(lineSubtotal + taxAmount, settings),
     tax_rate: rate,
   };
+}
+
+/**
+ * Whole-bill discount split per line, proportional to each line's value after its own discount.
+ * The last line takes the rounding remainder (same as backend DocumentTaxMath::spreadHeaderDiscount).
+ *
+ * @param {number[]} bases
+ * @param {{ type?: string | null; value?: unknown } | null | undefined} headerDiscount
+ * @param {{ priceDecimalPlaces?: number; priceRoundingMode?: string } | null | undefined} settings
+ * @returns {number[]}
+ */
+export function spreadHeaderDiscount(bases, headerDiscount, settings = null) {
+  const zeros = bases.map(() => 0);
+  const type = headerDiscount?.type;
+  const value = Number(headerDiscount?.value ?? 0);
+  const baseTotal = bases.reduce((sum, b) => sum + Math.max(0, b), 0);
+  if ((type !== "percent" && type !== "amount") || !(value > 0) || !(baseTotal > 0)) return zeros;
+
+  let total = type === "percent" ? money(baseTotal * (clampPercent(value) / 100), settings) : money(value, settings);
+  total = Math.min(total, money(baseTotal, settings));
+  let last = -1;
+  bases.forEach((b, i) => {
+    if (b > 0) last = i;
+  });
+  const shares = [...zeros];
+  let given = 0;
+  bases.forEach((b, i) => {
+    if (!(b > 0) || i === last) return;
+    shares[i] = money((total * b) / baseTotal, settings);
+    given += shares[i];
+  });
+  if (last >= 0) shares[last] = money(Math.max(0, total - given), settings);
+  return shares;
 }
 
 /**
@@ -292,6 +332,7 @@ export function previewLineAmounts({ row, taxRate, pricesIncludeTax, settings })
  *   lines: import("./salesInvoiceDrawerUtils").SalesInvoiceLineFormRow[];
  *   itemsById: Map<string, Record<string, unknown>>;
  *   adjustment?: unknown;
+ *   headerDiscount?: { type?: string | null; value?: unknown } | null;
  *   taxEnabled: boolean;
  *   pricesIncludeTax: boolean;
  *   customerExempt: boolean;
@@ -302,12 +343,14 @@ export function previewInvoiceTotals({
   lines,
   itemsById,
   adjustment = 0,
+  headerDiscount = null,
   taxEnabled,
   pricesIncludeTax,
   customerExempt,
   settings,
 }) {
-  const mathLines = [];
+  /** @type {Array<{ row: Record<string, unknown>; taxRate: number }>} */
+  const priced = [];
   for (const row of lines ?? []) {
     const taxRate = previewLineTaxRate({
       row,
@@ -315,9 +358,13 @@ export function previewInvoiceTotals({
       taxEnabled,
       customerExempt,
     });
-    const amounts = previewLineAmounts({ row, taxRate, pricesIncludeTax, settings });
-    if (!amounts) continue;
-    mathLines.push(amounts);
+    if (!previewLineAmounts({ row, taxRate, pricesIncludeTax, settings })) continue;
+    priced.push({ row, taxRate: /** @type {number} */ (taxRate) });
   }
+  const plain = priced.map(({ row, taxRate }) => computeDocumentLine(row.quantity, row.unit_price, row.discount_percent ?? 0, taxRate, pricesIncludeTax, settings));
+  const shares = spreadHeaderDiscount(plain.map((l) => l.merchandise - l.discount_amount), headerDiscount, settings);
+  const mathLines = priced.map(({ row, taxRate }, i) =>
+    computeDocumentLine(row.quantity, row.unit_price, row.discount_percent ?? 0, taxRate, pricesIncludeTax, settings, shares[i]),
+  );
   return sumDocumentTotals(mathLines, adjustment, pricesIncludeTax, settings);
 }

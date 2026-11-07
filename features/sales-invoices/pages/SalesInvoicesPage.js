@@ -12,7 +12,8 @@ import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
-import { deleteSalesInvoice, postSalesInvoice, reverseSalesInvoice } from "../api/salesInvoices.api";
+import { deleteSalesInvoice, downloadSalesInvoicePdf, postSalesInvoice, reverseSalesInvoice } from "../api/salesInvoices.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
 import { salesOrderConfig } from "@/features/sales-orders/salesOrderConfig";
 import { fetchCustomerNames } from "@/features/customers/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +29,7 @@ import {
 import { getSalesInvoiceTableColumns } from "../components/SalesInvoicesTable/getSalesInvoiceTableColumns";
 import { useSalesInvoicesTableQuery } from "../queries/useSalesInvoicesTableQuery";
 import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
 
 function SalesInvoicesTable() {
   const t = useTranslations("SalesInvoices");
@@ -257,7 +259,14 @@ function SalesInvoicesTable() {
     return lines;
   }, [dateRangeLabel, statusLabel, customerLabel, t]);
 
-  const columns = useMemo(
+  const { downloadPdf, printPdf } = useDocumentPdfDownload({
+    download: downloadSalesInvoicePdf,
+    errorTitle: t("pdfError"),
+  });
+  const handlePrint = useCallback((record) => printPdf(record?.id, record?.invoice_number), [printPdf]);
+  const handleDownloadPdf = useCallback((record) => downloadPdf(record?.id, record?.invoice_number), [downloadPdf]);
+
+  const baseColumns = useMemo(
     () =>
       getSalesInvoiceTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
@@ -267,9 +276,12 @@ function SalesInvoicesTable() {
         onReverse: access.canReverse ? handleReverse : undefined,
         onCreateReceipt: receiptAccess.canAdd ? handleCreateReceipt : undefined,
         onCreateCreditNote: creditNoteAccess.canAdd ? handleCreateCreditNote : undefined,
+        onPrint: access.canPrint ? handlePrint : undefined,
+        onDownloadPdf: access.canPrint ? handleDownloadPdf : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, receiptAccess.canAdd, creditNoteAccess.canAdd, openViewDrawer, openEditDrawer, handlePost, handleDelete, handleReverse, handleCreateReceipt, handleCreateCreditNote],
+    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, access.canPrint, receiptAccess.canAdd, creditNoteAccess.canAdd, handlePrint, handleDownloadPdf, openViewDrawer, openEditDrawer, handlePost, handleDelete, handleReverse, handleCreateReceipt, handleCreateCreditNote],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,

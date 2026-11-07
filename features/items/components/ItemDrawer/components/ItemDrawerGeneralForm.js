@@ -11,6 +11,7 @@ import { inventoryCostingMethodOptions } from "@/lib/inventory-costing";
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
 import LookupTreeSelectWithCreate from "@/shared/components/resource-drawer/LookupTreeSelectWithCreate";
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { Col, ColorPicker, Divider, Form, Input, Row, Select, Switch } from "antd";
 import { useEffect } from "react";
 import {
@@ -245,7 +246,14 @@ export default function ItemDrawerGeneralForm({
               <Switch />
             </Form.Item>
           </div>
-        ) : null}
+        ) : (
+          <div className="item-general-form-toggle-cell">
+            <ResourceDrawerFieldLabel text={t("fieldLandedCost")} help={t("fieldLandedCostHelp")} />
+            <Form.Item name="is_landed_cost" valuePropName="checked" noStyle>
+              <Switch />
+            </Form.Item>
+          </div>
+        )}
       </div>
       {trackInventory ? (
         <Row gutter={[24, 0]} className="item-general-form-inventory-fields">
@@ -265,6 +273,24 @@ export default function ItemDrawerGeneralForm({
                 options={inventoryCostingMethodOptions(t, { includeInherit: true })}
                 placeholder={t("costingMethodInherit")}
               />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item
+              name="weight"
+              label={<ResourceDrawerFieldLabel text={t("fieldWeight")} optional optionalSuffix={optionalSuffix} />}
+              extra={t("fieldWeightHelp")}
+            >
+              <TenantNumberInput kind="quantity" decimals={3} min={0} className="w-full" addonAfter="kg" />
+            </Form.Item>
+          </Col>
+          <Col xs={12} md={6}>
+            <Form.Item
+              name="volume"
+              label={<ResourceDrawerFieldLabel text={t("fieldVolume")} optional optionalSuffix={optionalSuffix} />}
+              extra={t("fieldVolumeHelp")}
+            >
+              <TenantNumberInput kind="quantity" decimals={3} min={0} className="w-full" addonAfter="m³" />
             </Form.Item>
           </Col>
         </Row>

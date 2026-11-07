@@ -49,12 +49,15 @@ export const customerLedgerConfig = {
   endpointFor: (/** @type {string} */ partyId) => `customers/${partyId}/ledger-entries`,
   exportEndpointFor: (/** @type {string} */ partyId) => `customers/${partyId}/ledger-export`,
   typeLabelKey: {
-    opening_balance: "typeOpeningBalance",
     invoice: "typeInvoice",
     payment: "typePayment",
+    credit_note: "typeCreditNote",
+    refund: "typeRefund",
   },
   documentFeature: {
     invoice: "salesInvoices",
     payment: "customerReceipts",
+    credit_note: "salesCreditNotes",
+    refund: "customerRefunds",
   },
 };

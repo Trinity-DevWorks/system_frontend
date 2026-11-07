@@ -11,6 +11,7 @@ export const STOCK_MOVEMENT_TYPE_VALUES = [
   "production_out",
   "bundle_sale",
   "count",
+  "revaluation",
 ];
 
 /**

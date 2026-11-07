@@ -1,3 +1,4 @@
+import { headerDiscountChanged, headerDiscountPayload, headerDiscountToForm } from "@/features/sales-documents/utils/headerDiscount";
 import dayjs from "dayjs";
 import { normalizeEntityId } from "@/lib/entityId";
 import { UNTRACKED_LINE_PRICE, linePriceFromPrimary, positiveRate } from "@/lib/currency/documentExchangeRate";
@@ -229,6 +230,7 @@ export function findSalesInvoiceItemOptionByCode(options, raw) {
  *   track_inventory?: boolean;
  *   track_lots?: boolean;
  *   sales_order_line_id?: number;
+ *   delivery_note_line_id?: number;
  *   order_remaining_quantity?: number;
  *   catalogReloadKey?: number;
  *   price_base?: number;
@@ -264,6 +266,8 @@ export function getSalesInvoiceDefaults() {
     billing_address: {},
     shipping_address: {},
     adjustment: 0,
+    header_discount_type: "percent",
+    header_discount_value: 0,
     notes: "",
   };
 }
@@ -387,6 +391,7 @@ export function mapSalesInvoiceRecordToForm(record) {
       /** @type {Record<string, unknown> | null} */ (record.shipping_address),
     ),
     adjustment: record.adjustment != null ? Number(record.adjustment) : 0,
+    ...headerDiscountToForm(record),
     notes: record.notes ?? "",
   };
 }
@@ -425,6 +430,7 @@ export function mapSalesInvoiceLinesFromApi(lines, exchangeRate = 1) {
     track_inventory: Boolean(line.item?.track_inventory),
     track_lots: Boolean(line.item?.track_lots),
     sales_order_line_id: line.sales_order_line_id != null ? Number(line.sales_order_line_id) : undefined,
+    delivery_note_line_id: line.delivery_note_line_id != null ? Number(line.delivery_note_line_id) : undefined,
     order_remaining_quantity:
       line.order_remaining_quantity != null ? Number(line.order_remaining_quantity) : undefined,
   }));
@@ -468,6 +474,9 @@ export function getValidSalesInvoiceLines(lines) {
     if (notes) row.notes = notes;
     if (line.sales_order_line_id != null) {
       row.sales_order_line_id = Number(line.sales_order_line_id);
+    }
+    if (line.delivery_note_line_id != null) {
+      row.delivery_note_line_id = Number(line.delivery_note_line_id);
     }
     return row;
   });
@@ -706,6 +715,7 @@ export function isSalesInvoiceHeaderDirtyVsBaseline(form, baseline) {
   if (String(values.reference_2 ?? "").trim() !== String(baseline.reference_2 ?? "").trim()) return true;
   if (String(values.notes ?? "").trim() !== String(baseline.notes ?? "").trim()) return true;
   if (Number(values.adjustment ?? 0) !== Number(baseline.adjustment ?? 0)) return true;
+  if (headerDiscountChanged(values, baseline)) return true;
   if (Number(values.exchange_rate ?? 1) !== Number(baseline.exchange_rate ?? 1)) return true;
   if (!sameLookupId(values.billing_address_id, baseline.billing_address_id)) return true;
   if (!sameLookupId(values.shipping_address_id, baseline.shipping_address_id)) return true;
@@ -789,6 +799,7 @@ export function salesInvoiceHeaderToPayload(values) {
     billing_address: billing,
     shipping_address: shipping,
     adjustment: values.adjustment != null ? Number(values.adjustment) : 0,
+    ...headerDiscountPayload(values),
     notes: typeof values.notes === "string" && values.notes.trim() ? values.notes.trim() : null,
   };
 }

@@ -281,6 +281,7 @@ export default function StockAdjustmentDocumentDrawer({
 
   return (
     <ResourceCrudDrawer
+      documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
       title={title}
       recordName={loadedNumber}
       titleExtra={

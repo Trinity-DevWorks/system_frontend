@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /**
  * @param {{
@@ -69,4 +71,13 @@ export function postPurchaseInvoice(invoiceId) {
 /** @param {string} invoiceId */
 export function reversePurchaseInvoice(invoiceId) {
   return tenantRequest("POST", `purchase-invoices/${invoiceId}/reverse`);
+}
+
+/**
+ * @param {string} invoiceId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadPurchaseInvoicePdf(invoiceId, documentNumber, options = {}) {
+  await downloadPdf(`purchase-invoices/${invoiceId}/pdf`, documentPdfFilename(documentNumber, "purchase-invoice"), options);
 }

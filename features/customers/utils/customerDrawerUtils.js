@@ -4,6 +4,7 @@
 
 import dayjs from "dayjs";
 import { tenantMoneyFixed } from "@/lib/tenant-format";
+import { openingDocumentsFingerprint, openingDocumentsToPayload } from "@/features/party-opening/openingDocumentsUtils";
 
 /** @typedef {"keep" | "new" | "close"} CustomerCreateSaveIntent */
 
@@ -16,8 +17,6 @@ export const CUSTOMER_LOOKUP_ADD_SALESMAN = "__customer_drawer_add_salesman__";
 export const CUSTOMER_LOOKUP_ADD_PAYMENT_METHOD = "__customer_drawer_add_payment_method__";
 export const CUSTOMER_LOOKUP_ADD_PAYMENT_TERMS = "__customer_drawer_add_payment_terms__";
 export const CUSTOMER_LOOKUP_ADD_VAT_GROUP = "__customer_drawer_add_vat_group__";
-
-/** @typedef {"customer-group" | "salesman" | "payment-method" | "payment-terms" | "vat-group"} CustomerNestedCreateKey */
 
 /** @param {unknown} value */
 export function optionalRelationId(value) {
@@ -97,24 +96,14 @@ export function mergeCreditAndOpeningRows(creditRows, openingRows) {
 }
 
 /**
- * @param {unknown[]} rows merged rows (same shape as legacy single-list rows)
+ * Credit limits per currency (a limit of 0 means no limit, so it is left out).
+ * @param {unknown[]} rows
  */
 export function currencyBalancesFingerprint(rows) {
   if (!Array.isArray(rows)) return "";
   return [...rows]
-    .filter((r) => r && r.currency_id != null && r.currency_id !== "")
-    .map((r) => {
-      const id = Number(r.currency_id);
-      const c = Number(r.credit_limit ?? 0);
-      const o = Number(r.opening_balance ?? 0);
-      const d = r.opening_date;
-      let dateKey = "";
-      if (d != null && d !== "") {
-        const parsed = dayjs(d);
-        dateKey = parsed.isValid() ? parsed.format("YYYY-MM-DD") : String(d).slice(0, 10);
-      }
-      return `${id}:${tenantMoneyFixed(c)}:${tenantMoneyFixed(o)}:${dateKey}`;
-    })
+    .filter((r) => r && r.currency_id != null && r.currency_id !== "" && Number(r.credit_limit ?? 0) !== 0)
+    .map((r) => `${Number(r.currency_id)}:${tenantMoneyFixed(Number(r.credit_limit ?? 0))}`)
     .sort()
     .join("|");
 }
@@ -142,6 +131,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (email !== String(defaults.email ?? "").trim()) return true;
   if (phone !== String(defaults.phone ?? "").trim()) return true;
   if (optionalRelationId(groupId) !== optionalRelationId(defaults.customer_group_id)) return true;
+  if (optionalRelationId(v.price_list_id) !== optionalRelationId(defaults.price_list_id)) return true;
   if (optionalRelationId(v.salesman_id) !== optionalRelationId(defaults.salesman_id)) return true;
   if (optionalRelationId(v.payment_method_id) !== optionalRelationId(defaults.payment_method_id)) return true;
   if (optionalRelationId(v.payment_terms_id) !== optionalRelationId(defaults.payment_terms_id)) return true;
@@ -153,15 +143,11 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (vat !== String(defaults.vat_number ?? "").trim()) return true;
   if (notes !== String(defaults.notes ?? "").trim()) return true;
   if (addressesFingerprint(v.addresses) !== addressesFingerprint(defaults.addresses)) return true;
-  if (currencyBalancesFingerprint(
-    mergeCreditAndOpeningRows(/** @type {unknown[]} */ (v.currency_credit_limits ?? []), /** @type {unknown[]} */ (v.currency_opening_balances ?? [])),
-  ) !==
-    currencyBalancesFingerprint(
-      mergeCreditAndOpeningRows(
-        /** @type {unknown[]} */ (defaults.currency_credit_limits ?? []),
-        /** @type {unknown[]} */ (defaults.currency_opening_balances ?? []),
-      ),
-    )) {
+  if (currencyBalancesFingerprint(/** @type {unknown[]} */ (v.currency_credit_limits ?? [])) !==
+    currencyBalancesFingerprint(/** @type {unknown[]} */ (defaults.currency_credit_limits ?? []))) {
+    return true;
+  }
+  if (openingDocumentsFingerprint(v.opening_documents ?? []) !== openingDocumentsFingerprint(defaults.opening_documents ?? [])) {
     return true;
   }
   return false;
@@ -190,6 +176,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (email !== String(row.email ?? "").trim()) return true;
   if (phone !== String(row.phone ?? "").trim()) return true;
   if (optionalRelationId(groupId) !== optionalRelationId(row.customer_group_id)) return true;
+  if (v.price_list_id !== undefined && row.price_list_id !== undefined && optionalRelationId(v.price_list_id) !== optionalRelationId(row.price_list_id)) return true;
   if (optionalRelationId(v.salesman_id) !== optionalRelationId(row.salesman_id)) return true;
   if (optionalRelationId(v.payment_method_id) !== optionalRelationId(row.payment_method_id)) return true;
   if (optionalRelationId(v.payment_terms_id) !== optionalRelationId(row.payment_terms_id)) return true;
@@ -202,10 +189,13 @@ export function isEditDirtyVsLoaded(form, row) {
   if (notes !== String(row.notes ?? "").trim()) return true;
   if (addressesFingerprint(v.addresses) !== addressesFingerprint(row.addresses)) return true;
   if (
-    currencyBalancesFingerprint(
-      mergeCreditAndOpeningRows(/** @type {unknown[]} */ (v.currency_credit_limits ?? []), /** @type {unknown[]} */ (v.currency_opening_balances ?? [])),
-    ) !== currencyBalancesFingerprint(/** @type {unknown[]} */ (row.currency_balances ?? []))
+    currencyBalancesFingerprint(/** @type {unknown[]} */ (v.currency_credit_limits ?? [])) !==
+    currencyBalancesFingerprint(/** @type {unknown[]} */ (row.currency_balances ?? []))
   ) {
+    return true;
+  }
+  // The table row has no opening documents; only the loaded detail does.
+  if (Array.isArray(row.opening_documents) && openingDocumentsFingerprint(v.opening_documents ?? []) !== openingDocumentsFingerprint(row.opening_documents)) {
     return true;
   }
   return false;
@@ -232,6 +222,7 @@ export function toCustomerCacheRow(row) {
     phone: row.phone ?? null,
     type: row.type,
     customer_group_id: row.customer_group_id,
+    price_list_id: row.price_list_id,
     customer_group: row.customer_group && typeof row.customer_group === "object" ? row.customer_group : null,
     salesman_id: row.salesman_id ?? null,
     payment_method_id: row.payment_method_id ?? null,
@@ -274,25 +265,11 @@ function mapMergedBalanceToPayload(row) {
   const currencyId = Number(r.currency_id);
   if (!Number.isFinite(currencyId)) return null;
   const creditRaw = r.credit_limit;
-  const openRaw = r.opening_balance;
   const credit = creditRaw == null || creditRaw === "" ? 0 : Number(creditRaw);
-  const opening = openRaw == null || openRaw === "" ? 0 : Number(openRaw);
-  /** @type {Record<string, unknown>} */
-  const out = {
+  return {
     currency_id: currencyId,
     credit_limit: Number.isFinite(credit) ? credit : 0,
-    opening_balance: Number.isFinite(opening) ? opening : 0,
   };
-  const od = r.opening_date;
-  if (opening !== 0) {
-    if (od != null && od !== "") {
-      const parsed = dayjs(od);
-      out.opening_date = parsed.isValid() ? parsed.format("YYYY-MM-DD") : String(od).slice(0, 10);
-    } else {
-      out.opening_date = dayjs().format("YYYY-MM-DD");
-    }
-  }
-  return out;
 }
 
 /**
@@ -363,10 +340,7 @@ export function customerFormValuesToPayload(values, mode) {
   const notesRaw = String(values.notes ?? "").trim();
   const isVat = values.is_vat_registered === true;
 
-  const merged = mergeCreditAndOpeningRows(
-    /** @type {unknown[]} */ (values.currency_credit_limits ?? []),
-    /** @type {unknown[]} */ (values.currency_opening_balances ?? []),
-  );
+  const merged = mergeCreditAndOpeningRows(/** @type {unknown[]} */ (values.currency_credit_limits ?? []), []);
   const currency_balances = merged.map((row) => mapMergedBalanceToPayload(/** @type {Record<string, unknown>} */ (row))).filter(Boolean);
 
   const rawStatus = String(values.status ?? "active").trim();
@@ -381,12 +355,14 @@ export function customerFormValuesToPayload(values, mode) {
     email: emailRaw === "" ? null : emailRaw,
     phone: phoneRaw === "" ? null : phoneRaw,
     customer_group_id: optionalRelationId(values.customer_group_id),
+    ...(values.price_list_id !== undefined ? { price_list_id: values.price_list_id == null ? null : Number(values.price_list_id) } : {}),
     salesman_id: optionalRelationId(values.salesman_id),
     payment_method_id: optionalRelationId(values.payment_method_id),
     payment_terms_id: optionalRelationId(values.payment_terms_id),
     vat_group_id: optionalRelationId(values.vat_group_id),
     type: values.type,
     currency_balances,
+    opening_documents: openingDocumentsToPayload(values.opening_documents),
     status,
     blacklist_reason,
     is_vat_registered: isVat,
@@ -403,32 +379,22 @@ export function customerFormValuesToPayload(values, mode) {
 }
 
 /**
+ * Credit limit rows for the form (a limit of 0 means no limit, so it is left out).
  * @param {unknown[]} currencyBalances from API
- * @returns {{ currency_credit_limits: unknown[]; currency_opening_balances: unknown[] }}
+ * @returns {{ currency_credit_limits: unknown[] }}
  */
 export function mapApiCurrencyBalancesToFormSplit(currencyBalances) {
   if (!Array.isArray(currencyBalances)) {
-    return { currency_credit_limits: [], currency_opening_balances: [] };
+    return { currency_credit_limits: [] };
   }
   /** @type {unknown[]} */
   const creditRows = [];
-  /** @type {unknown[]} */
-  const openingRows = [];
   for (const b of currencyBalances) {
     const row = /** @type {Record<string, unknown>} */ (b && typeof b === "object" ? b : {});
-    if (row.currency_id == null || row.currency_id === "") continue;
+    if (row.currency_id == null || row.currency_id === "" || Number(row.credit_limit ?? 0) === 0) continue;
     creditRows.push({ currency_id: row.currency_id, credit_limit: Number(row.credit_limit ?? 0) });
-    const ob = Number(row.opening_balance ?? 0);
-    if (ob !== 0) {
-      openingRows.push({
-        currency_id: row.currency_id,
-        opening_balance: ob,
-        opening_date: row.opening_date ? dayjs(String(row.opening_date)) : dayjs(),
-        ledger_balance: Number(row.balance ?? 0),
-      });
-    }
   }
-  return { currency_credit_limits: creditRows, currency_opening_balances: openingRows };
+  return { currency_credit_limits: creditRows };
 }
 
 export function primarySnapshotForOptimistic(primaryFromApi, currencyBalancesPayload, currencies) {

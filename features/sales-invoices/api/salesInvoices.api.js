@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /**
  * @param {{
@@ -63,8 +65,39 @@ export async function syncSalesInvoiceLines(invoiceId, body) {
 /**
  * @param {string} invoiceId
  */
-export function postSalesInvoice(invoiceId) {
-  return tenantRequest("POST", `sales-invoices/${invoiceId}/post`);
+/**
+ * Payments taken when the invoice is posted (split payment).
+ * @param {string} invoiceId
+ * @param {{ payments: Record<string, unknown>[] }} body
+ */
+export function syncSalesInvoicePayments(invoiceId, body) {
+  return tenantRequest("PUT", `sales-invoices/${invoiceId}/payments`, body);
+}
+
+/**
+ * Money received later against a posted invoice; each row becomes a receipt.
+ * @param {string} invoiceId
+ * @param {{ payments: Record<string, unknown>[]; payment_date?: string }} body
+ */
+export function recordSalesInvoicePayments(invoiceId, body) {
+  return tenantRequest("POST", `sales-invoices/${invoiceId}/payments/record`, body);
+}
+
+/**
+ * The customer's credit (posted receipts with money left), each with its value in `currencyId`.
+ * @param {string} customerId
+ * @param {unknown} currencyId
+ * @returns {Promise<Array<{ receipt_id: string; receipt_number: string; unapplied_amount: string; currency_code: string; in_invoice_currency: string | null }>>}
+ */
+export async function fetchCustomerAvailableCredit(customerId, currencyId) {
+  const qs = new URLSearchParams({ customer_id: String(customerId) });
+  if (currencyId != null && currencyId !== "") qs.set("currency_id", String(currencyId));
+  const data = await tenantRequest("GET", `customer-receipts/available-credit?${qs.toString()}`);
+  return Array.isArray(data) ? data : [];
+}
+
+export function postSalesInvoice(invoiceId, body = undefined) {
+  return tenantRequest("POST", `sales-invoices/${invoiceId}/post`, body);
 }
 
 /** @param {string} invoiceId */
@@ -83,4 +116,13 @@ export async function fetchSalesInvoiceItemAvailability(itemId) {
     `sales-invoices/item-availability?item_id=${encodeURIComponent(itemId)}`,
   );
   return Array.isArray(data) ? data : [];
+}
+
+/**
+ * @param {string} invoiceId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadSalesInvoicePdf(invoiceId, documentNumber, options = {}) {
+  await downloadPdf(`sales-invoices/${invoiceId}/pdf`, documentPdfFilename(documentNumber, "sales-invoice"), options);
 }

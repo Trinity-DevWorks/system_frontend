@@ -108,6 +108,22 @@ export function getStockBalanceTableColumns(t, actions = {}) {
       render: (value) => formatStockQuantity(value),
     },
     {
+      title: t("colReserved"),
+      dataIndex: "reserved_qty",
+      key: "reserved_qty",
+      width: 110,
+      align: "right",
+      render: (value) => formatStockQuantity(value),
+    },
+    {
+      title: t("colAvailable"),
+      dataIndex: "available_qty",
+      key: "available_qty",
+      width: 110,
+      align: "right",
+      render: (value) => formatStockQuantity(value),
+    },
+    {
       title: t("colProjected"),
       dataIndex: "projected_qty",
       key: "projected_qty",

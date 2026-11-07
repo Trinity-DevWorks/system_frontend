@@ -3,23 +3,22 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
+import { useStackedLookupCreate } from "@/lib/drawer/useStackedLookupCreate";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import WarehouseDrawer from "@/features/warehouses/components/WarehouseDrawer/WarehouseDrawer";
 import { fetchBranchNames } from "@/features/branches/index";
 import { fetchSalesman } from "../../api/salesmen.api";
 import { fetchTenantUserNames } from "@/features/users/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { getActiveBranchId } from "@/lib/active-branch";
-import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import SalesmanAttachmentsPanel from "./SalesmanAttachmentsPanel";
 import SalesmanDrawerForm from "./SalesmanDrawerForm";
 import { useSalesmanDrawerMutations } from "../../queries/useSalesmanMutations";
@@ -64,9 +63,7 @@ export default function SalesmanDrawer({
   const t = useTranslations("Salesmen");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const [form] = Form.useForm();
-  const [warehouseCreateDrawerOpen, setWarehouseCreateDrawerOpen] = useState(false);
   const lastCreateIntent = usePersistedSaveIntent(SALESMAN_CREATE_SAVE_INTENT_KEY, SALESMAN_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
@@ -156,26 +153,10 @@ export default function SalesmanDrawer({
       }));
   }, [warehousesQuery.data, branchIdWatch]);
 
-  const openWarehouseCreateDrawer = useCallback(() => {
-    setWarehouseCreateDrawerOpen(true);
-  }, []);
-
-  const handleDrawerClose = useCallback(() => {
-    setWarehouseCreateDrawerOpen(false);
-    onClose();
-  }, [onClose]);
-
-  const nestedWarehouseDrawerOpen = open && warehouseCreateDrawerOpen;
-
-  const handleNestedWarehouseCreated = useCallback(
-    /** @param {Record<string, unknown>} record */
-    (record) => {
-      const id = record?.id;
-      if (id == null || Number.isNaN(Number(id))) return;
-      form.setFieldValue("warehouse_id", Number(id));
-      invalidateTenantListQueries(queryClient, WAREHOUSES_LIST_QUERY_KEY);
-    },
-    [form, queryClient],
+  const openLookupCreate = useStackedLookupCreate(form);
+  const openWarehouseCreateDrawer = useCallback(
+    () => openLookupCreate("warehouses", "warehouse_id", WAREHOUSES_LIST_QUERY_KEY),
+    [openLookupCreate],
   );
 
   const userOptions = useMemo(() => {
@@ -282,7 +263,7 @@ export default function SalesmanDrawer({
     message,
     t,
     tApiErrors,
-    onClose: handleDrawerClose,
+    onClose,
     onCreated,
     onCreateSuccess,
     onSyncCreateDiscardBaseline,
@@ -312,7 +293,7 @@ export default function SalesmanDrawer({
     readOnly,
     modal,
     t,
-    onClose: handleDrawerClose,
+    onClose,
     shouldConfirmDiscard,
   });
 
@@ -413,15 +394,6 @@ export default function SalesmanDrawer({
         lookupsLoading={branchesQuery.isPending || warehousesQuery.isPending || usersQuery.isPending}
       />
       <SalesmanAttachmentsPanel open={open} salesmanId={salesmanId} readOnly={readOnly} />
-      {!readOnly ? (
-        <WarehouseDrawer
-          open={nestedWarehouseDrawerOpen}
-          mode="create"
-          warehouseId={null}
-          onClose={() => setWarehouseCreateDrawerOpen(false)}
-          onCreateSuccess={handleNestedWarehouseCreated}
-        />
-      ) : null}
     </ResourceCrudDrawer>
   );
 }

@@ -10,14 +10,14 @@ import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/us
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
-import { fetchPurchaseInvoice } from "../../api/purchaseInvoices.api";
+import { downloadPurchaseInvoicePdf, fetchPurchaseInvoice } from "../../api/purchaseInvoices.api";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { fetchGoodsReceipt } from "@/features/stock/api/goodsReceipts.api";
 import { fetchPurchaseOrder } from "@/features/stock/api/purchaseOrders.api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
-import SupplierDrawer from "@/features/suppliers/components/SupplierDrawer/SupplierDrawer";
 import { SUPPLIERS_LIST_QUERY_KEY } from "@/features/suppliers/queries/suppliersQueryKeys";
-import ItemDrawer from "@/features/items/components/ItemDrawer/ItemDrawer";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -92,18 +92,11 @@ export default function PurchaseInvoiceDrawer({
   const paymentAccess = useResourceAccess("supplier_payments");
   const debitNoteAccess = useResourceAccess("purchase_debit_notes");
   const supplierAccess = useResourceAccess("suppliers");
-  const { openDrawer } = useGlobalDrawer();
+  const { openDrawer, openStackedDrawer } = useGlobalDrawer();
   const itemAccess = useResourceAccess("items");
   const queryClient = useQueryClient();
   const { settings } = useCompanySettings();
   const [form] = Form.useForm();
-  const [supplierCreateOpen, setSupplierCreateOpen] = useState(false);
-  const [itemViewId, setItemViewId] = useState(/** @type {string | null} */ (null));
-  const [itemViewTrackedOpen, setItemViewTrackedOpen] = useState(open);
-  if (open !== itemViewTrackedOpen) {
-    setItemViewTrackedOpen(open);
-    if (!open) setItemViewId(null);
-  }
 
   const [lines, setLines] = useState(() => [getEmptyPurchaseInvoiceLine()]);
   const [linesBaseline, setLinesBaseline] = useState(() => [getEmptyPurchaseInvoiceLine()]);
@@ -265,6 +258,8 @@ export default function PurchaseInvoiceDrawer({
     loadedStatus ?? (typeof tableSeedRecord?.status === "string" ? tableSeedRecord.status : "draft");
   const readOnly =
     mode === "view" || !isPurchaseInvoiceDraft(effectiveStatus) || (mode === "edit" && !access.canEdit);
+  // Opening invoices (old balances) are managed from the supplier: no reverse or print here.
+  const isOpeningInvoice = Boolean((detailQuery.data ?? tableSeedRecord)?.is_opening);
 
   const formValuesWatch = Form.useWatch([], form);
   const supplierId = formValuesWatch?.supplier_id ?? null;
@@ -467,10 +462,23 @@ export default function PurchaseInvoiceDrawer({
       try {
         const order = /** @type {Record<string, unknown>} */ (await fetchPurchaseOrder(String(poId)));
         grnApplyRef.current = null;
+        // The invoice takes the order's currency; the rate is the current one for that currency.
+        const orderCurrencyId = order.currency_id != null ? Number(order.currency_id) : null;
+        const primaryId = drawerData.primaryCurrencyId;
+        const currencyPatch =
+          orderCurrencyId == null
+            ? {}
+            : primaryId != null && orderCurrencyId === Number(primaryId)
+              ? { currency_id: orderCurrencyId, exchange_rate: 1 }
+              : {
+                  currency_id: orderCurrencyId,
+                  exchange_rate: drawerData.rateFromPrimary(orderCurrencyId) ?? Number(order.exchange_rate ?? 1),
+                };
         form.setFieldsValue({
           warehouse_id:
             order.warehouse_id != null ? Number(order.warehouse_id) : form.getFieldValue("warehouse_id"),
           goods_receipt_id: undefined,
+          ...currencyPatch,
         });
         setLines(seedLinesFromPurchaseOrder(order, sourceLinePricing()));
         poApplyRef.current = String(poId);
@@ -483,7 +491,7 @@ export default function PurchaseInvoiceDrawer({
         });
       }
     },
-    [form, notification, t, sourceLinePricing],
+    [form, notification, t, sourceLinePricing, drawerData],
   );
 
   const confirmPoChange = useCallback(
@@ -678,7 +686,6 @@ export default function PurchaseInvoiceDrawer({
       );
       if (recent) rememberRecentSelectorOption(PURCHASE_INVOICE_SUPPLIER_RECENT_KIND, recent);
       invalidateTenantListQueries(queryClient, SUPPLIERS_LIST_QUERY_KEY);
-      setSupplierCreateOpen(false);
     },
     [form, queryClient],
   );
@@ -796,6 +803,19 @@ export default function PurchaseInvoiceDrawer({
     );
   }, [modal, t, reverseMutation, hasGrn]);
 
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: downloadPurchaseInvoicePdf,
+    errorTitle: t("pdfError"),
+  });
+
+  const handleDownloadPdf = useCallback(() => {
+    downloadPdf(invoiceId, loadedNumber);
+  }, [downloadPdf, invoiceId, loadedNumber]);
+
+  const handlePrint = useCallback(() => {
+    printPdf(invoiceId, loadedNumber);
+  }, [printPdf, invoiceId, loadedNumber]);
+
   const handleCreatePayment = useCallback(() => {
     const id = normalizeEntityId(invoiceId);
     if (id == null) return;
@@ -872,8 +892,8 @@ export default function PurchaseInvoiceDrawer({
   const viewLineItem = useCallback((itemId) => {
     const id = normalizeEntityId(itemId);
     if (id == null) return;
-    setItemViewId(String(id));
-  }, []);
+    openStackedDrawer({ featureId: "items", id: String(id), mode: "view" });
+  }, [openStackedDrawer]);
 
   const handleHeaderValuesChange = useCallback(
     (changed) => {
@@ -948,6 +968,7 @@ export default function PurchaseInvoiceDrawer({
   return (
     <>
       <ResourceCrudDrawer
+        documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
         title={title}
         open={open}
         requestClose={requestClose}
@@ -978,7 +999,12 @@ export default function PurchaseInvoiceDrawer({
             saveDisabled={!canSubmitRequired}
             postDisabled={!canSubmitRequired || !access.canEdit}
             showDelete={!readOnly && invoiceId != null && access.canDelete}
-            showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
+            showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse && !isOpeningInvoice}
+            showPdf={invoiceId != null && access.canPrint && !isOpeningInvoice && isDocumentPdfPrintable("purchase_invoice", effectiveStatus)}
+            pdfLoading={isDownloadPending}
+            printLoading={isPrintPending}
+            onPrint={handlePrint}
+            onDownloadPdf={handleDownloadPdf}
             showCreatePayment={
               effectiveStatus === "posted" &&
               invoiceId != null &&
@@ -1020,7 +1046,7 @@ export default function PurchaseInvoiceDrawer({
           poDisabled={!supplierReady}
           invoiceId={invoiceId}
           onOpenSupplierDrawer={
-            !readOnly && supplierAccess.canAdd ? () => setSupplierCreateOpen(true) : undefined
+            !readOnly && supplierAccess.canAdd ? () => openStackedDrawer({ featureId: "suppliers", mode: "create", onCreated: onSupplierCreated }) : undefined
           }
           onValuesChange={handleHeaderValuesChange}
           keyboardRootRef={keyboardRootRef}
@@ -1062,25 +1088,6 @@ export default function PurchaseInvoiceDrawer({
           />
         </PurchaseInvoiceDrawerForm>
       </ResourceCrudDrawer>
-      {!readOnly && supplierAccess.canAdd ? (
-        <SupplierDrawer
-          open={open && supplierCreateOpen}
-          mode="create"
-          supplierId={null}
-          zIndex={1100}
-          onClose={() => setSupplierCreateOpen(false)}
-          onCreated={onSupplierCreated}
-        />
-      ) : null}
-      {itemAccess.canView ? (
-        <ItemDrawer
-          open={open && itemViewId != null}
-          mode="view"
-          itemId={itemViewId}
-          zIndex={1100}
-          onClose={() => setItemViewId(null)}
-        />
-      ) : null}
     </>
   );
 }

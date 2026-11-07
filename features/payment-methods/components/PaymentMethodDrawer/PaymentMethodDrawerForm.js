@@ -2,6 +2,7 @@
 
 import { PAYMENT_METHOD_TYPE_VALUES } from "../../utils/paymentMethodDrawerUtils";
 import { Form, Input, Select, Switch } from "antd";
+import PaymentMethodCashBankAccounts from "./PaymentMethodCashBankAccounts";
 
 const { TextArea } = Input;
 
@@ -12,8 +13,6 @@ const { TextArea } = Input;
  *   t: (key: string) => string;
  *   currencyOptions: { value: number; label: string }[];
  *   currencyLoading?: boolean;
- *   accountOptions?: { value: number; label: string }[] | null;
- *   accountLoading?: boolean;
  * }} props
  */
 export default function PaymentMethodDrawerForm({
@@ -22,8 +21,6 @@ export default function PaymentMethodDrawerForm({
   t,
   currencyOptions,
   currencyLoading,
-  accountOptions = null,
-  accountLoading,
 }) {
   return (
     <Form form={form} layout="vertical" requiredMark={readOnly ? false : "optional"} disabled={readOnly}>
@@ -65,18 +62,6 @@ export default function PaymentMethodDrawerForm({
           placeholder={t("fieldCurrencyPlaceholder")}
         />
       </Form.Item>
-      {accountOptions ? (
-        <Form.Item name="account_id" label={t("fieldAccount")} extra={t("fieldAccountHelp")}>
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            loading={accountLoading}
-            options={accountOptions}
-            placeholder={t("fieldAccountPlaceholder")}
-          />
-        </Form.Item>
-      ) : null}
       <Form.Item name="requires_reference" label={t("fieldRequiresReference")} valuePropName="checked">
         <Switch checkedChildren={t("yes")} unCheckedChildren={t("no")} />
       </Form.Item>
@@ -89,6 +74,7 @@ export default function PaymentMethodDrawerForm({
       <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
         <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />
       </Form.Item>
+      <PaymentMethodCashBankAccounts readOnly={readOnly} t={t} />
       <Form.Item name="notes" label={t("fieldNotes")}>
         <TextArea rows={3} />
       </Form.Item>

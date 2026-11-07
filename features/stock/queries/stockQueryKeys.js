@@ -79,6 +79,31 @@ export const STOCK_ADJUSTMENT_DETAIL_QUERY_PREFIX = /** @type {const} */ ([
   "adjustment",
 ]);
 
+export const STOCK_REVALUATIONS_QUERY_KEY = ["tenant", "stock", "revaluations"];
+
+export const STOCK_REVALUATION_DETAIL_QUERY_PREFIX = /** @type {const} */ ([
+  "tenant",
+  "stock",
+  "revaluation",
+]);
+
+/**
+ * @param {number | null | undefined} warehouseId
+ * @param {string | number | null | undefined} itemId
+ * @param {number | string | null | undefined} [lotId]
+ */
+export function stockRevaluationBalanceHintQueryKey(warehouseId, itemId, lotId = null) {
+  return [
+    "tenant",
+    "stock",
+    "revaluations",
+    "balance-hint",
+    warehouseId ?? null,
+    itemId ?? null,
+    lotId ?? null,
+  ];
+}
+
 export const STOCK_ADJUSTMENT_REASONS_QUERY_KEY = ["tenant", "stock", "adjustment-reasons"];
 
 export const STOCK_ADJUSTMENT_REASON_NAMES_QUERY_KEY = [

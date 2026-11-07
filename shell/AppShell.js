@@ -33,6 +33,7 @@ import { buildMainNavItems,
   selectedKeysForPath, } from "@/shell/sidebar/main-nav";
 import { GlobalDrawerProvider } from "@/lib/drawer/GlobalDrawerContext";
 import GlobalDrawerHost from "@/shell/GlobalDrawerHost";
+import StackedDrawerHost from "@/shell/StackedDrawerHost";
 import { useLocale, useTranslations } from "next-intl";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -230,6 +231,7 @@ export default function AppShell({ children, initialCollapsed = false }) {
                 <AppShellMainContent>{children}</AppShellMainContent>
                 <Suspense fallback={null}>
                   <GlobalDrawerHost />
+                  <StackedDrawerHost />
                 </Suspense>
               </Content>
             </Layout>

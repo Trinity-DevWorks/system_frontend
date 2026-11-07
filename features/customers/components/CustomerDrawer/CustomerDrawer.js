@@ -3,13 +3,13 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
+import { useStackedLookupCreate } from "@/lib/drawer/useStackedLookupCreate";
 import ResourceAttachmentsPanel from "@/shared/components/resource-drawer/ResourceAttachmentsPanel";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { fetchCurrencyNames } from "@/features/currencies/index";
 import { fetchCustomerGroupNames } from "@/features/customer-groups/index";
 import { fetchCustomer } from "../../api/customers.api";
@@ -18,23 +18,18 @@ import { fetchPaymentMethodNames } from "@/features/payment-methods/index";
 import { fetchPaymentTermNames } from "@/features/payment-terms/index";
 import { SALESMEN_LIST_QUERY_KEY, fetchSalesmanNames } from "@/features/salesmen";
 import { fetchVatGroupNames } from "@/features/vat-groups/index";
-import CustomerGroupDrawer from "@/features/customer-groups/components/CustomerGroupDrawer/CustomerGroupDrawer";
-import PaymentMethodDrawer from "@/features/payment-methods/components/PaymentMethodDrawer/PaymentMethodDrawer";
-import PaymentTermDrawer from "@/features/payment-terms/components/PaymentTermDrawer/PaymentTermDrawer";
-import SalesmanDrawer from "@/features/salesmen/components/SalesmanDrawer/SalesmanDrawer";
-import VatGroupDrawer from "@/features/vat-groups/components/VatGroupDrawer/VatGroupDrawer";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import CustomerDrawerForm from "./CustomerDrawerForm";
+import { mapOpeningDocumentsToForm } from "@/features/party-opening/openingDocumentsUtils";
 import {
   CUSTOMER_CREATE_SAVE_INTENT_EVENT,
   CUSTOMER_CREATE_SAVE_INTENT_KEY,
   isCreateDirtyVsDefaults,
   isEditDirtyVsLoaded,
   mapApiCurrencyBalancesToFormSplit,
-  optionalRelationId,
   requiredFieldsValid,
   toCustomerCacheRow,
 } from "../../utils/customerDrawerUtils";
@@ -57,7 +52,6 @@ const CUSTOMER_DETAIL_QUERY_PREFIX = /** @type {const} */ (CUSTOMERS_LIST_QUERY_
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
  *   onCreateSuccess?: (record: Record<string, unknown>) => void;
- *   zIndex?: number;
  * }} props
  */
 export default function CustomerDrawer({
@@ -68,62 +62,17 @@ export default function CustomerDrawer({
   onClose,
   onCreated,
   onCreateSuccess,
-  zIndex,
 }) {
   const t = useTranslations("Customers");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const [form] = Form.useForm();
-  const [nestedCreate, setNestedCreate] = useState(
-    /** @type {import("../../utils/customerDrawerUtils").CustomerNestedCreateKey | null} */ (null),
-  );
   const lastCreateIntent = usePersistedSaveIntent(CUSTOMER_CREATE_SAVE_INTENT_KEY, CUSTOMER_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
 
-  const closeNestedCreate = useCallback(() => setNestedCreate(null), []);
 
-  const handleDrawerClose = useCallback(() => {
-    setNestedCreate(null);
-    onClose();
-  }, [onClose]);
-
-  const makeNestedCreatedHandler = useCallback(
-    /**
-     * @param {string} fieldName
-     * @param {readonly string[]} queryKey
-     */
-    (fieldName, queryKey) =>
-      /** @param {Record<string, unknown>} record */ (record) => {
-        const id = optionalRelationId(record?.id);
-        if (id == null) return;
-        form.setFieldValue(fieldName, id);
-        invalidateTenantListQueries(queryClient, queryKey);
-      },
-    [form, queryClient],
-  );
-
-  const onNestedCustomerGroupCreated = useMemo(
-    () => makeNestedCreatedHandler("customer_group_id", CUSTOMER_GROUPS_LIST_QUERY_KEY),
-    [makeNestedCreatedHandler],
-  );
-  const onNestedSalesmanCreated = useMemo(
-    () => makeNestedCreatedHandler("salesman_id", SALESMEN_LIST_QUERY_KEY),
-    [makeNestedCreatedHandler],
-  );
-  const onNestedPaymentMethodCreated = useMemo(
-    () => makeNestedCreatedHandler("payment_method_id", PAYMENT_METHODS_LIST_QUERY_KEY),
-    [makeNestedCreatedHandler],
-  );
-  const onNestedPaymentTermsCreated = useMemo(
-    () => makeNestedCreatedHandler("payment_terms_id", PAYMENT_TERMS_LIST_QUERY_KEY),
-    [makeNestedCreatedHandler],
-  );
-  const onNestedVatGroupCreated = useMemo(
-    () => makeNestedCreatedHandler("vat_group_id", VAT_GROUPS_LIST_QUERY_KEY),
-    [makeNestedCreatedHandler],
-  );
+  const openLookupCreate = useStackedLookupCreate(form);
 
   const customerAttachmentsQueryKey = useMemo(
     () => /** @type {const} */ ([...CUSTOMERS_LIST_QUERY_KEY, customerId, "attachments"]),
@@ -143,7 +92,7 @@ export default function CustomerDrawer({
       vat_group_id: undefined,
       type: "individual",
       currency_credit_limits: [],
-      currency_opening_balances: [],
+      opening_documents: [],
       status: "active",
       blacklist_reason: "",
       is_vat_registered: false,
@@ -163,12 +112,14 @@ export default function CustomerDrawer({
       email: r.email ?? "",
       phone: r.phone ?? "",
       customer_group_id: r.customer_group_id ?? undefined,
+      price_list_id: r.price_list_id === undefined ? undefined : (r.price_list_id ?? null),
       salesman_id: r.salesman_id ?? undefined,
       payment_method_id: r.payment_method_id ?? undefined,
       payment_terms_id: r.payment_terms_id ?? undefined,
       vat_group_id: r.vat_group_id ?? undefined,
       type: r.type,
       ...mapApiCurrencyBalancesToFormSplit(r.currency_balances),
+      opening_documents: mapOpeningDocumentsToForm(r.opening_documents),
       status: ["active", "suspended", "blacklisted"].includes(String(r.status)) ? r.status : "active",
       blacklist_reason: r.blacklist_reason ?? "",
       is_vat_registered: r.is_vat_registered === true,
@@ -330,7 +281,7 @@ export default function CustomerDrawer({
     message,
     t,
     tApiErrors,
-    onClose: handleDrawerClose,
+    onClose,
     onCreated,
     onCreateSuccess,
     onSyncCreateDiscardBaseline,
@@ -367,7 +318,7 @@ export default function CustomerDrawer({
     readOnly,
     modal,
     t,
-    onClose: handleDrawerClose,
+    onClose,
     shouldConfirmDiscard,
   });
 
@@ -430,8 +381,7 @@ export default function CustomerDrawer({
   return (
     <ResourceCrudDrawer
       title={title}
-      size={800}
-      zIndex={zIndex}
+      size={1200}
       open={open}
       requestClose={requestClose}
       submitting={submitting}
@@ -467,62 +417,23 @@ export default function CustomerDrawer({
         t={t}
         customerGroupOptions={customerGroupOptions}
         customerGroupsPending={customerGroupsQuery.isPending}
-        onOpenCustomerGroupDrawer={readOnly ? undefined : () => setNestedCreate("customer-group")}
+        onOpenCustomerGroupDrawer={readOnly ? undefined : () => openLookupCreate("customerGroups", "customer_group_id", CUSTOMER_GROUPS_LIST_QUERY_KEY)}
         salesmenOptions={salesmenOptions}
         salesmenPending={salesmenQuery.isPending}
-        onOpenSalesmanDrawer={readOnly ? undefined : () => setNestedCreate("salesman")}
+        onOpenSalesmanDrawer={readOnly ? undefined : () => openLookupCreate("salesmen", "salesman_id", SALESMEN_LIST_QUERY_KEY)}
         paymentMethodOptions={paymentMethodOptions}
         paymentMethodsPending={paymentMethodsQuery.isPending}
-        onOpenPaymentMethodDrawer={readOnly ? undefined : () => setNestedCreate("payment-method")}
+        onOpenPaymentMethodDrawer={readOnly ? undefined : () => openLookupCreate("paymentMethods", "payment_method_id", PAYMENT_METHODS_LIST_QUERY_KEY)}
         paymentTermOptions={paymentTermOptions}
         paymentTermsPending={paymentTermsQuery.isPending}
-        onOpenPaymentTermsDrawer={readOnly ? undefined : () => setNestedCreate("payment-terms")}
+        onOpenPaymentTermsDrawer={readOnly ? undefined : () => openLookupCreate("paymentTerms", "payment_terms_id", PAYMENT_TERMS_LIST_QUERY_KEY)}
         vatGroupOptions={vatGroupOptions}
         vatGroupsPending={vatGroupsQuery.isPending}
-        onOpenVatGroupDrawer={readOnly ? undefined : () => setNestedCreate("vat-group")}
+        onOpenVatGroupDrawer={readOnly ? undefined : () => openLookupCreate("vatGroups", "vat_group_id", VAT_GROUPS_LIST_QUERY_KEY)}
         currencies={currenciesData ?? []}
         currenciesPending={currenciesQuery.isPending}
         isSystem={isSystemCustomer}
       />
-      {!readOnly ? (
-        <>
-          <CustomerGroupDrawer
-            open={open && nestedCreate === "customer-group"}
-            mode="create"
-            customerGroupId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={onNestedCustomerGroupCreated}
-          />
-          <SalesmanDrawer
-            open={open && nestedCreate === "salesman"}
-            mode="create"
-            salesmanId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={onNestedSalesmanCreated}
-          />
-          <PaymentMethodDrawer
-            open={open && nestedCreate === "payment-method"}
-            mode="create"
-            paymentMethodId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={onNestedPaymentMethodCreated}
-          />
-          <PaymentTermDrawer
-            open={open && nestedCreate === "payment-terms"}
-            mode="create"
-            paymentTermId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={onNestedPaymentTermsCreated}
-          />
-          <VatGroupDrawer
-            open={open && nestedCreate === "vat-group"}
-            mode="create"
-            vatGroupId={null}
-            onClose={closeNestedCreate}
-            onCreateSuccess={onNestedVatGroupCreated}
-          />
-        </>
-      ) : null}
       <ResourceAttachmentsPanel
         open={open}
         recordId={customerId}

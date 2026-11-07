@@ -51,6 +51,7 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
       name: "",
       description: "",
       is_active: true,
+      max_discount_percent: null,
     }),
     [],
   );
@@ -60,6 +61,7 @@ export default function RoleDrawer({ open, mode, roleId, onClose, onCreated, onC
       name: r.name,
       description: r.description ?? "",
       is_active: Boolean(r.is_active),
+      max_discount_percent: r.max_discount_percent != null ? Number(r.max_discount_percent) : null,
     }),
     [],
   );

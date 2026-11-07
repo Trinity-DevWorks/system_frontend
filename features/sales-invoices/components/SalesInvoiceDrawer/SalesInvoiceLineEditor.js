@@ -580,7 +580,8 @@ export default function SalesInvoiceLineEditor({
         readOnly={readOnly}
         renderField={(line, index, columnKey) => {
           const row = /** @type {import("../../utils/salesInvoiceDrawerUtils").SalesInvoiceLineFormRow} */ (line);
-          const linkedToOrder = row.sales_order_line_id != null;
+          // Lines from an order or a delivery note keep their item and unit.
+          const linkedToOrder = row.sales_order_line_id != null || row.delivery_note_line_id != null;
           if (columnKey === "line_no") {
             return (
               <span className="item-lines-readonly-uom item-lines-line-no">

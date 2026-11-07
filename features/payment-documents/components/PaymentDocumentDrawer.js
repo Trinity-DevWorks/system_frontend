@@ -1,6 +1,7 @@
 "use client";
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
+import { PartyBalanceLabel } from "@/shared/components/party/PartyBalancePopover";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
@@ -24,14 +25,20 @@ import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { CURRENCIES_LIST_QUERY_KEY, fetchCurrencyNames, fetchCurrencyPairRates } from "@/features/currencies";
+import { fetchCashBankAccountNames } from "@/features/cash-bank-accounts/api/cashBankAccounts.api";
+import { defaultPaymentAccountId, paymentAccountOptions } from "@/features/cash-bank-accounts/utils/paymentCashBankAccount";
 import { fetchPaymentMethodNames } from "@/features/payment-methods/api/paymentMethods.api";
+import { getActiveBranchId } from "@/lib/active-branch";
 import { PAYMENT_METHODS_LIST_QUERY_KEY } from "@/features/payment-methods/queries/paymentMethodsQueryKeys";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Col, DatePicker, Form, Input, Row, Select, Space, Tag } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PaymentAllocationGrid from "./PaymentAllocationGrid";
+import ApplyCreditModal from "./ApplyCreditModal";
 import {
   getPaymentDocumentStatusLabel,
   isPaymentDocumentDraft,
@@ -113,6 +120,7 @@ function rowFromInvoice(invoice, invoiceIdField, amount) {
  *       syncAllocations: (id: string, body: { allocations: Array<Record<string, unknown>> }) => Promise<Record<string, unknown>>;
  *       post: (id: string) => Promise<Record<string, unknown>>;
  *       reverse: (id: string) => Promise<Record<string, unknown>>;
+ *       downloadPdf: (id: string, documentNumber: string | undefined, options: { locale?: string }) => Promise<void>;
  *       openInvoices: (partyId: string, currencyId: number | string) => Promise<Array<Record<string, unknown>>>;
  *       fetchInvoice: (id: string) => Promise<Record<string, unknown>>;
  *     };
@@ -191,6 +199,27 @@ export default function PaymentDocumentDrawer({
     staleTime: QUERY_STALE_TIME.catalog,
   });
 
+  const accountsQuery = useQuery({
+    queryKey: ["tenant", "cash-bank-accounts", "names"],
+    queryFn: () => fetchCashBankAccountNames(),
+    enabled: open,
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+  // Money moves through one cash box / bank account; empty = the method's linked account (filled at post).
+  const documentBranchId = record?.branch_id ?? getActiveBranchId();
+  const cashAccounts = useMemo(() => (Array.isArray(accountsQuery.data) ? accountsQuery.data : []), [accountsQuery.data]);
+  const cashAccountOptions = useMemo(
+    () => paymentAccountOptions(cashAccounts, documentBranchId, currencyId),
+    [cashAccounts, documentBranchId, currencyId],
+  );
+  const fillCashAccount = useCallback(
+    (methodId, nextCurrencyId) => {
+      const method = (Array.isArray(methodsQuery.data) ? methodsQuery.data : []).find((m) => Number(m?.id) === Number(methodId));
+      form.setFieldValue("cash_bank_account_id", defaultPaymentAccountId(method, cashAccounts, documentBranchId, nextCurrencyId));
+    },
+    [cashAccounts, documentBranchId, form, methodsQuery.data],
+  );
+
   const openInvoicesQuery = useQuery({
     queryKey: [...config.queryKey, "open-invoices", partyId ?? null, currencyId ?? null],
     queryFn: () => config.api.openInvoices(String(partyId), /** @type {number | string} */ (currencyId)),
@@ -216,8 +245,11 @@ export default function PaymentDocumentDrawer({
         value: row.id,
         label: [row.code, row.name].filter(Boolean).join(" — ") || String(row.id),
         requires_reference: Boolean(row.requires_reference),
+        type: row.type,
       }));
   }, [methodsQuery.data]);
+  const allowCredit = Boolean(config.allowCredit);
+  const chequeTracking = Boolean(config.chequeTracking);
 
   const selectedMethod = methodOptions.find((row) => Number(row.value) === Number(paymentMethodId));
   const exchangeRateLocked =
@@ -245,6 +277,7 @@ export default function PaymentDocumentDrawer({
         currency_id: values.currency_id ?? null,
         exchange_rate: values.exchange_rate ?? null,
         payment_method_id: values.payment_method_id ?? null,
+        cash_bank_account_id: values.cash_bank_account_id ?? null,
         [dateField]: toIsoDate(values[dateField]),
         amount: moneyUnits(values.amount),
         reference: values.reference ?? "",
@@ -294,10 +327,14 @@ export default function PaymentDocumentDrawer({
         currency_id: next.currency_id,
         exchange_rate: next.exchange_rate != null ? Number(next.exchange_rate) : 1,
         payment_method_id: next.payment_method_id,
+        cash_bank_account_id: next.cash_bank_account_id ?? undefined,
         [dateField]: next[dateField] ? String(next[dateField]).slice(0, 10) : dayjs().format("YYYY-MM-DD"),
         amount: next.amount != null ? Number(next.amount) : undefined,
         reference: next.reference ?? "",
         notes: next.notes ?? "",
+        cheque_number: next.cheque_number ?? "",
+        cheque_bank: next.cheque_bank ?? "",
+        cheque_due_date: next.cheque_due_date ? String(next.cheque_due_date).slice(0, 10) : undefined,
       });
       setRows(nextRows);
       remember(nextRows);
@@ -341,6 +378,7 @@ export default function PaymentDocumentDrawer({
         currency_id: settings.primaryCurrencyId ?? undefined,
         exchange_rate: 1,
         payment_method_id: undefined,
+        cash_bank_account_id: undefined,
         [dateField]: dayjs().format("YYYY-MM-DD"),
         amount: undefined,
         reference: "",
@@ -375,9 +413,10 @@ export default function PaymentDocumentDrawer({
     const wasClean = baselineRef.current === "" || baselineRef.current === before;
     applyingRef.current = true;
     form.setFieldValue("payment_method_id", preferred.id);
+    fillCashAccount(preferred.id, form.getFieldValue("currency_id"));
     applyingRef.current = false;
     if (wasClean) remember(currentRows);
-  }, [form, methodsQuery.data, mode, open, remember, snapshotOf]);
+  }, [fillCashAccount, form, methodsQuery.data, mode, open, remember, snapshotOf]);
 
   const invoiceSeedEnabled = open && mode === "create" && Boolean(fromInvoiceId);
   const invoiceSeedQuery = useQuery({
@@ -482,12 +521,20 @@ export default function PaymentDocumentDrawer({
       currency_id: values.currency_id,
       exchange_rate: exchangeRateLocked ? 1 : values.exchange_rate,
       payment_method_id: values.payment_method_id,
+      cash_bank_account_id: values.cash_bank_account_id ?? null,
       [dateField]: toIsoDate(values[dateField]),
       amount: values.amount,
       reference: values.reference ? String(values.reference).trim() : null,
       notes: values.notes ? String(values.notes).trim() : null,
+      ...(chequeTracking
+        ? {
+            cheque_number: values.cheque_number ? String(values.cheque_number).trim() : null,
+            cheque_bank: values.cheque_bank ? String(values.cheque_bank).trim() : null,
+            cheque_due_date: toIsoDate(values.cheque_due_date) ?? null,
+          }
+        : {}),
     }),
-    [config.partyField, dateField, exchangeRateLocked],
+    [chequeTracking, config.partyField, dateField, exchangeRateLocked],
   );
 
   const invalidatePosted = useCallback(() => {
@@ -604,13 +651,20 @@ export default function PaymentDocumentDrawer({
     },
   });
 
+  const { downloadPdf, printPdf, printReceipt, isPrintPending, isDownloadPending, isReceiptPending } = useDocumentPdfDownload({
+    download: config.api.downloadPdf,
+    errorTitle: t("pdfError"),
+  });
+
   const remainderUnits = moneyUnits(headerAmount) - rows.reduce((sum, row) => sum + moneyUnits(row.amount), 0);
+  // Customer receipts may keep what is not allocated as customer credit (an advance payment).
   const canPost =
     access.canEdit &&
     moneyUnits(headerAmount) > 0 &&
-    rows.length > 0 &&
-    remainderUnits === 0 &&
+    (allowCredit ? remainderUnits >= 0 : rows.length > 0 && remainderUnits === 0) &&
     rows.every((row) => moneyUnits(row.amount) > 0);
+  const unappliedCredit = Number(record?.unapplied_amount ?? 0);
+  const [creditOpen, setCreditOpen] = useState(false);
 
   const writeAmount = useCallback((value) => {
     amountLockRef.current = true;
@@ -637,10 +691,17 @@ export default function PaymentDocumentDrawer({
             settings.priceDecimalPlaces ?? 2,
           );
           const currentRows = rowsRef.current;
-          const roundedAmounts = amountsForRoundedHeader(
-            currentRows.map((row) => row.amount),
-            roundedAmount,
-          );
+          const allocatedUnits = currentRows.reduce((sum, row) => sum + moneyUnits(row.amount), 0);
+          // Part kept as customer credit: only the header is cash-rounded (it must still cover the allocations).
+          const keepsCredit = allowCredit && moneyUnits(values.amount) > allocatedUnits;
+          const roundedAmounts = keepsCredit
+            ? moneyUnits(roundedAmount) >= allocatedUnits
+              ? currentRows.map((row) => row.amount)
+              : null
+            : amountsForRoundedHeader(
+                currentRows.map((row) => row.amount),
+                roundedAmount,
+              );
           if (moneyUnits(roundedAmount) <= 0 || roundedAmounts == null) {
             notification.error({ title: t("saveError"), description: t("allocationAmountRequired") });
             return;
@@ -656,7 +717,7 @@ export default function PaymentDocumentDrawer({
           });
         });
     },
-    [currenciesQuery.data, form, notification, rows, saveMutation, settings.priceDecimalPlaces, t, writeAmount],
+    [allowCredit, currenciesQuery.data, form, notification, rows, saveMutation, settings.priceDecimalPlaces, t, writeAmount],
   );
 
   const shouldConfirmDiscard = useCallback(() => {
@@ -698,9 +759,13 @@ export default function PaymentDocumentDrawer({
     .map((invoice) => {
       const code = invoice.currency && typeof invoice.currency === "object" ? invoice.currency.code : "";
       const open = formatTenantMoney(invoice.net_to_pay);
+      // Opening invoices / credits (old balances) show a tag and their number from the old system.
+      const opening = invoice.is_opening
+        ? [t("openingTag"), invoice.original_number].filter(Boolean).join(" ")
+        : "";
       return {
         value: String(invoice.id),
-        label: [invoice.invoice_number ?? invoice.id, [code, open].filter(Boolean).join(" ")].filter(Boolean).join(" · "),
+        label: [invoice.invoice_number ?? invoice.id, opening, [code, open].filter(Boolean).join(" ")].filter(Boolean).join(" · "),
         invoice,
       };
     });
@@ -837,6 +902,7 @@ export default function PaymentDocumentDrawer({
 
   return (
     <ResourceCrudDrawer
+      documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
       title={title}
       open={open}
       requestClose={requestClose}
@@ -874,6 +940,21 @@ export default function PaymentDocumentDrawer({
               </span>
             </div>
             <Button onClick={forceClose}>{t("drawerClose")}</Button>
+            {documentId != null && access.canPrint && isDocumentPdfPrintable(/** @type {any} */ (config.documentKey), status) ? (
+              <>
+                <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(documentId, number)}>
+                  {t("actionPrint")}
+                </Button>
+                {config.receiptPrint ? (
+                  <Button loading={isReceiptPending} disabled={submitting} onClick={() => printReceipt(documentId, number)}>
+                    {t("actionPrintReceipt")}
+                  </Button>
+                ) : null}
+                <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(documentId, number)}>
+                  {t("actionDownloadPdf")}
+                </Button>
+              </>
+            ) : null}
             {status === "posted" && access.canReverse ? (
               <Button
                 danger
@@ -936,6 +1017,10 @@ export default function PaymentDocumentDrawer({
         disabled={readOnly || submitting}
         onValuesChange={(changed) => {
           if (applyingRef.current || amountLockRef.current || readOnly) return;
+          // A new method or currency picks that method's account for the currency.
+          if ("payment_method_id" in changed || "currency_id" in changed) {
+            fillCashAccount(form.getFieldValue("payment_method_id"), form.getFieldValue("currency_id"));
+          }
           if (config.partyField in changed) {
             rowsRef.current = [];
             setRows([]);
@@ -982,7 +1067,13 @@ export default function PaymentDocumentDrawer({
                 <LookupSelectWithCreate
                   form={form}
                   name={config.partyField}
-                  label={<ResourceDrawerFieldLabel text={t("fieldParty")} required />}
+                  label={
+                    <PartyBalanceLabel
+                      label={<ResourceDrawerFieldLabel text={t("fieldParty")} required />}
+                      party={config.partyField === "supplier_id" ? "supplier" : "customer"}
+                      partyField={config.partyField}
+                    />
+                  }
                   rules={[{ required: true, message: t("partyRequired") }]}
                   readOnly={readOnly}
                   fetchPage={config.party.fetchPage}
@@ -1034,45 +1125,15 @@ export default function PaymentDocumentDrawer({
                 </Form.Item>
               </Col>
               <Col xs={24} md={8}>
-                <Form.Item
-                  name="currency_id"
-                  label={<ResourceDrawerFieldLabel text={t("fieldCurrency")} required />}
-                  rules={[{ required: true, message: t("currencyRequired") }]}
-                >
+                <Form.Item name="cash_bank_account_id" label={<ResourceDrawerFieldLabel text={t("fieldCashBank")} />}>
                   <Select
+                    allowClear
                     showSearch
                     optionFilterProp="label"
-                    options={currencyOptions}
-                    loading={currenciesQuery.isPending}
-                    placeholder={t("fieldCurrencyPlaceholder")}
+                    options={cashAccountOptions}
+                    loading={accountsQuery.isPending}
+                    placeholder={t("fieldCashBankAuto")}
                   />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={8}>
-                <Form.Item
-                  label={
-                    <span className="invisible" aria-hidden="true">
-                      <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
-                    </span>
-                  }
-                >
-                  <div className="sales-invoice-exchange-rate-inline">
-                    <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required help={exchangeRateHelp} />
-                    <div className="sales-invoice-exchange-rate-input">
-                      <Form.Item
-                        name="exchange_rate"
-                        noStyle
-                        rules={[{ required: true, message: t("exchangeRateRequired") }]}
-                      >
-                        <TenantNumberInput
-                          kind="rate"
-                          className="w-full"
-                          min={0.000000000001}
-                          disabled={readOnly || exchangeRateLocked}
-                        />
-                      </Form.Item>
-                    </div>
-                  </div>
                 </Form.Item>
               </Col>
               <Col xs={24} md={8}>
@@ -1135,9 +1196,89 @@ export default function PaymentDocumentDrawer({
                   />
                 </Form.Item>
               )}
+              <Form.Item
+                name="currency_id"
+                label={<ResourceDrawerFieldLabel text={t("fieldCurrency")} required />}
+                rules={[{ required: true, message: t("currencyRequired") }]}
+              >
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  options={currencyOptions}
+                  loading={currenciesQuery.isPending}
+                  placeholder={t("fieldCurrencyPlaceholder")}
+                />
+              </Form.Item>
+              <Form.Item
+                label={
+                  <span className="invisible" aria-hidden="true">
+                    <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required />
+                  </span>
+                }
+              >
+                <div className="sales-invoice-exchange-rate-inline">
+                  <ResourceDrawerFieldLabel text={t("fieldExchangeRate")} required help={exchangeRateHelp} />
+                  <div className="sales-invoice-exchange-rate-input">
+                    <Form.Item
+                      name="exchange_rate"
+                      noStyle
+                      rules={[{ required: true, message: t("exchangeRateRequired") }]}
+                    >
+                      <TenantNumberInput
+                        kind="rate"
+                        className="w-full"
+                        min={0.000000000001}
+                        disabled={readOnly || exchangeRateLocked}
+                      />
+                    </Form.Item>
+                  </div>
+                </div>
+              </Form.Item>
+              {chequeTracking && selectedMethod?.type === "cheque" ? (
+                <>
+                  <Form.Item
+                    name="cheque_number"
+                    label={<ResourceDrawerFieldLabel text={t("fieldChequeNumber")} required />}
+                    rules={[{ required: true, message: t("chequeRequired") }]}
+                  >
+                    <Input maxLength={64} />
+                  </Form.Item>
+                  <Form.Item name="cheque_bank" label={<ResourceDrawerFieldLabel text={t("fieldChequeBank")} optional />}>
+                    <Input maxLength={128} />
+                  </Form.Item>
+                  <Form.Item
+                    name="cheque_due_date"
+                    label={<ResourceDrawerFieldLabel text={t("fieldChequeDueDate")} required />}
+                    rules={[{ required: true, message: t("chequeRequired") }]}
+                    getValueProps={(value) => ({ value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined })}
+                    normalize={(value) => (value && dayjs.isDayjs(value) ? value.format("YYYY-MM-DD") : value ?? undefined)}
+                  >
+                    <DatePicker className="w-full" format={dayjsDatePattern()} />
+                  </Form.Item>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
+        {allowCredit && !readOnly && remainderUnits > 0 && moneyUnits(headerAmount) > 0 ? (
+          <div className="mb-2 flex justify-end text-sm">
+            <Tag color="blue" className="!m-0">
+              {t("keptAsCredit", { amount: formatTenantMoney(unitsToAmount(remainderUnits)) })}
+            </Tag>
+          </div>
+        ) : null}
+        {allowCredit && status === "posted" && unappliedCredit > 0 ? (
+          <div className="mb-2 flex items-center justify-end gap-2 text-sm">
+            <Tag color="blue" className="!m-0">
+              {t("creditLeft", { amount: formatTenantMoney(unappliedCredit) })}
+            </Tag>
+            {access.canEdit && config.api.applyCredit ? (
+              <Button size="small" onClick={() => setCreditOpen(true)}>
+                {t("applyCredit")}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <PaymentAllocationGrid
           t={t}
           readOnly={readOnly || submitting}
@@ -1159,6 +1300,25 @@ export default function PaymentDocumentDrawer({
           onRemove={(key) => commitRows(rowsRef.current.filter((row) => row.key !== key))}
         />
       </Form>
+      {allowCredit && config.api.applyCredit && documentId != null ? (
+        <ApplyCreditModal
+          open={creditOpen}
+          i18n={config.i18n}
+          creditLeft={unappliedCredit}
+          currencyCode={currencyCode(currencyId)}
+          invoices={Array.isArray(openInvoicesQuery.data) ? openInvoicesQuery.data : []}
+          invoicesLoading={openInvoicesQuery.isFetching}
+          onApply={(body) => config.api.applyCredit(String(documentId), body)}
+          onClose={() => setCreditOpen(false)}
+          onApplied={async () => {
+            setCreditOpen(false);
+            invalidatePosted();
+            const saved = await config.api.fetch(String(documentId));
+            queryClient.setQueryData([...config.detailPrefix, documentId], saved);
+            applyRecord(saved);
+          }}
+        />
+      ) : null}
     </ResourceCrudDrawer>
   );
 }

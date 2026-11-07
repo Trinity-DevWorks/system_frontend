@@ -31,6 +31,7 @@ import {
 import { getStockCountTableColumns } from "../components/StockCountsTable/getStockCountTableColumns";
 import { useStockCountsTableQuery } from "../queries/useStockCountsTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
 
 function StockCountsTable() {
   const t = useTranslations("Stock");
@@ -201,7 +202,7 @@ function StockCountsTable() {
     return lines;
   }, [dateRangeLabel, statusLabel, t, warehouseLabel]);
 
-  const columns = useMemo(
+  const baseColumns = useMemo(
     () =>
       getStockCountTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
@@ -211,6 +212,7 @@ function StockCountsTable() {
       }),
     [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,

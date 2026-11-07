@@ -1,6 +1,8 @@
 import { downloadPartyLedger } from "@/features/party-ledger/api/partyLedger.api";
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /**
  * @param {string} endpoint
@@ -168,6 +170,34 @@ export function downloadVatReport(params) {
   return downloadPartyLedger("accounting/vat-report/export", params);
 }
 
+/** Past month-end currency revaluations, newest first. */
+export function fetchCurrencyRevaluations() {
+  return tenantRequest("GET", "accounting/currency-revaluations");
+}
+
+/**
+ * Lines a revaluation on `date` would post. `rates`: currency id → rate (1 primary = rate × currency).
+ * @param {string} date
+ * @param {Record<string, number | string | null | undefined>} [rates]
+ */
+export function previewCurrencyRevaluation(date, rates = {}) {
+  const qs = new URLSearchParams({ date });
+  for (const [currencyId, rate] of Object.entries(rates)) {
+    if (rate != null && rate !== "") qs.append(`rates[${currencyId}]`, String(rate));
+  }
+  return tenantRequest("GET", `accounting/currency-revaluations/preview?${qs.toString()}`);
+}
+
+/** @param {{ date: string; rates: Record<string, number | string> }} body */
+export function createCurrencyRevaluation(body) {
+  return tenantRequest("POST", "accounting/currency-revaluations", body);
+}
+
+/** Removes the latest revaluation and its next-day reversal. */
+export function undoCurrencyRevaluation(/** @type {string} */ date) {
+  return tenantRequest("DELETE", `accounting/currency-revaluations/${date}`);
+}
+
 export function fetchVatSettlements() {
   return tenantRequest("GET", "accounting/vat-settlements");
 }
@@ -208,4 +238,13 @@ export function closeFiscalYear(body) {
 /** @param {number | string} id */
 export function reverseFiscalYear(id) {
   return tenantRequest("POST", `accounting/fiscal-years/${id}/reverse`);
+}
+
+/**
+ * @param {string} entryId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadJournalEntryPdf(entryId, documentNumber, options = {}) {
+  await downloadPdf(`journal-entries/${entryId}/pdf`, documentPdfFilename(documentNumber, "journal-entry"), options);
 }

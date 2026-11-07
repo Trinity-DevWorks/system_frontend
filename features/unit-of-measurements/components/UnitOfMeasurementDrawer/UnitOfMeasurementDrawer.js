@@ -3,19 +3,18 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
+import { useStackedLookupCreate } from "@/lib/drawer/useStackedLookupCreate";
 import ResourceDrawerFooter from "@/shared/components/resource-drawer/ResourceDrawerFooter";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { useResourceDrawerDetailSync } from "@/shared/components/resource-drawer/useResourceDrawerDetailSync";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
-import UnitGroupDrawer from "@/features/unit-groups/components/UnitGroupDrawer/UnitGroupDrawer";
 import { UNIT_GROUPS_LIST_QUERY_KEY, fetchUnitGroupNames } from "@/features/unit-groups";
-import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { fetchUnitOfMeasurement } from "../../api/unitOfMeasurements.api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import UnitOfMeasurementDrawerForm from "./UnitOfMeasurementDrawerForm";
 import {
   UOM_CREATE_SAVE_INTENT_EVENT,
@@ -53,32 +52,12 @@ export default function UnitOfMeasurementDrawer({
   const t = useTranslations("UnitOfMeasurements");
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal } = App.useApp();
-  const queryClient = useQueryClient();
   const [form] = Form.useForm();
-  const [unitGroupCreateDrawerOpen, setUnitGroupCreateDrawerOpen] = useState(false);
   const lastCreateIntent = usePersistedSaveIntent(UOM_CREATE_SAVE_INTENT_KEY, UOM_CREATE_SAVE_INTENT_EVENT);
 
   const readOnly = mode === "view";
 
-  const closeUnitGroupCreateDrawer = useCallback(() => setUnitGroupCreateDrawerOpen(false), []);
-
-  const handleDrawerClose = useCallback(() => {
-    setUnitGroupCreateDrawerOpen(false);
-    onClose();
-  }, [onClose]);
-
-  const nestedUnitGroupDrawerOpen = open && unitGroupCreateDrawerOpen;
-
-  const handleNestedUnitGroupCreated = useCallback(
-    /** @param {Record<string, unknown>} record */
-    (record) => {
-      const id = record?.id;
-      if (id == null || Number.isNaN(Number(id))) return;
-      form.setFieldValue("unit_group_id", Number(id));
-      invalidateTenantListQueries(queryClient, UNIT_GROUPS_LIST_QUERY_KEY);
-    },
-    [form, queryClient],
-  );
+  const openLookupCreate = useStackedLookupCreate(form);
 
   const defaults = useMemo(
     () => ({
@@ -175,7 +154,7 @@ export default function UnitOfMeasurementDrawer({
     message,
     t,
     tApiErrors,
-    onClose: handleDrawerClose,
+    onClose,
     onCreated,
     onCreateSuccess,
     onSyncCreateDiscardBaseline,
@@ -206,7 +185,7 @@ export default function UnitOfMeasurementDrawer({
     readOnly,
     modal,
     t,
-    onClose: handleDrawerClose,
+    onClose,
     shouldConfirmDiscard,
   });
 
@@ -306,17 +285,8 @@ export default function UnitOfMeasurementDrawer({
         unitGroupOptions={unitGroupOptions}
         unitGroupsPending={unitGroupsQuery.isPending}
         unitGroupsError={unitGroupsQuery.isError ? unitGroupsQuery.error : null}
-        onOpenUnitGroupDrawer={readOnly ? undefined : () => setUnitGroupCreateDrawerOpen(true)}
+        onOpenUnitGroupDrawer={readOnly ? undefined : () => openLookupCreate("unitGroups", "unit_group_id", UNIT_GROUPS_LIST_QUERY_KEY)}
       />
-      {!readOnly ? (
-        <UnitGroupDrawer
-          open={nestedUnitGroupDrawerOpen}
-          mode="create"
-          unitGroupId={null}
-          onClose={closeUnitGroupCreateDrawer}
-          onCreateSuccess={handleNestedUnitGroupCreated}
-        />
-      ) : null}
     </ResourceCrudDrawer>
   );
 }

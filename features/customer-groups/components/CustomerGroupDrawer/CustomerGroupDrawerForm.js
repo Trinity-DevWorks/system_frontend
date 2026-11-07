@@ -1,5 +1,6 @@
 "use client";
 
+import PriceListSelect from "@/features/price-lists/components/PriceListSelect";
 import { Form, Input, Switch } from "antd";
 
 /**
@@ -35,6 +36,9 @@ export default function CustomerGroupDrawerForm({ form, readOnly, t }) {
         ]}
       >
         <Input autoComplete="off" />
+      </Form.Item>
+      <Form.Item name="price_list_id" label={t("fieldPriceList")} extra={t("fieldPriceListHint")}>
+        <PriceListSelect disabled={readOnly} />
       </Form.Item>
       <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
         <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />

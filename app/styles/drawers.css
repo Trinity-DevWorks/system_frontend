@@ -1198,3 +1198,18 @@
   font-weight: 600;
   color: var(--ant-color-text);
 }
+
+/* Bill discount in the totals column: number + small %/currency toggle, kept narrow
+   (beats the 5.5rem width the totals cards give every number box). */
+.resource-drawer-pricing-card .header-discount-control .ant-input-number.header-discount-input {
+  width: 64px !important;
+  min-width: 0;
+}
+.resource-drawer-pricing-card .header-discount-control .header-discount-toggle {
+  width: 32px;
+  /* Same height as the number box next to it (the totals cards use 22px inputs). */
+  height: 22px;
+  min-height: 22px;
+  padding: 0;
+  line-height: 1;
+}

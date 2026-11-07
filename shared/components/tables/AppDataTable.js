@@ -112,6 +112,7 @@ function spaceChildren(nodes) {
  * @param {import("antd").TableProps["onChange"]} [props.onTableChange] Forwarded to Ant Table `onChange`.
  * @param {import("antd").TableProps["expandable"]} [props.expandable] Forwarded to Ant Table (tree rows via `children`).
  * @param {boolean} [props.stickyHeader] Keep the toolbar and column header fixed. The row list is the only vertical scroller.
+ * @param {import("antd").TableProps["summary"]} [props.summary] Forwarded to Ant Table (e.g. a report totals row).
  * @param {false | {
  *   mode?: "server",
  *   pageSize?: number,
@@ -149,6 +150,7 @@ function AppDataTable({
   onTableChange,
   expandable,
   stickyHeader = false,
+  summary,
 }) {
   const t = useTranslations("DataTable");
   const { message } = App.useApp();
@@ -604,6 +606,7 @@ function AppDataTable({
         onRow={onRow}
         onChange={onTableChange}
         expandable={expandable}
+        summary={summary}
         className="[&_.ant-table]:rounded-none"
         components={columnDndActive && sortableIds.length > 0 ? dragTableComponents : undefined}
       />
@@ -636,6 +639,7 @@ function AppDataTable({
     onRow,
     onTableChange,
     expandable,
+    summary,
     tableId,
     columnDndActive,
     sortableIds,
@@ -712,7 +716,9 @@ function AppDataTable({
             </Space>
             <Space wrap size="small" className="shrink-0 justify-end">
               {spaceChildren([
-                showImportExportCluster && importExportMenuItems.length > 0 ? (
+                // Permission-based buttons render only after mount: permissions load in the browser,
+                // so the server HTML must not contain them (hydration mismatch otherwise).
+                hasMounted && showImportExportCluster && importExportMenuItems.length > 0 ? (
                   <Dropdown
                     key="import-export"
                     trigger={["click"]}
@@ -727,7 +733,7 @@ function AppDataTable({
                     </Button>
                   </Dropdown>
                 ) : null,
-                showAdd && onAdd ? (
+                hasMounted && showAdd && onAdd ? (
                   <Button key="add" type="primary" icon={<PlusOutlined />} onClick={onAdd}>
                     {addLabel ?? t("add")}
                   </Button>

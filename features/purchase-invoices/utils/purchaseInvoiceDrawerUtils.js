@@ -257,10 +257,13 @@ export function computePurchaseInvoiceLineMismatchFlags(line) {
   const qtyMismatch =
     sourceQty != null && line.quantity != null && Number(line.quantity) !== Number(sourceQty);
   const priceDecimals = getTenantFormatSettings().priceDecimalPlaces;
+  // PO prices are in the order currency (which the invoice adopts); GRN costs are primary.
   const expectedPrice =
-    sourcePrice != null
-      ? linePriceFromPrimary(sourcePrice, positiveRate(line.price_rate) ?? 1, priceDecimals, "document").unit_price
-      : undefined;
+    sourcePrice == null
+      ? undefined
+      : poLinked
+        ? Number(sourcePrice)
+        : linePriceFromPrimary(sourcePrice, positiveRate(line.price_rate) ?? 1, priceDecimals, "document").unit_price;
   const priceMismatch =
     expectedPrice != null &&
     line.unit_price != null &&
@@ -401,7 +404,8 @@ export function seedLinesFromGoodsReceipt(grn, pricing = {}) {
 }
 
 /**
- * PO unit prices are in the primary currency; lines get them × the document rate.
+ * PO unit prices are in the order's currency, which the invoice adopts: lines copy them
+ * unchanged and record the primary equivalent at the invoice rate.
  *
  * @param {Record<string, unknown>} order
  * @param {{ rate?: number | null; priceDecimals?: number }} [pricing]
@@ -423,7 +427,14 @@ export function seedLinesFromPurchaseOrder(order, pricing = {}) {
       ),
       quantity: orderLine.quantity != null ? Number(orderLine.quantity) : undefined,
       po_quantity: orderLine.quantity != null ? Number(orderLine.quantity) : undefined,
-      ...linePriceFromPrimary(orderLine.unit_price, pricing.rate ?? 1, pricing.priceDecimals ?? 2, "document"),
+      ...linePriceFromPrimary(
+        orderLine.unit_price == null || orderLine.unit_price === ""
+          ? null
+          : Number(orderLine.unit_price) / (positiveRate(pricing.rate) ?? 1),
+        pricing.rate ?? 1,
+        pricing.priceDecimals ?? 2,
+        "document",
+      ),
       po_unit_price: orderLine.unit_price != null ? Number(orderLine.unit_price) : undefined,
       item_uom_id: orderLine.item_uom_id != null ? Number(orderLine.item_uom_id) : PI_BASE_UOM,
       warehouse_id: headerWarehouse,

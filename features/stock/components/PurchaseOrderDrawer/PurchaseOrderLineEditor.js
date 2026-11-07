@@ -1,23 +1,31 @@
 "use client";
 
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
-import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
-import { Select } from "antd";
+import { Input, Select } from "antd";
+import { formatTenantMoneyWithSymbol, formatTenantNumber } from "@/lib/tenant-format";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { previewLineAmounts, previewLineTaxRate } from "@/features/sales-invoices/utils/salesInvoiceTax";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
 import { suggestedPurchaseOrderUnitPrice } from "../../utils/purchaseOrderLastPurchasePrice";
 import StockLineUomField from "../StockLineUomField";
 
 /**
+ * Purchase order lines, same grid and columns as the sales order line editor.
+ *
  * @param {{
  *   lines: import("../../utils/purchaseOrderDrawerUtils").PurchaseOrderLineFormRow[];
  *   readOnly: boolean;
- *   itemOptions: { value: string; label: string }[];
+ *   itemOptions: { value: string; label: string; vat_percentage?: number }[];
  *   itemsPending: boolean;
  *   lastPriceByItemId: Map<string, number>;
  *   canAddLine: boolean;
+ *   currencySymbol: string;
+ *   taxEnabled: boolean;
+ *   pricesIncludeTax: boolean;
+ *   supplierExempt: boolean;
+ *   settings: { priceDecimalPlaces?: number; priceRoundingMode?: string } | null;
  *   onPatchLine: (index: number, patch: Partial<import("../../utils/purchaseOrderDrawerUtils").PurchaseOrderLineFormRow>) => void;
  *   onRemoveLine: (index: number) => void;
  *   onAddLine: () => void;
@@ -31,6 +39,11 @@ export default function PurchaseOrderLineEditor({
   itemsPending,
   lastPriceByItemId,
   canAddLine,
+  currencySymbol,
+  taxEnabled,
+  pricesIncludeTax,
+  supplierExempt,
+  settings,
   onPatchLine,
   onRemoveLine,
   onAddLine,
@@ -38,21 +51,23 @@ export default function PurchaseOrderLineEditor({
 }) {
   const columns = useMemo(
     () => [
-      { key: "item", label: t("poLineItem"), width: "minmax(240px, 1fr)" },
-      { key: "quantity", label: t("poLineQuantity"), width: "110px" },
-      { key: "uom", label: t("poLineUom"), width: "160px" },
-      { key: "unit_price", label: t("poLineUnitPrice"), width: "120px" },
+      { key: "line_no", label: t("poLineNo"), width: "56px" },
+      { key: "item", label: t("poLineItem"), width: "minmax(160px, 1fr)" },
+      { key: "description", label: t("poLineDescription"), width: "minmax(180px, 1.2fr)" },
+      { key: "uom", label: t("poLineUom"), width: "120px" },
+      { key: "quantity", label: t("poLineQuantity"), width: "120px" },
+      { key: "unit_price", label: t("poLineUnitPrice"), width: "140px" },
+      { key: "discount_percent", label: t("poLineDiscount"), width: "100px" },
+      { key: "tax_rate", label: t("poLineTaxRate"), width: "72px" },
+      { key: "line_total", label: t("poLineTotal"), width: "140px" },
     ],
     [t],
   );
 
+  const itemsById = useMemo(() => new Map(itemOptions.map((row) => [String(row.value), row])), [itemOptions]);
+
   return (
     <section className="item-lines-panel">
-      <ResourceDrawerPanelHeader
-        title={t("poLinesTitle")}
-        description={t("poLinesDescription")}
-      />
-
       <LinesGrid
         columns={columns}
         lines={lines}
@@ -64,7 +79,15 @@ export default function PurchaseOrderLineEditor({
         readOnly={readOnly}
         renderField={(line, index, columnKey) => {
           const row = /** @type {import("../../utils/purchaseOrderDrawerUtils").PurchaseOrderLineFormRow} */ (line);
+          const itemOption = row.item_id != null ? itemsById.get(String(row.item_id)) ?? null : null;
+
+          if (columnKey === "line_no") {
+            return <span className="item-lines-readonly-uom item-lines-line-no">{index + 1}</span>;
+          }
           if (columnKey === "item") {
+            if (readOnly) {
+              return <span className="item-lines-readonly-uom">{itemOption?.label || row.item_label || "\u2014"}</span>;
+            }
             return (
               <Select
                 showSearch
@@ -74,7 +97,6 @@ export default function PurchaseOrderLineEditor({
                 value={row.item_id}
                 options={itemOptions}
                 loading={itemsPending}
-                disabled={readOnly}
                 getPopupContainer={drawerSelectGetPopup}
                 onChange={(value) =>
                   onPatchLine(index, {
@@ -84,6 +106,21 @@ export default function PurchaseOrderLineEditor({
                     unitPriceAuto: true,
                   })
                 }
+              />
+            );
+          }
+          if (columnKey === "description") {
+            if (readOnly) {
+              return <span className="item-lines-readonly-uom">{row.notes || "\u2014"}</span>;
+            }
+            return (
+              <Input
+                className="w-full"
+                maxLength={500}
+                disabled={!row.item_id}
+                value={row.notes ?? ""}
+                placeholder={t("poLineDescriptionPlaceholder")}
+                onChange={(event) => onPatchLine(index, { notes: event.target.value })}
               />
             );
           }
@@ -99,6 +136,19 @@ export default function PurchaseOrderLineEditor({
               />
             );
           }
+          if (columnKey === "quantity") {
+            return (
+              <TenantNumberInput
+                kind="quantity"
+                className="w-full"
+                min={0.000001}
+                placeholder={t("poLineQtyPlaceholder")}
+                value={row.quantity}
+                disabled={readOnly}
+                onChange={(value) => onPatchLine(index, { quantity: value ?? undefined })}
+              />
+            );
+          }
           if (columnKey === "unit_price") {
             return (
               <TenantNumberInput
@@ -108,22 +158,47 @@ export default function PurchaseOrderLineEditor({
                 placeholder={t("poLineUnitPricePlaceholder")}
                 value={row.unit_price}
                 disabled={readOnly}
-                onChange={(value) =>
-                  onPatchLine(index, { unit_price: value ?? undefined, unitPriceAuto: false })
-                }
+                onChange={(value) => onPatchLine(index, { unit_price: value ?? undefined, unitPriceAuto: false })}
               />
             );
           }
+          if (columnKey === "discount_percent") {
+            return (
+              <TenantNumberInput
+                kind="percent"
+                className="w-full"
+                min={0}
+                max={100}
+                placeholder="0"
+                value={row.discount_percent}
+                disabled={readOnly}
+                onChange={(value) => onPatchLine(index, { discount_percent: value ?? undefined })}
+              />
+            );
+          }
+
+          // Read-only orders show the stored VAT and totals; drafts preview them with the same tax rules as the server.
+          const taxRate = readOnly
+            ? row.saved_tax_rate ?? null
+            : previewLineTaxRate({
+                row: { ...row, tax_rate: row.saved_tax_rate },
+                itemOption,
+                taxEnabled,
+                customerExempt: supplierExempt,
+              });
+          if (columnKey === "tax_rate") {
+            return (
+              <span className="item-lines-readonly-uom">
+                {taxRate != null ? `${formatTenantNumber(taxRate, { decimals: 4, trimTrailingZeros: true })}%` : "\u2014"}
+              </span>
+            );
+          }
+          const live = readOnly ? null : previewLineAmounts({ row, taxRate, pricesIncludeTax, settings });
+          const total = readOnly ? row.saved_line_total : live?.line_total;
           return (
-            <TenantNumberInput
-              kind="quantity"
-              className="w-full"
-              min={0.000001}
-              placeholder={t("poLineQtyPlaceholder")}
-              value={row.quantity}
-              disabled={readOnly}
-              onChange={(value) => onPatchLine(index, { quantity: value ?? undefined })}
-            />
+            <span className="item-lines-readonly-uom">
+              {total != null ? formatTenantMoneyWithSymbol(total, currencySymbol) || "\u2014" : "\u2014"}
+            </span>
           );
         }}
       />

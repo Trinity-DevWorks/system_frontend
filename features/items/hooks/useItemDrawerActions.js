@@ -18,7 +18,6 @@ import { isEditDirtyVsLoaded } from "../utils/itemDrawerUtils";
  *   form: import("antd").FormInstance;
  *   isCreateDirty: () => boolean;
  *   editBaselineForDirty: Record<string, unknown> | null;
- *   clearNestedCreate: () => void;
  *   setActiveTab: (tab: string) => void;
  *   onClose: () => void;
  *   modal: import("antd").ModalStaticFunctions;
@@ -41,7 +40,6 @@ export function useItemDrawerActions({
   form,
   isCreateDirty,
   editBaselineForDirty,
-  clearNestedCreate,
   setActiveTab,
   onClose,
   modal,
@@ -75,10 +73,9 @@ export function useItemDrawerActions({
   }, [readOnly, mode, form, isCreateDirty, editBaselineForDirty]);
 
   const handleDrawerClose = useCallback(() => {
-    clearNestedCreate();
     setActiveTab("general");
     onClose();
-  }, [clearNestedCreate, setActiveTab, onClose]);
+  }, [setActiveTab, onClose]);
 
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly,

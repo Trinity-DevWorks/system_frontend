@@ -13,9 +13,14 @@ import StockDocumentDrawerFooter from "../StockDocumentDrawerFooter";
  *   postDisabled: boolean;
  *   showDelete: boolean;
  *   showPost: boolean;
+ *   showPdf?: boolean;
+ *   pdfLoading?: boolean;
+ *   printLoading?: boolean;
  *   onSave: () => void;
  *   onPost: () => void;
  *   onDelete: () => void;
+ *   onPrint?: () => void;
+ *   onDownloadPdf?: () => void;
  * }} props
  */
 export default function GoodsReceiptDrawerFooter(props) {

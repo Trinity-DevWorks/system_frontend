@@ -1,5 +1,6 @@
 "use client";
 
+import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { Form, Input, Switch } from "antd";
 
 /**
@@ -30,6 +31,9 @@ export default function RoleDrawerForm({ form, readOnly, mode, systemRole, owner
       </Form.Item>
       <Form.Item name="description" label={t("fieldDescription")}>
         <Input.TextArea rows={2} allowClear />
+      </Form.Item>
+      <Form.Item name="max_discount_percent" label={t("fieldMaxDiscount")} extra={t("fieldMaxDiscountHint")}>
+        <TenantNumberInput kind="percent" min={0} max={100} style={{ width: 160 }} placeholder={t("fieldMaxDiscountPlaceholder")} addonAfter="%" />
       </Form.Item>
       <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
         <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />

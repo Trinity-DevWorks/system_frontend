@@ -1,6 +1,7 @@
 "use client";
 
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
+import { PartyBalanceLabel } from "@/shared/components/party/PartyBalancePopover";
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
@@ -100,7 +101,14 @@ export default function CommercialDocumentForm({
             <LookupSelectWithCreate
               form={form}
               name="customer_id"
-              label={<ResourceDrawerFieldLabel text={t("fieldCustomer")} required />}
+              label={
+                <PartyBalanceLabel
+                  label={<ResourceDrawerFieldLabel text={t("fieldCustomer")} required />}
+                  party="customer"
+                  partyField="customer_id"
+                  getPopupContainer={drawerSelectGetPopup}
+                />
+              }
               rules={[{ required: true, message: t("fieldCustomerRequired") }]}
               readOnly={readOnly}
               fetchPage={fetchSalesInvoiceCustomerSelectorPage}

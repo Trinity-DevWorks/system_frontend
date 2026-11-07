@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /** @param {Record<string, unknown>} [params] */
 export async function fetchSalesCreditNotes(params = {}) {
@@ -52,4 +54,13 @@ export function applySalesCreditNote(id, body) {
 export async function fetchSalesCreditNoteInvoiceLines(salesInvoiceId) {
   const data = await tenantRequest("GET", `sales-credit-notes/invoice-lines?sales_invoice_id=${encodeURIComponent(salesInvoiceId)}`);
   return Array.isArray(data) ? data : [];
+}
+
+/**
+ * @param {string} creditNoteId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadSalesCreditNotePdf(creditNoteId, documentNumber, options = {}) {
+  await downloadPdf(`sales-credit-notes/${creditNoteId}/pdf`, documentPdfFilename(documentNumber, "sales-credit-note"), options);
 }

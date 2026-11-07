@@ -51,6 +51,7 @@ function mergeCurrencyBalancesForCache(oldRow, patchBalances) {
  *   tApiErrors: (key: string) => string;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   onCreateSuccess?: (record: Record<string, unknown>) => void;
  *   onSyncCreateDiscardBaseline?: (kind: "fromForm" | "defaults") => void;
  *   defaults: Record<string, unknown>;
  *   supplierGroupsData: unknown[] | undefined;
@@ -64,6 +65,7 @@ export function useSupplierDrawerMutations({
   tApiErrors,
   onClose,
   onCreated,
+  onCreateSuccess,
   onSyncCreateDiscardBaseline,
   defaults,
   supplierGroupsData,
@@ -151,6 +153,10 @@ export function useSupplierDrawerMutations({
         queryClient.setQueryData(supplierDetailQueryKey(id), data);
       }
 
+      if (typeof onCreateSuccess === "function" && id != null) {
+        onCreateSuccess(record ?? {});
+      }
+
       if (intent === "keep") {
         onCreated?.(record ?? {});
         message.success(t("drawerCreateSuccess"));
@@ -203,8 +209,6 @@ export function useSupplierDrawerMutations({
                 ...values,
                 supplier_group: groupPatch ?? row.supplier_group,
                 credit_limit: snap.credit_limit,
-                opening_balance: snap.opening_balance,
-                balance: snap.balance,
                 currency_balances: mergeCurrencyBalancesForCache(
                   /** @type {Record<string, unknown>} */ (row),
                   /** @type {unknown[]} */ (values.currency_balances ?? []),
@@ -224,8 +228,6 @@ export function useSupplierDrawerMutations({
           ...values,
           supplier_group: groupPatch ?? prev.supplier_group,
           credit_limit: snap.credit_limit,
-          opening_balance: snap.opening_balance,
-          balance: snap.balance,
           currency_balances: mergeCurrencyBalancesForCache(
             prev,
             /** @type {unknown[]} */ (values.currency_balances ?? []),

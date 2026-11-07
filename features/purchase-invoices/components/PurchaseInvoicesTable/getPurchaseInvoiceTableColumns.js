@@ -1,6 +1,7 @@
 import { isPurchaseInvoiceDraft, purchaseInvoiceStatusTag } from "../../utils/purchaseInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
-import { AccountBookOutlined, CheckOutlined, DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import { AccountBookOutlined, CheckOutlined, DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MoreOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -16,10 +17,12 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onReverse?: (record: unknown) => void;
  *   onCreatePayment?: (record: unknown) => void;
  *   onCreateDebitNote?: (record: unknown) => void;
+ *   onPrint?: (record: unknown) => void;
+ *   onDownloadPdf?: (record: unknown) => void;
  * }} [actions]
  */
 export function getPurchaseInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onPost, onDelete, onReverse, onCreatePayment, onCreateDebitNote } = actions;
+  const { onView, onEdit, onPost, onDelete, onReverse, onCreatePayment, onCreateDebitNote, onPrint, onDownloadPdf } = actions;
 
   return [
     {
@@ -29,11 +32,18 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       width: 140,
       ellipsis: true,
       sorter: (a, b) => String(a.invoice_number ?? "").localeCompare(String(b.invoice_number ?? "")),
-      render: (value) =>
+      render: (value, record) =>
         value ? (
-          <Typography.Text code className="text-xs">
-            {value}
-          </Typography.Text>
+          <span className="inline-flex items-center gap-1">
+            <Typography.Text code className="text-xs">
+              {value}
+            </Typography.Text>
+            {record?.is_opening ? (
+              <Tag color="geekblue" className="m-0" title={record?.original_number ?? undefined}>
+                {t("openingTag")}
+              </Tag>
+            ) : null}
+          </span>
         ) : (
           "\u2014"
         ),
@@ -130,6 +140,8 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       fixed: "right",
       render: (_, record) => {
         const isDraft = isPurchaseInvoiceDraft(record?.status);
+        // Opening invoices are managed from the customer/supplier: no print, return or reverse here.
+        const opening = record?.is_opening === true;
         const items = [
           {
             key: "view",
@@ -137,7 +149,27 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
             label: t("actionView"),
             onClick: () => onView?.(record),
           },
-          ...(onCreateDebitNote && record?.status === "posted"
+          ...(onPrint && !opening && isDocumentPdfPrintable("purchase_invoice", record?.status)
+            ? [
+                {
+                  key: "print",
+                  icon: <PrinterOutlined />,
+                  label: t("actionPrint"),
+                  onClick: () => onPrint(record),
+                },
+              ]
+            : []),
+          ...(onDownloadPdf && !opening && isDocumentPdfPrintable("purchase_invoice", record?.status)
+            ? [
+                {
+                  key: "pdf",
+                  icon: <FilePdfOutlined />,
+                  label: t("actionDownloadPdf"),
+                  onClick: () => onDownloadPdf(record),
+                },
+              ]
+            : []),
+          ...(onCreateDebitNote && !opening && record?.status === "posted"
             ? [
                 {
                   key: "create-debit-note",
@@ -184,7 +216,7 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
                 },
               ]
             : []),
-          ...(onReverse && record?.status === "posted"
+          ...(onReverse && !opening && record?.status === "posted"
             ? [
                 {
                   key: "reverse",

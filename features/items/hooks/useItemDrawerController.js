@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useItemDrawerTabItems } from "./useItemDrawerTabItems";
 
 /**
- * Assembles tab config, footer props, and nested-drawer props for the item drawer shell.
+ * Assembles tab config and footer props for the item drawer shell.
  *
  * Used by:
  * - drawer/ItemDrawer.js
@@ -59,17 +59,6 @@ import { useItemDrawerTabItems } from "./useItemDrawerTabItems";
  *     handleEditSubmit: (() => void) | undefined;
  *     editSaveDisabled: boolean;
  *   };
- *   nestedDrawers: {
- *     nestedCategoryDrawerOpen: boolean;
- *     nestedBrandDrawerOpen: boolean;
- *     nestedUomDrawerOpen: boolean;
- *     nestedVatGroupDrawerOpen: boolean;
- *     closeNestedCreate: () => void;
- *     onNestedCategoryCreated: (record: Record<string, unknown>) => void;
- *     onNestedBrandCreated: (record: Record<string, unknown>) => void;
- *     onNestedBaseUomCreated: (record: Record<string, unknown>) => void;
- *     onNestedVatGroupCreated: (record: Record<string, unknown>) => void;
- *   };
  * }} args
  */
 export function useItemDrawerController({
@@ -85,7 +74,6 @@ export function useItemDrawerController({
   general,
   panels,
   footer,
-  nestedDrawers,
 }) {
   const tabItems = useItemDrawerTabItems({
     t,
@@ -111,20 +99,11 @@ export function useItemDrawerController({
     [resolvedActiveTab, mode, readOnly, t, footer],
   );
 
-  const nestedDrawersProps = useMemo(
-    () => ({
-      readOnly,
-      ...nestedDrawers,
-    }),
-    [readOnly, nestedDrawers],
-  );
-
   const showSaveGeneralFirstAlert = !tabsEnabled && mode === "create";
 
   return {
     tabItems,
     footerProps,
-    nestedDrawersProps,
     showSaveGeneralFirstAlert,
   };
 }

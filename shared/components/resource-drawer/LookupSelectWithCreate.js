@@ -4,7 +4,7 @@ import LookupFieldWithAddFooter from "@/shared/components/resource-drawer/Lookup
 import ServerSearchSelect from "@/shared/components/selects/ServerSearchSelect";
 import { PlusOutlined } from "@ant-design/icons";
 import { Form, Select } from "antd";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 /**
  * Select with optional "add new" — in the dropdown (default) or as a footer inside the field box.
@@ -98,10 +98,15 @@ export default function LookupSelectWithCreate({
       ? (/** @type {unknown} */ v) => (v === sentinel ? form.getFieldValue(name) : v)
       : undefined;
 
+  // Picking "Add new" must not leave that option shown: an empty field passes value={undefined},
+  // which Ant Design treats as uncontrolled, so remount the select to drop its internal pick.
+  const [addNewResetKey, setAddNewResetKey] = useState(0);
   const onSelect =
     sentinel && onAddNew && !addNewAsLink && !serverSearch
       ? (/** @type {unknown} */ value) => {
-          if (value === sentinel) onAddNew();
+          if (value !== sentinel) return;
+          setAddNewResetKey((k) => k + 1);
+          onAddNew();
         }
       : undefined;
 
@@ -131,6 +136,7 @@ export default function LookupSelectWithCreate({
     />
   ) : (
     <Select
+      key={addNewResetKey}
       allowClear={allowClear}
       showSearch={showSearch}
       optionFilterProp="label"

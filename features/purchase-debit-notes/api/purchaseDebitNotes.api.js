@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /** @param {Record<string, unknown>} [params] */
 export async function fetchPurchaseDebitNotes(params = {}) {
@@ -52,4 +54,13 @@ export function applyPurchaseDebitNote(id, body) {
 export async function fetchPurchaseDebitNoteInvoiceLines(purchaseInvoiceId) {
   const data = await tenantRequest("GET", `purchase-debit-notes/invoice-lines?purchase_invoice_id=${encodeURIComponent(purchaseInvoiceId)}`);
   return Array.isArray(data) ? data : [];
+}
+
+/**
+ * @param {string} debitNoteId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadPurchaseDebitNotePdf(debitNoteId, documentNumber, options = {}) {
+  await downloadPdf(`purchase-debit-notes/${debitNoteId}/pdf`, documentPdfFilename(documentNumber, "purchase-debit-note"), options);
 }

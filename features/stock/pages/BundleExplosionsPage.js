@@ -31,6 +31,7 @@ import {
 import { getBundleExplosionTableColumns } from "../components/BundleExplosionsTable/getBundleExplosionTableColumns";
 import { useBundleExplosionsTableQuery } from "../queries/useBundleExplosionsTableQuery";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
 
 function BundleExplosionsTable() {
   const t = useTranslations("Stock");
@@ -201,7 +202,7 @@ function BundleExplosionsTable() {
     return lines;
   }, [dateRangeLabel, statusLabel, t, warehouseLabel]);
 
-  const columns = useMemo(
+  const baseColumns = useMemo(
     () =>
       getBundleExplosionTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
@@ -211,6 +212,7 @@ function BundleExplosionsTable() {
       }),
     [t, access.canView, access.canEdit, access.canDelete, access.canReverse, openViewDrawer, openEditDrawer, handleDelete, handleReverse],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,

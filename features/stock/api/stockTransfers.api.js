@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { parsePaginatedList, toListQuery } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /**
  * @param {{
@@ -97,4 +99,13 @@ export function closeStockTransferOpen(transferId, body) {
  */
 export function cancelStockTransfer(transferId) {
   return tenantRequest("POST", `stock/transfers/${transferId}/cancel`);
+}
+
+/**
+ * @param {string} transferId
+ * @param {string} [documentNumber]
+ * @param {{ locale?: string }} [options]
+ */
+export async function downloadStockTransferPdf(transferId, documentNumber, options = {}) {
+  await downloadPdf(`stock/transfers/${transferId}/pdf`, documentPdfFilename(documentNumber, "stock-transfer"), options);
 }

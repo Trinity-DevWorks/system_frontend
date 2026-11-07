@@ -14,7 +14,7 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "@/features/stock/components/StockTableFilters/StockTableFilters";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined, RollbackOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MoreOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, DatePicker, Dropdown, Form, Select, Spin, Tag, Typography } from "antd";
 import dayjs from "dayjs";
@@ -26,6 +26,9 @@ import {
   isPaymentDocumentDraft,
   paymentDocumentStatusTagColor,
 } from "../paymentDocumentUtils";
+import { useDocumentBranchColumns } from "@/shared/components/document-branch/useDocumentBranchColumns";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 
 /**
  * @param {{ config: {
@@ -186,6 +189,11 @@ function PaymentDocumentTable({ config }) {
     [config.numberField, deleteMutation, modal, t],
   );
 
+  const { downloadPdf, printPdf } = useDocumentPdfDownload({
+    download: config.api.downloadPdf,
+    errorTitle: t("pdfError"),
+  });
+
   const handleReverse = useCallback(
     (record) => {
       const id = normalizeEntityId(record?.id);
@@ -202,7 +210,7 @@ function PaymentDocumentTable({ config }) {
     [modal, reverseMutation, t],
   );
 
-  const columns = useMemo(
+  const baseColumns = useMemo(
     () => [
       {
         title: t("colNumber"),
@@ -264,6 +272,22 @@ function PaymentDocumentTable({ config }) {
             isDraft && access.canEdit
               ? { key: "edit", icon: <EditOutlined />, label: t("actionEdit"), onClick: () => openEditDrawer(record) }
               : null,
+            access.canPrint && isDocumentPdfPrintable(config.documentKey, record?.status)
+              ? {
+                  key: "print",
+                  icon: <PrinterOutlined />,
+                  label: t("actionPrint"),
+                  onClick: () => printPdf(normalizeEntityId(record?.id), record?.[config.numberField]),
+                }
+              : null,
+            access.canPrint && isDocumentPdfPrintable(config.documentKey, record?.status)
+              ? {
+                  key: "pdf",
+                  icon: <FilePdfOutlined />,
+                  label: t("actionDownloadPdf"),
+                  onClick: () => downloadPdf(normalizeEntityId(record?.id), record?.[config.numberField]),
+                }
+              : null,
             isDraft && access.canDelete
               ? {
                   key: "delete",
@@ -291,8 +315,9 @@ function PaymentDocumentTable({ config }) {
         },
       },
     ],
-    [access.canDelete, access.canEdit, access.canReverse, access.canView, config.dateField, config.numberField, handleDelete, handleReverse, openEditDrawer, openViewDrawer, t],
+    [access.canDelete, access.canEdit, access.canPrint, access.canReverse, access.canView, config.dateField, config.documentKey, config.numberField, downloadPdf, printPdf, handleDelete, handleReverse, openEditDrawer, openViewDrawer, t],
   );
+  const columns = useDocumentBranchColumns(baseColumns);
 
   const dateRangeLabel = formatStockFilterDateRange(dateRange?.[0], dateRange?.[1]);
   const filterSummary = [

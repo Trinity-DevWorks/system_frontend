@@ -8,6 +8,7 @@ import { useMemo } from "react";
 
 import ItemAttachmentsPanel from "../components/ItemDrawer/panels/ItemAttachmentsPanel";
 import ItemDrawerGeneralForm from "../components/ItemDrawer/components/ItemDrawerGeneralForm";
+import ItemVariantsPanel from "../components/ItemDrawer/panels/ItemVariantsPanel";
 import {
   ItemBundlePanel,
   ItemRecipePanel,
@@ -133,6 +134,16 @@ export function useItemDrawerTabItems({
         />
       ),
     });
+
+    // Variant children are normal items; only top-level items can hold variants.
+    if (detailRecord != null && detailRecord.parent_item_id == null && (trackInventoryWatch ?? detailRecord?.track_inventory ?? true)) {
+      items.push({
+        key: "variants",
+        label: t("tabVariants"),
+        hidePanelHeading: true,
+        children: <ItemVariantsPanel itemId={persistedItemId} readOnly={readOnly} active={open && resolvedActiveTab === "variants"} />,
+      });
+    }
 
     if (showRecipeTab) {
       items.push({

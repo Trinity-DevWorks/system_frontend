@@ -395,9 +395,14 @@ export default function ServerSearchSelect({
     [catalogRows, recents, seedOptions],
   );
 
+  // Picking "Add new" must not leave that option shown: an empty field passes value={undefined},
+  // which Ant Design treats as uncontrolled, so remount the select to drop its internal pick.
+  const [addNewResetKey, setAddNewResetKey] = useState(0);
+
   const handleChange = (next, option) => {
     if (next === RESULTS_PENDING_VALUE || next === RESULTS_EMPTY_VALUE) return;
     if (sentinel && next === sentinel) {
+      setAddNewResetKey((k) => k + 1);
       onAddNew?.();
       return;
     }
@@ -433,6 +438,7 @@ export default function ServerSearchSelect({
 
   return (
     <Select
+      key={addNewResetKey}
       {...rest}
       value={value}
       onChange={handleChange}

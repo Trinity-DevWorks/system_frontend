@@ -1,5 +1,6 @@
 "use client";
 
+import { useListPrices } from "@/features/price-lists/hooks/useListPrices";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
@@ -13,11 +14,16 @@ import { formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import { mapSalesInvoiceCustomerOption } from "@/features/sales-invoices/utils/salesInvoiceDrawerUtils";
 import { customerIsExemptOnDate, previewInvoiceTotals } from "@/features/sales-invoices/utils/salesInvoiceTax";
 import { useSalesInvoiceDrawerData } from "@/features/sales-invoices/queries/useSalesInvoiceDrawerData";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Form, Space, Tag } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CommercialDocumentForm from "./CommercialDocumentForm";
+import HeaderDiscountField from "./HeaderDiscountField";
+import { isDiscountApprovalError, useDiscountApproval } from "./useDiscountApproval";
+import { headerDiscountPreview } from "../utils/headerDiscount";
 import CommercialDocumentLineEditor from "./CommercialDocumentLineEditor";
 import {
   commercialDefaults,
@@ -94,6 +100,9 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
   const currencyId = Form.useWatch("currency_id", form);
   const documentDate = Form.useWatch(config.dateField, form);
   const exchangeRate = Form.useWatch("exchange_rate", form);
+  const headerDiscountType = Form.useWatch("header_discount_type", form);
+  const headerDiscountValue = Form.useWatch("header_discount_value", form);
+  useListPrices({ lines, setLines, customerId, currencyId, exchangeRate, date: documentDate, enabled: Boolean(customerId) });
   const drawerData = useSalesInvoiceDrawerData({
     open,
     t,
@@ -241,8 +250,8 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     if (recordId) queryClient.invalidateQueries({ queryKey: [...config.detailPrefix, recordId] });
   }, [config.detailPrefix, config.listKey, queryClient, recordId]);
 
-  const saveMutation = useMutation({
-    mutationFn: async (values) => {
+  const persist = useCallback(
+    async (values) => {
       const header = commercialHeaderPayload(values, config.dateField, config.extraDateField, config.includeWarehouse);
       const lineRows = commercialLinesPayload(lines);
       if (lineRows.length === 0) {
@@ -256,6 +265,11 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
       await config.api.syncLines(id, { lines: lineRows });
       return config.api.fetch(id);
     },
+    [config.api, config.dateField, config.extraDateField, config.includeWarehouse, lines, mode, recordId],
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: persist,
     onSuccess: (saved) => {
       message.success(t("saveSuccess"));
       const id = saved && typeof saved === "object" && saved.id != null ? String(saved.id) : null;
@@ -278,17 +292,61 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     },
   });
 
+  const { withApproval, approvalModal } = useDiscountApproval();
   const actionMutation = useMutation({
-    mutationFn: (/** @type {string} */ action) => config.api.action(/** @type {string} */ (recordId), action),
+    // `action` is a name, or { action, body } (confirm with a manager's discount approval).
+    mutationFn: (/** @type {string | { action: string; body?: Record<string, unknown> }} */ arg) =>
+      typeof arg === "string"
+        ? config.api.action(/** @type {string} */ (recordId), arg)
+        : config.api.action(/** @type {string} */ (recordId), arg.action, arg.body),
     onSuccess: (saved) => {
       message.success(t("actionSuccess"));
       invalidate();
       if (saved && typeof saved === "object") applyRecord(saved);
     },
     onError: (err) => {
+      if (isDiscountApprovalError(err)) return;
       notification.error({ title: t("saveError"), description: getLocalizedApiErrorMessage(tApiErrors, err) });
     },
   });
+
+  // Confirm = save the current values (create or update), then confirm, in one click.
+  const saveAndConfirmMutation = useMutation({
+    mutationFn: async ({ values, discountApproval = null }) => {
+      const saved = /** @type {Record<string, any>} */ (await persist(values));
+      const id = saved?.id != null ? String(saved.id) : recordId != null ? String(recordId) : null;
+      if (id == null) throw new Error("Missing sales order id after save");
+      return config.api.action(id, "confirm", discountApproval ? { discount_approval: discountApproval } : undefined);
+    },
+    onSuccess: (confirmed) => {
+      message.success(t("actionSuccess"));
+      const id = confirmed && typeof confirmed === "object" && confirmed.id != null ? String(confirmed.id) : null;
+      if (id) queryClient.setQueryData([...config.detailPrefix, id], confirmed);
+      invalidate();
+      if (mode === "create") {
+        onCreated?.(confirmed);
+        return;
+      }
+      if (confirmed && typeof confirmed === "object") applyRecord(confirmed);
+    },
+    onError: (err) => {
+      // A create may have succeeded before confirm failed; refresh the list so the draft shows up.
+      queryClient.invalidateQueries({ queryKey: config.listKey });
+      if (isDiscountApprovalError(err)) return;
+      if (err instanceof Error && err.message === "lines") {
+        notification.error({ title: t("saveError"), description: t("linesRequired") });
+        return;
+      }
+      notification.error({ title: t("saveError"), description: getLocalizedApiErrorMessage(tApiErrors, err) });
+    },
+  });
+
+  const deliveryAccess = useResourceAccess("delivery_notes");
+  // Opens the delivery note create drawer filled from this order; the user reviews, saves or posts there.
+  const openDeliveryNote = useCallback(() => {
+    if (recordId == null) return;
+    openDrawer({ featureId: "deliveryNotes", mode: "create", extras: { fromSalesOrderId: String(recordId) } });
+  }, [openDrawer, recordId]);
 
   const deleteMutation = useMutation({
     mutationFn: () => config.api.remove(/** @type {string} */ (recordId)),
@@ -317,7 +375,22 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     },
   });
 
-  const submitting = saveMutation.isPending || actionMutation.isPending || deleteMutation.isPending || invoiceMutation.isPending;
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: config.api.downloadPdf,
+    errorTitle: t("pdfError"),
+  });
+  const showPdf =
+    mode !== "create" &&
+    recordId != null &&
+    access.canPrint &&
+    isDocumentPdfPrintable(config.kind === "quotation" ? "sales_quotation" : "sales_order", status);
+
+  const submitting =
+    saveMutation.isPending ||
+    saveAndConfirmMutation.isPending ||
+    actionMutation.isPending ||
+    deleteMutation.isPending ||
+    invoiceMutation.isPending;
   const { forceClose, requestClose } = useResourceDrawerCloseFlow({
     readOnly: !editable,
     modal,
@@ -330,6 +403,13 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     form.validateFields().then((values) => saveMutation.mutate(values)).catch(() => {});
   }, [form, saveMutation]);
 
+  const runSaveAndConfirm = useCallback(() => {
+    form
+      .validateFields()
+      .then((values) => withApproval((discountApproval) => saveAndConfirmMutation.mutateAsync({ values, discountApproval })))
+      .catch(() => {});
+  }, [form, saveAndConfirmMutation, withApproval]);
+
   useDrawerSubmitShortcut({ enabled: open && editable, submitting, onSave: runSave, saveDisabled: !dirty || submitting });
 
   const customerExempt = customerIsExemptOnDate(drawerData.customerDetail, documentDate);
@@ -339,6 +419,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     taxEnabled: settings.taxEnabled,
     pricesIncludeTax: settings.taxPriceMode === "inclusive",
     customerExempt,
+    headerDiscount: headerDiscountPreview({ header_discount_type: headerDiscountType, header_discount_value: headerDiscountValue }),
     settings,
   });
   const symbol = drawerData.currencySymbol(currencyId != null ? Number(currencyId) : drawerData.primaryCurrencyId);
@@ -359,6 +440,15 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
       onOk: () => closeConfirmOnError(actionMutation.mutateAsync("cancel")),
     });
   };
+  const confirmClose = () => {
+    modal.confirm({
+      title: t("closeConfirmTitle"),
+      content: t("closeConfirmContent"),
+      okText: t("actionCloseOrder"),
+      cancelText: t("drawerCancel"),
+      onOk: () => closeConfirmOnError(actionMutation.mutateAsync("close")),
+    });
+  };
   const confirmDelete = () => {
     modal.confirm({
       title: t("deleteConfirmTitle"),
@@ -372,6 +462,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
 
   return (
     <ResourceCrudDrawer
+      documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
       className="sales-invoice-crud-drawer"
       title={title}
       open={open}
@@ -482,6 +573,16 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
                 {t("drawerSave")}
               </Button>
             ) : null}
+            {showPdf ? (
+              <>
+                <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(recordId, number)}>
+                  {t("actionPrint")}
+                </Button>
+                <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(recordId, number)}>
+                  {t("actionDownloadPdf")}
+                </Button>
+              </>
+            ) : null}
             {config.kind === "quotation" && status === "draft" && mode !== "create" && access.canEdit ? (
               <Button type="primary" disabled={submitting || dirty} onClick={() => runAction("send")}>
                 {t("actionSend")}
@@ -507,9 +608,33 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
                 {t("actionCancelOrder")}
               </Button>
             ) : null}
-            {config.kind === "order" && status === "draft" && mode !== "create" && access.canEdit ? (
-              <Button type="primary" disabled={submitting || dirty} onClick={() => runAction("confirm")}>
+            {config.kind === "order" && (status === "confirmed" || status === "partially_invoiced") && access.canEdit ? (
+              <Button disabled={submitting} onClick={confirmClose}>
+                {t("actionCloseOrder")}
+              </Button>
+            ) : null}
+            {config.kind === "order" && editable && access.canEdit ? (
+              <Button
+                type="primary"
+                loading={saveAndConfirmMutation.isPending}
+                disabled={submitting}
+                onClick={
+                  dirty || mode === "create"
+                    ? runSaveAndConfirm
+                    : () =>
+                        withApproval((discountApproval) =>
+                          actionMutation.mutateAsync(
+                            discountApproval ? { action: "confirm", body: { discount_approval: discountApproval } } : "confirm",
+                          ),
+                        ).catch(() => {})
+                }
+              >
                 {t("actionConfirm")}
+              </Button>
+            ) : null}
+            {config.kind === "order" && (status === "confirmed" || status === "partially_invoiced") && deliveryAccess.canAdd ? (
+              <Button disabled={submitting} onClick={openDeliveryNote}>
+                {t("actionCreateDeliveryNote")}
               </Button>
             ) : null}
             {config.kind === "order" &&
@@ -565,12 +690,14 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
           />
           <div className="sales-invoice-totals">
             <Summary label={t("subtotal")} value={formatTenantMoney(display?.subtotal)} />
+            <HeaderDiscountField readOnly={!editable} currencySymbol={symbol} />
             <Summary label={t("discountTotal")} value={formatTenantMoney(display?.discount_total)} />
             <Summary label={t("taxTotal")} value={formatTenantMoney(display?.tax_total)} />
             <Summary label={t("grandTotal")} value={formatTenantMoney(display?.grand_total)} />
           </div>
         </Form>
       </div>
+      {approvalModal}
     </ResourceCrudDrawer>
   );
 }

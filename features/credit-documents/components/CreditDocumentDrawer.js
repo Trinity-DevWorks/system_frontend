@@ -5,7 +5,7 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { useResourceAccess } from "@/lib/permissions";
-import { dayjsDatePattern, formatTenantDate, formatTenantDateTime, formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
+import { dayjsDatePattern, formatTenantDate, formatTenantDateTime, formatTenantMoneyWithSymbol, formatTenantNumber } from "@/lib/tenant-format";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
@@ -14,6 +14,8 @@ import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/use
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { fetchWarehouseNames } from "@/features/warehouses/api/warehouses.api";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses/queries/warehousesQueryKeys";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Checkbox, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag } from "antd";
 import dayjs from "dayjs";
@@ -79,6 +81,16 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
     queryFn: () => config.api.fetchInvoice(/** @type {string} */ (fromInvoiceId)),
     enabled: open && mode === "create" && Boolean(fromInvoiceId),
   });
+
+  // Credit is in the invoice's currency: from the saved note, else the picked invoice.
+  const currencyMark = useMemo(() => {
+    const invoiceRows = invoicesQuery.data?.rows ?? invoicesQuery.data?.data ?? [];
+    const sourceInvoice = invoiceRows.find((row) => String(row.id) === String(activeInvoiceId)) ?? seedQuery.data ?? null;
+    const currencyRow = record?.currency ?? sourceInvoice?.currency ?? null;
+    return String(currencyRow?.symbol || currencyRow?.code || "").trim();
+  }, [invoicesQuery.data, seedQuery.data, record, activeInvoiceId]);
+  /** @param {unknown} value */
+  const money = (value) => formatTenantMoneyWithSymbol(value, currencyMark);
 
   const linesQuery = useQuery({
     queryKey: [...config.detailPrefix, "invoice-lines", activeInvoiceId],
@@ -276,6 +288,11 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
     onError: (err) => notification.error({ title: t("applyError"), description: getLocalizedApiErrorMessage(tApiErrors, err) }),
   });
 
+  const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
+    download: config.api.downloadPdf,
+    errorTitle: t("pdfError"),
+  });
+
   const submit = useCallback(
     (shouldPost) => {
       form.validateFields().then((values) => {
@@ -309,7 +326,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
       { title: t("colItem"), dataIndex: "label", width: 220, ellipsis: true },
       { title: t("colInvoiced"), dataIndex: "invoiced", width: 110, align: "right", render: (value) => formatTenantNumber(value, { decimals: 6, trimTrailingZeros: true }) || "\u2014" },
       { title: t("colReturnable"), dataIndex: "returnable", width: 120, align: "right", render: (value) => formatTenantNumber(value, { decimals: 6, trimTrailingZeros: true }) || "\u2014" },
-      { title: t("colCreditable"), dataIndex: "creditable", width: 130, align: "right", render: (value) => formatTenantMoney(value) || "\u2014" },
+      { title: t("colCreditable"), dataIndex: "creditable", width: 130, align: "right", render: (value) => formatTenantMoneyWithSymbol(value, currencyMark) || "\u2014" },
       {
         title: type === "allowance" ? t("colAllowance") : t("colReturnQty"),
         width: 140,
@@ -352,7 +369,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
           }]
         : []),
     ],
-    [config.showRestock, readOnly, t, type, warehousesQuery.data],
+    [config.showRestock, currencyMark, readOnly, t, type, warehousesQuery.data],
   );
 
   const title = mode === "create" ? t("drawerTitleCreate") : readOnly ? t("drawerTitleView") : t("drawerTitleEdit");
@@ -361,6 +378,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
   return (
     <>
       <ResourceCrudDrawer
+        documentBranch={detailEnabled && detailQuery.data && typeof detailQuery.data === "object" ? detailQuery.data : null}
         title={title}
         open={open}
         requestClose={requestClose}
@@ -387,6 +405,16 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
               </span>
             </div>
             {readOnly ? <Button className="shrink-0" onClick={forceClose}>{t("drawerClose")}</Button> : null}
+            {documentId != null && access.canPrint && isDocumentPdfPrintable(config.documentKey, status) ? (
+              <>
+                <Button className="shrink-0" loading={isPrintPending} disabled={submitting} onClick={() => printPdf(documentId, record?.[config.numberField])}>
+                  {t("actionPrint")}
+                </Button>
+                <Button className="shrink-0" loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(documentId, record?.[config.numberField])}>
+                  {t("actionDownloadPdf")}
+                </Button>
+              </>
+            ) : null}
             {readOnly && status === "posted" && access.canReverse ? (
               <Button className="shrink-0" danger loading={reverseMutation.isPending} onClick={() => modal.confirm({ title: t("reverseConfirmTitle"), content: t("reverseConfirmContent"), okText: t("actionReverse"), okButtonProps: { danger: true }, cancelText: t("drawerCancel"), onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()) })}>
                 {t("actionReverse")}
@@ -485,11 +513,11 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
             />
           </div>
           <div className="sales-invoice-totals">
-            <Summary label={t("totalGrand")} value={formatTenantMoney(record?.grand_total)} />
-            <Summary label={t("totalTax")} value={formatTenantMoney(record?.tax_total)} />
-            <Summary label={t("colApplied")} value={formatTenantMoney(record?.applied_total)} />
-            <Summary label={t("colRefunded")} value={formatTenantMoney(record?.refunded_total)} />
-            <Summary label={t("colOpenCredit")} value={formatTenantMoney(record?.open_credit)} />
+            <Summary label={t("totalGrand")} value={money(record?.grand_total)} />
+            <Summary label={t("totalTax")} value={money(record?.tax_total)} />
+            <Summary label={t("colApplied")} value={money(record?.applied_total)} />
+            <Summary label={t("colRefunded")} value={money(record?.refunded_total)} />
+            <Summary label={t("colOpenCredit")} value={money(record?.open_credit)} />
           </div>
         </Form>
       </ResourceCrudDrawer>
@@ -503,7 +531,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
       >
         {(record?.applicable_invoices ?? []).map((invoice) => (
           <div key={invoice.id} className="mb-2 flex items-center justify-between gap-3">
-            <span>{invoice.invoice_number} · {t("colOpen")}: {formatTenantMoney(invoice.net_to_pay)}</span>
+            <span>{invoice.invoice_number} · {t("colOpen")}: {money(invoice.net_to_pay)}</span>
             <TenantNumberInput kind="money" value={applyAmounts[invoice.id]} onChange={(value) => setApplyAmounts((prev) => ({ ...prev, [invoice.id]: value }))} />
           </div>
         ))}

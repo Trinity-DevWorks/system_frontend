@@ -1,7 +1,7 @@
 import { isOwnerRoleName } from "@/features/roles/index";
 
-/** @typedef {"can_view" | "can_add" | "can_edit" | "can_delete" | "can_import" | "can_export" | "can_reverse" | "can_reopen"} PermFlag */
-/** @typedef {"view" | "add" | "edit" | "delete" | "import" | "export" | "reverse" | "reopen"} PermAction */
+/** @typedef {"can_view" | "can_add" | "can_edit" | "can_delete" | "can_import" | "can_export" | "can_reverse" | "can_reopen" | "can_print"} PermFlag */
+/** @typedef {"view" | "add" | "edit" | "delete" | "import" | "export" | "reverse" | "reopen" | "print"} PermAction */
 
 /** @type {readonly PermFlag[]} */
 export const PERM_FLAGS = Object.freeze([
@@ -13,6 +13,7 @@ export const PERM_FLAGS = Object.freeze([
   "can_export",
   "can_reverse",
   "can_reopen",
+  "can_print",
 ]);
 
 /** @type {readonly PermAction[]} */
@@ -25,6 +26,7 @@ export const PERM_ACTIONS = Object.freeze([
   "export",
   "reverse",
   "reopen",
+  "print",
 ]);
 
 /** @type {Readonly<Record<PermFlag, PermAction>>} */
@@ -37,6 +39,7 @@ export const FLAG_TO_ACTION = Object.freeze({
   can_export: "export",
   can_reverse: "reverse",
   can_reopen: "reopen",
+  can_print: "print",
 });
 
 /**
@@ -125,6 +128,7 @@ function flagsFromRolePerm(rolePerm) {
  *   can_export: boolean;
  *   can_reverse: boolean;
  *   can_reopen: boolean;
+ *   can_print: boolean;
  * }>}
  */
 export function buildMatrixRows(catalog, rolePermissions) {
