@@ -111,7 +111,7 @@ export function useSalesInvoiceDrawerMutations({
 
   const postMutation = useMutation({
     // `payments`: rows from the payment modal, posted with the invoice (none = all on account).
-    mutationFn: async ({ values, payments = [], discountApproval = null }) => {
+    mutationFn: async ({ values, payments = [], keepExtraAsCredit = false, discountApproval = null }) => {
       let id = invoiceId;
       if (id == null) {
         const created = await createSalesInvoice(salesInvoiceCreatePayload(values, lines));
@@ -122,7 +122,7 @@ export function useSalesInvoiceDrawerMutations({
         await syncSalesInvoiceLines(id, { lines: getValidSalesInvoiceLines(lines) });
       }
       // Payments go last: they are checked against the final totals.
-      await syncSalesInvoicePayments(id, { payments });
+      await syncSalesInvoicePayments(id, { payments, keep_extra_as_credit: Boolean(keepExtraAsCredit) });
       // A manager's login when the discount is above the poster's limit.
       return postSalesInvoice(id, discountApproval ? { discount_approval: discountApproval } : undefined);
     },
@@ -150,9 +150,9 @@ export function useSalesInvoiceDrawerMutations({
 
   /** Money received later against the posted invoice (each row becomes a receipt). */
   const recordPaymentMutation = useMutation({
-    mutationFn: async ({ payments, payment_date }) => {
+    mutationFn: async ({ payments, payment_date, keep_extra_as_credit = false }) => {
       if (invoiceId == null) throw new Error("Missing sales invoice id");
-      return recordSalesInvoicePayments(invoiceId, { payments, payment_date });
+      return recordSalesInvoicePayments(invoiceId, { payments, payment_date, keep_extra_as_credit: Boolean(keep_extra_as_credit) });
     },
     onError: (err) => {
       notification.error({

@@ -16,12 +16,14 @@ import { dayjsDatePattern, formatTenantMoneyWithSymbol } from "@/lib/tenant-form
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import { useQuery } from "@tanstack/react-query";
-import { Button, DatePicker, Form, Input, Modal, Select, Typography } from "antd";
+import { Button, DatePicker, Form, Input, Modal, Select, Switch, Tag, Typography } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef } from "react";
 import { defaultPaymentAccountId, paymentAccountOptions } from "@/features/cash-bank-accounts/utils/paymentCashBankAccount";
+import { fetchCustomerAvailableCredit } from "../../api/salesInvoices.api";
 import {
+  isCreditRow,
   salesInvoicePaymentChanges,
   salesInvoicePaymentSummary,
   salesInvoicePaymentsPayload,
@@ -39,13 +41,14 @@ import {
  *   mode: "post" | "record";
  *   amountDue: unknown;
  *   currencyId: unknown;
+ *   customerId?: unknown;
  *   exchangeRate?: unknown;
  *   branchId?: unknown;
  *   invoiceMethodId?: unknown;
  *   currencySymbol?: string;
  *   submitting: boolean;
  *   onCancel: () => void;
- *   onSubmit: (body: { payments: ReturnType<typeof salesInvoicePaymentsPayload>; payment_date?: string }) => void;
+ *   onSubmit: (body: { payments: ReturnType<typeof salesInvoicePaymentsPayload>; payment_date?: string; keep_extra_as_credit?: boolean }) => void;
  * }} props
  */
 export default function SalesInvoicePaymentModal({
@@ -53,6 +56,7 @@ export default function SalesInvoicePaymentModal({
   mode,
   amountDue,
   currencyId,
+  customerId = null,
   exchangeRate = null,
   branchId = null,
   invoiceMethodId = null,
@@ -65,7 +69,20 @@ export default function SalesInvoicePaymentModal({
   const [form] = Form.useForm();
   const rows = Form.useWatch("payments", { form, preserve: true });
   const list = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
+  const keepExtra = Boolean(Form.useWatch("keep_extra_as_credit", { form, preserve: true }));
   const { settings } = useCompanySettings();
+
+  // The customer's credit from earlier overpayments, valued in the invoice currency.
+  const creditQuery = useQuery({
+    queryKey: ["tenant", "customer-receipts", "available-credit", customerId, currencyId],
+    queryFn: () => fetchCustomerAvailableCredit(String(customerId), currencyId),
+    enabled: open && customerId != null && customerId !== "",
+    staleTime: 0,
+  });
+  const availableCredit = useMemo(
+    () => (Array.isArray(creditQuery.data) ? creditQuery.data : []).reduce((sum, c) => sum + (Number(c.in_invoice_currency) || 0), 0),
+    [creditQuery.data],
+  );
 
   const methodsQuery = useQuery({
     queryKey: ["tenant", "payment-methods", "names"],
@@ -136,6 +153,7 @@ export default function SalesInvoicePaymentModal({
   /** Row amount in the invoice currency. */
   const toInvoice = (row) => {
     if (!row) return 0;
+    if (isCreditRow(row)) return Number(row.amount) || 0;
     const same = isInvoiceCurrency(row.currency_id);
     return paymentAppliedToInvoice(row.amount, row.exchange_rate, invoiceTodayRate, same, decimals) ?? 0;
   };
@@ -174,6 +192,40 @@ export default function SalesInvoicePaymentModal({
   const patchRow = (index, patch) => setRows(list.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   const addRow = () => setRows([...list, newRow(restFor(-1))]);
   const payFull = () => setRows([newRow(due)]);
+  const creditUsed = list.filter(isCreditRow).reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const creditLeft = Math.max(0, Math.round((availableCredit - creditUsed) * 10000) / 10000);
+  // Uses the customer's credit for what is still due (or all of it, when less).
+  const addCreditRow = () => {
+    const amount = Math.min(creditLeft, restFor(-1));
+    if (!(amount > 0)) return;
+    setRows([{ kind: "credit", amount: Math.round(amount * 10000) / 10000 }, ...list]);
+  };
+
+  /** Change amount in `changeCurrencyId` for a row's extra cash (today's rate, cash-rounded for that currency). */
+  const changeIn = (row, changeCurrencyId) => {
+    const extra = Number(row?.tendered) - Number(row?.amount);
+    if (!(extra > 0) || changeCurrencyId == null) return { change_amount: undefined, change_rate: undefined };
+    const rowRate = isInvoiceCurrency(row.currency_id) ? invoiceRate : positiveRate(row.exchange_rate);
+    const changeRate = todayRateFor(changeCurrencyId);
+    if (rowRate == null || changeRate == null) return { change_amount: undefined, change_rate: undefined };
+    const exact = (extra / rowRate) * changeRate;
+    const currency = currencyById.get(Number(changeCurrencyId));
+    return {
+      change_amount: roundCashAmount(exact, currency?.smallest_unit, currency?.round_limit, decimals),
+      change_rate: changeRate,
+    };
+  };
+  const rowCurrencyId = (row) => (isInvoiceCurrency(row?.currency_id) ? Number(currencyId) : Number(row.currency_id));
+  const changeRowChangeCurrency = (index, cid) => {
+    const row = list[index] ?? {};
+    const foreign = cid != null && Number(cid) !== rowCurrencyId(row);
+    patchRow(index, foreign ? { change_currency_id: cid, ...changeIn(row, cid) } : { change_currency_id: undefined, change_amount: undefined, change_rate: undefined });
+  };
+  const changeRowTendered = (index, tendered) => {
+    const row = { ...(list[index] ?? {}), tendered };
+    const foreign = row.change_currency_id != null && Number(row.change_currency_id) !== rowCurrencyId(row);
+    patchRow(index, foreign ? { tendered, ...changeIn(row, row.change_currency_id) } : { tendered });
+  };
 
   // Switching a line's currency: today's rate, that currency's account, and what is still due in it.
   const changeRowCurrency = (index, cid) => {
@@ -215,9 +267,11 @@ export default function SalesInvoicePaymentModal({
     form
       .validateFields()
       .then((values) => {
-        const payments = salesInvoicePaymentsPayload(values.payments, currencyId);
+        // The full rows: some fields (kind, change amount, rates) are set in code, not shown as inputs.
+        const payments = salesInvoicePaymentsPayload(form.getFieldValue("payments"), currencyId);
         const date = values.payment_date && dayjs.isDayjs(values.payment_date) ? values.payment_date.format("YYYY-MM-DD") : undefined;
-        onSubmit(mode === "record" ? { payments, payment_date: date } : { payments });
+        const keep = summary.over && keepExtra;
+        onSubmit(mode === "record" ? { payments, payment_date: date, keep_extra_as_credit: keep } : { payments, keep_extra_as_credit: keep });
       })
       .catch(() => {});
   };
@@ -227,13 +281,14 @@ export default function SalesInvoicePaymentModal({
     { key: "currency_id", label: t("currency"), width: "minmax(170px, 1.4fr)" },
     { key: "cash_bank_account_id", label: t("account"), width: "minmax(140px, 1.3fr)" },
     { key: "amount", label: t("amount"), width: "minmax(140px, 1.2fr)" },
-    { key: "reference", label: t("reference"), width: "minmax(100px, 1fr)" },
-    { key: "tendered", label: t("tendered"), width: "minmax(110px, 1fr)" },
+    { key: "reference", label: t("referenceCheque"), width: "minmax(130px, 1.1fr)" },
+    { key: "tendered", label: t("tendered"), width: "minmax(130px, 1fr)" },
   ];
 
   const hasRows = summary.paid > 0;
   const okLabel = mode === "record" ? t("recordOk") : hasRows ? t("postWithPayment") : t("postOnAccount");
-  const blocked = summary.over || (mode === "record" && !hasRows);
+  // Paying more than due is fine only when the extra is kept as customer credit.
+  const blocked = (summary.over && !keepExtra) || (mode === "record" && !hasRows);
 
   return (
     <Modal
@@ -262,6 +317,11 @@ export default function SalesInvoicePaymentModal({
                 <DatePicker format={dayjsDatePattern()} allowClear={false} />
               </Form.Item>
             ) : null}
+            {creditLeft > 0 ? (
+              <Button onClick={addCreditRow} disabled={!(restFor(-1) > 0)}>
+                {t("useCredit", { amount: money(creditLeft) })}
+              </Button>
+            ) : null}
             <Button onClick={payFull} disabled={methods.length === 0}>
               {t("payFull")}
             </Button>
@@ -283,6 +343,29 @@ export default function SalesInvoicePaymentModal({
             const rowCurrency = isInvoiceCurrency(row.currency_id) ? currencyId : row.currency_id;
             const foreign = !isInvoiceCurrency(row.currency_id);
             const rowSymbol = symbolFor(row.currency_id);
+            const isCheque = method?.type === "cheque";
+
+            // The customer's existing credit: an amount in the invoice currency, nothing else to fill.
+            if (isCreditRow(row)) {
+              if (columnKey === "payment_method_id") return <Tag color="blue" className="!m-0">{t("customerCredit")}</Tag>;
+              if (columnKey === "currency_id") return <Typography.Text type="secondary">{invoiceCurrency?.code ?? ""}</Typography.Text>;
+              if (columnKey === "amount") {
+                return (
+                  <Form.Item
+                    name={["payments", index, "amount"]}
+                    noStyle
+                    rules={[{ validator: (_, v) => (Number(v) <= creditLeft + Number(row.amount) + 0.00001 ? Promise.resolve() : Promise.reject(new Error(t("creditTooMuch")))) }]}
+                  >
+                    <TenantNumberInput kind="money" min={0} className="w-full" addonAfter={currencySymbol || undefined} />
+                  </Form.Item>
+                );
+              }
+              if (columnKey === "reference") {
+                return <Typography.Text type="secondary" className="text-xs">{t("creditAvailable", { amount: money(availableCredit) })}</Typography.Text>;
+              }
+              return null;
+            }
+
             if (columnKey === "payment_method_id") {
               return (
                 <Form.Item
@@ -334,6 +417,10 @@ export default function SalesInvoicePaymentModal({
               );
             }
             if (columnKey === "cash_bank_account_id") {
+              if (isCheque) {
+                // Cheques wait in "Cheques to collect" until they clear into a bank account.
+                return <Typography.Text type="secondary" className="text-xs">{t("chequesToCollect")}</Typography.Text>;
+              }
               return (
                 <Form.Item name={["payments", index, "cash_bank_account_id"]} noStyle>
                   <Select
@@ -364,6 +451,22 @@ export default function SalesInvoicePaymentModal({
               );
             }
             if (columnKey === "reference") {
+              if (isCheque) {
+                const needed = Number(row.amount) > 0;
+                return (
+                  <div className="flex w-full flex-col gap-1">
+                    <Form.Item name={["payments", index, "cheque_number"]} noStyle rules={[{ required: needed, message: t("chequeRequired") }]}>
+                      <Input maxLength={64} placeholder={t("chequeNumber")} />
+                    </Form.Item>
+                    <Form.Item name={["payments", index, "cheque_bank"]} noStyle>
+                      <Input maxLength={128} placeholder={t("chequeBank")} />
+                    </Form.Item>
+                    <Form.Item name={["payments", index, "cheque_due_date"]} noStyle rules={[{ required: needed, message: t("chequeRequired") }]}>
+                      <DatePicker className="w-full" format={dayjsDatePattern()} placeholder={t("chequeDueDate")} />
+                    </Form.Item>
+                  </div>
+                );
+              }
               return (
                 <Form.Item
                   name={["payments", index, "reference"]}
@@ -374,19 +477,45 @@ export default function SalesInvoicePaymentModal({
                 </Form.Item>
               );
             }
+            const extraCash = Number(row.tendered) - Number(row.amount);
             return (
-              <Form.Item name={["payments", index, "tendered"]} noStyle>
-                <TenantNumberInput
-                  kind="money"
-                  min={0}
-                  className="w-full"
-                  disabled={!method?.supports_change}
-                  addonAfter={method?.supports_change && rowSymbol ? rowSymbol : undefined}
-                />
-              </Form.Item>
+              <div className="flex w-full flex-col gap-1">
+                <Form.Item name={["payments", index, "tendered"]} noStyle>
+                  <TenantNumberInput
+                    kind="money"
+                    min={0}
+                    className="w-full"
+                    disabled={!method?.supports_change}
+                    addonAfter={method?.supports_change && rowSymbol ? rowSymbol : undefined}
+                    onChange={(value) => changeRowTendered(index, value)}
+                  />
+                </Form.Item>
+                {method?.supports_change && extraCash > 0 ? (
+                  <div className="flex items-center gap-1">
+                    <Typography.Text type="secondary" className="shrink-0 text-xs">{t("changeIn")}</Typography.Text>
+                    <Form.Item name={["payments", index, "change_currency_id"]} noStyle>
+                      <Select
+                        size="small"
+                        className="min-w-0 flex-1"
+                        options={currencyOptions}
+                        placeholder={symbolFor(row.currency_id) || invoiceCurrency?.code}
+                        allowClear
+                        onChange={(value) => changeRowChangeCurrency(index, value ?? null)}
+                      />
+                    </Form.Item>
+                  </div>
+                ) : null}
+              </div>
             );
           }}
         />
+        {/* Kept registered (hidden) so the choice survives while the total changes. */}
+        <div className={summary.over ? "mt-2 flex items-center justify-end gap-2 text-sm" : "hidden"}>
+          <Form.Item name="keep_extra_as_credit" valuePropName="checked" noStyle>
+            <Switch size="small" />
+          </Form.Item>
+          <span>{t("keepExtraAsCredit")}</span>
+        </div>
       </Form>
 
       <div className="mt-3 flex flex-wrap justify-end gap-4 text-sm">
@@ -401,7 +530,12 @@ export default function SalesInvoicePaymentModal({
             {t("change")} <b className="tabular-nums">{money(c.change, symbolFor(c.currencyId))}</b>
           </span>
         ))}
-        {summary.over ? <Typography.Text type="danger">{t("overTotal")}</Typography.Text> : null}
+        {summary.over && !keepExtra ? <Typography.Text type="danger">{t("overTotal")}</Typography.Text> : null}
+        {summary.over && keepExtra ? (
+          <span>
+            {t("keptAsCredit")} <b className="tabular-nums">{money(summary.extra)}</b>
+          </span>
+        ) : null}
       </div>
     </Modal>
   );

@@ -38,6 +38,7 @@ import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PaymentAllocationGrid from "./PaymentAllocationGrid";
+import ApplyCreditModal from "./ApplyCreditModal";
 import {
   getPaymentDocumentStatusLabel,
   isPaymentDocumentDraft,
@@ -244,8 +245,11 @@ export default function PaymentDocumentDrawer({
         value: row.id,
         label: [row.code, row.name].filter(Boolean).join(" — ") || String(row.id),
         requires_reference: Boolean(row.requires_reference),
+        type: row.type,
       }));
   }, [methodsQuery.data]);
+  const allowCredit = Boolean(config.allowCredit);
+  const chequeTracking = Boolean(config.chequeTracking);
 
   const selectedMethod = methodOptions.find((row) => Number(row.value) === Number(paymentMethodId));
   const exchangeRateLocked =
@@ -328,6 +332,9 @@ export default function PaymentDocumentDrawer({
         amount: next.amount != null ? Number(next.amount) : undefined,
         reference: next.reference ?? "",
         notes: next.notes ?? "",
+        cheque_number: next.cheque_number ?? "",
+        cheque_bank: next.cheque_bank ?? "",
+        cheque_due_date: next.cheque_due_date ? String(next.cheque_due_date).slice(0, 10) : undefined,
       });
       setRows(nextRows);
       remember(nextRows);
@@ -519,8 +526,15 @@ export default function PaymentDocumentDrawer({
       amount: values.amount,
       reference: values.reference ? String(values.reference).trim() : null,
       notes: values.notes ? String(values.notes).trim() : null,
+      ...(chequeTracking
+        ? {
+            cheque_number: values.cheque_number ? String(values.cheque_number).trim() : null,
+            cheque_bank: values.cheque_bank ? String(values.cheque_bank).trim() : null,
+            cheque_due_date: toIsoDate(values.cheque_due_date) ?? null,
+          }
+        : {}),
     }),
-    [config.partyField, dateField, exchangeRateLocked],
+    [chequeTracking, config.partyField, dateField, exchangeRateLocked],
   );
 
   const invalidatePosted = useCallback(() => {
@@ -643,12 +657,14 @@ export default function PaymentDocumentDrawer({
   });
 
   const remainderUnits = moneyUnits(headerAmount) - rows.reduce((sum, row) => sum + moneyUnits(row.amount), 0);
+  // Customer receipts may keep what is not allocated as customer credit (an advance payment).
   const canPost =
     access.canEdit &&
     moneyUnits(headerAmount) > 0 &&
-    rows.length > 0 &&
-    remainderUnits === 0 &&
+    (allowCredit ? remainderUnits >= 0 : rows.length > 0 && remainderUnits === 0) &&
     rows.every((row) => moneyUnits(row.amount) > 0);
+  const unappliedCredit = Number(record?.unapplied_amount ?? 0);
+  const [creditOpen, setCreditOpen] = useState(false);
 
   const writeAmount = useCallback((value) => {
     amountLockRef.current = true;
@@ -675,10 +691,17 @@ export default function PaymentDocumentDrawer({
             settings.priceDecimalPlaces ?? 2,
           );
           const currentRows = rowsRef.current;
-          const roundedAmounts = amountsForRoundedHeader(
-            currentRows.map((row) => row.amount),
-            roundedAmount,
-          );
+          const allocatedUnits = currentRows.reduce((sum, row) => sum + moneyUnits(row.amount), 0);
+          // Part kept as customer credit: only the header is cash-rounded (it must still cover the allocations).
+          const keepsCredit = allowCredit && moneyUnits(values.amount) > allocatedUnits;
+          const roundedAmounts = keepsCredit
+            ? moneyUnits(roundedAmount) >= allocatedUnits
+              ? currentRows.map((row) => row.amount)
+              : null
+            : amountsForRoundedHeader(
+                currentRows.map((row) => row.amount),
+                roundedAmount,
+              );
           if (moneyUnits(roundedAmount) <= 0 || roundedAmounts == null) {
             notification.error({ title: t("saveError"), description: t("allocationAmountRequired") });
             return;
@@ -694,7 +717,7 @@ export default function PaymentDocumentDrawer({
           });
         });
     },
-    [currenciesQuery.data, form, notification, rows, saveMutation, settings.priceDecimalPlaces, t, writeAmount],
+    [allowCredit, currenciesQuery.data, form, notification, rows, saveMutation, settings.priceDecimalPlaces, t, writeAmount],
   );
 
   const shouldConfirmDiscard = useCallback(() => {
@@ -1211,9 +1234,51 @@ export default function PaymentDocumentDrawer({
                   </div>
                 </div>
               </Form.Item>
+              {chequeTracking && selectedMethod?.type === "cheque" ? (
+                <>
+                  <Form.Item
+                    name="cheque_number"
+                    label={<ResourceDrawerFieldLabel text={t("fieldChequeNumber")} required />}
+                    rules={[{ required: true, message: t("chequeRequired") }]}
+                  >
+                    <Input maxLength={64} />
+                  </Form.Item>
+                  <Form.Item name="cheque_bank" label={<ResourceDrawerFieldLabel text={t("fieldChequeBank")} optional />}>
+                    <Input maxLength={128} />
+                  </Form.Item>
+                  <Form.Item
+                    name="cheque_due_date"
+                    label={<ResourceDrawerFieldLabel text={t("fieldChequeDueDate")} required />}
+                    rules={[{ required: true, message: t("chequeRequired") }]}
+                    getValueProps={(value) => ({ value: value ? (dayjs.isDayjs(value) ? value : dayjs(value)) : undefined })}
+                    normalize={(value) => (value && dayjs.isDayjs(value) ? value.format("YYYY-MM-DD") : value ?? undefined)}
+                  >
+                    <DatePicker className="w-full" format={dayjsDatePattern()} />
+                  </Form.Item>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
+        {allowCredit && !readOnly && remainderUnits > 0 && moneyUnits(headerAmount) > 0 ? (
+          <div className="mb-2 flex justify-end text-sm">
+            <Tag color="blue" className="!m-0">
+              {t("keptAsCredit", { amount: formatTenantMoney(unitsToAmount(remainderUnits)) })}
+            </Tag>
+          </div>
+        ) : null}
+        {allowCredit && status === "posted" && unappliedCredit > 0 ? (
+          <div className="mb-2 flex items-center justify-end gap-2 text-sm">
+            <Tag color="blue" className="!m-0">
+              {t("creditLeft", { amount: formatTenantMoney(unappliedCredit) })}
+            </Tag>
+            {access.canEdit && config.api.applyCredit ? (
+              <Button size="small" onClick={() => setCreditOpen(true)}>
+                {t("applyCredit")}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <PaymentAllocationGrid
           t={t}
           readOnly={readOnly || submitting}
@@ -1235,6 +1300,25 @@ export default function PaymentDocumentDrawer({
           onRemove={(key) => commitRows(rowsRef.current.filter((row) => row.key !== key))}
         />
       </Form>
+      {allowCredit && config.api.applyCredit && documentId != null ? (
+        <ApplyCreditModal
+          open={creditOpen}
+          i18n={config.i18n}
+          creditLeft={unappliedCredit}
+          currencyCode={currencyCode(currencyId)}
+          invoices={Array.isArray(openInvoicesQuery.data) ? openInvoicesQuery.data : []}
+          invoicesLoading={openInvoicesQuery.isFetching}
+          onApply={(body) => config.api.applyCredit(String(documentId), body)}
+          onClose={() => setCreditOpen(false)}
+          onApplied={async () => {
+            setCreditOpen(false);
+            invalidatePosted();
+            const saved = await config.api.fetch(String(documentId));
+            queryClient.setQueryData([...config.detailPrefix, documentId], saved);
+            applyRecord(saved);
+          }}
+        />
+      ) : null}
     </ResourceCrudDrawer>
   );
 }

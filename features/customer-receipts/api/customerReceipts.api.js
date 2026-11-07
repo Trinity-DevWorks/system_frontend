@@ -62,6 +62,15 @@ export function reverseCustomerReceipt(id) {
 }
 
 /**
+ * Credit left on a posted receipt, applied to open invoices (amounts in the receipt currency).
+ * @param {string} id
+ * @param {{ allocations: { sales_invoice_id: string; amount: number }[]; date?: string }} body
+ */
+export function applyCustomerReceiptCredit(id, body) {
+  return tenantRequest("POST", `customer-receipts/${id}/apply-credit`, body);
+}
+
+/**
  * @param {{ customerId: string; currencyId: number | string }} args
  * @returns {Promise<Array<Record<string, unknown>>>}
  */

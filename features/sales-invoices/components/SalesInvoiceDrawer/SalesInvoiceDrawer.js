@@ -674,7 +674,14 @@ export default function SalesInvoiceDrawer({
       if (!paymentModal) return;
       const run =
         paymentModal.mode === "post"
-          ? withApproval((discountApproval) => postMutation.mutateAsync({ values: paymentModal.values, payments: body.payments, discountApproval }))
+          ? withApproval((discountApproval) =>
+              postMutation.mutateAsync({
+                values: paymentModal.values,
+                payments: body.payments,
+                keepExtraAsCredit: body.keep_extra_as_credit,
+                discountApproval,
+              }),
+            )
           : recordPaymentMutation.mutateAsync(body);
       // Errors are shown by the mutation; the modal stays open so the user can fix and retry.
       run.then((result) => {
@@ -1003,6 +1010,7 @@ export default function SalesInvoiceDrawer({
         mode={paymentModal?.mode ?? "post"}
         amountDue={paymentModal?.mode === "record" ? displayTotals?.net_to_pay : displayTotals?.grand_total}
         currencyId={currencyId}
+        customerId={formValuesWatch?.customer_id ?? null}
         exchangeRate={formValuesWatch?.exchange_rate}
         branchId={detailQuery.data?.branch_id ?? getActiveBranchId()}
         invoiceMethodId={formValuesWatch?.payment_method_id}

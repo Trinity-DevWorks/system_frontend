@@ -83,6 +83,19 @@ export function recordSalesInvoicePayments(invoiceId, body) {
   return tenantRequest("POST", `sales-invoices/${invoiceId}/payments/record`, body);
 }
 
+/**
+ * The customer's credit (posted receipts with money left), each with its value in `currencyId`.
+ * @param {string} customerId
+ * @param {unknown} currencyId
+ * @returns {Promise<Array<{ receipt_id: string; receipt_number: string; unapplied_amount: string; currency_code: string; in_invoice_currency: string | null }>>}
+ */
+export async function fetchCustomerAvailableCredit(customerId, currencyId) {
+  const qs = new URLSearchParams({ customer_id: String(customerId) });
+  if (currencyId != null && currencyId !== "") qs.set("currency_id", String(currencyId));
+  const data = await tenantRequest("GET", `customer-receipts/available-credit?${qs.toString()}`);
+  return Array.isArray(data) ? data : [];
+}
+
 export function postSalesInvoice(invoiceId, body = undefined) {
   return tenantRequest("POST", `sales-invoices/${invoiceId}/post`, body);
 }
