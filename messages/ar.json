@@ -3347,6 +3347,8 @@
     "actionDelete": "حذف",
     "actionMenu": "إجراءات الصف",
     "actionPost": "ترحيل",
+    "actionPostAndPay": "ترحيل ودفع",
+    "postActionsMenu": "خيارات ترحيل أخرى",
     "statusDraft": "مسودة",
     "statusPosted": "مرحّلة",
     "statusReversed": "معكوسة",
@@ -6134,7 +6136,7 @@
     "chequeNumber": "رقم الشيك",
     "chequeBank": "المصرف",
     "chequeDueDate": "تاريخ الاستحقاق",
-    "changeIn": "الباقي بـ",
+    "changeReturnedIn": "يُعاد الباقي بـ {code}. اضغط لتبديل العملة.",
     "keptAsCredit": "يبقى كرصيد:",
     "keepExtraAsCredit": "إبقاء الزيادة كرصيد للعميل"
   },

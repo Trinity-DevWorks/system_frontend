@@ -7,7 +7,7 @@ import {
   tenantDecimalStep,
 } from "@/lib/tenant-format";
 import { EXCHANGE_RATE_DECIMALS } from "@/lib/currency/documentExchangeRate";
-import { Input, InputNumber, Space } from "antd";
+import { Button, Input, InputNumber, Space, Tooltip } from "antd";
 
 /**
  * @typedef {"money" | "quantity" | "percent" | "rate" | "integer"} TenantNumberKind
@@ -49,8 +49,10 @@ function formatRateInput(value, info) {
  *   kind?: TenantNumberKind,
  *   decimals?: number,
  *   step?: number,
+ *   onAddonClick?: () => void,
+ *   addonTitle?: string,
  *   [key: string]: unknown,
- * }} props
+ * }} props `onAddonClick` turns the symbol after the input into a button (e.g. to switch currency).
  */
 export default function TenantNumberInput({
   kind = "quantity",
@@ -60,6 +62,8 @@ export default function TenantNumberInput({
   formatter,
   parser,
   addonAfter,
+  onAddonClick,
+  addonTitle,
   className,
   ...rest
 }) {
@@ -81,6 +85,18 @@ export default function TenantNumberInput({
   return (
     <Space.Compact block className={className}>
       {input}
+      {onAddonClick ? (
+        <Tooltip title={addonTitle}>
+          <Button
+            disabled={Boolean(rest.disabled)}
+            aria-label={addonTitle}
+            onClick={onAddonClick}
+            className="tenant-number-symbol tenant-number-symbol-button"
+          >
+            {String(addonAfter)}
+          </Button>
+        </Tooltip>
+      ) : (
       <Input
         readOnly
         tabIndex={-1}
@@ -88,6 +104,7 @@ export default function TenantNumberInput({
         value={String(addonAfter)}
         className="tenant-number-symbol"
       />
+      )}
     </Space.Compact>
   );
 }

@@ -3347,6 +3347,8 @@
     "actionDelete": "Delete",
     "actionMenu": "Row actions",
     "actionPost": "Post",
+    "actionPostAndPay": "Post & pay",
+    "postActionsMenu": "More post options",
     "statusDraft": "Draft",
     "statusPosted": "Posted",
     "statusReversed": "Reversed",
@@ -6134,7 +6136,7 @@
     "chequeNumber": "Cheque no.",
     "chequeBank": "Bank",
     "chequeDueDate": "Due date",
-    "changeIn": "Change in",
+    "changeReturnedIn": "Change returned in {code}. Click to switch currency.",
     "keptAsCredit": "Kept as credit:",
     "keepExtraAsCredit": "Keep the extra as customer credit"
   },

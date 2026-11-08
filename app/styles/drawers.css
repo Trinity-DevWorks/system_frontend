@@ -867,6 +867,13 @@
   max-width: 100%;
 }
 
+.tenant-number-symbol.ant-btn {
+  flex: 0 0 auto;
+  min-width: 1.75rem;
+  padding-inline: 6px;
+  font-weight: 600;
+}
+
 .tenant-number-symbol.ant-input {
   field-sizing: content;
   width: auto;
