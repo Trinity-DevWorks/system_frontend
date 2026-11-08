@@ -16,10 +16,10 @@ import { dayjsDatePattern, formatTenantMoneyWithSymbol } from "@/lib/tenant-form
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import { useQuery } from "@tanstack/react-query";
-import { Button, DatePicker, Form, Input, Modal, Select, Switch, Tag, Typography } from "antd";
+import { Button, DatePicker, Form, Input, Modal, Select, Spin, Switch, Tag, Tooltip, Typography } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { defaultPaymentAccountId, paymentAccountOptions } from "@/features/cash-bank-accounts/utils/paymentCashBankAccount";
 import { fetchCustomerAvailableCredit } from "../../api/salesInvoices.api";
 import {
@@ -69,7 +69,14 @@ export default function SalesInvoicePaymentModal({
   const [form] = Form.useForm();
   const rows = Form.useWatch("payments", { form, preserve: true });
   const list = useMemo(() => (Array.isArray(rows) ? rows : []), [rows]);
-  const keepExtra = Boolean(Form.useWatch("keep_extra_as_credit", { form, preserve: true }));
+  // Shown in the footer (outside the form), only while payments exceed the total.
+  const [keepExtra, setKeepExtra] = useState(false);
+  // Off again each time the window opens.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setKeepExtra(false);
+  }
   const { settings } = useCompanySettings();
 
   // The customer's credit from earlier overpayments, valued in the invoice currency.
@@ -84,29 +91,26 @@ export default function SalesInvoicePaymentModal({
     [creditQuery.data],
   );
 
+  // Lookup lists load with the invoice drawer (this window stays mounted), so they are ready when it opens.
   const methodsQuery = useQuery({
     queryKey: ["tenant", "payment-methods", "names"],
     queryFn: () => fetchPaymentMethodNames(),
     staleTime: QUERY_STALE_TIME.catalog,
-    enabled: open,
   });
   const accountsQuery = useQuery({
     queryKey: ["tenant", "cash-bank-accounts", "names"],
     queryFn: () => fetchCashBankAccountNames(),
     staleTime: QUERY_STALE_TIME.catalog,
-    enabled: open,
   });
   const currenciesQuery = useQuery({
     queryKey: CURRENCIES_LIST_QUERY_KEY,
     queryFn: fetchCurrencyNames,
     staleTime: QUERY_STALE_TIME.catalog,
-    enabled: open,
   });
   const pairRatesQuery = useQuery({
     queryKey: [...CURRENCIES_LIST_QUERY_KEY, "pair-rates"],
     queryFn: fetchCurrencyPairRates,
     staleTime: QUERY_STALE_TIME.catalog,
-    enabled: open,
   });
 
   const methods = useMemo(
@@ -186,7 +190,8 @@ export default function SalesInvoicePaymentModal({
     currency_id: currencyId == null ? undefined : Number(currencyId),
     exchange_rate: invoiceRate,
     cash_bank_account_id: accountFor(defaultMethodId, currencyId),
-    amount: invoiceAmount == null ? undefined : fromInvoice(invoiceAmount, currencyId, invoiceRate),
+    // Nothing left to pay → leave it empty so the placeholder can show the rest later.
+    amount: invoiceAmount == null || !(invoiceAmount > 0) ? undefined : fromInvoice(invoiceAmount, currencyId, invoiceRate),
   });
   const setRows = (next) => form.setFieldValue("payments", next);
   const patchRow = (index, patch) => setRows(list.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -216,6 +221,12 @@ export default function SalesInvoicePaymentModal({
     };
   };
   const rowCurrencyId = (row) => (isInvoiceCurrency(row?.currency_id) ? Number(currencyId) : Number(row.currency_id));
+  /** The currency after `cid` in the list, wrapping back to the first. */
+  const nextCurrencyId = (cid) => {
+    const ids = currencyOptions.map((o) => o.value);
+    const at = ids.indexOf(Number(cid));
+    return ids[(at + 1) % ids.length];
+  };
   const changeRowChangeCurrency = (index, cid) => {
     const row = list[index] ?? {};
     const foreign = cid != null && Number(cid) !== rowCurrencyId(row);
@@ -237,6 +248,10 @@ export default function SalesInvoicePaymentModal({
       cash_bank_account_id: accountFor(row.payment_method_id, cid),
       amount: rate != null ? fromInvoice(restFor(index), cid, rate) : row.amount,
       tendered: undefined,
+      // Change goes back to the line's own currency.
+      change_currency_id: undefined,
+      change_amount: undefined,
+      change_rate: undefined,
     });
   };
   // A typed rate re-prices the line to what is still due.
@@ -249,18 +264,41 @@ export default function SalesInvoicePaymentModal({
     });
   };
 
-  // Always open with a first row, filled like "Add payment" once methods and accounts load.
-  // When the invoice is "on credit", the amount stays empty so it still posts on account.
+  // The first row appears at once from what the invoice already knows (method, currency, amount);
+  // method and cash/bank are corrected / filled in when their lists arrive.
+  // When the invoice is "on credit", the amount is cleared so it still posts on account.
   const invoiceMethodIsCredit =
     invoiceMethodId != null &&
     (Array.isArray(methodsQuery.data) ? methodsQuery.data : []).some((m) => Number(m?.id) === Number(invoiceMethodId) && m?.type === "credit");
   const lookupsReady = !methodsQuery.isPending && !accountsQuery.isPending;
+  const lookupsAppliedRef = useRef(false);
   useEffect(() => {
-    if (!open || !lookupsReady || firstRowAddedRef.current) return;
-    firstRowAddedRef.current = true;
+    if (!open) return;
+    if (!firstRowAddedRef.current) {
+      firstRowAddedRef.current = true;
+      lookupsAppliedRef.current = false;
+      const current = form.getFieldValue("payments");
+      if (!Array.isArray(current) || current.length === 0) {
+        const row = newRow(invoiceMethodIsCredit ? undefined : due);
+        if (row.payment_method_id == null && !lookupsReady && invoiceMethodId != null) row.payment_method_id = Number(invoiceMethodId);
+        form.setFieldValue("payments", [row]);
+      }
+    }
+    if (!lookupsReady || lookupsAppliedRef.current) return;
+    lookupsAppliedRef.current = true;
     const current = form.getFieldValue("payments");
-    if (Array.isArray(current) && current.length > 0) return;
-    form.setFieldValue("payments", [newRow(invoiceMethodIsCredit ? undefined : due)]);
+    if (!Array.isArray(current)) return;
+    form.setFieldValue(
+      "payments",
+      current.map((row, i) => {
+        if (isCreditRow(row)) return row;
+        const next = { ...row };
+        if (!methodById.has(Number(next.payment_method_id))) next.payment_method_id = defaultMethodId;
+        if (next.cash_bank_account_id == null) next.cash_bank_account_id = accountFor(next.payment_method_id, next.currency_id);
+        if (i === 0 && invoiceMethodIsCredit) next.amount = undefined;
+        return next;
+      }),
+    );
   });
 
   const submit = () => {
@@ -276,10 +314,13 @@ export default function SalesInvoicePaymentModal({
       .catch(() => {});
   };
 
+  const anyForeignRow = list.some((r) => !isCreditRow(r) && !isInvoiceCurrency(r?.currency_id));
+  const accountCode = (id) => accounts.find((a) => Number(a?.id) === Number(id))?.code;
   const columns = [
     { key: "payment_method_id", label: t("method"), width: "minmax(120px, 1.1fr)" },
-    { key: "currency_id", label: t("currency"), width: "minmax(170px, 1.4fr)" },
-    { key: "cash_bank_account_id", label: t("account"), width: "minmax(140px, 1.3fr)" },
+    // Narrow unless a line is in another currency and needs room for its rate.
+    { key: "currency_id", label: t("currency"), width: anyForeignRow ? "minmax(170px, 1.2fr)" : "minmax(90px, 0.6fr)" },
+    { key: "cash_bank_account_id", label: t("account"), width: "minmax(110px, 1fr)" },
     { key: "amount", label: t("amount"), width: "minmax(140px, 1.2fr)" },
     { key: "reference", label: t("referenceCheque"), width: "minmax(130px, 1.1fr)" },
     { key: "tendered", label: t("tendered"), width: "minmax(130px, 1fr)" },
@@ -298,6 +339,12 @@ export default function SalesInvoicePaymentModal({
       mask={{ closable: !submitting }}
       onCancel={submitting ? undefined : onCancel}
       footer={[
+        summary.over ? (
+          <label key="keep" className="me-3 inline-flex cursor-pointer items-center gap-2 align-middle text-sm">
+            <Switch size="small" checked={keepExtra} onChange={setKeepExtra} disabled={submitting} />
+            <span>{t("keepExtraAsCredit")}</span>
+          </label>
+        ) : null,
         <Button key="cancel" onClick={onCancel} disabled={submitting}>
           {t("cancel")}
         </Button>,
@@ -312,6 +359,7 @@ export default function SalesInvoicePaymentModal({
             {mode === "record" ? t("openAmount") : t("invoiceTotal")} <b className="tabular-nums">{money(due)}</b>
           </Typography.Text>
           <div className="flex items-center gap-2">
+            {summary.over && !keepExtra ? <Typography.Text type="danger">{t("overTotal")}</Typography.Text> : null}
             {mode === "record" ? (
               <Form.Item name="payment_date" noStyle rules={[{ required: true }]}>
                 <DatePicker format={dayjsDatePattern()} allowClear={false} />
@@ -379,6 +427,7 @@ export default function SalesInvoicePaymentModal({
                     className="w-full"
                     loading={methodsQuery.isPending}
                     options={methods.map((m) => ({ value: Number(m.id), label: String(m.name) }))}
+                    labelRender={(selected) => (selected.label == null && methodsQuery.isPending ? <Spin size="small" /> : selected.label)}
                     onChange={(value) => form.setFieldValue(["payments", index, "cash_bank_account_id"], accountFor(value, row.currency_id))}
                   />
                 </Form.Item>
@@ -394,6 +443,7 @@ export default function SalesInvoicePaymentModal({
                       className={foreign ? "min-w-0 flex-1" : "w-full"}
                       loading={currenciesQuery.isPending}
                       options={currencyOptions}
+                      labelRender={(selected) => (selected.label == null && currenciesQuery.isPending ? <Spin size="small" /> : selected.label)}
                       onChange={(value) => changeRowCurrency(index, value)}
                     />
                   </Form.Item>
@@ -428,19 +478,32 @@ export default function SalesInvoicePaymentModal({
                     showSearch
                     optionFilterProp="label"
                     className="w-full"
-                    placeholder={t("accountDefault")}
+                    placeholder={lookupsReady ? t("accountDefault") : <Spin size="small" />}
                     loading={accountsQuery.isPending}
                     options={paymentAccountOptions(accounts, branchId, rowCurrency)}
+                    // The field shows the code only; the list keeps "code — name".
+                    labelRender={(selected) => accountCode(selected.value) ?? (accountsQuery.isPending ? <Spin size="small" /> : selected.label)}
+                    popupMatchSelectWidth={false}
                   />
                 </Form.Item>
               );
             }
             if (columnKey === "amount") {
               // An empty amount is fine: that row is skipped and the rest stays on account.
+              // While empty, the placeholder shows what is still due in this line's currency (pays the invoice in full).
+              const rowRate = foreign ? positiveRate(row.exchange_rate) : invoiceRate;
+              const rest = restFor(index);
+              const restInRow = rest > 0 && rowRate != null ? fromInvoice(rest, row.currency_id, rowRate) : undefined;
               return (
                 <div className="flex w-full flex-col">
                   <Form.Item name={["payments", index, "amount"]} noStyle>
-                    <TenantNumberInput kind="money" min={0} className="w-full" addonAfter={rowSymbol || undefined} />
+                    <TenantNumberInput
+                      kind="money"
+                      min={0}
+                      className="w-full"
+                      addonAfter={rowSymbol || undefined}
+                      placeholder={restInRow != null ? formatTenantMoneyWithSymbol(restInRow, "") : undefined}
+                    />
                   </Form.Item>
                   {foreign && Number(row.amount) > 0 ? (
                     <Typography.Text type="secondary" className="mt-0.5 text-xs tabular-nums">
@@ -477,45 +540,21 @@ export default function SalesInvoicePaymentModal({
                 </Form.Item>
               );
             }
-            const extraCash = Number(row.tendered) - Number(row.amount);
+            // Cash given is in the line's currency; the change currency is picked on the Change total below.
             return (
-              <div className="flex w-full flex-col gap-1">
-                <Form.Item name={["payments", index, "tendered"]} noStyle>
-                  <TenantNumberInput
-                    kind="money"
-                    min={0}
-                    className="w-full"
-                    disabled={!method?.supports_change}
-                    addonAfter={method?.supports_change && rowSymbol ? rowSymbol : undefined}
-                    onChange={(value) => changeRowTendered(index, value)}
-                  />
-                </Form.Item>
-                {method?.supports_change && extraCash > 0 ? (
-                  <div className="flex items-center gap-1">
-                    <Typography.Text type="secondary" className="shrink-0 text-xs">{t("changeIn")}</Typography.Text>
-                    <Form.Item name={["payments", index, "change_currency_id"]} noStyle>
-                      <Select
-                        size="small"
-                        className="min-w-0 flex-1"
-                        options={currencyOptions}
-                        placeholder={symbolFor(row.currency_id) || invoiceCurrency?.code}
-                        allowClear
-                        onChange={(value) => changeRowChangeCurrency(index, value ?? null)}
-                      />
-                    </Form.Item>
-                  </div>
-                ) : null}
-              </div>
+              <Form.Item name={["payments", index, "tendered"]} noStyle>
+                <TenantNumberInput
+                  kind="money"
+                  min={0}
+                  className="w-full"
+                  disabled={!method?.supports_change}
+                  addonAfter={method?.supports_change && rowSymbol ? rowSymbol : undefined}
+                  onChange={(value) => changeRowTendered(index, value)}
+                />
+              </Form.Item>
             );
           }}
         />
-        {/* Kept registered (hidden) so the choice survives while the total changes. */}
-        <div className={summary.over ? "mt-2 flex items-center justify-end gap-2 text-sm" : "hidden"}>
-          <Form.Item name="keep_extra_as_credit" valuePropName="checked" noStyle>
-            <Switch size="small" />
-          </Form.Item>
-          <span>{t("keepExtraAsCredit")}</span>
-        </div>
       </Form>
 
       <div className="mt-3 flex flex-wrap justify-end gap-4 text-sm">
@@ -525,12 +564,30 @@ export default function SalesInvoicePaymentModal({
         <span>
           {mode === "record" ? t("stillOpen") : t("onAccount")} <b className="tabular-nums">{money(summary.onAccount)}</b>
         </span>
-        {changes.map((c) => (
-          <span key={c.index}>
-            {t("change")} <b className="tabular-nums">{money(c.change, symbolFor(c.currencyId))}</b>
-          </span>
-        ))}
-        {summary.over && !keepExtra ? <Typography.Text type="danger">{t("overTotal")}</Typography.Text> : null}
+        {changes.map((c) => {
+          // Clicking the currency gives the change back in the next currency instead.
+          const changeCurrencyId = isInvoiceCurrency(c.currencyId) ? Number(currencyId) : Number(c.currencyId);
+          const code = currencyById.get(changeCurrencyId)?.code ?? "";
+          return (
+            <span key={c.index} className="inline-flex items-center gap-1">
+              {t("change")} <b className="tabular-nums">{formatTenantMoneyWithSymbol(c.change, "")}</b>
+              {currencyOptions.length > 1 ? (
+                <Tooltip title={t("changeReturnedIn", { code })}>
+                  <Button
+                    size="small"
+                    className="!px-1.5 font-semibold"
+                    aria-label={t("changeReturnedIn", { code })}
+                    onClick={() => changeRowChangeCurrency(c.index, nextCurrencyId(changeCurrencyId))}
+                  >
+                    {symbolFor(changeCurrencyId)}
+                  </Button>
+                </Tooltip>
+              ) : (
+                <b>{symbolFor(changeCurrencyId)}</b>
+              )}
+            </span>
+          );
+        })}
         {summary.over && keepExtra ? (
           <span>
             {t("keptAsCredit")} <b className="tabular-nums">{money(summary.extra)}</b>

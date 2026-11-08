@@ -668,6 +668,17 @@ export default function SalesInvoiceDrawer({
       .then((values) => setPaymentModal({ mode: "post", values }))
       .catch(() => {});
   }, [form]);
+  // Post without the payment window: the whole invoice stays on account.
+  const handleQuickPost = useCallback(() => {
+    form
+      .validateFields()
+      .then((values) =>
+        withApproval((discountApproval) =>
+          postMutation.mutateAsync({ values, payments: [], keepExtraAsCredit: false, discountApproval }),
+        ),
+      )
+      .catch(() => {});
+  }, [form, withApproval, postMutation]);
   const handleRecordPayment = useCallback(() => setPaymentModal({ mode: "record" }), []);
   const handlePaymentSubmit = useCallback(
     (body) => {
@@ -938,6 +949,7 @@ export default function SalesInvoiceDrawer({
           postedAt={loadedPostedAt}
           onSave={handleSave}
           onPost={handlePost}
+          onQuickPost={handleQuickPost}
           onDelete={handleDelete}
         />
       }

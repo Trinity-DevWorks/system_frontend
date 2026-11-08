@@ -3,7 +3,44 @@
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import { postedByDisplayName } from "./SalesInvoiceDrawerHeaderMeta";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
-import { Button, Space } from "antd";
+import { DownOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Space } from "antd";
+import { useSyncExternalStore } from "react";
+
+/** "post" = post on account without paying; "pay" = open the payment window. */
+/** @typedef {"post" | "pay"} PostIntent */
+
+const POST_INTENT_KEY = "salesInvoice.postIntent";
+const POST_INTENT_EVENT = "salesInvoice:postIntent";
+
+/** @returns {PostIntent} */
+function readPostIntent() {
+  try {
+    return localStorage.getItem(POST_INTENT_KEY) === "post" ? "post" : "pay";
+  } catch {
+    return "pay";
+  }
+}
+
+/** @param {PostIntent} intent */
+function savePostIntent(intent) {
+  try {
+    localStorage.setItem(POST_INTENT_KEY, intent);
+  } catch {
+    /* ignore */
+  }
+  window.dispatchEvent(new Event(POST_INTENT_EVENT));
+}
+
+/** @param {() => void} onChange */
+function subscribePostIntent(onChange) {
+  window.addEventListener(POST_INTENT_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(POST_INTENT_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
 
 /**
  * @param {{
@@ -51,6 +88,7 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   postedAt?: string | null;
  *   onSave: () => void;
  *   onPost: () => void;
+ *   onQuickPost: () => void;
  *   onDelete: () => void;
  *   onReverse?: () => void;
  *   onPrint?: () => void;
@@ -80,6 +118,7 @@ export default function SalesInvoiceDrawerFooter({
   postedAt = null,
   onSave,
   onPost,
+  onQuickPost,
   onDelete,
   onReverse,
   onPrint,
@@ -89,12 +128,22 @@ export default function SalesInvoiceDrawerFooter({
   onCreateReceipt,
   onCreateCreditNote,
 }) {
+  // Main button repeats the last choice (like Save / Save and new / Save and close).
+  const lastPostIntent = useSyncExternalStore(subscribePostIntent, readPostIntent, () => /** @type {PostIntent} */ ("pay"));
+  const postLabel = (/** @type {PostIntent} */ intent) => (intent === "post" ? t("actionPost") : t("actionPostAndPay"));
+  const runPost = (/** @type {PostIntent} */ intent) => {
+    savePostIntent(intent);
+    if (intent === "post") onQuickPost();
+    else onPost();
+  };
+  const runLastPost = () => runPost(readPostIntent());
+
   useDrawerSubmitShortcut({
     enabled: !readOnly,
     submitting,
     onSave,
     saveDisabled,
-    onPost,
+    onPost: runLastPost,
     postDisabled,
   });
 
@@ -161,15 +210,36 @@ export default function SalesInvoiceDrawerFooter({
         >
           {t("drawerSave")}
         </Button>
-        <Button
-          type="primary"
-          disabled={postDisabled || submitting}
-          loading={submitting}
-          onClick={onPost}
-          title={`${t("actionPost")} (Ctrl+Shift+Enter)`}
-        >
-          {t("actionPost")}
-        </Button>
+        <Space.Compact className="rounded-md shadow-sm ring-1 ring-black/10 dark:ring-white/15">
+          <Button
+            type="primary"
+            disabled={postDisabled || submitting}
+            loading={submitting}
+            onClick={runLastPost}
+            title={`${postLabel(lastPostIntent)} (Ctrl+Shift+Enter)`}
+          >
+            {postLabel(lastPostIntent)}
+          </Button>
+          <Dropdown
+            trigger={["click"]}
+            disabled={postDisabled || submitting}
+            menu={{
+              items: [
+                { key: "post", label: t("actionPost") },
+                { key: "pay", label: t("actionPostAndPay") },
+              ],
+              onClick: ({ key }) => runPost(/** @type {PostIntent} */ (key)),
+            }}
+          >
+            <Button
+              type="primary"
+              icon={<DownOutlined />}
+              loading={submitting}
+              disabled={postDisabled || submitting}
+              aria-label={t("postActionsMenu")}
+            />
+          </Dropdown>
+        </Space.Compact>
       </Space>
     </div>
   );

@@ -3,7 +3,6 @@ import {
   resolvedColorModeFromCookieStore,
 } from "@/lib/color-mode";
 import AntdAppProvider from "@/shared/components/AntdAppProvider";
-import DevI18nReload from "@/shared/components/DevI18nReload";
 import LocaleHtmlLang from "@/shared/components/LocaleHtmlLang";
 import { routing } from "@/i18n/routing";
 import { hasLocale } from "next-intl";
@@ -47,7 +46,6 @@ export default async function LocaleLayout({ children, params }) {
         initialResolvedColorMode={initialResolvedColorMode}
       >
         <LocaleHtmlLang />
-        {process.env.NODE_ENV === "development" ? <DevI18nReload /> : null}
         {children}
       </AntdAppProvider>
     </NextIntlClientProvider>

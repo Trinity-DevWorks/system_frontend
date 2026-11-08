@@ -138,3 +138,9 @@ html.dark :is(input, textarea, select, [contenteditable="true"]) {
   cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='16' viewBox='0 0 16 20'%3E%3Cpath fill='%23f1f5f9' d='M3 0h10v2H9v16h4v2H3v-2h4V2H3z'/%3E%3C/svg%3E") 8 10, text;
 }
 
+
+/* Number fields: no up/down arrows anywhere (keyboard ↑/↓ still step the value). */
+.ant-input-number .ant-input-number-actions,
+.ant-input-number .ant-input-number-handler-wrap {
+  display: none !important;
+}
