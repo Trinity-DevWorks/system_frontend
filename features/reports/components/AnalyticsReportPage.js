@@ -1,6 +1,10 @@
 "use client";
 
+import { isShownPriceField } from "@/lib/business-profile";
 import { useReportBranch } from "@/features/accounting/useReportBranch";
+import { fetchCategoryNames } from "@/features/categories/api/categories.api";
+import { fetchSupplierNames } from "@/features/suppliers/api/suppliers.api";
+import { fetchTenantUserNames } from "@/features/users/api/tenantUsers.api";
 import { fetchWarehouseNames } from "@/features/warehouses/api/warehouses.api";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
@@ -29,10 +33,13 @@ import { Suspense, useCallback, useMemo, useState } from "react";
 import { REPORTS_QUERY_KEY, downloadAnalyticsReport, fetchAnalyticsReport } from "../api/reports.api";
 
 /** Columns whose values are codes the page translates (e.g. cash flow categories, movement types). */
-const TRANSLATED = { category: "val_", type: "val_", description: "val_" };
+const TRANSLATED = { category: "val_", type: "val_", description: "val_", field: "val_", source: "val_", asset_status: "val_fa_", automatic: "val_" };
+
+const PRICE_FIELDS = ["selling_price", "cost_price", "takeaway_price", "dine_in_price", "delivery_price", "price_list_price"].filter(isShownPriceField);
+const PRICE_SOURCES = ["manual", "import", "bulk", "price_change_doc", "variant_generate"];
 
 /**
- * @typedef {"dateRange" | "branch" | "groupBy" | "warehouse" | "days" | "includeExpired" | "item" | "accountRange"} ReportFilter
+ * @typedef {"dateRange" | "asOf" | "branch" | "groupBy" | "warehouse" | "days" | "includeExpired" | "item" | "accountRange" | "field" | "source" | "category" | "user" | "supplier"} ReportFilter
  *
  * @typedef {{
  *   name: string;
@@ -42,6 +49,7 @@ const TRANSLATED = { category: "val_", type: "val_", description: "val_" };
  *   defaults?: Record<string, string>;
  *   needs?: string[];
  *   serverTable?: boolean;
+ *   daysLabelKey?: string;
  * }} AnalyticsReportConfig
  *
  * serverTable: search, sort and pagination run on the backend (large grouped reports).
@@ -103,7 +111,7 @@ function AnalyticsReportView({ config }) {
   const params = useMemo(() => {
     /** @type {Record<string, string | number | undefined>} */
     const out = {};
-    for (const key of ["from", "to", "group_by", "warehouse_id", "days", "include_expired", "item_id", "account_from", "account_to"]) {
+    for (const key of ["from", "to", "group_by", "warehouse_id", "days", "include_expired", "item_id", "account_from", "account_to", "field", "source", "category_id", "user_id", "supplier_id"]) {
       const v = get(key);
       if (v != null && v !== "") out[key] = v;
     }
@@ -157,6 +165,29 @@ function AnalyticsReportView({ config }) {
     enabled: has("warehouse"),
     staleTime: QUERY_STALE_TIME.catalog,
   });
+  const categoriesQuery = useQuery({
+    queryKey: ["tenant", "categories", "names"],
+    queryFn: () => fetchCategoryNames(),
+    enabled: has("category"),
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+  const usersQuery = useQuery({
+    queryKey: ["tenant", "users", "names"],
+    queryFn: () => fetchTenantUserNames(),
+    enabled: has("user"),
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+  const suppliersQuery = useQuery({
+    queryKey: ["tenant", "suppliers", "names"],
+    queryFn: () => fetchSupplierNames(),
+    enabled: has("supplier"),
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+  const nameOptions = (rows) =>
+    (Array.isArray(rows) ? rows : []).map((row) => ({
+      value: String(row.id ?? row.value),
+      label: String(row.name ?? row.label ?? row.id),
+    }));
 
   const runExport = useCallback(
     async (/** @type {"xlsx" | "pdf"} */ format) => {
@@ -278,6 +309,16 @@ function AnalyticsReportView({ config }) {
       format={dayjsDatePattern()}
     />
   ) : null;
+  const asOfValue = get("to") ?? report?.meta?.to;
+  const asOfEl = has("asOf") ? (
+    <DatePicker
+      className={serverTable ? "w-full" : undefined}
+      value={asOfValue ? dayjs(asOfValue) : null}
+      onChange={(d) => setParams({ to: d?.format("YYYY-MM-DD") })}
+      format={dayjsDatePattern()}
+      placeholder={t("asOf")}
+    />
+  ) : null;
   const groupByEl = has("groupBy") ? (
     <Select
       className="w-40"
@@ -286,7 +327,8 @@ function AnalyticsReportView({ config }) {
       options={["item", "customer", "salesman", "branch", "category"].map((g) => ({ value: g, label: t(`group_${g}`) }))}
     />
   ) : null;
-  const branchEl = has("branch") ? (
+  // Hidden when the user has only one branch: it is used automatically.
+  const branchEl = has("branch") && branch.accessibleBranches.length > 1 ? (
     <Select
       className={serverTable ? "w-full" : "min-w-40"}
       allowClear={branch.lockedBranchId == null}
@@ -318,7 +360,7 @@ function AnalyticsReportView({ config }) {
         <Input
           readOnly
           tabIndex={-1}
-          value={t("days")}
+          value={t(config.daysLabelKey ?? "days")}
           className="!w-auto shrink-0"
           styles={{ input: { width: "auto", pointerEvents: "none" } }}
         />
@@ -337,6 +379,21 @@ function AnalyticsReportView({ config }) {
       <Input className={serverTable ? "w-1/2" : "w-32"} placeholder={t("accountTo")} defaultValue={get("account_to")} onBlur={(e) => setParams({ account_to: e.target.value.trim() })} />
     </Space.Compact>
   ) : null;
+  const fieldEl = has("field") ? (
+    <Select allowClear className="min-w-40" placeholder={t("filterField")} value={get("field")} onChange={(v) => setParams({ field: v })} options={PRICE_FIELDS.map((f) => ({ value: f, label: t(`val_${f}`) }))} />
+  ) : null;
+  const sourceEl = has("source") ? (
+    <Select allowClear className="min-w-40" placeholder={t("filterSource")} value={get("source")} onChange={(v) => setParams({ source: v })} options={PRICE_SOURCES.map((s) => ({ value: s, label: t(`val_${s}`) }))} />
+  ) : null;
+  const categoryEl = has("category") ? (
+    <Select allowClear showSearch optionFilterProp="label" className="min-w-44" placeholder={t("filterCategory")} value={get("category_id")} onChange={(v) => setParams({ category_id: v })} options={nameOptions(categoriesQuery.data)} loading={categoriesQuery.isPending} />
+  ) : null;
+  const userEl = has("user") ? (
+    <Select allowClear showSearch optionFilterProp="label" className="min-w-44" placeholder={t("filterUser")} value={get("user_id")} onChange={(v) => setParams({ user_id: v })} options={nameOptions(usersQuery.data)} loading={usersQuery.isPending} />
+  ) : null;
+  const supplierEl = has("supplier") ? (
+    <Select allowClear showSearch optionFilterProp="label" className="min-w-44" placeholder={t("filterSupplier")} value={get("supplier_id")} onChange={(v) => setParams({ supplier_id: v })} options={nameOptions(suppliersQuery.data)} loading={suppliersQuery.isPending} />
+  ) : null;
 
   // Server-table reports: every filter goes in the filter panel (like the other list pages), with chips.
   // Group by stays visible in the toolbar because it changes the columns, it does not filter rows.
@@ -353,7 +410,7 @@ function AnalyticsReportView({ config }) {
     ...(dateChip ? [{ label: t("filterDateRange"), value: dateChip }] : []),
     ...(branchChip ? [{ label: t("filterBranch"), value: branchChip }] : []),
     ...(warehouseChip ? [{ label: t("filterWarehouse"), value: warehouseChip }] : []),
-    ...(daysChip ? [{ label: t("days"), value: daysChip }] : []),
+    ...(daysChip ? [{ label: t(config.daysLabelKey ?? "days"), value: daysChip }] : []),
     ...(has("includeExpired") && get("include_expired") === "1" ? [{ label: t("includeExpired"), value: "✓" }] : []),
     ...(accountChip ? [{ label: t("filterAccounts"), value: accountChip }] : []),
   ];
@@ -375,9 +432,10 @@ function AnalyticsReportView({ config }) {
       // Remount on clear so the account inputs (uncontrolled) empty too.
       <div key={`${get("account_from") ?? ""}|${get("account_to") ?? ""}`} className={stockFilterFieldRowClassName}>
         {dateRangeEl ? <Form.Item label={t("filterDateRange")}>{dateRangeEl}</Form.Item> : null}
+        {asOfEl ? <Form.Item label={t("asOf")}>{asOfEl}</Form.Item> : null}
         {branchEl ? <Form.Item label={t("filterBranch")}>{branchEl}</Form.Item> : null}
         {warehouseEl ? <Form.Item label={t("filterWarehouse")}>{warehouseEl}</Form.Item> : null}
-        {daysEl ? <Form.Item label={t("days")}>{daysEl}</Form.Item> : null}
+        {daysEl ? <Form.Item label={t(config.daysLabelKey ?? "days")}>{daysEl}</Form.Item> : null}
         {accountRangeEl ? <Form.Item label={t("filterAccounts")}>{accountRangeEl}</Form.Item> : null}
         {includeExpiredEl ? <Form.Item label=" ">{includeExpiredEl}</Form.Item> : null}
       </div>
@@ -390,6 +448,7 @@ function AnalyticsReportView({ config }) {
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {dateRangeEl}
+          {asOfEl}
           {groupByEl}
           {branchEl}
           {warehouseEl}
@@ -415,6 +474,11 @@ function AnalyticsReportView({ config }) {
           {daysEl}
           {includeExpiredEl}
           {accountRangeEl}
+          {fieldEl}
+          {sourceEl}
+          {categoryEl}
+          {userEl}
+          {supplierEl}
         </div>
         {access.canExport && ready ? <TableExportMenu loading={exporting} onExportExcel={() => runExport("xlsx")} onExportPdf={() => runExport("pdf")} /> : null}
       </div>

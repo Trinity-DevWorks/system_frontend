@@ -172,16 +172,18 @@ function PeriodReportTable({ kind }) {
               { value: "month", label: t("groupMonth") },
             ]}
           />
-          <Select
-            className="min-w-40"
-            allowClear={lockedBranchId == null}
-            disabled={lockedBranchId != null}
-            placeholder={t("branchAll")}
-            value={selectedBranchId}
-            onChange={(value) => setParams({ branch: value != null ? String(value) : undefined })}
-            options={branchOptions}
-            loading={branchesPending}
-          />
+          {accessibleBranches.length > 1 ? (
+            <Select
+              className="min-w-40"
+              allowClear={lockedBranchId == null}
+              disabled={lockedBranchId != null}
+              placeholder={t("branchAll")}
+              value={selectedBranchId}
+              onChange={(value) => setParams({ branch: value != null ? String(value) : undefined })}
+              options={branchOptions}
+              loading={branchesPending}
+            />
+          ) : null}
         </div>
         {access.canExport ? (
           <TableExportMenu

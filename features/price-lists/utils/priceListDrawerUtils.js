@@ -48,6 +48,7 @@ function snapshot(v) {
         r.item_uom_id == null ? null : Number(r.item_uom_id),
         Number(r.min_quantity ?? 0),
         r.price === null || r.price === undefined || r.price === "" ? null : Number(r.price),
+        String(r.reason ?? "").trim(),
       ];
     }),
   });
@@ -124,6 +125,7 @@ export function recordToFormValues(r) {
         item_uom_id: it.item_uom_id,
         min_quantity: it.min_quantity != null ? Number(it.min_quantity) : 0,
         price: it.price != null ? Number(it.price) : null,
+        reason: "",
       };
     }),
   };
@@ -160,6 +162,7 @@ export function priceListFormValuesToPayload(values) {
         item_uom_id: Number(row.item_uom_id),
         min_quantity: decimalString(row.min_quantity) ?? "0",
         price: decimalString(row.price) ?? "0",
+        ...(String(row.reason ?? "").trim() ? { reason: String(row.reason).trim() } : {}),
       })),
   };
 }

@@ -18,6 +18,7 @@ import { Button, Space } from "antd";
  *   saveDisabled?: boolean;
  *   primaryDisabled?: boolean;
  *   showDelete?: boolean;
+ *   deleteBesideCancel?: boolean;
  *   showPrimary?: boolean;
  *   showReverse?: boolean;
  *   showPdf?: boolean;
@@ -47,6 +48,7 @@ export default function StockDocumentDrawerFooter({
   saveDisabled = false,
   primaryDisabled = false,
   showDelete = false,
+  deleteBesideCancel = false,
   showPrimary = false,
   showReverse = false,
   showPdf = false,
@@ -113,7 +115,7 @@ export default function StockDocumentDrawerFooter({
     <div className="flex w-full min-w-0 flex-wrap items-center gap-3">
       {meta}
       <Space wrap>
-        {showDelete ? (
+        {showDelete && !deleteBesideCancel ? (
           <Button danger disabled={submitting} onClick={onDelete}>
             {t("actionDelete")}
           </Button>
@@ -121,6 +123,12 @@ export default function StockDocumentDrawerFooter({
         {startExtras}
       </Space>
       <Space wrap className="ms-auto shrink-0">
+        {/* Optional: Delete with the other buttons on the right, just before Cancel. */}
+        {showDelete && deleteBesideCancel ? (
+          <Button danger disabled={submitting} onClick={onDelete}>
+            {t("actionDelete")}
+          </Button>
+        ) : null}
         <Button onClick={requestClose} disabled={submitting}>
           {t("drawerCancel")}
         </Button>

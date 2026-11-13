@@ -27,10 +27,23 @@ export const JOURNAL_SOURCE_TYPES = [
   "supplier_refund",
   "treasury_transfer",
   "expense_voucher",
+  "deferral_recognition",
   "landed_cost",
   "stock_transfer",
   "bundle_explosion",
 ];
+
+/**
+ * Drawer record id for a journal source. Recognition entries store
+ * "{scheduleId}:{lineNo}" and the schedule drawer wants the schedule id.
+ * @param {unknown} sourceType
+ * @param {unknown} sourceId
+ */
+export function sourceDocumentRecordId(sourceType, sourceId) {
+  const id = sourceId == null ? "" : String(sourceId);
+  if (sourceType === "deferral_recognition") return id.split(":")[0] || null;
+  return id || null;
+}
 
 /** Source type → FEATURES id whose drawer shows the document. */
 export const SOURCE_DOCUMENT_FEATURE = {
@@ -52,6 +65,7 @@ export const SOURCE_DOCUMENT_FEATURE = {
   supplier_refund: "supplierRefunds",
   treasury_transfer: "treasuryTransfers",
   expense_voucher: "expenseVouchers",
+  deferral_recognition: "deferralSchedules",
   stock_transfer: "stockTransfers",
   bundle_explosion: "stockBundleExplosions",
   cash_bank_opening_balance: "cashBankAccounts",

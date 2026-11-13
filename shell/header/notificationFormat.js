@@ -66,11 +66,18 @@ function interpolateTemplate(template, params) {
 
 /**
  * @param {Record<string, unknown>} params
+ * @param {Record<string, unknown> | null | undefined} [messages]
  * @returns {Record<string, unknown>}
  */
-function formatNotificationParams(params) {
+function formatNotificationParams(params, messages) {
   /** @type {Record<string, unknown>} */
   const out = {};
+  // An error code becomes a readable `{reason}` (same wording as the API error toasts).
+  if (typeof params.error_code === "string" && params.error_code !== "") {
+    const codes = /** @type {any} */ (messages)?.ApiErrors?.codes;
+    const text = codes && typeof codes === "object" ? codes[params.error_code] : null;
+    out.reason = typeof text === "string" ? text : params.error_code;
+  }
   for (const [key, value] of Object.entries(params)) {
     if (value == null) {
       out[key] = value;
@@ -115,6 +122,7 @@ export function formatNotificationTitle(notification, t, messages) {
     notification?.params && typeof notification.params === "object"
       ? notification.params
       : {},
+    messages,
   );
   const template = getNotificationTypeMessage(messages, type, "title");
   if (template) return interpolateTemplate(template, params);
@@ -133,6 +141,7 @@ export function formatNotificationBody(notification, t, messages) {
     notification?.params && typeof notification.params === "object"
       ? notification.params
       : {},
+    messages,
   );
   const template = getNotificationTypeMessage(messages, type, "body");
   if (template) return interpolateTemplate(template, params);

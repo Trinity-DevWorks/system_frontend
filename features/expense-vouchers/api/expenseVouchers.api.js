@@ -53,3 +53,8 @@ export function postExpenseVoucher(id) {
 export function reverseExpenseVoucher(id) {
   return tenantRequest("POST", `expense-vouchers/${id}/reverse`);
 }
+
+/** Default prepaid / deferred-revenue accounts (from the account mappings) for "spread over time" lines. */
+export function fetchExpenseVoucherDeferralDefaults() {
+  return tenantRequest("GET", "expense-vouchers/deferral-defaults");
+}

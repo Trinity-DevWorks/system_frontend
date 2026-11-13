@@ -1,4 +1,4 @@
-import { ROUTES } from "@/features/registry";
+import { NAV_SECTIONS, ROUTES } from "@/features/registry";
 import { findNavLabelForPath } from "@/shell/sidebar/main-nav";
 
 /**
@@ -60,9 +60,12 @@ export function buildBreadcrumbEntries(pathname, menuItems, t) {
   for (let i = 0; i < rest.length; i++) {
     const path = `/main/${rest.slice(0, i + 1).join("/")}`;
     const segment = rest[i];
+    // A folder like /main/accounting is a sidebar section: use its translated name.
+    const section = i === 0 ? NAV_SECTIONS.find((s) => s.id === segment) : null;
     const label =
       findNavLabelForPath(menuItems, path) ||
       settingsPathLabel(path, t) ||
+      (section ? t(section.labelKey) : null) ||
       humanizePathSegment(segment);
     const isLast = i === rest.length - 1;
     crumbs.push({

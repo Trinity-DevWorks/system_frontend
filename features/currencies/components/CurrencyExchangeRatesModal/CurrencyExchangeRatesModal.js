@@ -1,10 +1,16 @@
 "use client";
 
+import { useForwardArrow } from "@/lib/direction-arrow";
 import { formatTenantNumber } from "@/lib/tenant-format";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 
-import { fetchCurrencyNames, fetchCurrencyPairRates, fetchOnlineExchangeRates, updateCurrency } from "../../api/currencies.api";
+import {
+  fetchCurrencyNames,
+  fetchCurrencyPairRates,
+  fetchOnlineExchangeRates,
+  updateCurrency,
+} from "../../api/currencies.api";
 import { SwapOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Modal, Select, Space, Spin, Typography } from "antd";
@@ -14,7 +20,10 @@ import { CURRENCIES_LIST_QUERY_KEY } from "../../queries/currenciesQueryKeys";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 
-const CURRENCY_PAIR_RATES_QUERY_KEY = /** @type {const} */ ([...CURRENCIES_LIST_QUERY_KEY, "pair-rates"]);
+const CURRENCY_PAIR_RATES_QUERY_KEY = /** @type {const} */ ([
+  ...CURRENCIES_LIST_QUERY_KEY,
+  "pair-rates",
+]);
 
 /**
  * Stable list key. The pair-rates query is shared with invoice and payment
@@ -46,8 +55,13 @@ function exchangePairKey(row, index, seen) {
  *   onClose: () => void;
  * }} props
  */
-export default function CurrencyExchangeRatesModal({ open, currencies, onClose }) {
+export default function CurrencyExchangeRatesModal({
+  open,
+  currencies,
+  onClose,
+}) {
   const t = useTranslations("Currencies");
+  const arrow = useForwardArrow();
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [newFromId, setNewFromId] = useState(undefined);
@@ -64,20 +78,18 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
     staleTime: QUERY_STALE_TIME.catalog,
   });
 
-  const currencyOptions = useMemo(
-    () => {
-      const rows = Array.isArray(currencyNames) && currencyNames.length > 0
+  const currencyOptions = useMemo(() => {
+    const rows =
+      Array.isArray(currencyNames) && currencyNames.length > 0
         ? currencyNames
         : Array.isArray(currencies)
           ? currencies
           : [];
-      return rows.map((c) => ({
-        value: Number(c.id),
-        label: String(c.code ?? c.name ?? c.id),
-      }));
-    },
-    [currencyNames, currencies],
-  );
+    return rows.map((c) => ({
+      value: Number(c.id),
+      label: String(c.code ?? c.name ?? c.id),
+    }));
+  }, [currencyNames, currencies]);
 
   const { data: pairsRaw = [], isPending: pairsLoading } = useQuery({
     queryKey: CURRENCY_PAIR_RATES_QUERY_KEY,
@@ -87,14 +99,16 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
 
   const pairs = useMemo(() => {
     const seen = new Map();
-    const list = (Array.isArray(pairsRaw) ? pairsRaw : []).map((row, index) => ({
-      key: exchangePairKey(row, index, seen),
-      from_currency_id: Number(row.from_currency_id),
-      from_code: String(row.from_code ?? row.from_currency_id ?? ""),
-      to_currency_id: Number(row.to_currency_id),
-      to_code: String(row.to_code ?? row.to_currency_id ?? ""),
-      rate: Number(row.rate),
-    }));
+    const list = (Array.isArray(pairsRaw) ? pairsRaw : []).map(
+      (row, index) => ({
+        key: exchangePairKey(row, index, seen),
+        from_currency_id: Number(row.from_currency_id),
+        from_code: String(row.from_code ?? row.from_currency_id ?? ""),
+        to_currency_id: Number(row.to_currency_id),
+        to_code: String(row.to_code ?? row.to_currency_id ?? ""),
+        rate: Number(row.rate),
+      }),
+    );
     return list.sort((a, b) => {
       const fromCmp = a.from_code.localeCompare(b.from_code);
       if (fromCmp !== 0) return fromCmp;
@@ -106,8 +120,10 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
     if (!newFromId || !newToId) return false;
     return pairs.some(
       (p) =>
-        (Number(p.from_currency_id) === Number(newFromId) && Number(p.to_currency_id) === Number(newToId)) ||
-        (Number(p.from_currency_id) === Number(newToId) && Number(p.to_currency_id) === Number(newFromId)),
+        (Number(p.from_currency_id) === Number(newFromId) &&
+          Number(p.to_currency_id) === Number(newToId)) ||
+        (Number(p.from_currency_id) === Number(newToId) &&
+          Number(p.to_currency_id) === Number(newFromId)),
     );
   }, [pairs, newFromId, newToId]);
 
@@ -128,7 +144,9 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
         queryClient.setQueryData(CURRENCY_PAIR_RATES_QUERY_KEY, (old) => {
           const list = Array.isArray(old) ? [...old] : [];
           const idx = list.findIndex(
-            (p) => Number(p.from_currency_id) === from && Number(p.to_currency_id) === to,
+            (p) =>
+              Number(p.from_currency_id) === from &&
+              Number(p.to_currency_id) === to,
           );
           const row = {
             ...(idx >= 0 ? list[idx] : {}),
@@ -158,7 +176,13 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
     const fromId = Number(newFromId);
     const toId = Number(newToId);
     const rate = Number(newRate);
-    if (!fromId || !toId || fromId === toId || !Number.isFinite(rate) || rate <= 0) {
+    if (
+      !fromId ||
+      !toId ||
+      fromId === toId ||
+      !Number.isFinite(rate) ||
+      rate <= 0
+    ) {
       message.error(t("exchangeRateInvalid"));
       return;
     }
@@ -175,7 +199,9 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
   };
 
   const fetchFromOnline = async () => {
-    const from = currencyOptions.find((o) => Number(o.value) === Number(newFromId));
+    const from = currencyOptions.find(
+      (o) => Number(o.value) === Number(newFromId),
+    );
     const to = currencyOptions.find((o) => Number(o.value) === Number(newToId));
     if (!from || !to) {
       message.error(t("exchangeRateInvalid"));
@@ -246,7 +272,11 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
       return;
     }
     saveMutation.mutate(
-      { fromId: Number(row.from_currency_id), toId: Number(row.to_currency_id), rate },
+      {
+        fromId: Number(row.from_currency_id),
+        toId: Number(row.to_currency_id),
+        rate,
+      },
       {
         onSuccess: () => {
           setEditingKey("");
@@ -308,7 +338,9 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
         <Button
           icon={<SwapOutlined />}
           onClick={swapNewPair}
-          disabled={!newFromId || !newToId || Number(newFromId) === Number(newToId)}
+          disabled={
+            !newFromId || !newToId || Number(newFromId) === Number(newToId)
+          }
           aria-label={t("pairSwap")}
           title={t("pairSwap")}
         />
@@ -332,11 +364,18 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
         <Button
           onClick={fetchFromOnline}
           loading={fetchingOnline}
-          disabled={!newFromId || !newToId || Number(newFromId) === Number(newToId)}
+          disabled={
+            !newFromId || !newToId || Number(newFromId) === Number(newToId)
+          }
         >
           {t("fetchOnline")}
         </Button>
-        <Button type="primary" onClick={addPair} loading={saveMutation.isPending} disabled={hasPair}>
+        <Button
+          type="primary"
+          onClick={addPair}
+          loading={saveMutation.isPending}
+          disabled={hasPair}
+        >
           {hasPair ? t("pairExists") : t("pairAdd")}
         </Button>
       </Space.Compact>
@@ -355,7 +394,7 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
               className="flex flex-wrap items-center gap-2 rounded-md border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]"
             >
               <Typography.Text code>{row.from_code}</Typography.Text>
-              <span className="text-slate-400">→</span>
+              <span className="text-slate-400">{arrow}</span>
               <Typography.Text code>{row.to_code}</Typography.Text>
               <span className="mx-1 text-slate-400">|</span>
               {editingKey === row.key ? (
@@ -380,7 +419,8 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
                   (() => {
                     const current = Number(row.rate);
                     const draft = Number(editRate);
-                    const canSave = Number.isFinite(draft) && draft > 0 && draft !== current;
+                    const canSave =
+                      Number.isFinite(draft) && draft > 0 && draft !== current;
                     return (
                       <Space>
                         <Button
@@ -399,7 +439,11 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
                         >
                           {t("pairSave")}
                         </Button>
-                        <Button size="small" {...APP_DISMISS_BUTTON_PROPS} onClick={() => setEditingKey("")}>
+                        <Button
+                          size="small"
+                          {...APP_DISMISS_BUTTON_PROPS}
+                          onClick={() => setEditingKey("")}
+                        >
                           {t("pairCancel")}
                         </Button>
                       </Space>
@@ -418,4 +462,3 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
     </Modal>
   );
 }
-

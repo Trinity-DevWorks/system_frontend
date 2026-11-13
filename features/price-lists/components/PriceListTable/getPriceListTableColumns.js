@@ -1,6 +1,12 @@
+import { forwardArrow } from "@/lib/direction-arrow";
 import { formatTenantDate } from "@/lib/tenant-format";
 import { renderActiveInactiveStatus } from "@/shared/components/tables/ActiveStatusBadge";
-import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  MoreOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
 
@@ -58,10 +64,12 @@ export function getPriceListTableColumns(t, actions = {}) {
       key: "validity",
       width: 220,
       render: (_, record) => {
-        const from = record?.valid_from ? formatTenantDate(record.valid_from) : "";
+        const from = record?.valid_from
+          ? formatTenantDate(record.valid_from)
+          : "";
         const to = record?.valid_to ? formatTenantDate(record.valid_to) : "";
         if (!from && !to) return t("validityAlways");
-        return `${from || "…"} → ${to || "…"}`;
+        return `${from || "…"} ${forwardArrow()} ${to || "…"}`;
       },
     },
     {
@@ -69,7 +77,8 @@ export function getPriceListTableColumns(t, actions = {}) {
       dataIndex: "is_default",
       key: "is_default",
       width: 100,
-      render: (value) => (value ? <Tag color="blue">{t("defaultTag")}</Tag> : "—"),
+      render: (value) =>
+        value ? <Tag color="blue">{t("defaultTag")}</Tag> : "—",
     },
     {
       title: t("colItemsCount"),

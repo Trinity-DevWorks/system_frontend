@@ -126,11 +126,12 @@ export default function PriceListDrawerForm({ form, readOnly, t, tSelector, curr
         {(fields, { add, remove }) => (
           <div className="flex flex-col gap-2">
             {fields.length > 0 ? (
-              <div className="hidden grid-cols-[minmax(0,3fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_32px] gap-2 px-1 text-xs font-medium text-neutral-500 md:grid">
+              <div className="hidden grid-cols-[minmax(0,3fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_32px] gap-2 px-1 text-xs font-medium text-neutral-500 md:grid">
                 <span>{t("colItem")}</span>
                 <span>{t("colUnit")}</span>
                 <span>{t("colMinQuantity")}</span>
                 <span>{t("colPrice")}</span>
+                <span>{t("fieldReason")}</span>
                 <span />
               </div>
             ) : null}
@@ -140,7 +141,7 @@ export default function PriceListDrawerForm({ form, readOnly, t, tSelector, curr
               return (
                 <div
                   key={key}
-                  className="grid grid-cols-1 items-start gap-2 rounded-md border border-neutral-200 p-2 md:grid-cols-[minmax(0,3fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_32px] md:border-0 md:p-0 dark:border-neutral-700"
+                  className="grid grid-cols-1 items-start gap-2 rounded-md border border-neutral-200 p-2 md:grid-cols-[minmax(0,3fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_32px] md:border-0 md:p-0 dark:border-neutral-700"
                 >
                   <Form.Item {...rest} name={[name, "item_id"]} className="mb-0" rules={[{ required: true, message: t("fieldItemRequired") }]}>
                     <ServerSearchSelect
@@ -169,6 +170,9 @@ export default function PriceListDrawerForm({ form, readOnly, t, tSelector, curr
                   <Form.Item {...rest} name={[name, "price"]} className="mb-0" rules={[{ required: true, message: t("fieldPriceRequired") }]}>
                     <InputNumber min={0} className="w-full" />
                   </Form.Item>
+                  <Form.Item {...rest} name={[name, "reason"]} className="mb-0">
+                    <Input disabled={readOnly} maxLength={500} placeholder={t("fieldReasonPlaceholder")} />
+                  </Form.Item>
                   {!readOnly ? (
                     <Button type="text" danger icon={<DeleteOutlined />} aria-label={t("actionDelete")} onClick={() => remove(name)} />
                   ) : (
@@ -178,7 +182,7 @@ export default function PriceListDrawerForm({ form, readOnly, t, tSelector, curr
               );
             })}
             {!readOnly ? (
-              <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({ item_id: null, item_uom_id: null, min_quantity: 0, price: null })} block>
+              <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({ item_id: null, item_uom_id: null, min_quantity: 0, price: null, reason: "" })} block>
                 {t("addPriceRow")}
               </Button>
             ) : null}

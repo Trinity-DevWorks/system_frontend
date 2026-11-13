@@ -22,7 +22,7 @@ export function getAllowedTabKeys(
 ) {
   const keys = ["general"];
   if (!tabsEnabled) return keys;
-  keys.push("uoms");
+  keys.push("uoms", "priceHistory");
   if (showVariantsTab) keys.push("variants");
   if (showRecipeTab) keys.push("recipe");
   if (showBundleTab) keys.push("bundle");
@@ -75,6 +75,8 @@ export function getItemDrawerDefaults() {
     allow_purchase: true,
     allow_return: true,
     is_landed_cost: false,
+    is_fixed_asset: false,
+    fixed_asset_category_id: undefined,
     weight: undefined,
     volume: undefined,
     is_active: true,

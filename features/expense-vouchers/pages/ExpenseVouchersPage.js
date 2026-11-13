@@ -64,7 +64,11 @@ function ExpenseVouchersTable() {
   const confirmAction = (record, action) =>
     modal.confirm({
       title: action === "post" ? t("postConfirmTitle") : t("reverseConfirmTitle"),
-      content: action === "post" ? t("postConfirmContent") : t("reverseConfirmContent"),
+      content: action === "post"
+        ? t("postConfirmContent")
+        : (Array.isArray(record.lines) && record.lines.some((line) => line?.deferral_start_date || line?.deferral_schedule)
+          ? t("reverseWithSchedules")
+          : t("reverseConfirmContent")),
       okText: action === "post" ? t("actionPost") : t("actionReverse"),
       okButtonProps: action === "reverse" ? { danger: true } : undefined,
       cancelText: t("drawerCancel"),

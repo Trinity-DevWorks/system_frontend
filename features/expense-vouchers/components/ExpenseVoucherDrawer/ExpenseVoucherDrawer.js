@@ -21,6 +21,7 @@ import {
   requiredFieldsValid,
 } from "../../utils/expenseVoucherDrawerUtils";
 import ExpenseVoucherDrawerFooter from "./ExpenseVoucherDrawerFooter";
+import { confirmPostWithBudgetCheck } from "@/features/budgets/components/BudgetWarningList";
 import ExpenseVoucherDrawerForm from "./ExpenseVoucherDrawerForm";
 
 /**
@@ -39,6 +40,7 @@ import ExpenseVoucherDrawerForm from "./ExpenseVoucherDrawerForm";
 export default function ExpenseVoucherDrawer({ open, mode, expenseVoucherId, tableSeedRecord = null, onClose, onCreated }) {
   const t = useTranslations("ExpenseVouchers");
   const tApiErrors = useTranslations("ApiErrors");
+  const tBudgets = useTranslations("Budgets");
   const access = useResourceAccess("expense_vouchers");
   const { message, modal, notification } = App.useApp();
   const [form] = Form.useForm();
@@ -145,17 +147,20 @@ export default function ExpenseVoucherDrawer({ open, mode, expenseVoucherId, tab
   const handlePost = useCallback(() => {
     form
       .validateFields()
-      .then((values) => {
-        modal.confirm({
-          title: t("postConfirmTitle"),
-          content: t("postConfirmContent"),
-          okText: t("actionPost"),
-          cancelText: t("drawerCancel"),
-          onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
-        });
-      })
+      // Over budget is a warning in the confirm, never a block.
+      .then((values) =>
+        confirmPostWithBudgetCheck({
+          source: "expense_voucher",
+          id: voucherId,
+          modal,
+          notification,
+          tBudgets,
+          confirm: { title: t("postConfirmTitle"), content: t("postConfirmContent"), okText: t("actionPost"), cancelText: t("drawerCancel") },
+          post: () => postMutation.mutateAsync({ values }).catch(() => undefined),
+        }),
+      )
       .catch(() => {});
-  }, [form, modal, t, postMutation]);
+  }, [form, modal, notification, t, tBudgets, postMutation, voucherId]);
 
   const handleReverse = useCallback(() => {
     modal.confirm({
@@ -202,7 +207,7 @@ export default function ExpenseVoucherDrawer({ open, mode, expenseVoucherId, tab
       detailLoadFailed={Boolean(detailEnabled && detailQuery.isError)}
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
-      size={900}
+      size={1150}
       footer={
         <ExpenseVoucherDrawerFooter
           readOnly={readOnly}

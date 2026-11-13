@@ -1,7 +1,9 @@
 "use client";
 
+import { confirmPostWithBudgetCheck } from "@/features/budgets/components/BudgetWarningList";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
+import InvoiceFixedAssets from "@/features/fixed-assets/components/InvoiceFixedAssets";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { PURCHASE_INVOICE_DETAIL_QUERY_PREFIX } from "../../queries/purchaseInvoicesQueryKeys";
 import { normalizeEntityId } from "@/lib/entityId";
@@ -87,6 +89,7 @@ export default function PurchaseInvoiceDrawer({
 }) {
   const t = useTranslations("PurchaseInvoices");
   const tApiErrors = useTranslations("ApiErrors");
+  const tBudgets = useTranslations("Budgets");
   const { message, modal, notification } = App.useApp();
   const access = useResourceAccess("purchase_invoices");
   const paymentAccess = useResourceAccess("supplier_payments");
@@ -775,20 +778,26 @@ export default function PurchaseInvoiceDrawer({
   const handlePost = useCallback(() => {
     form
       .validateFields()
-      .then((values) => {
-        const content = hasGrn ? t("postConfirmContentApOnly") : t("postConfirmContentApAndStock");
-        modal.confirm(
-          withConfirmKeyboard({
+      // Over budget (service lines) is a warning in the confirm, never a block.
+      .then((values) =>
+        confirmPostWithBudgetCheck({
+          source: "purchase_invoice",
+          id: invoiceId,
+          modal,
+          notification,
+          tBudgets,
+          wrapConfirm: withConfirmKeyboard,
+          confirm: {
             title: t("postConfirmTitle"),
-            content,
+            content: hasGrn ? t("postConfirmContentApOnly") : t("postConfirmContentApAndStock"),
             okText: t("postConfirmOk"),
             cancelText: t("drawerCancel"),
-            onOk: () => closeConfirmOnError(postMutation.mutateAsync({ values })),
-          }),
-        );
-      })
+          },
+          post: () => postMutation.mutateAsync({ values }).catch(() => undefined),
+        }),
+      )
       .catch(() => {});
-  }, [form, modal, t, postMutation, hasGrn]);
+  }, [form, modal, notification, t, tBudgets, postMutation, hasGrn, invoiceId]);
 
   const handleReverse = useCallback(() => {
     modal.confirm(
@@ -1087,6 +1096,7 @@ export default function PurchaseInvoiceDrawer({
             currencySymbol={documentCurrencySymbol}
           />
         </PurchaseInvoiceDrawerForm>
+        {effectiveStatus === "posted" && invoiceId ? <InvoiceFixedAssets invoiceId={String(invoiceId)} /> : null}
       </ResourceCrudDrawer>
     </>
   );

@@ -51,6 +51,10 @@ const PREFERENCE_GROUPS = [
     ],
   },
   {
+    id: "accounting",
+    types: ["depreciation.posted"],
+  },
+  {
     id: "stock",
     types: [
       "stock_transfer.dispatched",

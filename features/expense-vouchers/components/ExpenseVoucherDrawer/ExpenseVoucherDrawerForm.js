@@ -1,6 +1,7 @@
 "use client";
 
 import { fetchAccounts } from "@/features/accounting/api/accounting.api";
+import { fetchExpenseVoucherDeferralDefaults } from "@/features/expense-vouchers/api/expenseVouchers.api";
 import { fetchCashBankAccountNames } from "@/features/cash-bank-accounts/api/cashBankAccounts.api";
 import AvailableBalanceHint from "@/features/cash-bank-accounts/components/AvailableBalanceHint";
 import { fetchVatGroupNames } from "@/features/vat-groups/index";
@@ -29,6 +30,16 @@ export default function ExpenseVoucherDrawerForm({ form, readOnly, t }) {
     // Balances change with every posting; refresh when the form opens.
     refetchOnMount: "always",
   });
+  const deferralDefaultsQuery = useQuery({
+    queryKey: ["tenant", "expense-vouchers", "deferral-defaults"],
+    queryFn: fetchExpenseVoucherDeferralDefaults,
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
+  const assetAccountsQuery = useQuery({
+    queryKey: ["tenant", "accounts", "postable-assets"],
+    queryFn: () => fetchAccounts({ type: "asset", postable: true, active: true }),
+    staleTime: QUERY_STALE_TIME.catalog,
+  });
   const expenseAccountsQuery = useQuery({
     queryKey: ["tenant", "accounts", "postable-expenses"],
     queryFn: () => fetchAccounts({ type: "expense", postable: true, active: true }),
@@ -50,6 +61,10 @@ export default function ExpenseVoucherDrawerForm({ form, readOnly, t }) {
   const cashOptions = useMemo(
     () => cashAccounts.map((a) => ({ value: Number(a.id), label: `${a.code} — ${a.name} (${a.currency_code ?? ""})`, disabled: a.is_active === false })),
     [cashAccounts],
+  );
+  const assetOptions = useMemo(
+    () => (assetAccountsQuery.data ?? []).filter((a) => a && a.is_group !== true).map((a) => ({ value: Number(a.id), label: [a.code, a.name].filter(Boolean).join(" — ") })),
+    [assetAccountsQuery.data],
   );
   const expenseOptions = useMemo(
     () =>
@@ -118,6 +133,8 @@ export default function ExpenseVoucherDrawerForm({ form, readOnly, t }) {
         readOnly={readOnly}
         t={t}
         expenseOptions={expenseOptions}
+        assetOptions={assetOptions}
+        prepaidAccountId={deferralDefaultsQuery.data?.prepaid_expense?.id ?? null}
         expenseAccountsPending={expenseAccountsQuery.isPending}
         vatOptions={vatOptions}
         currencyMark={currencyMark}

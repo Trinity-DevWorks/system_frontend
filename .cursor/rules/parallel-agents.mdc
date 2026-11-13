@@ -1,0 +1,55 @@
+---
+description: Several agents may work on this project at the same time. Coordinate through plans/AGENTS.md and never undo another agent's work.
+alwaysApply: true
+---
+
+# Parallel Agents (frontend)
+
+More than one agent may be implementing a different plan in this repository at the same time.
+Each agent owns one plan file in `../plans/` (for example `plans/budgets.md`, `plans/fixed-assets.md`).
+
+## Before you start and when you finish
+
+- Read `../plans/AGENTS.md`. Add or update **your own row only**: plan, branch, status, shared files you touched, open TODOs.
+- Update it again whenever you touch a new shared file and when your plan is done.
+- Tick the checkboxes in your plan file as tasks are completed. Write a short note under any task you skipped or changed.
+
+## Never undo another agent's work
+
+- Re-read a file right before editing it. Another agent may have changed it since you last read it.
+- Never revert, delete, rename or "clean up" components, pages, registry entries or translations that your plan did not add.
+- If another agent's change breaks your work, **do not fix their code**. Note it in `plans/AGENTS.md` under "Open TODOs" and continue.
+
+## Shared files: add, don't rewrite
+
+These files are edited by most plans:
+
+- `features/registry.js`, `lib/drawer/drawerRegistry.js`
+- `messages/en.json`, `messages/ar.json`
+- `shared/components/tables/AppDataTable.js` and other `shared/*` building blocks
+- `features/items/*`, `features/purchase-invoices/*`, `features/expense-vouchers/*`, `features/accounting/*`, `features/reports/*`, `features/settings/*`
+
+Rules for them:
+
+- Only **add** your own entries next to related ones. Do not reorder, reformat or refactor existing code.
+- **Translations:** add your own namespace (for example `FixedAssets`, `Budgets`) in both `en.json` and `ar.json`. Never rewrite or re-sort the whole file by hand; edit only your keys.
+- **Error messages** go under `ApiErrors.codes.<CODE>`, never at the top level of `ApiErrors` (top-level keys show as raw text).
+- Before saving `messages/*.json`, re-read it from disk so you don't overwrite keys another agent just added.
+
+## Formatting and tooling
+
+- **Do not run Prettier** on existing files. The project has no Prettier config and it would rewrap whole files. New files of your own may be formatted.
+- Run eslint only on the folders you changed: `npx eslint features/<your-feature> ...`.
+- Run `npm run check:i18n` after editing translations.
+- Do not start a second dev server on the same port. Check whether one is already running on port 3000.
+
+## Cross-plan dependencies
+
+- If your plan needs something another plan adds (for example a field another plan adds to items), and it is not there yet, do **not** build it yourself.
+- Leave `// TODO(<plan-name>): <what is needed>` at the exact spot, and list it in `plans/AGENTS.md` under "Open TODOs".
+
+## Git
+
+- Work on your own branch (or git worktree) per plan. Do not commit to another agent's branch.
+- Commit messages start with the plan name, for example `budgets: B5 budget grid`.
+- Do not push, rebase or merge other branches unless the user asks.

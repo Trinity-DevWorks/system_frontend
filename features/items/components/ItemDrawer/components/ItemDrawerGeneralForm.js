@@ -7,11 +7,14 @@
  * - drawer/hooks/useItemDrawerTabItems.js
  */
 
+import { RESTAURANT_FEATURES } from "@/lib/business-profile";
 import { inventoryCostingMethodOptions } from "@/lib/inventory-costing";
 import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSelectWithCreate";
 import LookupTreeSelectWithCreate from "@/shared/components/resource-drawer/LookupTreeSelectWithCreate";
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { fetchAssetCategories } from "@/features/fixed-assets/api/fixedAssets.api";
+import { useQuery } from "@tanstack/react-query";
 import { Col, ColorPicker, Divider, Form, Input, Row, Select, Switch } from "antd";
 import { useEffect } from "react";
 import {
@@ -70,6 +73,13 @@ export default function ItemDrawerGeneralForm({
   const allowSale = Form.useWatch("allow_sale", form);
   const qrEnabled = Form.useWatch("qr_enabled", form);
   const trackInventory = Form.useWatch("track_inventory", form);
+  const landedCost = Form.useWatch("is_landed_cost", form);
+  const fixedAsset = Form.useWatch("is_fixed_asset", form);
+  const categories = useQuery({
+    queryKey: ["tenant", "fixed-asset-categories", "item-form"],
+    queryFn: () => fetchAssetCategories({ per_page: 100, active: true }),
+    enabled: trackInventory === false && fixedAsset === true,
+  });
   const optionalSuffix = t("fieldOptionalSuffix");
   const showPosSection = allowSale !== false;
 
@@ -247,14 +257,35 @@ export default function ItemDrawerGeneralForm({
             </Form.Item>
           </div>
         ) : (
-          <div className="item-general-form-toggle-cell">
-            <ResourceDrawerFieldLabel text={t("fieldLandedCost")} help={t("fieldLandedCostHelp")} />
-            <Form.Item name="is_landed_cost" valuePropName="checked" noStyle>
-              <Switch />
-            </Form.Item>
-          </div>
+          <>
+            {fixedAsset !== true ? (
+              <div className="item-general-form-toggle-cell">
+                <ResourceDrawerFieldLabel text={t("fieldLandedCost")} help={t("fieldLandedCostHelp")} />
+                <Form.Item name="is_landed_cost" valuePropName="checked" noStyle>
+                  <Switch />
+                </Form.Item>
+              </div>
+            ) : null}
+            {landedCost !== true ? (
+              <div className="item-general-form-toggle-cell">
+                <ResourceDrawerFieldLabel text={t("fieldFixedAsset")} help={t("fieldFixedAssetHelp")} />
+                <Form.Item name="is_fixed_asset" valuePropName="checked" noStyle>
+                  <Switch />
+                </Form.Item>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
+      {!trackInventory && fixedAsset ? (
+        <Form.Item name="fixed_asset_category_id" label={t("fieldFixedAssetCategory")} rules={[{ required: true }]}>
+          <Select
+            showSearch
+            optionFilterProp="label"
+            options={(categories.data?.rows ?? []).map((row) => ({ value: Number(row.id), label: `${row.code} — ${row.name}` }))}
+          />
+        </Form.Item>
+      ) : null}
       {trackInventory ? (
         <Row gutter={[24, 0]} className="item-general-form-inventory-fields">
           <Col xs={24} md={12}>
@@ -299,9 +330,10 @@ export default function ItemDrawerGeneralForm({
       {showPosSection ? (
         <>
           <Divider className="item-general-form-section-divider" titlePlacement="start" plain>
-            {t("sectionPosKitchen")}
+            {t(RESTAURANT_FEATURES ? "sectionPosKitchen" : "sectionPos")}
           </Divider>
           <Row gutter={[24, 0]}>
+            {RESTAURANT_FEATURES ? (
             <Col xs={24} md={12}>
               <Form.Item
                 name="ticket_name"
@@ -312,6 +344,8 @@ export default function ItemDrawerGeneralForm({
                 <Input placeholder={t("fieldTicketNamePlaceholder")} maxLength={120} />
               </Form.Item>
             </Col>
+            ) : null}
+            {RESTAURANT_FEATURES ? (
             <Col xs={24} md={12}>
               <Form.Item
                 name="kitchen_name"
@@ -322,6 +356,7 @@ export default function ItemDrawerGeneralForm({
                 <Input placeholder={t("fieldKitchenNamePlaceholder")} maxLength={120} />
               </Form.Item>
             </Col>
+            ) : null}
             <Col xs={24} md={12}>
               <Form.Item
                 name="pos_name"
@@ -360,6 +395,7 @@ export default function ItemDrawerGeneralForm({
                 <ColorPicker format="hex" showText allowClear className="w-full" />
               </Form.Item>
             </Col>
+            {RESTAURANT_FEATURES ? (
             <Col xs={24} md={12}>
               <div className="item-general-form-toggle-cell">
                 <ResourceDrawerFieldLabel text={t("fieldSendToKitchen")} help={t("fieldSendToKitchenHelp")} />
@@ -368,6 +404,8 @@ export default function ItemDrawerGeneralForm({
                 </Form.Item>
               </div>
             </Col>
+            ) : null}
+            {RESTAURANT_FEATURES ? (
             <Col xs={24} md={12}>
               <div className="item-general-form-toggle-cell">
                 <ResourceDrawerFieldLabel text={t("fieldQrEnabled")} help={t("fieldQrEnabledHelp")} />
@@ -376,6 +414,8 @@ export default function ItemDrawerGeneralForm({
                 </Form.Item>
               </div>
             </Col>
+            ) : null}
+            {RESTAURANT_FEATURES ? (
             <Col span={24}>
               <Form.Item
                 name="qr_description"
@@ -403,6 +443,7 @@ export default function ItemDrawerGeneralForm({
                 />
               </Form.Item>
             </Col>
+            ) : null}
           </Row>
         </>
       ) : null}

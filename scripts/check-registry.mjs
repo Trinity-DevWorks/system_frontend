@@ -223,100 +223,655 @@ for (const path of probes) {
  * Icons are omitted: they are compared separately by uniqueness below.
  */
 const OLD_NAV = [
-  { key: "/main/overview", label: "navOverview", module: "core" },
   {
-    key: "master-data",
-    label: "navMasterData",
-    children: [
-      { key: "/main/brands", label: "navBrands", module: "master_data", permission: "brands" },
-      { key: "/main/categories", label: "navCategories", module: "master_data", permission: "categories" },
-      { key: "/main/vat-groups", label: "navVatGroups", module: "master_data", permission: "vat_groups" },
-      { key: "/main/unit-groups", label: "navUnitGroups", module: "inventory", permission: "unit_groups" },
-      { key: "/main/unit-of-measurements", label: "navUnitOfMeasurements", module: "inventory", permission: "unit_of_measurements" },
-      { key: "/main/warehouses", label: "navWarehouses", module: "inventory", permission: "warehouses" },
-      { key: "/main/currencies", label: "navCurrencies", module: "master_data", permission: "currencies" },
-      { key: "/main/payment-methods", label: "navPaymentMethods", module: "master_data", permission: "payment_methods" },
-      { key: "/main/payment-terms", label: "navPaymentTerms", module: "master_data", permission: "payment_terms" },
-      { key: "/main/salesmen", label: "navSalesmen", module: "sales", permission: "salesmen" },
-    ],
+    "key": "/main/overview",
+    "label": "navOverview",
+    "module": "core"
   },
   {
-    key: "inventory",
-    label: "navInventory",
-    matchPath: "/main/stock",
-    children: [
-      { key: "/main/items", label: "navItems", group: "navGroupCatalog", module: "inventory", permission: "items" },
-      { key: "/main/stock/adjustment-reasons", label: "navAdjustmentReasons", group: "navGroupCatalog", module: "inventory", permission: "stock" },
-      { key: "/main/stock/balances", label: "navStockBalances", group: "navGroupStockLevels", module: "inventory", permission: "stock" },
-      { key: "/main/stock/purchasing-alerts", label: "navPurchasingAlerts", group: "navGroupStockLevels", module: "inventory", permission: "stock" },
-      { key: "/main/stock/movements", label: "navStockMovements", group: "navGroupStockLevels", module: "inventory", permission: "stock" },
-      { key: "/main/stock/lots", label: "navLots", group: "navGroupStockLevels", module: "inventory", permission: "stock" },
-      { key: "/main/stock/purchase-orders", label: "navPurchaseOrders", group: "navGroupDocuments", module: "inventory", permission: "stock" },
-      { key: "/main/stock/goods-receipts", label: "navGoodsReceipts", group: "navGroupDocuments", module: "inventory", permission: "stock" },
-      { key: "/main/stock/opening-stocks", label: "navOpeningStock", group: "navGroupDocuments", module: "inventory", permission: "stock" },
-      { key: "/main/stock/adjustments", label: "navStockAdjustments", group: "navGroupDocuments", module: "inventory", permission: "stock" },
-      { key: "/main/stock/revaluations", label: "navStockRevaluations", group: "navGroupDocuments", module: "inventory", permission: "stock" },
-      { key: "/main/stock/productions", label: "navProductions", group: "navGroupDocuments", module: "inventory", permission: "stock" },
-      { key: "/main/stock/bundle-explosions", label: "navBundleExplosions", group: "navGroupDocuments", module: "inventory", permission: "stock" },
-      { key: "/main/stock/stock-counts", label: "navStockCounts", group: "navGroupDocuments", module: "inventory", permission: "stock" },
-      { key: "/main/stock/transfers", label: "navStockTransfers", group: "navGroupDocuments", module: "inventory", permission: "stock" },
-    ],
+    "key": "master-data",
+    "label": "navMasterData",
+    "children": [
+      {
+        "key": "/main/brands",
+        "label": "navBrands",
+        "module": "master_data",
+        "permission": "brands"
+      },
+      {
+        "key": "/main/categories",
+        "label": "navCategories",
+        "module": "master_data",
+        "permission": "categories"
+      },
+      {
+        "key": "/main/vat-groups",
+        "label": "navVatGroups",
+        "module": "master_data",
+        "permission": "vat_groups"
+      },
+      {
+        "key": "/main/unit-groups",
+        "label": "navUnitGroups",
+        "module": "inventory",
+        "permission": "unit_groups"
+      },
+      {
+        "key": "/main/unit-of-measurements",
+        "label": "navUnitOfMeasurements",
+        "module": "inventory",
+        "permission": "unit_of_measurements"
+      },
+      {
+        "key": "/main/warehouses",
+        "label": "navWarehouses",
+        "module": "inventory",
+        "permission": "warehouses"
+      },
+      {
+        "key": "/main/currencies",
+        "label": "navCurrencies",
+        "module": "master_data",
+        "permission": "currencies"
+      },
+      {
+        "key": "/main/payment-methods",
+        "label": "navPaymentMethods",
+        "module": "master_data",
+        "permission": "payment_methods"
+      },
+      {
+        "key": "/main/payment-terms",
+        "label": "navPaymentTerms",
+        "module": "master_data",
+        "permission": "payment_terms"
+      },
+      {
+        "key": "/main/salesmen",
+        "label": "navSalesmen",
+        "module": "sales",
+        "permission": "salesmen"
+      }
+    ]
   },
   {
-    key: "sales",
-    label: "navSales",
-    children: [
-      { key: "/main/sales-invoices", label: "navSalesInvoices", module: "sales", permission: "sales_invoices" },
-      { key: "/main/customer-receipts", label: "navCustomerReceipts", module: "sales", permission: "customer_receipts" },
-      { key: "/main/customer-groups", label: "navCustomerGroups", module: "sales", permission: "customer_groups" },
-      { key: "/main/customers", label: "navCustomers", module: "sales", permission: "customers" },
-      { key: "/main/customer-ledger", label: "navCustomerLedger", module: "sales", permission: "customers" },
-    ],
+    "key": "inventory",
+    "label": "navInventory",
+    "matchPath": "/main/stock",
+    "children": [
+      {
+        "key": "/main/items",
+        "label": "navItems",
+        "group": "navGroupCatalog",
+        "module": "inventory",
+        "permission": "items"
+      },
+      {
+        "key": "/main/price-changes",
+        "label": "navPriceChanges",
+        "group": "navGroupCatalog",
+        "module": "inventory",
+        "permission": "price_changes"
+      },
+      {
+        "key": "/main/item-attributes",
+        "label": "navItemAttributes",
+        "group": "navGroupCatalog",
+        "module": "inventory",
+        "permission": "item_attributes"
+      },
+      {
+        "key": "/main/stock/adjustment-reasons",
+        "label": "navAdjustmentReasons",
+        "group": "navGroupCatalog",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/balances",
+        "label": "navStockBalances",
+        "group": "navGroupStockLevels",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/purchasing-alerts",
+        "label": "navPurchasingAlerts",
+        "group": "navGroupStockLevels",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/movements",
+        "label": "navStockMovements",
+        "group": "navGroupStockLevels",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/lots",
+        "label": "navLots",
+        "group": "navGroupStockLevels",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/purchase-orders",
+        "label": "navPurchaseOrders",
+        "group": "navGroupDocuments",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/goods-receipts",
+        "label": "navGoodsReceipts",
+        "group": "navGroupDocuments",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/opening-stocks",
+        "label": "navOpeningStock",
+        "group": "navGroupDocuments",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/adjustments",
+        "label": "navStockAdjustments",
+        "group": "navGroupDocuments",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/revaluations",
+        "label": "navStockRevaluations",
+        "group": "navGroupDocuments",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/productions",
+        "label": "navProductions",
+        "group": "navGroupDocuments",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/bundle-explosions",
+        "label": "navBundleExplosions",
+        "group": "navGroupDocuments",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/stock-counts",
+        "label": "navStockCounts",
+        "group": "navGroupDocuments",
+        "module": "inventory",
+        "permission": "stock"
+      },
+      {
+        "key": "/main/stock/transfers",
+        "label": "navStockTransfers",
+        "group": "navGroupDocuments",
+        "module": "inventory",
+        "permission": "stock"
+      }
+    ]
   },
   {
-    key: "purchasing",
-    label: "navPurchasing",
-    children: [
-      { key: "/main/supplier-groups", label: "navSupplierGroups", module: "purchasing", permission: "supplier_groups" },
-      { key: "/main/suppliers", label: "navSuppliers", module: "purchasing", permission: "suppliers" },
-      { key: "/main/supplier-ledger", label: "navSupplierLedger", module: "purchasing", permission: "suppliers" },
-      { key: "/main/purchase-invoices", label: "navPurchaseInvoices", module: "purchasing", permission: "purchase_invoices" },
-      { key: "/main/supplier-payments", label: "navSupplierPayments", module: "purchasing", permission: "supplier_payments" },
-    ],
+    "key": "sales",
+    "label": "navSales",
+    "children": [
+      {
+        "key": "/main/sales-quotations",
+        "label": "navSalesQuotations",
+        "module": "sales",
+        "permission": "sales_quotations"
+      },
+      {
+        "key": "/main/sales-orders",
+        "label": "navSalesOrders",
+        "module": "sales",
+        "permission": "sales_orders"
+      },
+      {
+        "key": "/main/delivery-notes",
+        "label": "navDeliveryNotes",
+        "module": "sales",
+        "permission": "delivery_notes"
+      },
+      {
+        "key": "/main/sales-invoices",
+        "label": "navSalesInvoices",
+        "module": "sales",
+        "permission": "sales_invoices"
+      },
+      {
+        "key": "/main/sales-credit-notes",
+        "label": "navSalesCreditNotes",
+        "module": "sales",
+        "permission": "sales_credit_notes"
+      },
+      {
+        "key": "/main/customer-receipts",
+        "label": "navCustomerReceipts",
+        "module": "sales",
+        "permission": "customer_receipts"
+      },
+      {
+        "key": "/main/customer-cheques",
+        "label": "navCustomerCheques",
+        "module": "sales",
+        "permission": "customer_cheques"
+      },
+      {
+        "key": "/main/customer-refunds",
+        "label": "navCustomerRefunds",
+        "module": "sales",
+        "permission": "customer_refunds"
+      },
+      {
+        "key": "/main/price-lists",
+        "label": "navPriceLists",
+        "module": "sales",
+        "permission": "price_lists"
+      },
+      {
+        "key": "/main/customer-groups",
+        "label": "navCustomerGroups",
+        "module": "sales",
+        "permission": "customer_groups"
+      },
+      {
+        "key": "/main/customers",
+        "label": "navCustomers",
+        "module": "sales",
+        "permission": "customers"
+      },
+      {
+        "key": "/main/customer-ledger",
+        "label": "navCustomerLedger",
+        "module": "sales",
+        "permission": "customers"
+      }
+    ]
   },
   {
-    key: "accounting",
-    label: "navAccounting",
-    children: [
-      { key: "/main/accounting/accounts", label: "navChartOfAccounts", module: "accounting", permission: "accounts" },
-      { key: "/main/accounting/journal-entries", label: "navJournalEntries", module: "accounting", permission: "journal_entries" },
-      { key: "/main/accounting/trial-balance", label: "navTrialBalance", module: "accounting", permission: "accounting_reports" },
-      { key: "/main/accounting/account-ledger", label: "navAccountLedger", module: "accounting", permission: "accounting_reports" },
-    ],
+    "key": "purchasing",
+    "label": "navPurchasing",
+    "children": [
+      {
+        "key": "/main/supplier-groups",
+        "label": "navSupplierGroups",
+        "module": "purchasing",
+        "permission": "supplier_groups"
+      },
+      {
+        "key": "/main/suppliers",
+        "label": "navSuppliers",
+        "module": "purchasing",
+        "permission": "suppliers"
+      },
+      {
+        "key": "/main/supplier-ledger",
+        "label": "navSupplierLedger",
+        "module": "purchasing",
+        "permission": "suppliers"
+      },
+      {
+        "key": "/main/purchase-invoices",
+        "label": "navPurchaseInvoices",
+        "module": "purchasing",
+        "permission": "purchase_invoices"
+      },
+      {
+        "key": "/main/landed-costs",
+        "label": "navLandedCosts",
+        "module": "purchasing",
+        "permission": "landed_costs"
+      },
+      {
+        "key": "/main/purchase-debit-notes",
+        "label": "navPurchaseDebitNotes",
+        "module": "purchasing",
+        "permission": "purchase_debit_notes"
+      },
+      {
+        "key": "/main/supplier-payments",
+        "label": "navSupplierPayments",
+        "module": "purchasing",
+        "permission": "supplier_payments"
+      },
+      {
+        "key": "/main/supplier-refunds",
+        "label": "navSupplierRefunds",
+        "module": "purchasing",
+        "permission": "supplier_refunds"
+      }
+    ]
   },
   {
-    key: "administration",
-    label: "navAdministration",
-    children: [
-      { key: "/main/branches", label: "navBranches", module: "core", permission: "branches" },
-      { key: "/main/users", label: "navUsers", module: "core", permission: "users" },
-      { key: "/main/roles", label: "navRoles", module: "core", permission: "roles" },
-      { key: "/main/permissions", label: "navPermissions", module: "core", permission: "permissions" },
-      { key: "/main/audit-log", label: "navAuditLog", module: "core", permission: "audits" },
-    ],
+    "key": "accounting",
+    "label": "navAccounting",
+    "children": [
+      {
+        "key": "/main/accounting/accounts",
+        "label": "navChartOfAccounts",
+        "module": "accounting",
+        "permission": "accounts"
+      },
+      {
+        "key": "/main/accounting/journal-entries",
+        "label": "navJournalEntries",
+        "module": "accounting",
+        "permission": "journal_entries"
+      },
+      {
+        "key": "/main/accounting/trial-balance",
+        "label": "navTrialBalance",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/income-statement",
+        "label": "navIncomeStatement",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/balance-sheet",
+        "label": "navBalanceSheet",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/vat-report",
+        "label": "navVatReport",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/currency-revaluation",
+        "label": "navCurrencyRevaluation",
+        "module": "accounting",
+        "permission": "currency_revaluations"
+      },
+      {
+        "key": "/main/accounting/fixed-assets",
+        "label": "navFixedAssets",
+        "module": "accounting",
+        "permission": "fixed_assets"
+      },
+      {
+        "key": "/main/accounting/depreciation",
+        "label": "navDepreciationRun",
+        "module": "accounting",
+        "permission": "depreciation_runs"
+      },
+      {
+        "key": "/main/accounting/fixed-asset-register",
+        "label": "navFixedAssetRegister",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/depreciation-schedule",
+        "label": "navDepreciationSchedule",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/depreciation-by-period",
+        "label": "navDepreciationByPeriod",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/fiscal-years",
+        "label": "navFiscalYears",
+        "module": "accounting",
+        "permission": "accounting_periods"
+      },
+      {
+        "key": "/main/cash-bank-accounts",
+        "label": "navCashBankAccounts",
+        "module": "accounting",
+        "permission": "cash_bank_accounts"
+      },
+      {
+        "key": "/main/treasury-transfers",
+        "label": "navTreasuryTransfers",
+        "module": "accounting",
+        "permission": "treasury_transfers"
+      },
+      {
+        "key": "/main/expense-vouchers",
+        "label": "navExpenseVouchers",
+        "module": "accounting",
+        "permission": "expense_vouchers"
+      },
+      {
+        "key": "/main/accounting/recurring-entries",
+        "label": "navRecurringEntries",
+        "module": "accounting",
+        "permission": "recurring_entries"
+      },
+      {
+        "key": "/main/accounting/deferral-schedules",
+        "label": "navDeferralSchedules",
+        "module": "accounting",
+        "permission": "deferral_schedules"
+      },
+      {
+        "key": "/main/accounting/deferral-balances",
+        "label": "navDeferralBalances",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/account-ledger",
+        "label": "navAccountLedger",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/general-ledger",
+        "label": "navGeneralLedger",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      },
+      {
+        "key": "/main/accounting/cash-flow",
+        "label": "navCashFlow",
+        "module": "accounting",
+        "permission": "accounting_reports"
+      }
+    ]
   },
   {
-    key: "settings",
-    label: "navSettings",
-    placement: "footer",
-    matchPath: "/main/settings",
-    children: [
-      { key: "/main/settings/company-profile", label: "navCompanyProfile", group: "settingsCompanyGroup", module: "core", permission: "company_profile" },
-      { key: "/main/settings/company-settings", label: "navCompanySettings", group: "settingsCompanyGroup", module: "core", permission: "company_settings" },
-      { key: "/main/settings/account-mappings", label: "navAccountMappings", group: "settingsAccountingGroup", module: "accounting", permission: "account_mappings" },
-      { key: "/main/settings/preferences", label: "navPreferences", group: "settingsUserGroup", module: "core" },
-    ],
+    "key": "reports",
+    "label": "navReports",
+    "children": [
+      {
+        "key": "/main/reports/sales-by-period",
+        "label": "navSalesByPeriod",
+        "module": "sales",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/purchases-by-period",
+        "label": "navPurchasesByPeriod",
+        "module": "purchasing",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/stock-valuation",
+        "label": "navStockValuation",
+        "module": "inventory",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/customer-aging",
+        "label": "navCustomerAging",
+        "module": "sales",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/supplier-aging",
+        "label": "navSupplierAging",
+        "module": "purchasing",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/item-movement",
+        "label": "navItemMovement",
+        "module": "inventory",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/dead-stock",
+        "label": "navDeadStock",
+        "module": "inventory",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/lot-expiry",
+        "label": "navLotExpiry",
+        "module": "inventory",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/sales-profitability",
+        "label": "navSalesProfitability",
+        "module": "sales",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/sales-analysis",
+        "label": "navSalesAnalysis",
+        "module": "sales",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/price-history",
+        "label": "navPriceHistory",
+        "module": "inventory",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/price-changes",
+        "label": "navPriceChangesReport",
+        "module": "inventory",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/below-cost",
+        "label": "navBelowCost",
+        "module": "inventory",
+        "permission": "business_reports"
+      },
+      {
+        "key": "/main/reports/purchase-price-history",
+        "label": "navPurchasePriceHistory",
+        "module": "purchasing",
+        "permission": "business_reports"
+      }
+    ]
   },
+  {
+    "key": "administration",
+    "label": "navAdministration",
+    "children": [
+      {
+        "key": "/main/branches",
+        "label": "navBranches",
+        "module": "core",
+        "permission": "branches"
+      },
+      {
+        "key": "/main/users",
+        "label": "navUsers",
+        "module": "core",
+        "permission": "users"
+      },
+      {
+        "key": "/main/roles",
+        "label": "navRoles",
+        "module": "core",
+        "permission": "roles"
+      },
+      {
+        "key": "/main/permissions",
+        "label": "navPermissions",
+        "module": "core",
+        "permission": "permissions"
+      },
+      {
+        "key": "/main/audit-log",
+        "label": "navAuditLog",
+        "module": "core",
+        "permission": "audits"
+      }
+    ]
+  },
+  {
+    "key": "settings",
+    "label": "navSettings",
+    "placement": "footer",
+    "matchPath": "/main/settings",
+    "children": [
+      {
+        "key": "/main/settings/company-profile",
+        "label": "navCompanyProfile",
+        "group": "settingsCompanyGroup",
+        "module": "core",
+        "permission": "company_profile"
+      },
+      {
+        "key": "/main/settings/company-settings",
+        "label": "navCompanySettings",
+        "group": "settingsCompanyGroup",
+        "module": "core",
+        "permission": "company_settings"
+      },
+      {
+        "key": "/main/settings/document-numbering",
+        "label": "navDocumentNumbering",
+        "group": "settingsCompanyGroup",
+        "module": "core",
+        "permission": "document_numbering"
+      },
+      {
+        "key": "/main/settings/print-settings",
+        "label": "navPrintSettings",
+        "group": "settingsCompanyGroup",
+        "module": "core",
+        "permission": "print_settings"
+      },
+      {
+        "key": "/main/settings/account-mappings",
+        "label": "navAccountMappings",
+        "group": "settingsAccountingGroup",
+        "module": "accounting",
+        "permission": "account_mappings"
+      },
+      {
+        "key": "/main/settings/asset-categories",
+        "label": "navAssetCategories",
+        "group": "settingsAccountingGroup",
+        "module": "accounting",
+        "permission": "fixed_asset_categories"
+      },
+      {
+        "key": "/main/settings/preferences",
+        "label": "navPreferences",
+        "group": "settingsUserGroup",
+        "module": "core"
+      }
+    ]
+  }
 ];
 
 /** Mirrors `toNavLeaf` / `buildMainNavItems` in shell/sidebar/main-nav.js, minus icons. */

@@ -138,7 +138,7 @@ export function mapPurchaseInvoiceItemOption(item) {
   if (item.allow_purchase === false || item.is_active === false) return null;
   const code = typeof item.item_code === "string" ? item.item_code.trim() : "";
   const name = typeof item.name === "string" ? item.name.trim() : "";
-  const label = code || name || String(item.id);
+  const label = `${code || name || String(item.id)}${item.is_fixed_asset ? " · FA" : ""}`;
   const vatFromGroup =
     item.vat_group && typeof item.vat_group === "object" && item.vat_group.percentage != null
       ? Number(item.vat_group.percentage)

@@ -28,6 +28,7 @@ import {
   JOURNAL_STATUS_VALUES,
   SOURCE_DOCUMENT_FEATURE,
   journalStatusTagColor,
+  sourceDocumentRecordId,
 } from "../accountingUtils";
 import { ACCOUNTS_QUERY_KEY, JOURNAL_ENTRIES_QUERY_KEY } from "../queries/accountingQueryKeys";
 
@@ -127,8 +128,9 @@ function JournalEntriesTable() {
   const openSource = useCallback(
     (record) => {
       const featureId = SOURCE_DOCUMENT_FEATURE[String(record.source_type)];
-      if (!featureId || !record.source_id) return;
-      openDrawer({ featureId, id: String(record.source_id), mode: "view" });
+      const id = sourceDocumentRecordId(record.source_type, record.source_id);
+      if (!featureId || !id) return;
+      openDrawer({ featureId, id, mode: "view" });
     },
     [openDrawer],
   );

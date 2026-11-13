@@ -16,7 +16,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { downloadAccountLedger, fetchAccountLedger, fetchAccounts } from "../api/accounting.api";
-import { SOURCE_DOCUMENT_FEATURE, accountDisplayName, accountLabel } from "../accountingUtils";
+import { SOURCE_DOCUMENT_FEATURE, accountDisplayName, accountLabel, sourceDocumentRecordId } from "../accountingUtils";
 import { ACCOUNTING_REPORTS_QUERY_KEY, ACCOUNTS_QUERY_KEY } from "../queries/accountingQueryKeys";
 import { useReportBranch } from "../useReportBranch";
 
@@ -139,7 +139,7 @@ function AccountLedgerTable() {
                 <Typography.Link
                   onClick={(e) => {
                     e.stopPropagation();
-                    openDrawer({ featureId, id: String(row.source_id), mode: "view" });
+                    openDrawer({ featureId, id: sourceDocumentRecordId(value, row.source_id), mode: "view" });
                   }}
                 >
                   {row.source_number}
@@ -202,22 +202,24 @@ function AccountLedgerTable() {
                 value={accountId}
                 onChange={(value) => setParams({ account: value ? String(value) : undefined })}
               />
-              <Select
-                className="min-w-40"
-                allowClear={lockedBranchId == null}
-                disabled={lockedBranchId != null}
-                placeholder={t("branchAll")}
-                value={selectedBranchId}
-                onChange={(value) => setParams({ branch: value ? String(value) : undefined })}
-                options={accessibleBranches
-                  .map((branch) => {
-                    const id = Number(branch.id);
-                    if (!Number.isFinite(id)) return null;
-                    return { value: id, label: String(branch.name ?? id) };
-                  })
-                  .filter(Boolean)}
-                loading={branchesPending}
-              />
+              {accessibleBranches.length > 1 ? (
+                <Select
+                  className="min-w-40"
+                  allowClear={lockedBranchId == null}
+                  disabled={lockedBranchId != null}
+                  placeholder={t("branchAll")}
+                  value={selectedBranchId}
+                  onChange={(value) => setParams({ branch: value ? String(value) : undefined })}
+                  options={accessibleBranches
+                    .map((branch) => {
+                      const id = Number(branch.id);
+                      if (!Number.isFinite(id)) return null;
+                      return { value: id, label: String(branch.name ?? id) };
+                    })
+                    .filter(Boolean)}
+                  loading={branchesPending}
+                />
+              ) : null}
               <DatePicker.RangePicker
                 value={dateRange}
                 allowEmpty={[true, true]}

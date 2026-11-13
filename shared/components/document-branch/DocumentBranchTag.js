@@ -1,9 +1,13 @@
 "use client";
 
+import { useForwardArrow } from "@/lib/direction-arrow";
 import { ApartmentOutlined } from "@ant-design/icons";
 import { Tag, Tooltip } from "antd";
 import { useTranslations } from "next-intl";
-import { documentBranchName, useHasMultipleBranches } from "./useHasMultipleBranches";
+import {
+  documentBranchName,
+  useHasMultipleBranches,
+} from "./useHasMultipleBranches";
 
 /**
  * Read-only issuing branch of a saved document. The branch follows the warehouse (or the
@@ -13,6 +17,7 @@ import { documentBranchName, useHasMultipleBranches } from "./useHasMultipleBran
  */
 export default function DocumentBranchTag({ record = null }) {
   const t = useTranslations("DocumentBranch");
+  const arrow = useForwardArrow();
   const multiple = useHasMultipleBranches();
   if (!multiple || !record || typeof record !== "object") return null;
 
@@ -21,9 +26,12 @@ export default function DocumentBranchTag({ record = null }) {
   const single = documentBranchName(record.branch);
 
   if (from || to) {
-    const label = from && to && from !== to ? `${from} \u2192 ${to}` : from || to;
+    const label =
+      from && to && from !== to ? `${from} ${arrow} ${to}` : from || to;
     return (
-      <Tooltip title={`${t("fromBranch")}: ${from || "\u2014"} \u00b7 ${t("toBranch")}: ${to || "\u2014"}`}>
+      <Tooltip
+        title={`${t("fromBranch")}: ${from || "\u2014"} \u00b7 ${t("toBranch")}: ${to || "\u2014"}`}
+      >
         <Tag className="m-0" icon={<ApartmentOutlined />}>
           {label}
         </Tag>

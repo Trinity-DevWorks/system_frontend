@@ -14,6 +14,7 @@
  * - drawer/panels/recipe/ItemRecipePanel.js
  */
 
+import { RESTAURANT_FEATURES } from "@/lib/business-profile";
 import { normalizeHexColor } from "@/lib/drawer/normalizeHexColor";
 import { ITEM_TYPE_FLAG_DEFAULTS } from "./itemDrawerConstants";
 
@@ -125,7 +126,8 @@ export function itemFormValuesToPayload(values) {
     description: values.description ? String(values.description).trim() : null,
     ticket_name: values.allow_sale === true && values.ticket_name ? String(values.ticket_name).trim() : null,
     kitchen_name: values.allow_sale === true && values.kitchen_name ? String(values.kitchen_name).trim() : null,
-    send_to_kitchen: values.allow_sale === true && values.send_to_kitchen === true,
+    // Retail: kitchen fields are hidden, so never send an item to a kitchen.
+    send_to_kitchen: RESTAURANT_FEATURES && values.allow_sale === true && values.send_to_kitchen === true,
     qr_enabled: values.allow_sale === true && values.qr_enabled === true,
     qr_description:
       values.allow_sale === true && values.qr_enabled === true && values.qr_description
@@ -142,7 +144,11 @@ export function itemFormValuesToPayload(values) {
     allow_sale: values.allow_sale === true,
     allow_purchase: values.allow_purchase === true,
     allow_return: values.allow_return !== false,
-    is_landed_cost: values.track_inventory !== true && values.is_landed_cost === true,
+    is_landed_cost: values.track_inventory !== true && values.is_fixed_asset !== true && values.is_landed_cost === true,
+    is_fixed_asset: values.track_inventory !== true && values.is_landed_cost !== true && values.is_fixed_asset === true,
+    fixed_asset_category_id: values.track_inventory !== true && values.is_fixed_asset === true && values.fixed_asset_category_id != null
+      ? Number(values.fixed_asset_category_id)
+      : null,
     weight: optionalMeasure(values.weight),
     volume: optionalMeasure(values.volume),
     is_active: values.is_active !== false,
@@ -185,6 +191,8 @@ export function toItemCacheRow(row) {
     allow_purchase: row.allow_purchase,
     allow_return: row.allow_return,
     is_landed_cost: row.is_landed_cost === true,
+    is_fixed_asset: row.is_fixed_asset === true,
+    fixed_asset_category_id: row.fixed_asset_category_id ?? null,
     weight: row.weight ?? null,
     volume: row.volume ?? null,
     is_active: row.is_active,
@@ -224,6 +232,8 @@ export function mapItemRecordToFormValues(r) {
     allow_purchase: Boolean(r.allow_purchase),
     allow_return: r.allow_return !== false,
     is_landed_cost: r.is_landed_cost === true,
+    is_fixed_asset: r.is_fixed_asset === true,
+    fixed_asset_category_id: r.fixed_asset_category_id ?? undefined,
     weight: r.weight != null && r.weight !== "" ? Number(r.weight) : undefined,
     volume: r.volume != null && r.volume !== "" ? Number(r.volume) : undefined,
     is_active: r.is_active !== false,

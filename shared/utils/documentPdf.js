@@ -17,6 +17,7 @@ export const DOCUMENT_PDF_PRINTABLE_STATUSES = /** @type {const} */ ({
   goods_receipt: ["posted", "reversed"],
   stock_transfer: ["in_transit", "partially_received", "received"],
   journal_entry: ["posted", "reversed"],
+  fixed_asset: ["draft", "active", "fully_depreciated", "disposed"],
 });
 
 /**

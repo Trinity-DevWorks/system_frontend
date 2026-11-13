@@ -218,16 +218,18 @@ function IncomeStatementTable() {
           allowEmpty={[true, true]}
           format={dayjsDatePattern()}
         />
-        <Select
-          className="min-w-40"
-          allowClear={lockedBranchId == null}
-          disabled={lockedBranchId != null}
-          placeholder={t("branchAll")}
-          value={selectedBranchId}
-          onChange={(value) => setBranchId(value ?? undefined)}
-          options={branchOptions}
-          loading={branchesPending}
-        />
+        {accessibleBranches.length > 1 ? (
+          <Select
+            className="min-w-40"
+            allowClear={lockedBranchId == null}
+            disabled={lockedBranchId != null}
+            placeholder={t("branchAll")}
+            value={selectedBranchId}
+            onChange={(value) => setBranchId(value ?? undefined)}
+            options={branchOptions}
+            loading={branchesPending}
+          />
+        ) : null}
         <Select
           className="w-40"
           value={level ?? 0}
