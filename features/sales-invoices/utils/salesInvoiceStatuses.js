@@ -57,6 +57,27 @@ export function getSalesInvoiceSettlementLabel(t, settlement) {
 }
 
 /**
+ * One tag for the list and the drawer. A posted invoice shows its settlement
+ * (unpaid, partial, or paid). Draft and reversed keep their document status.
+ *
+ * @param {(key: string) => string} t
+ * @param {string | null | undefined} status
+ * @param {unknown} [paidTotal]
+ * @param {unknown} [netToPay]
+ * @returns {{ label: string; color: string }}
+ */
+export function salesInvoiceStatusTag(t, status, paidTotal, netToPay) {
+  const settlement = salesInvoiceSettlement(status, paidTotal, netToPay);
+  if (settlement === "paid") return { label: t("settlementPaid"), color: "success" };
+  if (settlement === "partial") return { label: t("settlementPartial"), color: "warning" };
+  if (settlement === "unpaid") return { label: t("settlementUnpaid"), color: "default" };
+  return {
+    label: getSalesInvoiceStatusLabel(t, status),
+    color: salesInvoiceStatusTagColor(status),
+  };
+}
+
+/**
  * @param {string | null | undefined} status
  */
 export function isSalesInvoicePosted(status) {

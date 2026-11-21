@@ -2,7 +2,7 @@
 
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
-import { formatTenantMoney } from "@/lib/tenant-format";
+import { formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import { Form, Input } from "antd";
 import { TamperBesideLabel } from "@/features/sales-invoices/components/InvoiceTamper/InvoiceTamperMark";
 
@@ -19,10 +19,18 @@ import { TamperBesideLabel } from "@/features/sales-invoices/components/InvoiceT
  *     paid_total?: string | number;
  *     net_to_pay?: string | number;
  *   } | null;
+ *   currencySymbol?: string;
  * }} props
  */
-export default function PurchaseInvoiceTotals({ t, readOnly, sealLocked = false, totals = null }) {
-  const money = (value) => (value != null ? formatTenantMoney(value) : "\u2014");
+export default function PurchaseInvoiceTotals({
+  t,
+  readOnly,
+  sealLocked = false,
+  totals = null,
+  currencySymbol = "",
+}) {
+  const money = (value) =>
+    value != null ? formatTenantMoneyWithSymbol(value, currencySymbol) || "\u2014" : "\u2014";
 
   return (
     <section className="sales-invoice-totals flex w-full min-w-0 flex-row">
@@ -36,7 +44,12 @@ export default function PurchaseInvoiceTotals({ t, readOnly, sealLocked = false,
             </TamperBesideLabel>
           }
         >
-          <Input.TextArea rows={1} maxLength={2000} showCount={!readOnly && !sealLocked} disabled={readOnly || sealLocked} />
+          <Input.TextArea
+            rows={1}
+            maxLength={2000}
+            showCount={!readOnly && !sealLocked}
+            disabled={readOnly || sealLocked}
+          />
         </Form.Item>
       </div>
 
@@ -72,7 +85,11 @@ export default function PurchaseInvoiceTotals({ t, readOnly, sealLocked = false,
               layout="horizontal"
               colon={false}
             >
-              <TenantNumberInput kind="money" disabled={readOnly || sealLocked} />
+              <TenantNumberInput
+                kind="money"
+                disabled={readOnly || sealLocked}
+                addonAfter={currencySymbol || undefined}
+              />
             </Form.Item>
           </div>
           <div className="resource-drawer-pricing-card">

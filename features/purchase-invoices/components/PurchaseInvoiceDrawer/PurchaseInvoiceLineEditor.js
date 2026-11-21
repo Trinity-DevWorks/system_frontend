@@ -4,7 +4,7 @@
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { isPersistedEntityId } from "@/lib/entityId";
-import { formatTenantMoney, formatTenantNumber } from "@/lib/tenant-format";
+import { formatTenantMoneyWithSymbol, formatTenantNumber } from "@/lib/tenant-format";
 import { ClearOutlined, CopyOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import { App, Checkbox, Input, Select, Tag, Tooltip } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
@@ -580,7 +580,7 @@ export default function PurchaseInvoiceLineEditor({
       { key: "unit_price", label: t("lineUnitPrice"), width: "120px" },
       { key: "discount_percent", label: t("lineDiscountPercent"), width: "90px" },
       { key: "tax_rate", label: t("lineTaxRate"), width: "40px" },
-      { key: "line_total", label: t("lineTotal"), width: "110px" },
+      { key: "line_total", label: t("lineTotal"), width: "140px" },
     ],
     [allLinesSelected, lines.length, readOnly, someLinesSelected, t, toggleAllLinesSelected],
   );
@@ -897,13 +897,14 @@ export default function PurchaseInvoiceLineEditor({
                   {row.price_mismatch ? (
                     <Tooltip
                       title={t(poLinked ? "priceMismatchWarningPo" : "priceMismatchWarning", {
-                        grn: formatTenantMoney(
+                        grn: formatTenantMoneyWithSymbol(
                           linePriceFromPrimary(
                             poLinked ? row.po_unit_price : row.grn_unit_cost,
                             positiveRate(row.price_rate) ?? pricing.rate ?? 1,
                             priceDecimals,
                             "document",
                           ).unit_price,
+                          pricing.symbol,
                         ) || "\u2014",
                       })}
                     >
@@ -982,11 +983,11 @@ export default function PurchaseInvoiceLineEditor({
                 })
               : null;
             const lineTotal = readOnly ? row.line_total : live?.line_total;
+            const lineTotalText =
+              lineTotal != null ? formatTenantMoneyWithSymbol(lineTotal, pricing.symbol) || "\u2014" : "\u2014";
             return (
               <TamperFieldWarning paths={[`lines.${index}.line_total`, `lines.${index}.line_subtotal`, `lines.${index}.tax_amount`]}>
-              <span className="item-lines-readonly-uom">
-                {lineTotal != null ? formatTenantMoney(lineTotal) : "\u2014"}
-              </span>
+              <span className="item-lines-readonly-uom">{lineTotalText}</span>
               </TamperFieldWarning>
             );
           }

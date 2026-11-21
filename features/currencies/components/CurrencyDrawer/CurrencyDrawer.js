@@ -17,6 +17,7 @@ import {
   CURRENCY_CREATE_SAVE_INTENT_KEY,
   isCreateDirtyVsDefaults,
   isEditDirtyVsLoaded,
+  mapCurrencyRecordToFormValues,
   requiredFieldsValid,
   toCurrencyCacheRow,
 } from "../../utils/currencyDrawerUtils";
@@ -61,31 +62,7 @@ export default function CurrencyDrawer({ open, mode, currencyId, tableSeedRecord
   );
 
   const mapSeedToCacheRow = useCallback((seed) => toCurrencyCacheRow(seed), []);
-  const mapRecordToFormValues = useCallback(
-    (r) => ({
-      name: r.name,
-      code: r.code,
-      iso_code: r.iso_code,
-      symbol: r.symbol ?? undefined,
-      is_active: r.is_active !== false,
-      is_primary: Boolean(r.is_primary),
-      smallest_unit: r.smallest_unit != null && r.smallest_unit !== "" ? Number(r.smallest_unit) : undefined,
-      round_limit: r.round_limit != null && r.round_limit !== "" ? Number(r.round_limit) : undefined,
-      acceptable_amount_overdue:
-        r.acceptable_amount_overdue != null && r.acceptable_amount_overdue !== ""
-          ? Number(r.acceptable_amount_overdue)
-          : undefined,
-      allowed_difference_in_receipt:
-        r.allowed_difference_in_receipt != null && r.allowed_difference_in_receipt !== ""
-          ? Number(r.allowed_difference_in_receipt)
-          : undefined,
-      allowed_difference_in_payment:
-        r.allowed_difference_in_payment != null && r.allowed_difference_in_payment !== ""
-          ? Number(r.allowed_difference_in_payment)
-          : undefined,
-    }),
-    [],
-  );
+  const mapRecordToFormValues = useCallback((r) => mapCurrencyRecordToFormValues(r), []);
 
   const { detailEnabled, tableSeedMatches, fetchRemoteDetail, detailQuery } = useResourceDrawerDetailSync({
     open,

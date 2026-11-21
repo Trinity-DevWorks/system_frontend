@@ -27,6 +27,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   const vCur = v.currency_id == null || v.currency_id === "" ? null : Number(v.currency_id);
   const dCur = defaults.currency_id == null || defaults.currency_id === "" ? null : Number(defaults.currency_id);
   if (vCur !== dCur) return true;
+  if ((v.account_id ?? null) !== (defaults.account_id ?? null)) return true;
   if (Boolean(v.requires_reference) !== Boolean(defaults.requires_reference)) return true;
   if (Boolean(v.supports_change) !== Boolean(defaults.supports_change)) return true;
   if (Boolean(v.is_default) !== Boolean(defaults.is_default)) return true;
@@ -47,6 +48,9 @@ export function isEditDirtyVsLoaded(form, row) {
   const vCur = v.currency_id == null || v.currency_id === "" ? null : Number(v.currency_id);
   const rCur = row.currency_id == null ? null : Number(row.currency_id);
   if (vCur !== rCur) return true;
+  const vAccount = v.account_id == null || v.account_id === "" ? null : Number(v.account_id);
+  const rAccount = row.account_id == null ? null : Number(row.account_id);
+  if (vAccount !== rAccount) return true;
   if (Boolean(v.requires_reference) !== Boolean(row.requires_reference)) return true;
   if (Boolean(v.supports_change) !== Boolean(row.supports_change)) return true;
   if (Boolean(v.is_default) !== Boolean(row.is_default)) return true;
@@ -73,6 +77,9 @@ export function toPaymentMethodCacheRow(row) {
     currency_id: row.currency_id,
     currency_code: row.currency_code,
     currency_name: row.currency_name,
+    account_id: row.account_id,
+    account_code: row.account_code,
+    account_name: row.account_name,
     requires_reference: Boolean(row.requires_reference),
     supports_change: Boolean(row.supports_change),
     is_default: Boolean(row.is_default),
@@ -98,11 +105,13 @@ export function sortPaymentMethodsByName(list) {
 export function paymentMethodFormValuesToPayload(values) {
   const notes = String(values.notes ?? "").trim();
   const cur = values.currency_id;
+  const account = values.account_id;
   return {
     code: String(values.code ?? "").trim(),
     name: String(values.name ?? "").trim(),
     type: String(values.type ?? "cash"),
     currency_id: cur == null || cur === "" ? null : Number(cur),
+    account_id: account == null || account === "" ? null : Number(account),
     requires_reference: Boolean(values.requires_reference),
     supports_change: Boolean(values.supports_change),
     is_default: Boolean(values.is_default),

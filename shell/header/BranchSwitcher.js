@@ -3,7 +3,7 @@
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
-import { BRANCH_CONTEXT_QUERY_KEY, setActiveBranchId } from "@/lib/active-branch";
+import { BRANCH_CONTEXT_QUERY_KEY, notifyActiveBranchId, setActiveBranchId } from "@/lib/active-branch";
 import { applyAuthMePermissions } from "@/lib/auth-me";
 import { fetchBranchContext, switchBranch } from "@/lib/api/branchContext";
 import { resetTenantQueryCacheOnBranchSwitch } from "@/lib/reset-tenant-cache-on-branch-switch";
@@ -75,11 +75,14 @@ export default function BranchSwitcher({ companyName = "" }) {
   const switchMutation = useMutation({
     mutationFn: (branchId) => switchBranch(branchId),
     onSuccess: (data, branchId) => {
-      setActiveBranchId(branchId);
+      // Quiet write first: a subscriber re-render in the middle of this handler
+      // would start an overview fetch that the cache reset below then cancels.
+      setActiveBranchId(branchId, { notify: false });
       resetTenantQueryCacheOnBranchSwitch(queryClient, {
         branchContext: data,
         permissions: data?.permissions,
       });
+      notifyActiveBranchId();
       message.success(t("branchSwitchSuccess"));
     },
     onError: (err) => {

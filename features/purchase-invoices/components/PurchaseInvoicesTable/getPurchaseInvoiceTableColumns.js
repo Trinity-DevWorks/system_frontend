@@ -11,7 +11,7 @@ import {
 } from "../../utils/purchaseInvoiceStatuses";
 import InvoiceChainStatusTag from "@/features/sales-invoices/components/InvoiceChainStatusTag";
 import { shareProofBlockReason } from "@/features/sales-invoices/utils/invoiceProofStatuses";
-import { formatTenantDate, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
+import { formatTenantDate, formatTenantDateTime, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import {
   CheckCircleOutlined,
   CopyOutlined,
@@ -24,6 +24,7 @@ import {
   RollbackOutlined,
   SendOutlined,
   ShareAltOutlined,
+  DollarOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { Button, Dropdown, Tag, Typography } from "antd";
@@ -44,6 +45,7 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onApproveProof?: (record: unknown) => void;
  *   onSupplierLink?: (record: unknown) => void;
  *   onShareProof?: (record: unknown) => void;
+ *   onCreatePayment?: (record: unknown) => void;
  * }} [actions]
  */
 export function getPurchaseInvoiceTableColumns(t, actions = {}) {
@@ -59,6 +61,7 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
     onApproveProof,
     onSupplierLink,
     onShareProof,
+    onCreatePayment,
   } = actions;
 
   /** @param {Record<string, any>} record */
@@ -112,6 +115,15 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
         title: shareBlockedReason ?? undefined,
         label: t("actionShareProof"),
         onClick: () => onShareProof(record),
+      });
+    }
+
+    if (onCreatePayment && record?.status === "posted" && Number(record?.net_to_pay) > 0) {
+      items.push({
+        key: "create-payment",
+        icon: <DollarOutlined />,
+        label: t("actionCreatePayment"),
+        onClick: () => onCreatePayment(record),
       });
     }
     return items.length > 0 ? [{ type: "divider" }, ...items] : [];
@@ -205,7 +217,7 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       width: 130,
       align: "right",
       sorter: (a, b) => Number(a.grand_total ?? 0) - Number(b.grand_total ?? 0),
-      render: (value) => formatTenantMoney(value) || "\u2014",
+      render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
     },
     {
       title: t("colPaidTotal"),
@@ -214,7 +226,7 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       width: 130,
       align: "right",
       sorter: (a, b) => Number(a.paid_total ?? 0) - Number(b.paid_total ?? 0),
-      render: (value) => formatTenantMoney(value) || "\u2014",
+      render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
     },
     {
       title: t("colNetToPay"),
@@ -223,7 +235,7 @@ export function getPurchaseInvoiceTableColumns(t, actions = {}) {
       width: 130,
       align: "right",
       sorter: (a, b) => Number(a.net_to_pay ?? 0) - Number(b.net_to_pay ?? 0),
-      render: (value) => formatTenantMoney(value) || "\u2014",
+      render: (value, record) => formatTenantMoneyWithSymbol(value, record?.currency?.symbol) || "\u2014",
     },
     {
       title: t("colCreatedAt"),

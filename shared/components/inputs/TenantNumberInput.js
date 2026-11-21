@@ -7,7 +7,7 @@ import {
   tenantDecimalStep,
 } from "@/lib/tenant-format";
 import { EXCHANGE_RATE_DECIMALS } from "@/lib/currency/documentExchangeRate";
-import { InputNumber } from "antd";
+import { Input, InputNumber, Space } from "antd";
 
 /**
  * @typedef {"money" | "quantity" | "percent" | "rate" | "integer"} TenantNumberKind
@@ -59,19 +59,35 @@ export default function TenantNumberInput({
   precision: _precision,
   formatter,
   parser,
+  addonAfter,
+  className,
   ...rest
 }) {
   const { settings } = useCompanySettings();
   const places = decimals ?? decimalsForKind(kind, settings);
   const trimRate = kind === "rate" && decimals == null;
-
-  return (
+  const input = (
     <InputNumber
       {...rest}
+      className={addonAfter ? "min-w-0 flex-1" : className}
       precision={trimRate ? undefined : places}
       step={step ?? (trimRate ? 0.0001 : tenantDecimalStep(places))}
       formatter={formatter ?? (trimRate ? formatRateInput : formatTenantGroupedInput)}
       parser={parser ?? parseTenantGroupedInput}
     />
+  );
+  if (addonAfter == null || addonAfter === "") return input;
+
+  return (
+    <Space.Compact block className={className}>
+      {input}
+      <Input
+        readOnly
+        tabIndex={-1}
+        disabled={Boolean(rest.disabled)}
+        value={String(addonAfter)}
+        className="tenant-number-symbol"
+      />
+    </Space.Compact>
   );
 }

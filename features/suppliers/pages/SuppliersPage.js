@@ -3,9 +3,10 @@
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { useResourceAccess } from "@/lib/permissions";
+import { useRouter } from "@/i18n/navigation";
 import { App, Spin } from "antd";
 import { useTranslations } from "next-intl";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { getSupplierTableColumns } from "../components/SupplierTable/getSupplierTableColumns";
 import { useSuppliersDelete } from "../queries/useSuppliersDelete";
 import { useSuppliersTableQuery } from "../queries/useSuppliersTableQuery";
@@ -16,6 +17,7 @@ function SuppliersTable() {
   const tDataTable = useTranslations("DataTable");
   const { message, notification, modal } = App.useApp();
   const access = useResourceAccess("suppliers");
+  const router = useRouter();
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   const { tableData, isPending, isFetching, refetch, pagination, onSearchChange } = useSuppliersTableQuery({
@@ -45,14 +47,24 @@ function SuppliersTable() {
     closeDrawer,
   });
 
+  const openLedger = useCallback(
+    (record) => {
+      const id = record?.id;
+      if (id == null || id === "") return;
+      router.push(`/main/supplier-ledger?supplier=${encodeURIComponent(String(id))}`);
+    },
+    [router],
+  );
+
   const columns = useMemo(
     () =>
       getSupplierTableColumns(t, {
         onView: access.canView ? openViewDrawer : undefined,
+        onLedger: access.canView ? openLedger : undefined,
         onEdit: access.canEdit ? openEditDrawer : undefined,
         onDelete: access.canDelete ? requestDeleteSupplier : undefined,
       }),
-    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openEditDrawer, requestDeleteSupplier],
+    [t, access.canView, access.canEdit, access.canDelete, openViewDrawer, openLedger, openEditDrawer, requestDeleteSupplier],
   );
 
   const rowSelection = {

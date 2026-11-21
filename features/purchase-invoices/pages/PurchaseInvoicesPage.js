@@ -12,6 +12,7 @@ import {
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { DRAWER_ID_PARAM, RESOURCE_DRAWER_CREATE_TOKEN } from "@/lib/drawer/drawerUrl";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { usePageDrawer } from "@/lib/drawer/usePageDrawer";
 import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
@@ -47,6 +48,7 @@ import {
   getPurchaseInvoiceStatusLabel,
   purchaseInvoiceCanReissue,
   purchaseInvoiceCanReverse,
+  purchaseInvoiceStatusTag,
 } from "../utils/purchaseInvoiceStatuses";
 
 function PurchaseInvoicesTable() {
@@ -59,6 +61,7 @@ function PurchaseInvoicesTable() {
   const drawerId = searchParams.get(DRAWER_ID_PARAM);
   const access = useResourceAccess("purchase_invoices");
   const invoiceProofsAccess = useResourceAccess("invoice_proofs");
+  const paymentAccess = useResourceAccess("supplier_payments");
   const { settings } = useCompanySettings();
   const showChainCheck = Boolean(settings.invoiceProofsEnabled) && invoiceProofsAccess.canView;
 
@@ -120,12 +123,26 @@ function PurchaseInvoicesTable() {
       rawTableData.map((row) => ({
         ...row,
         supplier_name: row?.supplier?.name ?? "",
-        status_label: getPurchaseInvoiceStatusLabel(t, row?.status),
+        status_label: purchaseInvoiceStatusTag(t, row?.status, row?.paid_total, row?.net_to_pay).label,
       })),
     [rawTableData, t],
   );
 
   const { openCreateDrawer, openEditDrawer, openViewDrawer } = usePageDrawer("purchaseInvoices");
+  const { openDrawer } = useGlobalDrawer();
+
+  const handleCreatePayment = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({
+        featureId: "supplierPayments",
+        mode: "create",
+        extras: { fromInvoiceId: id },
+      });
+    },
+    [openDrawer],
+  );
 
   const invalidateAfterStatusChange = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: PURCHASE_INVOICES_QUERY_KEY });
@@ -346,6 +363,7 @@ function PurchaseInvoicesTable() {
         onApproveProof: showChainCheck && invoiceProofsAccess.canEdit ? handleApproveProof : undefined,
         onSupplierLink: showChainCheck ? handleSupplierLink : undefined,
         onShareProof: showChainCheck ? handleShareProof : undefined,
+        onCreatePayment: paymentAccess.canAdd ? handleCreatePayment : undefined,
       }),
     [
       t,
@@ -366,6 +384,8 @@ function PurchaseInvoicesTable() {
       handleApproveProof,
       handleSupplierLink,
       handleShareProof,
+      paymentAccess.canAdd,
+      handleCreatePayment,
     ],
   );
 

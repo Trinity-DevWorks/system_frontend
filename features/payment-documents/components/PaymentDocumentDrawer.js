@@ -8,10 +8,12 @@ import { normalizeEntityId } from "@/lib/entityId";
 import { useResourceAccess } from "@/lib/permissions";
 import { useCompanySettings } from "@/lib/company-settings";
 import {
+  amountsForRoundedHeader,
   convertPriceBetweenRates,
   paymentAmountForInvoiceOpen,
   positiveRate,
   rateFromPrimary,
+  roundCashAmount,
 } from "@/lib/currency/documentExchangeRate";
 import { formatExchangeRate } from "@/shared/components/lines-grid/LinePriceInput";
 import { dayjsDatePattern, formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
@@ -91,6 +93,7 @@ function rowFromInvoice(invoice, invoiceIdField, amount) {
  *   documentId: string | null;
  *   onClose: () => void;
  *   onCreated?: (record: Record<string, unknown>) => void;
+ *   fromInvoiceId?: string | null;
  *   config: {
  *     resource: string;
  *     i18n: string;
@@ -111,6 +114,7 @@ function rowFromInvoice(invoice, invoiceIdField, amount) {
  *       post: (id: string) => Promise<Record<string, unknown>>;
  *       reverse: (id: string) => Promise<Record<string, unknown>>;
  *       openInvoices: (partyId: string, currencyId: number | string) => Promise<Array<Record<string, unknown>>>;
+ *       fetchInvoice: (id: string) => Promise<Record<string, unknown>>;
  *     };
  *     party: {
  *       queryKey: readonly unknown[];
@@ -121,7 +125,15 @@ function rowFromInvoice(invoice, invoiceIdField, amount) {
  *   };
  * }} props
  */
-export default function PaymentDocumentDrawer({ open, mode, documentId, onClose, onCreated, config }) {
+export default function PaymentDocumentDrawer({
+  open,
+  mode,
+  documentId,
+  onClose,
+  onCreated,
+  fromInvoiceId = null,
+  config,
+}) {
   const t = useTranslations(config.i18n);
   const tApiErrors = useTranslations("ApiErrors");
   const { message, modal, notification } = App.useApp();
@@ -130,15 +142,18 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const [rows, setRows] = useState(/** @type {import("./PaymentAllocationGrid").AllocationRow[]} */ ([]));
+  const [partySeed, setPartySeed] = useState(/** @type {{ value: unknown; label: string } | null} */ (null));
   const baselineRef = useRef("");
   const rowsRef = useRef(rows);
   const sessionRef = useRef("");
   const applyingRef = useRef(false);
   const amountLockRef = useRef(false);
   const amountEditedRef = useRef(false);
+  const defaultMethodAppliedRef = useRef(false);
   const rateRef = useRef(1);
   const currencyRef = useRef(/** @type {number | string | null} */ (null));
   const skipRateSyncRef = useRef(false);
+  const appliedInvoiceSeedRef = useRef("");
 
   const detailEnabled = open && documentId != null && (mode === "edit" || mode === "view");
   const detailQuery = useQuery({
@@ -266,6 +281,7 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
         currencyId: row.currency_id ?? null,
         currencyCode: invoiceCurrencyCode(row),
         appliedAmount: row.applied_amount != null ? Number(row.applied_amount) : null,
+        exchangeDifference: row.exchange_difference != null ? Number(row.exchange_difference) : null,
         amount: Number(row.amount ?? 0),
       }));
       applyingRef.current = true;
@@ -312,8 +328,11 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
         return;
       }
       sessionRef.current = "create";
+      appliedInvoiceSeedRef.current = "";
+      setPartySeed(null);
       applyingRef.current = true;
       amountEditedRef.current = false;
+      defaultMethodAppliedRef.current = false;
       rateRef.current = 1;
       currencyRef.current = settings.primaryCurrencyId ?? null;
       form.setFieldsValue({
@@ -336,6 +355,126 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
     applyRecord(record);
   }, [applyRecord, config.partyField, form, mode, open, record, remember, settings.primaryCurrencyId, snapshotOf]);
 
+  useEffect(() => {
+    if (!open || mode !== "create" || defaultMethodAppliedRef.current) return;
+    const current = form.getFieldValue("payment_method_id");
+    if (current != null && current !== "") {
+      defaultMethodAppliedRef.current = true;
+      return;
+    }
+    const rows = Array.isArray(methodsQuery.data) ? methodsQuery.data : [];
+    if (rows.length === 0) return;
+    const preferred = rows.find(
+      (row) => row && row.is_active !== false && row.type !== "credit" && row.is_default,
+    );
+    defaultMethodAppliedRef.current = true;
+    if (preferred?.id == null) return;
+    const currentRows = rowsRef.current;
+    const before = snapshotOf(currentRows);
+    const wasClean = baselineRef.current === "" || baselineRef.current === before;
+    applyingRef.current = true;
+    form.setFieldValue("payment_method_id", preferred.id);
+    applyingRef.current = false;
+    if (wasClean) remember(currentRows);
+  }, [form, methodsQuery.data, mode, open, remember, snapshotOf]);
+
+  const invoiceSeedEnabled = open && mode === "create" && Boolean(fromInvoiceId);
+  const invoiceSeedQuery = useQuery({
+    queryKey: [...config.invoiceDetailPrefix, "payment-seed", fromInvoiceId],
+    queryFn: () => config.api.fetchInvoice(/** @type {string} */ (fromInvoiceId)),
+    enabled: invoiceSeedEnabled,
+  });
+
+  const applyInvoiceSeed = useCallback(() => {
+    if (!invoiceSeedEnabled || sessionRef.current !== "create" || settings.primaryCurrencyId == null) return;
+    if (!invoiceSeedQuery.data || currenciesQuery.isLoading || pairRatesQuery.isLoading) return;
+    const invoice = invoiceSeedQuery.data;
+    const stamp = `${fromInvoiceId}:${invoiceSeedQuery.dataUpdatedAt}`;
+    if (appliedInvoiceSeedRef.current === stamp) return;
+
+    const partyValue = invoice[config.partyField];
+    const invoiceCurrencyId = invoice.currency_id;
+    const openAmount = Number(invoice.net_to_pay ?? 0);
+    const canApply =
+      invoice.status === "posted" &&
+      partyValue != null &&
+      partyValue !== "" &&
+      invoiceCurrencyId != null &&
+      Number.isFinite(openAmount) &&
+      openAmount > 0;
+    if (!canApply) {
+      appliedInvoiceSeedRef.current = stamp;
+      message.warning(t("invoiceNotOpen"));
+      return;
+    }
+
+    const isPrimary = Number(invoiceCurrencyId) === Number(settings.primaryCurrencyId);
+    const liveRate = isPrimary
+      ? 1
+      : rateFromPrimary(pairRatesQuery.data ?? [], settings.primaryCurrencyId, invoiceCurrencyId);
+    const rate = liveRate ?? positiveRate(invoice.exchange_rate);
+    if (rate == null) {
+      appliedInvoiceSeedRef.current = stamp;
+      message.warning(t("exchangeRateRequired"));
+      return;
+    }
+
+    const currency = (currenciesQuery.data ?? []).find((row) => Number(row.id) === Number(invoiceCurrencyId));
+    const rounded = roundCashAmount(
+      openAmount,
+      currency?.smallest_unit,
+      currency?.round_limit,
+      settings.priceDecimalPlaces ?? 2,
+    );
+    const amount = rounded > 0 ? rounded : openAmount;
+    const party = invoice[config.partyRelation];
+    const nextRows = [rowFromInvoice(invoice, "id", amount)];
+    appliedInvoiceSeedRef.current = stamp;
+    applyingRef.current = true;
+    amountEditedRef.current = false;
+    rateRef.current = rate;
+    currencyRef.current = /** @type {number | string} */ (invoiceCurrencyId);
+    setPartySeed(
+      party && typeof party === "object" && party.id != null
+        ? { value: party.id, label: String(party.name ?? party.id) }
+        : null,
+    );
+    form.setFieldsValue({
+      [config.partyField]: partyValue,
+      currency_id: invoiceCurrencyId,
+      exchange_rate: rate,
+    });
+    rowsRef.current = nextRows;
+    setRows(nextRows);
+    amountLockRef.current = true;
+    form.setFieldValue("amount", amount);
+    amountLockRef.current = false;
+    applyingRef.current = false;
+    remember(nextRows);
+  }, [
+    config.partyField,
+    config.partyRelation,
+    currenciesQuery.data,
+    currenciesQuery.isLoading,
+    form,
+    fromInvoiceId,
+    invoiceSeedEnabled,
+    invoiceSeedQuery.data,
+    invoiceSeedQuery.dataUpdatedAt,
+    message,
+    pairRatesQuery.data,
+    pairRatesQuery.isLoading,
+    remember,
+    settings.priceDecimalPlaces,
+    settings.primaryCurrencyId,
+    t,
+  ]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- copy the source invoice into the new payment draft
+    applyInvoiceSeed();
+  }, [applyInvoiceSeed]);
+
   const headerPayload = useCallback(
     (values) => ({
       [config.partyField]: values[config.partyField],
@@ -350,17 +489,6 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
     [config.partyField, exchangeRateLocked],
   );
 
-  const allocationPayload = useCallback(
-    () =>
-      rows
-        .filter((row) => row.invoiceId)
-        .map((row) => ({
-          [config.invoiceIdField]: row.invoiceId,
-          amount: row.amount,
-        })),
-    [config.invoiceIdField, rows],
-  );
-
   const invalidatePosted = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: config.queryKey });
     queryClient.invalidateQueries({ queryKey: config.detailPrefix });
@@ -369,12 +497,17 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
   }, [config.detailPrefix, config.invoiceDetailPrefix, config.invoiceQueryKey, config.queryKey, queryClient]);
 
   const persist = useCallback(
-    async (values, shouldPost) => {
+    async (values, shouldPost, sourceRows = rows) => {
       const header = headerPayload(values);
-      const allocations = allocationPayload();
-      let id = documentId;
+      const allocations = sourceRows
+        .filter((row) => row.invoiceId)
+        .map((row) => ({
+          [config.invoiceIdField]: row.invoiceId,
+          amount: row.amount,
+        }));
       /** @type {Record<string, unknown>} */
       let saved;
+      let id = documentId == null ? null : normalizeEntityId(documentId);
       if (id == null) {
         saved = await config.api.create({ ...header, allocations });
         id = normalizeEntityId(saved?.id);
@@ -402,19 +535,25 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
       return saved;
     },
     [
-      allocationPayload,
-      config,
+      config.api,
+      config.detailPrefix,
+      config.documentKey,
+      config.invoiceIdField,
+      config.partyField,
+      config.queryKey,
       documentId,
       headerPayload,
       invalidatePosted,
       queryClient,
       record,
+      rows,
     ],
   );
 
   const saveMutation = useMutation({
-    mutationFn: (/** @type {{ values: Record<string, unknown>; shouldPost: boolean }} */ args) =>
-      persist(args.values, args.shouldPost),
+    mutationFn: (
+      /** @type {{ values: Record<string, unknown>; shouldPost: boolean; rows?: typeof rows }} */ args,
+    ) => persist(args.values, args.shouldPost, args.rows ?? rows),
     onError: (err) => {
       if (!applyApiFieldErrors(form, err)) {
         notification.error({
@@ -469,6 +608,12 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
     remainderUnits === 0 &&
     rows.every((row) => moneyUnits(row.amount) > 0);
 
+  const writeAmount = useCallback((value) => {
+    amountLockRef.current = true;
+    form.setFieldValue("amount", value);
+    amountLockRef.current = false;
+  }, [form]);
+
   const runSave = useCallback(
     (shouldPost) => {
       if (rows.some((row) => !row.invoiceId || moneyUnits(row.amount) <= 0)) {
@@ -477,10 +622,37 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
       }
       form
         .validateFields()
-        .then((values) => saveMutation.mutate({ values, shouldPost }))
-        .catch(() => {});
+        .then((values) => {
+          const paymentCurrency = (currenciesQuery.data ?? []).find(
+            (currency) => Number(currency.id) === Number(values.currency_id),
+          );
+          const roundedAmount = roundCashAmount(
+            values.amount,
+            paymentCurrency?.smallest_unit,
+            paymentCurrency?.round_limit,
+            settings.priceDecimalPlaces ?? 2,
+          );
+          const currentRows = rowsRef.current;
+          const roundedAmounts = amountsForRoundedHeader(
+            currentRows.map((row) => row.amount),
+            roundedAmount,
+          );
+          if (moneyUnits(roundedAmount) <= 0 || roundedAmounts == null) {
+            notification.error({ title: t("saveError"), description: t("allocationAmountRequired") });
+            return;
+          }
+          const roundedRows = currentRows.map((row, index) => ({ ...row, amount: roundedAmounts[index] }));
+          rowsRef.current = roundedRows;
+          setRows(roundedRows);
+          writeAmount(roundedAmount);
+          saveMutation.mutate({
+            values: { ...values, amount: roundedAmount },
+            shouldPost,
+            rows: roundedRows,
+          });
+        });
     },
-    [form, notification, rows, saveMutation, t],
+    [currenciesQuery.data, form, notification, rows, saveMutation, settings.priceDecimalPlaces, t, writeAmount],
   );
 
   const shouldConfirmDiscard = useCallback(() => {
@@ -541,10 +713,11 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
   const userEnteredAmount = () =>
     amountEditedRef.current && moneyUnits(form.getFieldValue("amount")) > 0;
 
-  const writeAmount = (value) => {
-    amountLockRef.current = true;
-    form.setFieldValue("amount", value);
-    amountLockRef.current = false;
+  const roundPaymentCash = (amount) => {
+    const currency = (currenciesQuery.data ?? []).find(
+      (row) => Number(row.id) === Number(form.getFieldValue("currency_id")),
+    );
+    return roundCashAmount(amount, currency?.smallest_unit, currency?.round_limit, priceDecimals);
   };
 
   const sumRows = (nextRows) =>
@@ -583,9 +756,10 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
       const oldCap = paymentCap(row.currencyId, row.netToPay, from, oldCurrencyId);
       const newCap = paymentCap(row.currencyId, row.netToPay, to, nextCurrencyId);
       const wasFull = oldCap != null && moneyUnits(row.amount) === moneyUnits(oldCap);
-      const converted = wasFull
+      const rawConverted = wasFull
         ? newCap
         : convertPriceBetweenRates(row.amount, from, to, priceDecimals);
+      const converted = rawConverted == null ? null : roundPaymentCash(rawConverted);
       const convertedUnits = moneyUnits(converted ?? 0);
       const capUnits = newCap == null ? null : moneyUnits(newCap);
       const nextUnits = capUnits == null ? convertedUnits : Math.min(convertedUnits, capUnits);
@@ -605,7 +779,7 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
     const cap = paymentCap(invoice.currency_id, invoice.net_to_pay);
     const capUnits = cap == null ? 0 : moneyUnits(cap);
     if (!userEnteredAmount()) {
-      commitRows([...rowsRef.current, rowFromInvoice(invoice, "id", unitsToAmount(capUnits))]);
+      commitRows([...rowsRef.current, rowFromInvoice(invoice, "id", roundPaymentCash(unitsToAmount(capUnits)))]);
       return;
     }
     const headerUnits = moneyUnits(form.getFieldValue("amount"));
@@ -623,7 +797,9 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
       if (row.key !== key) return row;
       const cap = paymentCap(row.currencyId, row.netToPay);
       const capUnits = cap == null ? moneyUnits(row.amount) : moneyUnits(cap);
-      const nextUnits = keepHeader ? lineUnitsWithin(row, capUnits, prev, true) : capUnits;
+      const nextUnits = keepHeader
+        ? lineUnitsWithin(row, capUnits, prev, true)
+        : moneyUnits(roundPaymentCash(unitsToAmount(capUnits)));
       return { ...row, amount: unitsToAmount(nextUnits) };
     });
     if (keepHeader) {
@@ -672,9 +848,9 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
           </Tag>
         ) : null
       }
-      showDetailLoading={detailEnabled && detailQuery.isLoading}
-      detailLoadFailed={Boolean(detailEnabled && detailQuery.isError)}
-      detailError={detailQuery.error}
+      showDetailLoading={(detailEnabled && detailQuery.isLoading) || (invoiceSeedEnabled && invoiceSeedQuery.isLoading)}
+      detailLoadFailed={Boolean((detailEnabled && detailQuery.isError) || (invoiceSeedEnabled && invoiceSeedQuery.isError))}
+      detailError={invoiceSeedEnabled && invoiceSeedQuery.isError ? invoiceSeedQuery.error : detailQuery.error}
       tApiErrors={tApiErrors}
       footer={
         readOnly ? (
@@ -792,10 +968,6 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
             const next = [{ ...row, amount: unitsToAmount(nextUnits) }];
             rowsRef.current = next;
             setRows(next);
-            if (nextUnits !== requested) {
-              amountEditedRef.current = nextUnits > 0;
-              writeAmount(unitsToAmount(nextUnits));
-            }
           }
         }}
       >
@@ -814,14 +986,16 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
                   queryParams={config.party.selectorParams}
                   recentKind={config.party.recentKind}
                   seedOptions={
-                    record?.[config.partyRelation]?.id
-                      ? [
-                          {
-                            value: record[config.partyRelation].id,
-                            label: String(record[config.partyRelation].name ?? record[config.partyRelation].id),
-                          },
-                        ]
-                      : []
+                    partySeed
+                      ? [partySeed]
+                      : record?.[config.partyRelation]?.id
+                        ? [
+                            {
+                              value: record[config.partyRelation].id,
+                              label: String(record[config.partyRelation].name ?? record[config.partyRelation].id),
+                            },
+                          ]
+                        : []
                   }
                   recentLabel={t("selectorRecent")}
                   clearRecentLabel={t("selectorClearRecent")}
@@ -918,48 +1092,46 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
             </Row>
           </div>
           <div className="sales-invoice-header-pane">
-            <Row gutter={[12, 8]}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="reference"
-                  label={
-                    <ResourceDrawerFieldLabel text={t("fieldReference")} required={Boolean(selectedMethod?.requires_reference)} />
-                  }
-                  rules={
-                    selectedMethod?.requires_reference
-                      ? [{ required: true, message: t("referenceRequired") }]
-                      : []
-                  }
-                >
-                  <Input maxLength={128} placeholder={t("fieldReferencePlaceholder")} />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12}>
-                <Form.Item name="notes" label={<ResourceDrawerFieldLabel text={t("fieldNotes")} optional />}>
-                  <Input maxLength={2000} />
-                </Form.Item>
-              </Col>
+            <div className="payment-document-side-fields">
+              <Form.Item
+                name="reference"
+                label={
+                  <ResourceDrawerFieldLabel text={t("fieldReference")} required={Boolean(selectedMethod?.requires_reference)} />
+                }
+                rules={
+                  selectedMethod?.requires_reference
+                    ? [{ required: true, message: t("referenceRequired") }]
+                    : []
+                }
+              >
+                <Input maxLength={128} placeholder={t("fieldReferencePlaceholder")} />
+              </Form.Item>
+              <Form.Item
+                name="notes"
+                className={readOnly ? undefined : "payment-document-notes-span"}
+                label={<ResourceDrawerFieldLabel text={t("fieldNotes")} optional />}
+              >
+                {readOnly ? <Input maxLength={2000} /> : <Input.TextArea maxLength={2000} />}
+              </Form.Item>
               {readOnly ? null : (
-                <Col span={24}>
-                  <Form.Item label={<ResourceDrawerFieldLabel text={t("addInvoice")} />}>
-                    <Select
-                      className="w-full"
-                      showSearch
-                      optionFilterProp="label"
-                      placeholder={partyReady ? t("addInvoice") : t("addInvoiceLocked")}
-                      disabled={!partyReady}
-                      loading={openInvoicesQuery.isFetching}
-                      value={null}
-                      options={addInvoiceOptions}
-                      onChange={(_value, option) => {
-                        const selected = /** @type {{ invoice?: Record<string, unknown> }} */ (option);
-                        if (selected?.invoice) addInvoice(selected.invoice);
-                      }}
-                    />
-                  </Form.Item>
-                </Col>
+                <Form.Item label={<ResourceDrawerFieldLabel text={t("addInvoice")} />}>
+                  <Select
+                    className="w-full"
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder={partyReady ? t("addInvoice") : t("addInvoiceLocked")}
+                    disabled={!partyReady}
+                    loading={openInvoicesQuery.isFetching}
+                    value={null}
+                    options={addInvoiceOptions}
+                    onChange={(_value, option) => {
+                      const selected = /** @type {{ invoice?: Record<string, unknown> }} */ (option);
+                      if (selected?.invoice) addInvoice(selected.invoice);
+                    }}
+                  />
+                </Form.Item>
               )}
-            </Row>
+            </div>
           </div>
         </div>
         <PaymentAllocationGrid
@@ -973,6 +1145,12 @@ export default function PaymentDocumentDrawer({ open, mode, documentId, onClose,
           pairRates={pairRatesQuery.data ?? []}
           priceDecimals={priceDecimals}
           onAmount={changeLineAmount}
+          currencies={currenciesQuery.data ?? []}
+          differenceField={
+            config.resource === "supplier_payments"
+              ? "allowed_difference_in_payment"
+              : "allowed_difference_in_receipt"
+          }
           onApplyRemainder={applyRemainder}
           onRemove={(key) => commitRows(rowsRef.current.filter((row) => row.key !== key))}
         />

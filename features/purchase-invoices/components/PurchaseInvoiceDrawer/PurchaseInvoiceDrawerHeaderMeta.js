@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  getPurchaseInvoiceStatusLabel,
-  purchaseInvoiceStatusTagColor,
-} from "../../utils/purchaseInvoiceStatuses";
+import { purchaseInvoiceStatusTag } from "../../utils/purchaseInvoiceStatuses";
 import InvoiceChainIssueTag from "@/features/sales-invoices/components/InvoiceChainIssueTag";
 import SafeConfirmationChip from "@/shared/components/SafeConfirmationChip";
 import { Tag } from "antd";
@@ -22,6 +19,8 @@ export function postedByDisplayName(user) {
  * @param {{
  *   t: (key: string, values?: Record<string, string | number>) => string;
  *   invoiceStatus?: string | null;
+ *   paidTotal?: unknown;
+ *   netToPay?: unknown;
  *   chainIssue?: { kind: string; checked_at: string | null } | null;
  *   safeBuyerQueue?: import("@/lib/safe-company-approval-queue").SafeCompanyApprovalQueue | null;
  * }} props
@@ -29,17 +28,20 @@ export function postedByDisplayName(user) {
 export default function PurchaseInvoiceDrawerHeaderMeta({
   t,
   invoiceStatus = null,
+  paidTotal,
+  netToPay,
   chainIssue = null,
   safeBuyerQueue = null,
 }) {
+  const tag = invoiceStatus ? purchaseInvoiceStatusTag(t, invoiceStatus, paidTotal, netToPay) : null;
   return (
     <div className="sales-invoice-drawer-header-meta gap-2">
-      {invoiceStatus ? (
-        <Tag className="m-0" color={purchaseInvoiceStatusTagColor(invoiceStatus)}>
-          {getPurchaseInvoiceStatusLabel(t, invoiceStatus)}
+      {tag ? (
+        <Tag className="m-0" color={tag.color}>
+          {tag.label}
         </Tag>
       ) : (
-        "\u2014"
+        "—"
       )}
       <SafeConfirmationChip t={t} queue={safeBuyerQueue} />
       <InvoiceChainIssueTag issue={chainIssue} />

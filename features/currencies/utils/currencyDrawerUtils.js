@@ -41,25 +41,37 @@ export function isCreateDirtyVsDefaults(form, defaults) {
 }
 
 /**
+ * Form values applied when a currency record is loaded into the drawer.
+ * Numeric columns are numbers so they match what the inputs store.
+ *
+ * @param {Record<string, unknown>} r
+ */
+export function mapCurrencyRecordToFormValues(r) {
+  const asNumber = (/** @type {unknown} */ value) =>
+    value != null && value !== "" ? Number(value) : undefined;
+  return {
+    name: r.name,
+    code: r.code,
+    iso_code: r.iso_code,
+    symbol: r.symbol ?? undefined,
+    is_active: r.is_active !== false,
+    is_primary: Boolean(r.is_primary),
+    smallest_unit: asNumber(r.smallest_unit),
+    round_limit: asNumber(r.round_limit),
+    acceptable_amount_overdue: asNumber(r.acceptable_amount_overdue),
+    allowed_difference_in_receipt: asNumber(r.allowed_difference_in_receipt),
+    allowed_difference_in_payment: asNumber(r.allowed_difference_in_payment),
+  };
+}
+
+/**
  * @param {import("antd").FormInstance} form
  * @param {Record<string, unknown>} row
  */
 export function isEditDirtyVsLoaded(form, row) {
-  const v = form.getFieldsValue(true);
-  const checks = [
-    ["name", String(v.name ?? "").trim(), String(row.name ?? "").trim()],
-    ["code", String(v.code ?? "").trim(), String(row.code ?? "").trim()],
-    ["iso_code", String(v.iso_code ?? "").trim(), String(row.iso_code ?? "").trim()],
-    ["symbol", String(v.symbol ?? "").trim(), String(row.symbol ?? "").trim()],
-    ["is_active", Boolean(v.is_active), row.is_active !== false],
-    ["is_primary", Boolean(v.is_primary), Boolean(row.is_primary)],
-    ["smallest_unit", numStr(v.smallest_unit), numStr(row.smallest_unit)],
-    ["round_limit", numStr(v.round_limit), numStr(row.round_limit)],
-    ["acceptable_amount_overdue", numStr(v.acceptable_amount_overdue), numStr(row.acceptable_amount_overdue)],
-    ["allowed_difference_in_receipt", numStr(v.allowed_difference_in_receipt), numStr(row.allowed_difference_in_receipt)],
-    ["allowed_difference_in_payment", numStr(v.allowed_difference_in_payment), numStr(row.allowed_difference_in_payment)],
-  ];
-  return checks.some(([, a, b]) => a !== b);
+  const current = currencyFormValuesToPayload(form.getFieldsValue(true), { mode: "edit" });
+  const loaded = currencyFormValuesToPayload(mapCurrencyRecordToFormValues(row), { mode: "edit" });
+  return JSON.stringify(current) !== JSON.stringify(loaded);
 }
 
 /**

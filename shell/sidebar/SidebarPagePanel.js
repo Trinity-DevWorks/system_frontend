@@ -99,6 +99,7 @@ export default function SidebarPagePanel({
                 {section.items.map((item) => (
                   <SidebarNavRow
                     key={`${section.id}:${item.path}`}
+                    href={item.path}
                     icon={item.icon}
                     label={item.label}
                     active={item.path === selectedPath}

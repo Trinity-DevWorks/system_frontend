@@ -34,6 +34,7 @@ import {
 } from "@/lib/drawer/drawerRegistration";
 import { useDrawerFeatureRegistry, useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import {
+  DRAWER_FROM_INVOICE_PARAM,
   DRAWER_FROM_PO_PARAM,
   DRAWER_ID_PARAM,
   DRAWER_MODE_PARAM,
@@ -189,6 +190,15 @@ export default function DrawerHost({ drawerRegistry, access }) {
     if (targetFeatureId === "stockGoodsReceipts" && parsed.mode === "create") {
       extras.fromPurchaseOrderId =
         searchParams.get(DRAWER_FROM_PO_PARAM) || extras.fromPurchaseOrderId || null;
+    }
+    if (
+      (targetFeatureId === "customerReceipts" ||
+        targetFeatureId === "supplierPayments" ||
+        targetFeatureId === "salesCreditNotes") &&
+      parsed.mode === "create"
+    ) {
+      extras.fromInvoiceId =
+        searchParams.get(DRAWER_FROM_INVOICE_PARAM) || extras.fromInvoiceId || null;
     }
     if (targetFeatureId === "items") {
       extras.onSaveAndNew = handleSaveAndNew;

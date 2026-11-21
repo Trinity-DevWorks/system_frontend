@@ -30,12 +30,17 @@ const ATTESTATION_LABEL_KEYS = {
 };
 
 function FooterFact({ label, value, who = "", wallet = "", named = false }) {
+  const walletText = String(wallet ?? "").trim();
+  const lines = [label, value];
+  if (who) lines.push(who);
+  if (walletText && walletText !== who) lines.push(walletText);
+
   return (
-    <span className="sales-invoice-drawer-footer-fact">
-      <span className="sales-invoice-drawer-footer-fact-label">{label}</span>
-      <span className="sales-invoice-drawer-footer-fact-value">{value}</span>
-      {who ? (
-        <Tooltip title={String(wallet)}>
+    <Tooltip title={<span className="whitespace-pre-line">{lines.filter(Boolean).join("\n")}</span>}>
+      <span className="sales-invoice-drawer-footer-fact">
+        <span className="sales-invoice-drawer-footer-fact-label">{label}</span>
+        <span className="sales-invoice-drawer-footer-fact-value">{value}</span>
+        {who ? (
           <span
             className={
               named
@@ -46,9 +51,9 @@ function FooterFact({ label, value, who = "", wallet = "", named = false }) {
           >
             {who}
           </span>
-        </Tooltip>
-      ) : null}
-    </span>
+        ) : null}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -228,6 +233,7 @@ export default function PurchaseInvoiceDrawerFooter({
   postDisabledReason = "",
   showDelete,
   showReverse = false,
+  showCreatePayment = false,
   reverseDisabled = false,
   reverseDisabledReason = "",
   postedBy = null,
@@ -239,6 +245,7 @@ export default function PurchaseInvoiceDrawerFooter({
   postMenuItems = [],
   onDelete,
   onReverse,
+  onCreatePayment,
   showVerify = false,
   verifying = false,
   proofStatus = null,
@@ -471,7 +478,13 @@ export default function PurchaseInvoiceDrawerFooter({
             {proofActions}
             {pdfInvoiceId ? <FooterActionGroup>{pdfButton}</FooterActionGroup> : null}
             {correctionActions}
-            <FooterActionGroup>
+            
+            {showCreatePayment ? (
+              <Button className="shrink-0" type="primary" onClick={onCreatePayment}>
+                {t("actionCreatePayment")}
+              </Button>
+            ) : null}
+<FooterActionGroup>
               <Button className="shrink-0" onClick={forceClose}>
                 {t("drawerClose")}
               </Button>

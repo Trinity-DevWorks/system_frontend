@@ -2,6 +2,7 @@
 
 import { CUSTOMERS_LIST_QUERY_KEY, fetchCustomerNames } from "@/features/customers";
 import { SALES_INVOICE_DETAIL_QUERY_PREFIX, SALES_INVOICES_QUERY_KEY } from "@/features/sales-invoices/queries/salesInvoicesQueryKeys";
+import { fetchSalesInvoice } from "@/features/sales-invoices/api/salesInvoices.api";
 import {
   SALES_INVOICE_CUSTOMER_SELECTOR_PARAMS,
   fetchSalesInvoiceCustomerSelectorPage,
@@ -47,6 +48,7 @@ export const customerReceiptConfig = {
     reverse: reverseCustomerReceipt,
     openInvoices: (partyId, currencyId) =>
       fetchCustomerReceiptOpenInvoices({ customerId: partyId, currencyId }),
+    fetchInvoice: fetchSalesInvoice,
   },
   party: {
     queryKey: CUSTOMERS_LIST_QUERY_KEY,

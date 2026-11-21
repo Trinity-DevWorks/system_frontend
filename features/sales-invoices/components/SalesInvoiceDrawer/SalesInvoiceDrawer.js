@@ -114,12 +114,13 @@ export default function SalesInvoiceDrawer({
   const { message, modal, notification } = App.useApp();
   const access = useResourceAccess("sales_invoices");
   const invoiceProofAccess = useResourceAccess("invoice_proofs");
+  const receiptAccess = useResourceAccess("customer_receipts");
   const customerAccess = useResourceAccess("customers");
+  const { openDrawer } = useGlobalDrawer();
   const itemAccess = useResourceAccess("items");
   const companyProfileAccess = useResourceAccess("company_profile");
   const creditNotesAccess = useResourceAccess("sales_credit_notes");
   const queryClient = useQueryClient();
-  const { openDrawer } = useGlobalDrawer();
   const router = useRouter();
   const { settings } = useCompanySettings();
   const companyProfile = useCompanyProfile();
@@ -151,6 +152,7 @@ export default function SalesInvoiceDrawer({
   const hydrateCustomerRef = useRef(true);
   const loadedDetailVersionRef = useRef(0);
   const tamperedToastKeyRef = useRef(/** @type {string | null} */ (null));
+  const postedHoldRef = useRef(false);
   const keyboardRootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const linesRef = useRef(lines);
   useEffect(() => {
@@ -200,7 +202,9 @@ export default function SalesInvoiceDrawer({
       setLinesBaseline(nextLines);
       const mappedHeader = mapSalesInvoiceRecordToForm(record);
       setHeaderBaseline(mappedHeader);
-      setLoadedStatus(typeof record.status === "string" ? record.status : null);
+      const nextStatus = typeof record.status === "string" ? record.status : null;
+      if (nextStatus === "posted") postedHoldRef.current = true;
+      setLoadedStatus(nextStatus);
       setLoadedNumber(typeof record.invoice_number === "string" ? record.invoice_number : null);
       setLoadedPostedBy(record.posted_by ?? null);
       setLoadedPostedAt(typeof record.posted_at === "string" ? record.posted_at : null);
@@ -220,6 +224,7 @@ export default function SalesInvoiceDrawer({
     setLines(initialLines);
     setLinesBaseline(initialLines);
     setHeaderBaseline(defaults);
+    postedHoldRef.current = false;
     setLoadedStatus("draft");
     setLoadedNumber(null);
     setLoadedPostedBy(null);
@@ -231,12 +236,15 @@ export default function SalesInvoiceDrawer({
     prevCustomerIdRef.current = undefined;
   }, [form, defaults]);
 
-  useLayoutEffect(() => {
-    if (!open) return;
+  const syncDrawerOnOpen = useCallback(() => {
+    if (!open) {
+      postedHoldRef.current = false;
+      return;
+    }
     dueOnAutoRef.current = mode === "create";
     hydrateCustomerRef.current = true;
     if (mode === "create") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset create draft when the drawer opens
+      if (postedHoldRef.current) return;
       resetCreateDraftState();
       if (createSeed && typeof createSeed === "object") {
         const header = createSeed.header ?? {};
@@ -262,6 +270,11 @@ export default function SalesInvoiceDrawer({
       applyTotals(tableSeedRecord);
     }
   }, [open, mode, tableSeedRecord, createSeed, resetCreateDraftState, form, defaults, applyTotals]);
+
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the draft when the drawer opens
+    syncDrawerOnOpen();
+  }, [syncDrawerOnOpen]);
 
   useEffect(() => {
     if (!open || mode === "create" || !detailQuery.isSuccess || !detailQuery.data) return;
@@ -483,14 +496,16 @@ export default function SalesInvoiceDrawer({
   const headerRate = exchangeRateLocked ? 1 : positiveRate(formValuesWatch?.exchange_rate);
   const primaryCode = drawerData.currencyCode(drawerData.primaryCurrencyId);
   const documentCurrencyCode = drawerData.currencyCode(currencyId);
+  const documentCurrencySymbol = drawerData.currencySymbol(currencyId);
   const linePricing = useMemo(
     () => ({
       rate: headerRate,
       foreign: !exchangeRateLocked,
       primaryCode,
       currencyCode: documentCurrencyCode,
+      symbol: documentCurrencySymbol,
     }),
-    [headerRate, exchangeRateLocked, primaryCode, documentCurrencyCode],
+    [headerRate, exchangeRateLocked, primaryCode, documentCurrencyCode, documentCurrencySymbol],
   );
   const exchangeRateHelp = exchangeRateLocked
     ? undefined
@@ -856,6 +871,16 @@ export default function SalesInvoiceDrawer({
     );
   }, [modal, t, reissueMutation, reissueEnabled]);
 
+  const handleCreateReceipt = useCallback(() => {
+    const id = normalizeEntityId(invoiceId);
+    if (id == null) return;
+    openDrawer({
+      featureId: "customerReceipts",
+      mode: "create",
+      extras: { fromInvoiceId: id },
+    });
+  }, [invoiceId, openDrawer]);
+
   const handleDelete = useCallback(() => {
     const name = loadedNumber ?? String(invoiceId ?? "");
     modal.confirm(
@@ -1000,6 +1025,8 @@ export default function SalesInvoiceDrawer({
         <SalesInvoiceDrawerHeaderMeta
           t={t}
           invoiceStatus={effectiveStatus}
+          paidTotal={displayTotals?.paid_total}
+          netToPay={displayTotals?.net_to_pay}
           chainIssue={
             mode === "create"
               ? null
@@ -1045,6 +1072,13 @@ export default function SalesInvoiceDrawer({
             Number(invoiceRecord?.net_to_pay ?? 0) <= 0 ? t("creditNoteDisabledClosed") : ""
           }
           onCreditNote={handleCreateCreditNote}
+          showCreateReceipt={
+            effectiveStatus === "posted" &&
+            invoiceId != null &&
+            receiptAccess.canAdd &&
+            Number(displayTotals?.net_to_pay) > 0
+          }
+          onCreateReceipt={handleCreateReceipt}
           postedBy={loadedPostedBy}
           postedAt={loadedPostedAt}
           showVerify={showProofView}
@@ -1162,7 +1196,12 @@ export default function SalesInvoiceDrawer({
           onViewItem={viewLineItem}
           t={t}
         />
-        <SalesInvoiceTotals t={t} readOnly={readOnly || submitting} totals={displayTotals} />
+        <SalesInvoiceTotals
+          t={t}
+          readOnly={readOnly || submitting}
+          totals={displayTotals}
+          currencySymbol={documentCurrencySymbol}
+        />
       </SalesInvoiceDrawerForm>
     </ResourceCrudDrawer>
     </InvoiceTamperProvider>

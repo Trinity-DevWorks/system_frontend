@@ -41,12 +41,17 @@ const ATTESTATION_LABEL_KEYS = {
 };
 
 function FooterFact({ label, value, who = "", wallet = "", named = false }) {
+  const walletText = String(wallet ?? "").trim();
+  const lines = [label, value];
+  if (who) lines.push(who);
+  if (walletText && walletText !== who) lines.push(walletText);
+
   return (
-    <span className="sales-invoice-drawer-footer-fact">
-      <span className="sales-invoice-drawer-footer-fact-label">{label}</span>
-      <span className="sales-invoice-drawer-footer-fact-value">{value}</span>
-      {who ? (
-        <Tooltip title={String(wallet)}>
+    <Tooltip title={<span className="whitespace-pre-line">{lines.filter(Boolean).join("\n")}</span>}>
+      <span className="sales-invoice-drawer-footer-fact">
+        <span className="sales-invoice-drawer-footer-fact-label">{label}</span>
+        <span className="sales-invoice-drawer-footer-fact-value">{value}</span>
+        {who ? (
           <span
             className={
               named
@@ -57,9 +62,9 @@ function FooterFact({ label, value, who = "", wallet = "", named = false }) {
           >
             {who}
           </span>
-        </Tooltip>
-      ) : null}
-    </span>
+        ) : null}
+      </span>
+    </Tooltip>
   );
 }
 
@@ -273,6 +278,7 @@ function FooterPostedFacts({ t, postedBy, postedAt }) {
  *   postDisabled: boolean;
  *   showDelete: boolean;
  *   showReverse?: boolean;
+ *   showCreateReceipt?: boolean;
  *   reverseDisabled?: boolean;
  *   reverseDisabledReason?: string;
  *   showReissue?: boolean;
@@ -313,6 +319,7 @@ function FooterPostedFacts({ t, postedBy, postedAt }) {
  *   postMenuItems: { key: string; label: string }[];
  *   onDelete: () => void;
  *   onReverse?: () => void;
+ *   onCreateReceipt?: () => void;
  *   onReissue?: () => void;
    *   onOpenRelatedInvoice?: (invoice: unknown) => void;
    *   onOpenCreditNote?: (note: unknown) => void;
@@ -334,6 +341,7 @@ export default function SalesInvoiceDrawerFooter({
   postDisabled,
   showDelete,
   showReverse = false,
+  showCreateReceipt = false,
   reverseDisabled = false,
   reverseDisabledReason = "",
   showReissue = false,
@@ -384,6 +392,7 @@ export default function SalesInvoiceDrawerFooter({
   postMenuItems,
   onDelete,
   onReverse,
+  onCreateReceipt,
   onVerify,
   onApproveCompany,
 }) {
@@ -575,7 +584,13 @@ export default function SalesInvoiceDrawerFooter({
             {proofActions}
             {pdfInvoiceId ? <FooterActionGroup>{pdfButton}</FooterActionGroup> : null}
             {correctionActions}
-            <FooterActionGroup>
+            
+            {showCreateReceipt ? (
+              <Button className="shrink-0" type="primary" onClick={onCreateReceipt}>
+                {t("actionCreateReceipt")}
+              </Button>
+            ) : null}
+<FooterActionGroup>
               <Button className="shrink-0" onClick={forceClose}>
                 {t("drawerClose")}
               </Button>

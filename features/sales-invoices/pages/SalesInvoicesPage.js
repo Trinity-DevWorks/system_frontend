@@ -18,7 +18,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { Suspense, useCallback, useMemo, useState } from "react";
-import { SALES_INVOICE_STATUS_VALUES, getSalesInvoiceStatusLabel, salesInvoiceCanCreditNote, salesInvoiceCanReissue, salesInvoiceCanReverse } from "../utils/salesInvoiceStatuses";
+import { SALES_INVOICE_STATUS_VALUES, getSalesInvoiceStatusLabel, salesInvoiceCanCreditNote, salesInvoiceCanReissue, salesInvoiceCanReverse, salesInvoiceStatusTag } from "../utils/salesInvoiceStatuses";
 import {
   formatStockFilterDateRange,
   stockFilterFieldRowClassName,
@@ -41,6 +41,7 @@ function SalesInvoicesTable() {
   const access = useResourceAccess("sales_invoices");
   const creditNotesAccess = useResourceAccess("sales_credit_notes");
   const invoiceProofsAccess = useResourceAccess("invoice_proofs");
+  const receiptAccess = useResourceAccess("customer_receipts");
   const { settings } = useCompanySettings();
   const showChainCheck = Boolean(settings.invoiceProofsEnabled) && invoiceProofsAccess.canView;
 
@@ -97,13 +98,26 @@ function SalesInvoicesTable() {
       rawTableData.map((row) => ({
         ...row,
         customer_name: row?.customer?.name ?? "",
-        status_label: getSalesInvoiceStatusLabel(t, row?.status),
+        status_label: salesInvoiceStatusTag(t, row?.status, row?.paid_total, row?.net_to_pay).label,
       })),
     [rawTableData, t],
   );
 
   const { openCreateDrawer, openEditDrawer, openViewDrawer } = usePageDrawer("salesInvoices");
   const { openDrawer } = useGlobalDrawer();
+
+  const handleCreateReceipt = useCallback(
+    (record) => {
+      const id = normalizeEntityId(record?.id);
+      if (id == null) return;
+      openDrawer({
+        featureId: "customerReceipts",
+        mode: "create",
+        extras: { fromInvoiceId: id },
+      });
+    },
+    [openDrawer],
+  );
 
   const deleteMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => deleteSalesInvoice(id),
@@ -331,6 +345,7 @@ function SalesInvoicesTable() {
         onApproveProof: showChainCheck && invoiceProofsAccess.canEdit ? handleApproveProof : undefined,
         onBuyerLink: showChainCheck ? handleBuyerLink : undefined,
         onShareProof: showChainCheck ? handleShareProof : undefined,
+        onCreateReceipt: receiptAccess.canAdd ? handleCreateReceipt : undefined,
       }),
     [
       t,
@@ -353,6 +368,8 @@ function SalesInvoicesTable() {
       handleApproveProof,
       handleBuyerLink,
       handleShareProof,
+      receiptAccess.canAdd,
+      handleCreateReceipt,
     ],
   );
 

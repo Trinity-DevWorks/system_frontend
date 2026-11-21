@@ -17,6 +17,29 @@ import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismiss
 const CURRENCY_PAIR_RATES_QUERY_KEY = /** @type {const} */ ([...CURRENCIES_LIST_QUERY_KEY, "pair-rates"]);
 
 /**
+ * Stable list key. The pair-rates query is shared with invoice and payment
+ * screens, which cache the raw API rows (no `key`). Duplicate from/to pairs
+ * get a suffix so React still sees a unique key.
+ *
+ * @param {Record<string, unknown>} row
+ * @param {number} index
+ * @param {Map<string, number>} seen
+ */
+function exchangePairKey(row, index, seen) {
+  const from = row?.from_currency_id;
+  const to = row?.to_currency_id;
+  const base =
+    from != null && from !== "" && to != null && to !== ""
+      ? `${from}-${to}`
+      : row?.id != null && row.id !== ""
+        ? `pair-${row.id}`
+        : `row-${index}`;
+  const count = seen.get(base) ?? 0;
+  seen.set(base, count + 1);
+  return count === 0 ? base : `${base}#${index}`;
+}
+
+/**
  * @param {{
  *   open: boolean;
  *   currencies?: Record<string, unknown>[];
@@ -59,32 +82,34 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
   const { data: pairsRaw = [], isPending: pairsLoading } = useQuery({
     queryKey: CURRENCY_PAIR_RATES_QUERY_KEY,
     enabled: open,
-    queryFn: async () => {
-      const rows = await fetchCurrencyPairRates();
-      const list = (Array.isArray(rows) ? rows : []).map((row) => ({
-        key: `${row.from_currency_id}-${row.to_currency_id}`,
-        from_currency_id: Number(row.from_currency_id),
-        from_code: String(row.from_code ?? row.from_currency_id),
-        to_currency_id: Number(row.to_currency_id),
-        to_code: String(row.to_code ?? row.to_currency_id),
-        rate: Number(row.rate),
-      }));
-      return list.sort((a, b) => {
-        const fromCmp = a.from_code.localeCompare(b.from_code);
-        if (fromCmp !== 0) return fromCmp;
-        return a.to_code.localeCompare(b.to_code);
-      });
-    },
+    queryFn: fetchCurrencyPairRates,
   });
+
+  const pairs = useMemo(() => {
+    const seen = new Map();
+    const list = (Array.isArray(pairsRaw) ? pairsRaw : []).map((row, index) => ({
+      key: exchangePairKey(row, index, seen),
+      from_currency_id: Number(row.from_currency_id),
+      from_code: String(row.from_code ?? row.from_currency_id ?? ""),
+      to_currency_id: Number(row.to_currency_id),
+      to_code: String(row.to_code ?? row.to_currency_id ?? ""),
+      rate: Number(row.rate),
+    }));
+    return list.sort((a, b) => {
+      const fromCmp = a.from_code.localeCompare(b.from_code);
+      if (fromCmp !== 0) return fromCmp;
+      return a.to_code.localeCompare(b.to_code);
+    });
+  }, [pairsRaw]);
 
   const hasPair = useMemo(() => {
     if (!newFromId || !newToId) return false;
-    return pairsRaw.some(
+    return pairs.some(
       (p) =>
         (Number(p.from_currency_id) === Number(newFromId) && Number(p.to_currency_id) === Number(newToId)) ||
         (Number(p.from_currency_id) === Number(newToId) && Number(p.to_currency_id) === Number(newFromId)),
     );
-  }, [pairsRaw, newFromId, newToId]);
+  }, [pairs, newFromId, newToId]);
 
   const saveMutation = useMutation({
     mutationFn: ({ fromId, toId, rate }) =>
@@ -102,14 +127,11 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
       if (fromOpt && toOpt && Number.isFinite(nextRate) && nextRate > 0) {
         queryClient.setQueryData(CURRENCY_PAIR_RATES_QUERY_KEY, (old) => {
           const list = Array.isArray(old) ? [...old] : [];
-          const rowKey = `${from}-${to}`;
           const idx = list.findIndex(
-            (p) =>
-              p.key === rowKey ||
-              (Number(p.from_currency_id) === from && Number(p.to_currency_id) === to),
+            (p) => Number(p.from_currency_id) === from && Number(p.to_currency_id) === to,
           );
           const row = {
-            key: rowKey,
+            ...(idx >= 0 ? list[idx] : {}),
             from_currency_id: from,
             from_code: fromOpt.label,
             to_currency_id: to,
@@ -117,15 +139,11 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
             rate: nextRate,
           };
           if (idx >= 0) {
-            list[idx] = { ...list[idx], ...row };
+            list[idx] = row;
           } else {
             list.push(row);
           }
-          return list.sort((a, b) => {
-            const fromCmp = a.from_code.localeCompare(b.from_code);
-            if (fromCmp !== 0) return fromCmp;
-            return a.to_code.localeCompare(b.to_code);
-          });
+          return list;
         });
       }
       invalidateTenantListQueries(queryClient, CURRENCIES_LIST_QUERY_KEY);
@@ -327,11 +345,11 @@ export default function CurrencyExchangeRatesModal({ open, currencies, onClose }
         <div className="flex justify-center py-6">
           <Spin />
         </div>
-      ) : pairsRaw.length === 0 ? (
+      ) : pairs.length === 0 ? (
         <Typography.Text type="secondary">{t("pairEmpty")}</Typography.Text>
       ) : (
         <div className="max-h-[420px] space-y-2 overflow-auto pr-1">
-          {pairsRaw.map((row) => (
+          {pairs.map((row) => (
             <div
               key={row.key}
               className="flex flex-wrap items-center gap-2 rounded-md border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]"

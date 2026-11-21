@@ -275,6 +275,7 @@ html[data-shell-sidebar-collapsed] .shell-nav.is-peeking .shell-panel {
   padding-block: 7px;
   padding-inline: 10px 4px;
   text-align: start;
+  text-decoration: none;
   font: inherit;
   font-size: 13px;
   color: var(--ant-color-text);

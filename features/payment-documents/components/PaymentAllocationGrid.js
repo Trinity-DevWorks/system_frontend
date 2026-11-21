@@ -1,6 +1,6 @@
 "use client";
 
-import { paymentAppliedToInvoice, rateFromPrimary } from "@/lib/currency/documentExchangeRate";
+import { paymentAppliedToInvoice, rateFromPrimary, settlePayment } from "@/lib/currency/documentExchangeRate";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { formatTenantDate, formatTenantMoney } from "@/lib/tenant-format";
 import { DeleteOutlined } from "@ant-design/icons";
@@ -18,6 +18,7 @@ import { moneyUnits, unitsToAmount } from "../paymentDocumentUtils";
  *   currencyId?: number | string | null;
  *   currencyCode?: string;
  *   appliedAmount?: number | null;
+ *   exchangeDifference?: number | null;
  *   amount: number;
  * }} AllocationRow
  */
@@ -33,6 +34,8 @@ import { moneyUnits, unitsToAmount } from "../paymentDocumentUtils";
  *   primaryCurrencyId?: number | string | null;
  *   pairRates?: Array<{ from_currency_id?: unknown; to_currency_id?: unknown; rate?: unknown }>;
  *   priceDecimals?: number;
+ *   currencies?: Array<Record<string, unknown>>;
+ *   differenceField?: string;
  *   onAmount: (key: string, amount: number | null) => void;
  *   onApplyRemainder: (key: string) => void;
  *   onRemove: (key: string) => void;
@@ -48,19 +51,27 @@ export default function PaymentAllocationGrid({
   primaryCurrencyId = null,
   pairRates = [],
   priceDecimals = 2,
+  currencies = [],
+  differenceField = "allowed_difference_in_receipt",
   onAmount,
   onApplyRemainder,
   onRemove,
 }) {
-  const appliedFor = (row) => {
+  const settlementFor = (row) => {
     if (readOnly && row.appliedAmount != null && Number.isFinite(Number(row.appliedAmount))) {
-      return Number(row.appliedAmount);
+      const stored = Number(row.exchangeDifference ?? 0);
+      return {
+        applied: Number(row.appliedAmount),
+        difference: Number.isFinite(stored) ? stored : 0,
+      };
     }
     const same = Number(row.currencyId) === Number(receiptCurrencyId);
     const invoiceRate = same
       ? receiptRate
       : rateFromPrimary(pairRates, primaryCurrencyId, row.currencyId);
-    return paymentAppliedToInvoice(row.amount, receiptRate, invoiceRate, same, priceDecimals);
+    const converted = paymentAppliedToInvoice(row.amount, receiptRate, invoiceRate, same, priceDecimals);
+    const invoiceCurrency = currencies.find((currency) => Number(currency.id) === Number(row.currencyId));
+    return settlePayment(converted, row.netToPay, invoiceCurrency?.[differenceField], priceDecimals);
   };
 
   const allocatedUnits = rows.reduce((sum, row) => sum + moneyUnits(row.amount), 0);
@@ -69,14 +80,12 @@ export default function PaymentAllocationGrid({
 
   return (
     <section className="item-lines-panel">
-      <div>
-        <Typography.Text strong>{t("allocationsTitle")}</Typography.Text>
-        <div className="text-xs text-neutral-500">{t("allocationsHint")}</div>
-      </div>
+      <Typography.Text strong>{t("allocationsTitle")}</Typography.Text>
 
       <Table
         size="small"
         pagination={false}
+        tableLayout="fixed"
         rowKey="key"
         dataSource={rows}
         locale={{ emptyText: t("allocationsEmpty") }}
@@ -84,6 +93,7 @@ export default function PaymentAllocationGrid({
           {
             title: t("colInvoice"),
             dataIndex: "invoiceNumber",
+            width: 280,
             render: (value) => value || "\u2014",
           },
           {
@@ -118,10 +128,24 @@ export default function PaymentAllocationGrid({
             width: 150,
             align: "right",
             render: (_, row) => {
-              const applied = appliedFor(row);
-              if (applied == null) return "\u2014";
+              const settlement = settlementFor(row);
+              if (!Number.isFinite(settlement.applied)) return "\u2014";
               const code = row.currencyCode ? ` ${row.currencyCode}` : "";
-              return `${formatTenantMoney(applied)}${code}`;
+              return `${formatTenantMoney(settlement.applied)}${code}`;
+            },
+          },
+          {
+            title: t("exchangeDifference"),
+            key: "exchangeDifference",
+            width: 140,
+            align: "right",
+            render: (_, row) => {
+              const settlement = settlementFor(row);
+              if (!Number.isFinite(settlement.difference) || moneyUnits(settlement.difference) === 0) {
+                return "\u2014";
+              }
+              const code = row.currencyCode ? ` ${row.currencyCode}` : "";
+              return `${formatTenantMoney(settlement.difference)}${code}`;
             },
           },
           {

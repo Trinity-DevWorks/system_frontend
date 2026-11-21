@@ -9,6 +9,7 @@ import { useResourceAccess } from "@/lib/permissions";
 import { useCreateDiscardBaseline } from "@/shared/components/resource-drawer/useCreateDiscardBaseline";
 import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/useResourceDrawerCloseFlow";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
+import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { visibleAttestations } from "@/features/sales-invoices/utils/invoiceAttestationSides";
 import { fetchLinkedPurchaseOffer, fetchLinkedPurchaseProof, fetchPurchaseInvoice, importLinkedPurchaseProof, verifyPurchaseInvoice } from "../../api/purchaseInvoices.api";
 import { createVendorPortalLink, createPurchaseInvoiceProofDisclosure, fetchPurchaseInvoiceProofFields } from "../../api/purchaseInvoices.api";
@@ -43,7 +44,6 @@ import { App, Form, Input, Modal, Typography } from "antd";
 import { useTranslations, useMessages } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePurchaseInvoiceDrawerKeyboard } from "./purchaseInvoiceDrawerKeyboard";
-import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import {
   isPurchaseInvoiceDraft,
@@ -129,6 +129,7 @@ export default function PurchaseInvoiceDrawer({
   const { message, modal, notification } = App.useApp();
   const access = useResourceAccess("purchase_invoices");
   const invoiceProofAccess = useResourceAccess("invoice_proofs");
+  const paymentAccess = useResourceAccess("supplier_payments");
   const { openDrawer } = useGlobalDrawer();
   const supplierAccess = useResourceAccess("suppliers");
   const companyProfileAccess = useResourceAccess("company_profile");
@@ -170,6 +171,7 @@ export default function PurchaseInvoiceDrawer({
   const prevSupplierIdRef = useRef(/** @type {unknown} */ (undefined));
   const hydrateSupplierRef = useRef(true);
   const loadedDetailVersionRef = useRef(0);
+  const postedHoldRef = useRef(false);
   const keyboardRootRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const tamperedToastKeyRef = useRef(/** @type {string | null} */ (null));
   const previousProofStatusRef = useRef(/** @type {string | null} */ (null));
@@ -222,7 +224,9 @@ export default function PurchaseInvoiceDrawer({
       setLinesBaseline(nextLines);
       const mappedHeader = mapPurchaseInvoiceRecordToForm(record);
       setHeaderBaseline(mappedHeader);
-      setLoadedStatus(typeof record.status === "string" ? record.status : null);
+      const nextStatus = typeof record.status === "string" ? record.status : null;
+      if (nextStatus === "posted") postedHoldRef.current = true;
+      setLoadedStatus(nextStatus);
       setLoadedNumber(typeof record.invoice_number === "string" ? record.invoice_number : null);
       setLoadedPostedBy(record.posted_by ?? null);
       setLoadedPostedAt(typeof record.posted_at === "string" ? record.posted_at : null);
@@ -246,6 +250,7 @@ export default function PurchaseInvoiceDrawer({
     setLines(initialLines);
     setLinesBaseline(initialLines);
     setHeaderBaseline(defaults);
+    postedHoldRef.current = false;
     setLoadedStatus("draft");
     setLoadedNumber(null);
     setLoadedPostedBy(null);
@@ -259,12 +264,15 @@ export default function PurchaseInvoiceDrawer({
     poApplyRef.current = null;
   }, [form, defaults]);
 
-  useLayoutEffect(() => {
-    if (!open) return;
+  const syncDrawerOnOpen = useCallback(() => {
+    if (!open) {
+      postedHoldRef.current = false;
+      return;
+    }
     dueOnAutoRef.current = mode === "create";
     hydrateSupplierRef.current = true;
     if (mode === "create") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset create draft when the drawer opens
+      if (postedHoldRef.current) return;
       resetCreateDraftState();
       if (createSeed && typeof createSeed === "object") {
         const header = createSeed.header ?? {};
@@ -292,6 +300,11 @@ export default function PurchaseInvoiceDrawer({
       applyTotals(tableSeedRecord);
     }
   }, [open, mode, tableSeedRecord, createSeed, resetCreateDraftState, form, defaults, applyTotals]);
+
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the draft when the drawer opens
+    syncDrawerOnOpen();
+  }, [syncDrawerOnOpen]);
 
   useEffect(() => {
     if (!open || mode === "create" || !detailQuery.isSuccess || !detailQuery.data) return;
@@ -713,14 +726,16 @@ export default function PurchaseInvoiceDrawer({
   const headerRate = exchangeRateLocked ? 1 : positiveRate(formValuesWatch?.exchange_rate);
   const primaryCode = drawerData.currencyCode(drawerData.primaryCurrencyId);
   const documentCurrencyCode = drawerData.currencyCode(currencyId);
+  const documentCurrencySymbol = drawerData.currencySymbol(currencyId);
   const linePricing = useMemo(
     () => ({
       rate: headerRate,
       foreign: !exchangeRateLocked,
       primaryCode,
       currencyCode: documentCurrencyCode,
+      symbol: documentCurrencySymbol,
     }),
-    [headerRate, exchangeRateLocked, primaryCode, documentCurrencyCode],
+    [headerRate, exchangeRateLocked, primaryCode, documentCurrencyCode, documentCurrencySymbol],
   );
   const exchangeRateHelp = exchangeRateLocked
     ? undefined
@@ -1124,6 +1139,16 @@ export default function PurchaseInvoiceDrawer({
     );
   }, [modal, t, reissueMutation, reissueEnabled]);
 
+  const handleCreatePayment = useCallback(() => {
+    const id = normalizeEntityId(invoiceId);
+    if (id == null) return;
+    openDrawer({
+      featureId: "supplierPayments",
+      mode: "create",
+      extras: { fromInvoiceId: id },
+    });
+  }, [invoiceId, openDrawer]);
+
   const handleDelete = useCallback(() => {
     const name = loadedNumber ?? String(invoiceId ?? "");
     modal.confirm(
@@ -1281,6 +1306,8 @@ export default function PurchaseInvoiceDrawer({
           <PurchaseInvoiceDrawerHeaderMeta
             t={t}
             invoiceStatus={effectiveStatus}
+            paidTotal={displayTotals?.paid_total}
+            netToPay={displayTotals?.net_to_pay}
             chainIssue={
               showProofView
                 ? ((detailQuery.data ? detailQuery.data.chain_issue : tableSeedRecord?.chain_issue) ?? null)
@@ -1312,7 +1339,14 @@ export default function PurchaseInvoiceDrawer({
             showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse}
             reverseDisabled={!reverseEnabled}
             reverseDisabledReason={purchaseInvoiceReverseDisabledReason(t, invoiceRecord, proofStatus)}
+            showCreatePayment={
+              effectiveStatus === "posted" &&
+              invoiceId != null &&
+              paymentAccess.canAdd &&
+              Number(displayTotals?.net_to_pay) > 0
+            }
             onReverse={handleReverse}
+            onCreatePayment={handleCreatePayment}
             postedBy={loadedPostedBy}
             postedAt={loadedPostedAt}
             onSave={handleSave}
@@ -1477,6 +1511,7 @@ export default function PurchaseInvoiceDrawer({
             readOnly={readOnly || submitting}
             sealLocked={Boolean(formValuesWatch?.use_linked_proof && formValuesWatch?.linked_proof_id)}
             totals={displayTotals}
+            currencySymbol={documentCurrencySymbol}
           />
         </PurchaseInvoiceDrawerForm>
       </ResourceCrudDrawer>

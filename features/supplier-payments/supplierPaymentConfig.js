@@ -2,6 +2,7 @@
 
 import { SUPPLIERS_LIST_QUERY_KEY, fetchSupplierNames } from "@/features/suppliers";
 import { PURCHASE_INVOICE_DETAIL_QUERY_PREFIX, PURCHASE_INVOICES_QUERY_KEY } from "@/features/purchase-invoices/queries/purchaseInvoicesQueryKeys";
+import { fetchPurchaseInvoice } from "@/features/purchase-invoices/api/purchaseInvoices.api";
 import { fetchPurchaseInvoiceSupplierSelectorPage } from "@/features/purchase-invoices/api/purchaseInvoiceSelectors.api";
 import {
   createSupplierPayment,
@@ -44,6 +45,7 @@ export const supplierPaymentConfig = {
     reverse: reverseSupplierPayment,
     openInvoices: (partyId, currencyId) =>
       fetchSupplierPaymentOpenInvoices({ supplierId: partyId, currencyId }),
+    fetchInvoice: fetchPurchaseInvoice,
   },
   party: {
     queryKey: SUPPLIERS_LIST_QUERY_KEY,

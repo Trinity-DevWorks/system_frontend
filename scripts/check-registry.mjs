@@ -61,6 +61,11 @@ const OLD_MODULE_RULES = [
   { prefix: "/main/supplier-ledger", module: "purchasing" },
   { prefix: "/main/purchase-invoices", module: "purchasing" },
   { prefix: "/main/supplier-payments", module: "purchasing" },
+  { prefix: "/main/accounting/accounts", module: "accounting" },
+  { prefix: "/main/accounting/journal-entries", module: "accounting" },
+  { prefix: "/main/accounting/trial-balance", module: "accounting" },
+  { prefix: "/main/accounting/account-ledger", module: "accounting" },
+  { prefix: "/main/settings/account-mappings", module: "accounting" },
 ];
 
 const OLD_PERMISSION_RULES = [
@@ -95,6 +100,11 @@ const OLD_PERMISSION_RULES = [
   { prefix: "/main/supplier-ledger", resource: "suppliers" },
   { prefix: "/main/purchase-invoices", resource: "purchase_invoices" },
   { prefix: "/main/supplier-payments", resource: "supplier_payments" },
+  { prefix: "/main/accounting/accounts", resource: "accounts" },
+  { prefix: "/main/accounting/journal-entries", resource: "journal_entries" },
+  { prefix: "/main/accounting/trial-balance", resource: "accounting_reports" },
+  { prefix: "/main/accounting/account-ledger", resource: "accounting_reports" },
+  { prefix: "/main/settings/account-mappings", resource: "account_mappings" },
 ];
 
 /** The resolver both old files shared. */
@@ -151,9 +161,14 @@ const OLD_ROUTES = {
   supplierLedger: "/main/supplier-ledger",
   purchaseInvoices: "/main/purchase-invoices",
   supplierPayments: "/main/supplier-payments",
+  accounts: "/main/accounting/accounts",
+  journalEntries: "/main/accounting/journal-entries",
+  trialBalance: "/main/accounting/trial-balance",
+  accountLedger: "/main/accounting/account-ledger",
   settings: "/main/settings",
   settingsCompanyProfile: "/main/settings/company-profile",
   settingsCompanySettings: "/main/settings/company-settings",
+  settingsAccountMappings: "/main/settings/account-mappings",
   settingsPreferences: "/main/settings/preferences",
   profile: "/main/profile",
   notifications: "/main/notifications",
@@ -184,6 +199,8 @@ const probes = [
   "/main/settings/company-profile/logo",
   "/main/customers/1/edit",
   "/main/audit-log/9",
+  "/main/accounting/journal-entries/5",
+  "/main/accounting",
   // unknown paths must stay ungated
   "/main/does-not-exist",
   "/main",
@@ -274,6 +291,16 @@ const OLD_NAV = [
     ],
   },
   {
+    key: "accounting",
+    label: "navAccounting",
+    children: [
+      { key: "/main/accounting/accounts", label: "navChartOfAccounts", module: "accounting", permission: "accounts" },
+      { key: "/main/accounting/journal-entries", label: "navJournalEntries", module: "accounting", permission: "journal_entries" },
+      { key: "/main/accounting/trial-balance", label: "navTrialBalance", module: "accounting", permission: "accounting_reports" },
+      { key: "/main/accounting/account-ledger", label: "navAccountLedger", module: "accounting", permission: "accounting_reports" },
+    ],
+  },
+  {
     key: "administration",
     label: "navAdministration",
     children: [
@@ -292,6 +319,7 @@ const OLD_NAV = [
     children: [
       { key: "/main/settings/company-profile", label: "navCompanyProfile", group: "settingsCompanyGroup", module: "core", permission: "company_profile" },
       { key: "/main/settings/company-settings", label: "navCompanySettings", group: "settingsCompanyGroup", module: "core", permission: "company_settings" },
+      { key: "/main/settings/account-mappings", label: "navAccountMappings", group: "settingsAccountingGroup", module: "accounting", permission: "account_mappings" },
       { key: "/main/settings/preferences", label: "navPreferences", group: "settingsUserGroup", module: "core" },
     ],
   },
