@@ -3,7 +3,9 @@
 import { formatStockQuantity } from "../../utils/formatStockQuantity";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { Button, Input, Modal, Select, Table } from "antd";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import SerialNumbersField from "../SerialNumbersField";
 
 /**
  * @param {unknown} value
@@ -124,6 +126,9 @@ function StockTransferCloseOpenModalBody({
     return notes;
   });
 
+  const tSerials = useTranslations("SerialNumbers");
+  const [serialsById, setSerialsById] = useState(/** @type {Record<string, string[]>} */ ({}));
+
   const payloadLines = openLines
     .map((line) => {
       const id = Number(line.id);
@@ -138,6 +143,7 @@ function StockTransferCloseOpenModalBody({
         quantity: qty,
         stock_adjustment_reason_id: reasonId,
         ...(notesById[key]?.trim() ? { notes: notesById[key].trim() } : {}),
+        ...(serialsById[key]?.length ? { serial_numbers: serialsById[key] } : {}),
       };
     })
     .filter(Boolean);
@@ -214,6 +220,29 @@ function StockTransferCloseOpenModalBody({
         />
       ),
     },
+    ...(openLines.some((line) => line.item?.track_serials)
+      ? [
+          {
+            title: tSerials("column"),
+            key: "serials",
+            width: 130,
+            render: (_v, record) =>
+              record.item?.track_serials ? (
+                <SerialNumbersField
+                  mode="pick"
+                  value={serialsById[String(record.id)] ?? []}
+                  choices={Array.isArray(record.serials_in_transit) ? record.serials_in_transit : []}
+                  quantity={toQty(qtyById[String(record.id)])}
+                  itemName={record.item?.name}
+                  pickHint={tSerials("pickTransitHint")}
+                  onChange={(serials) => setSerialsById((prev) => ({ ...prev, [String(record.id)]: serials }))}
+                />
+              ) : (
+                "\u2014"
+              ),
+          },
+        ]
+      : []),
     {
       title: t("transferFieldNotes"),
       key: "notes",

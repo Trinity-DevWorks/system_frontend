@@ -1,5 +1,6 @@
 "use client";
 
+import { partyFilterOption, partyLabelRender, partyOptionRender } from "@/shared/utils/partySelectOptions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { Col, DatePicker, Form, Input, Row, Select } from "antd";
 import dayjs from "dayjs";
@@ -113,7 +114,10 @@ export default function GoodsReceiptDrawerForm({
                 <Select
                   allowClear
                   showSearch
-                  optionFilterProp="label"
+                  filterOption={partyFilterOption}
+                  optionRender={partyOptionRender}
+                  labelRender={partyLabelRender(supplierOptions)}
+                  popupMatchSelectWidth={300}
                   options={supplierOptions}
                   loading={suppliersPending}
                   placeholder={t("grnSupplierPlaceholder")}

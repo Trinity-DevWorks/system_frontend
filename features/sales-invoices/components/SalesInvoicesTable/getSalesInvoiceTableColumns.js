@@ -1,4 +1,4 @@
-import { CheckOutlined, DeleteOutlined, DollarOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MoreOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
+import { CheckOutlined, DeleteOutlined, DollarOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MailOutlined, MoreOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
 import { isSalesInvoiceDraft, salesInvoiceHasCreditableBalance, salesInvoiceStatusTag } from "../../utils/salesInvoiceStatuses";
 import { formatTenantDate, formatTenantDateTime, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
@@ -19,10 +19,12 @@ const toTime = (value) => (value ? dayjs(value).valueOf() : 0);
  *   onCreateCreditNote?: (record: unknown) => void;
  *   onPrint?: (record: unknown) => void;
  *   onDownloadPdf?: (record: unknown) => void;
+ *   onEmail?: (record: unknown) => void;
+ *   emailLabel?: string;
  * }} [actions]
  */
 export function getSalesInvoiceTableColumns(t, actions = {}) {
-  const { onView, onEdit, onPost, onDelete, onReverse, onCreateReceipt, onCreateCreditNote, onPrint, onDownloadPdf } = actions;
+  const { onView, onEdit, onPost, onDelete, onReverse, onCreateReceipt, onCreateCreditNote, onPrint, onDownloadPdf, onEmail, emailLabel } = actions;
 
   return [
     {
@@ -152,6 +154,16 @@ export function getSalesInvoiceTableColumns(t, actions = {}) {
                   icon: <FilePdfOutlined />,
                   label: t("actionDownloadPdf"),
                   onClick: () => onDownloadPdf(record),
+                },
+              ]
+            : []),
+          ...(onEmail && !opening && isDocumentPdfPrintable("sales_invoice", record?.status)
+            ? [
+                {
+                  key: "email",
+                  icon: <MailOutlined />,
+                  label: emailLabel,
+                  onClick: () => onEmail(record),
                 },
               ]
             : []),

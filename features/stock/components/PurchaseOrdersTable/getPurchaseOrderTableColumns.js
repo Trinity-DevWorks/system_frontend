@@ -21,12 +21,14 @@ import { Button, Dropdown, Tag, Typography } from "antd";
  *   onCancel?: (record: unknown) => void;
  *   onPrint?: (record: unknown) => void;
  *   onDownloadPdf?: (record: unknown) => void;
+ *   onEmail?: (record: unknown) => void;
+ *   emailLabel?: string;
  *   onMarkSent?: (record: unknown) => void;
  *   onReceive?: (record: unknown) => void;
  * }} [actions]
  */
 export function getPurchaseOrderTableColumns(t, actions = {}) {
-  const { onView, onEdit, onDelete, onCancel, onPrint, onDownloadPdf, onMarkSent, onReceive } = actions;
+  const { onView, onEdit, onDelete, onCancel, onPrint, onDownloadPdf, onEmail, emailLabel, onMarkSent, onReceive } = actions;
 
   return [
     {
@@ -84,6 +86,9 @@ export function getPurchaseOrderTableColumns(t, actions = {}) {
             : null,
           onDownloadPdf && isPurchaseOrderPrintable(status)
             ? { key: "pdf", icon: <FilePdfOutlined />, label: t("actionDownloadPdf"), onClick: () => onDownloadPdf(record) }
+            : null,
+          onEmail && isPurchaseOrderPrintable(status)
+            ? { key: "email", icon: <MailOutlined />, label: emailLabel, onClick: () => onEmail(record) }
             : null,
           onMarkSent && isPurchaseOrderConfirmed(status)
             ? { key: "mark-sent", icon: <MailOutlined />, label: t("actionMarkPoSent"), onClick: () => onMarkSent(record) }

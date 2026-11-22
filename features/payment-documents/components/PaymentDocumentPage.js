@@ -14,7 +14,9 @@ import {
   stockFilterFieldRowClassName,
   useStockTableFilters,
 } from "@/features/stock/components/StockTableFilters/StockTableFilters";
-import { DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MoreOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
+import { isEmailableType } from "@/features/document-email/api/documentEmail.api";
+import { DeleteOutlined, EditOutlined, EyeOutlined, FilePdfOutlined, MailOutlined, MoreOutlined, PrinterOutlined, RollbackOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, DatePicker, Dropdown, Form, Select, Spin, Tag, Typography } from "antd";
 import dayjs from "dayjs";
@@ -193,6 +195,9 @@ function PaymentDocumentTable({ config }) {
     download: config.api.downloadPdf,
     errorTitle: t("pdfError"),
   });
+  const tEmail = useTranslations("DocumentEmail");
+  const email = useSendDocumentEmail();
+  const openEmail = email.open;
 
   const handleReverse = useCallback(
     (record) => {
@@ -288,6 +293,9 @@ function PaymentDocumentTable({ config }) {
                   onClick: () => downloadPdf(normalizeEntityId(record?.id), record?.[config.numberField]),
                 }
               : null,
+            access.canPrint && isEmailableType(config.documentKey) && isDocumentPdfPrintable(config.documentKey, record?.status)
+              ? { key: "email", icon: <MailOutlined />, label: tEmail("actionMenu"), onClick: () => openEmail(config.documentKey, String(normalizeEntityId(record?.id)), record?.[config.numberField]) }
+              : null,
             isDraft && access.canDelete
               ? {
                   key: "delete",
@@ -315,7 +323,7 @@ function PaymentDocumentTable({ config }) {
         },
       },
     ],
-    [access.canDelete, access.canEdit, access.canPrint, access.canReverse, access.canView, config.dateField, config.documentKey, config.numberField, downloadPdf, printPdf, handleDelete, handleReverse, openEditDrawer, openViewDrawer, t],
+    [access.canDelete, access.canEdit, access.canPrint, access.canReverse, access.canView, config.dateField, config.documentKey, config.numberField, downloadPdf, printPdf, openEmail, tEmail, handleDelete, handleReverse, openEditDrawer, openViewDrawer, t],
   );
   const columns = useDocumentBranchColumns(baseColumns);
 
@@ -399,6 +407,7 @@ function PaymentDocumentTable({ config }) {
         scrollX={980}
         pagination={table.pagination}
       />
+      {email.dialog}
     </div>
   );
 }

@@ -754,6 +754,7 @@ export default function PurchaseInvoiceDrawer({
                 vat_percentage: line.vat_percentage,
                 track_inventory: line.track_inventory,
                 track_lots: line.track_lots,
+                track_serials: line.track_serials,
               },
             ]),
         ),

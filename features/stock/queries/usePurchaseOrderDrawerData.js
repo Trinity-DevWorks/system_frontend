@@ -2,6 +2,7 @@
  * Lookup queries and select options for the purchase order drawer.
  */
 
+import { partySelectOption } from "@/shared/utils/partySelectOptions";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { mapItemUomsToLineSelectOptions } from "../utils/itemLineUomOptions";
@@ -131,14 +132,7 @@ export function usePurchaseOrderDrawerData({ open, t, supplierId = null, loadSup
     () =>
       (suppliersQuery.data ?? [])
         .filter((s) => s?.is_active !== false)
-        .map((s) => {
-          const code = typeof s.supplier_code === "string" ? s.supplier_code.trim() : "";
-          const name = String(s.name ?? s.id);
-          return {
-            value: s.id,
-            label: code ? `${code} — ${name}` : name,
-          };
-        }),
+        .map((s) => partySelectOption(s, "supplier_code")),
     [suppliersQuery.data],
   );
 

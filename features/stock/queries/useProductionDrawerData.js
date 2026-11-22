@@ -59,6 +59,7 @@ export function useProductionDrawerData({ open }) {
           value: item.id,
           label: formatItemOptionLabel(item),
           track_lots: Boolean(item.track_lots),
+          track_serials: Boolean(item.track_serials),
         })),
     [itemsQuery.data],
   );

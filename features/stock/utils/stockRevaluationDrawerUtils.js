@@ -12,6 +12,7 @@ import { normalizeEntityId } from "@/lib/entityId";
  *   item_label?: string;
  *   lot_id?: number;
  *   track_lots?: boolean;
+ *   track_serials?: boolean;
  * }} SrvCreateSeed
  */
 
@@ -22,6 +23,7 @@ import { normalizeEntityId } from "@/lib/entityId";
  *   lot_id?: number;
  *   lot_number?: string;
  *   track_lots?: boolean;
+ *   track_serials?: boolean;
  *   quantity_on_hand?: number | null;
  *   old_unit_cost?: number | null;
  *   new_unit_cost?: number | null;
@@ -54,6 +56,7 @@ export function getEmptySrvLine() {
     lot_id: undefined,
     lot_number: "",
     track_lots: false,
+    track_serials: false,
     notes: "",
   };
 }
@@ -72,6 +75,7 @@ export function getSeededSrvLine(seed = null) {
     item_label: typeof seed.item_label === "string" ? seed.item_label : "",
     lot_id: seed.lot_id != null ? Number(seed.lot_id) : undefined,
     track_lots: Boolean(seed.track_lots || seed.lot_id),
+    track_serials: Boolean(seed.track_serials),
   };
 }
 
@@ -101,6 +105,7 @@ export function mapSrvLinesFromApi(lines) {
     lot_id: line.lot_id != null ? Number(line.lot_id) : undefined,
     lot_number: typeof line.lot?.lot_number === "string" ? line.lot.lot_number : "",
     track_lots: Boolean(line.item?.track_lots),
+    track_serials: Boolean(line.item?.track_serials),
     notes: typeof line.notes === "string" ? line.notes : "",
   }));
 }

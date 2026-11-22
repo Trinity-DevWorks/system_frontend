@@ -14,6 +14,7 @@ import { dayjsDatePattern } from "@/lib/tenant-format";
 import { goodsReceiptFromPoDrawerArgs } from "../utils/goodsReceiptFromPurchaseOrder";
 import { cancelPurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, markPurchaseOrderAsSent } from "../api/purchaseOrders.api";
 import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
 import { fetchSupplierNames } from "@/features/suppliers/index";
 import { fetchWarehouseNames } from "@/features/warehouses/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -198,6 +199,13 @@ function PurchaseOrdersTable() {
     (record) => downloadPdf(normalizeEntityId(record?.id), record?.po_number),
     [downloadPdf],
   );
+  const tEmail = useTranslations("DocumentEmail");
+  const email = useSendDocumentEmail();
+  const openEmail = email.open;
+  const handleEmail = useCallback(
+    (record) => openEmail("purchase_order", String(normalizeEntityId(record?.id)), record?.po_number),
+    [openEmail],
+  );
 
   const markSentMutation = useMutation({
     mutationFn: (/** @type {string} */ id) => markPurchaseOrderAsSent(id),
@@ -282,11 +290,15 @@ function PurchaseOrdersTable() {
         onCancel: access.canEdit ? handleCancel : undefined,
         onPrint: access.canPrint ? handlePrint : undefined,
         onDownloadPdf: access.canPrint ? handleDownloadPdf : undefined,
+        onEmail: access.canPrint ? handleEmail : undefined,
+        emailLabel: tEmail("actionMenu"),
         onMarkSent: access.canEdit ? handleMarkSent : undefined,
         onReceive: access.canAdd ? handleReceive : undefined,
       }),
     [
       t,
+      tEmail,
+      handleEmail,
       access.canView,
       access.canEdit,
       access.canDelete,
@@ -384,6 +396,7 @@ function PurchaseOrdersTable() {
         scrollX={1100}
         pagination={pagination}
       />
+      {email.dialog}
     </div>
   );
 }

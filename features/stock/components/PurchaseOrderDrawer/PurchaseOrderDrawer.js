@@ -20,6 +20,7 @@ import {
   markPurchaseOrderAsSent,
 } from "../../api/purchaseOrders.api";
 import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Form, Tag } from "antd";
 import { useTranslations } from "next-intl";
@@ -475,6 +476,12 @@ export default function PurchaseOrderDrawer({
     printPdf(orderId, loadedNumber);
   }, [printPdf, orderId, loadedNumber]);
 
+  const email = useSendDocumentEmail();
+  const openEmail = email.open;
+  const handleEmail = useCallback(() => {
+    if (orderId != null) openEmail("purchase_order", orderId, loadedNumber);
+  }, [openEmail, orderId, loadedNumber]);
+
   const handleMarkSent = useCallback(() => {
     modal.confirm({
       title: t("poMarkSentConfirmTitle"),
@@ -603,36 +610,40 @@ export default function PurchaseOrderDrawer({
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
       footer={
-        <PurchaseOrderDrawerFooter
-          t={t}
-          editable={editable}
-          isNew={mode === "create" || orderId == null}
-          submitting={busy}
-          saveDisabled={saveDisabled}
-          confirmDisabled={!canSubmitRequired}
-          showDelete={editable && orderId != null && access.canDelete}
-          showConfirm={editable}
-          showCancelOrder={orderId != null && access.canEdit && isPurchaseOrderCancellable(effectiveStatus)}
-          showPdf={showSupplierActions && access.canPrint}
-          showMarkSent={canMarkSent}
-          showReceive={showReceive}
-          pdfLoading={isDownloadPending}
-          printLoading={isPrintPending}
-          createdBy={loadedCreatedBy}
-          createdAt={loadedCreatedAt}
-          sentBy={loadedSentBy}
-          sentAt={loadedSentAt}
-          forceClose={forceClose}
-          requestClose={requestClose}
-          onSave={handleSave}
-          onConfirm={handleConfirm}
-          onCancelOrder={handleCancelOrder}
-          onDelete={handleDelete}
-          onPrint={handlePrint}
-          onDownloadPdf={handleDownloadPdf}
-          onMarkSent={handleMarkSent}
-          onReceive={handleReceive}
-        />
+        <>
+          <PurchaseOrderDrawerFooter
+            t={t}
+            editable={editable}
+            isNew={mode === "create" || orderId == null}
+            submitting={busy}
+            saveDisabled={saveDisabled}
+            confirmDisabled={!canSubmitRequired}
+            showDelete={editable && orderId != null && access.canDelete}
+            showConfirm={editable}
+            showCancelOrder={orderId != null && access.canEdit && isPurchaseOrderCancellable(effectiveStatus)}
+            showPdf={showSupplierActions && access.canPrint}
+            showMarkSent={canMarkSent}
+            showReceive={showReceive}
+            pdfLoading={isDownloadPending}
+            printLoading={isPrintPending}
+            createdBy={loadedCreatedBy}
+            createdAt={loadedCreatedAt}
+            sentBy={loadedSentBy}
+            sentAt={loadedSentAt}
+            forceClose={forceClose}
+            requestClose={requestClose}
+            onSave={handleSave}
+            onConfirm={handleConfirm}
+            onCancelOrder={handleCancelOrder}
+            onDelete={handleDelete}
+            onPrint={handlePrint}
+            onDownloadPdf={handleDownloadPdf}
+            onEmail={handleEmail}
+            onMarkSent={handleMarkSent}
+            onReceive={handleReceive}
+          />
+          {email.dialog}
+        </>
       }
     >
       <div className="sales-invoice-keyboard-root">

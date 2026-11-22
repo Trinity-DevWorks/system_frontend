@@ -1,13 +1,14 @@
 "use client";
 
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
 import { Button, Space } from "antd";
 
 /**
  * Shared footer for inventory document drawers.
  *
  * Edit:  audit meta on the far left · Delete · Cancel, Save, primary on the right
- * View:  audit meta on the far left · Close and extras on the right
+ * View:  audit meta on the far left · Close, More ▾ (Print / Download PDF / moreItems) and extras on the right
  *
  * @param {{
  *   readOnly: boolean;
@@ -37,6 +38,7 @@ import { Button, Space } from "antd";
  *   onReverse?: () => void;
  *   onPrint?: () => void;
  *   onDownloadPdf?: () => void;
+ *   moreItems?: (import("@/shared/components/resource-drawer/DocumentMoreMenu").MoreItem | null | false | undefined)[];
  * }} props
  */
 export default function StockDocumentDrawerFooter({
@@ -67,6 +69,7 @@ export default function StockDocumentDrawerFooter({
   onReverse,
   onPrint,
   onDownloadPdf,
+  moreItems = [],
 }) {
   useDrawerSubmitShortcut({
     enabled: !readOnly,
@@ -85,18 +88,14 @@ export default function StockDocumentDrawerFooter({
           <Button className="shrink-0" onClick={forceClose}>
             {t("drawerClose")}
           </Button>
-          {showPdf ? (
-            <>
-              {onPrint ? (
-                <Button loading={printLoading} disabled={submitting} onClick={onPrint}>
-                  {t("actionPrint")}
-                </Button>
-              ) : null}
-              <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
-                {t("actionDownloadPdf")}
-              </Button>
-            </>
-          ) : null}
+          <DocumentMoreMenu
+            disabled={submitting}
+            loading={printLoading || pdfLoading}
+            items={[
+              ...(showPdf ? documentOutputItems({ t, onPrint, onDownloadPdf }) : []),
+              ...moreItems,
+            ]}
+          />
           {showReverse ? (
             <Button danger disabled={submitting} loading={submitting} onClick={onReverse}>
               {reverseLabel ?? t("actionReverse")}

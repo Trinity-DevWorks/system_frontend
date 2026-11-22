@@ -14,7 +14,8 @@ import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { fetchPurchaseOrder } from "../../api/purchaseOrders.api";
 import { mapPurchaseOrderToGrnCreateSeed } from "../../utils/goodsReceiptFromPurchaseOrder";
 import { useQuery } from "@tanstack/react-query";
-import { App, Button, Form, Tag } from "antd";
+import { ContainerOutlined } from "@ant-design/icons";
+import { App, Form, Tag } from "antd";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -430,18 +431,21 @@ export default function GoodsReceiptDrawer({
           onDownloadPdf={handleDownloadPdf}
           onReverse={handleReverse}
           onDelete={handleDelete}
-          readOnlyExtras={
-            effectiveStatus === "posted" && receiptId != null && landedCostAccess.canAdd ? (
-              <Button
-                disabled={submitting}
-                onClick={() =>
-                  openDrawer({ featureId: "landedCosts", mode: "create", extras: { fromReceipt: { source_type: "goods_receipt", source_id: String(receiptId) } } })
+          moreItems={[
+            effectiveStatus === "posted" && receiptId != null && landedCostAccess.canAdd
+              ? {
+                  key: "landed-cost",
+                  icon: <ContainerOutlined />,
+                  label: tLanded("actionCreateFromReceipt"),
+                  onClick: () =>
+                    openDrawer({
+                      featureId: "landedCosts",
+                      mode: "create",
+                      extras: { fromReceipt: { source_type: "goods_receipt", source_id: String(receiptId) } },
+                    }),
                 }
-              >
-                {tLanded("actionCreateFromReceipt")}
-              </Button>
-            ) : null
-          }
+              : null,
+          ]}
         />
       }
     >

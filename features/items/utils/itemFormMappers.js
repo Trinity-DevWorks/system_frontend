@@ -118,6 +118,7 @@ export function itemFormValuesToPayload(values) {
     sku: values.sku != null && String(values.sku).trim() !== "" ? String(values.sku).trim() : null,
     item_code: itemCode,
     plu_code: values.plu_code ? String(values.plu_code).trim() : null,
+    is_scale_item: values.allow_sale !== false && values.is_scale_item === true,
     item_type_id: Number(values.item_type_id),
     category_id: optionalRelationId(values.category_id),
     brand_id: values.brand_id != null && values.brand_id !== "" ? Number(values.brand_id) : null,
@@ -137,6 +138,11 @@ export function itemFormValuesToPayload(values) {
     color: values.allow_sale === true ? optionalColor(values.color) : null,
     track_inventory: values.track_inventory === true,
     track_lots: values.track_inventory === true && values.track_lots === true,
+    track_serials: values.track_inventory === true && values.track_serials === true,
+    warranty_months:
+      values.track_inventory === true && values.track_serials === true && Number(values.warranty_months) > 0
+        ? Math.round(Number(values.warranty_months))
+        : null,
     costing_method:
       values.track_inventory === true && values.costing_method
         ? String(values.costing_method)
@@ -164,6 +170,7 @@ export function toItemCacheRow(row) {
     item_code: row.item_code ?? null,
     parent_item_id: row.parent_item_id ?? null,
     plu_code: row.plu_code ?? null,
+    is_scale_item: Boolean(row.is_scale_item),
     item_type_id: row.item_type_id ?? row.item_type?.id ?? null,
     item_type: row.item_type ?? null,
     category_id: row.category_id ?? row.category?.id ?? null,
@@ -186,6 +193,8 @@ export function toItemCacheRow(row) {
     color: row.color ?? null,
     track_inventory: row.track_inventory,
     track_lots: row.track_lots,
+    track_serials: row.track_serials,
+    warranty_months: row.warranty_months ?? null,
     costing_method: row.costing_method ?? null,
     allow_sale: row.allow_sale,
     allow_purchase: row.allow_purchase,
@@ -211,6 +220,7 @@ export function mapItemRecordToFormValues(r) {
     sku: r.sku ?? "",
     item_code: r.item_code ?? undefined,
     plu_code: r.plu_code ?? undefined,
+    is_scale_item: Boolean(r.is_scale_item),
     item_type_id: r.item_type_id ?? r.item_type?.id ?? undefined,
     category_id: r.category_id ?? r.category?.id ?? undefined,
     brand_id: r.brand_id ?? r.brand?.id ?? undefined,
@@ -227,6 +237,8 @@ export function mapItemRecordToFormValues(r) {
     color: r.color ?? undefined,
     track_inventory: Boolean(r.track_inventory),
     track_lots: Boolean(r.track_lots),
+    track_serials: Boolean(r.track_serials),
+    warranty_months: r.warranty_months ?? null,
     costing_method: r.costing_method ?? "",
     allow_sale: Boolean(r.allow_sale),
     allow_purchase: Boolean(r.allow_purchase),

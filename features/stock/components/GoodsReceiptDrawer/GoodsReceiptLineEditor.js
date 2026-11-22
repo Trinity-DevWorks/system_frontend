@@ -5,10 +5,12 @@ import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/Resou
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { Input, Select } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
 import StockLineUomField from "../StockLineUomField";
 import InboundLotFields from "../InboundLotFields";
+import SerialNumbersField from "../SerialNumbersField";
 import InboundSuggestedUnitCostSync from "../InboundSuggestedUnitCostSync";
 
 /**
@@ -42,17 +44,21 @@ export default function GoodsReceiptLineEditor({
   t,
 }) {
   const showLotColumn = lines.some((line) => line.track_lots);
-  const showUomColumn = !hasPurchaseOrder && !readOnly;
+  const showSerialColumn = lines.some((line) => line.track_serials);
+  const tSerials = useTranslations("SerialNumbers");
+  // The UOM has its own column in every mode (view, from a PO, create), like in create mode.
+  const uomLocked = readOnly || hasPurchaseOrder;
 
   const columns = useMemo(
     () => [
       { key: "item", label: t("grnLineItem"), width: "minmax(220px, 1fr)" },
       { key: "quantity", label: t("grnLineQuantity"), width: "120px" },
-      ...(showUomColumn ? [{ key: "uom", label: t("grnLineUom"), width: "150px" }] : []),
+      { key: "uom", label: t("grnLineUom"), width: "150px" },
       ...(showLotColumn ? [{ key: "lot", label: t("grnLineLot"), width: "220px" }] : []),
+      ...(showSerialColumn ? [{ key: "serials", label: tSerials("column"), width: "140px" }] : []),
       { key: "unit_cost", label: t("grnLineUnitCost"), width: "130px" },
     ],
-    [t, showLotColumn, showUomColumn],
+    [t, tSerials, showLotColumn, showSerialColumn],
   );
 
   return (
@@ -74,9 +80,8 @@ export default function GoodsReceiptLineEditor({
         renderField={(line, index, columnKey) => {
           const row = /** @type {import("../../utils/goodsReceiptDrawerUtils").GrnLineFormRow} */ (line);
           if (columnKey === "item") {
-            if (readOnly || hasPurchaseOrder) {
-              const label = [row.item_label || row.item_id, row.item_uom_label].filter(Boolean).join(" · ");
-              return <Input value={label} disabled />;
+            if (uomLocked) {
+              return <Input value={String(row.item_label || row.item_id || "")} disabled />;
             }
             return (
               <Select
@@ -95,6 +100,8 @@ export default function GoodsReceiptLineEditor({
                     item_id: value,
                     item_uom_id: PO_BASE_UOM,
                     track_lots: Boolean(selected?.track_lots),
+                    track_serials: Boolean(selected?.track_serials),
+                    serial_numbers: [],
                     lot_id: undefined,
                     lot_number: "",
                     expiry_date: "",
@@ -105,6 +112,9 @@ export default function GoodsReceiptLineEditor({
             );
           }
           if (columnKey === "uom") {
+            if (uomLocked) {
+              return <Input value={String(row.item_uom_label || "")} placeholder="—" disabled />;
+            }
             return (
               <StockLineUomField
                 itemId={row.item_id}
@@ -113,6 +123,20 @@ export default function GoodsReceiptLineEditor({
                 t={t}
                 prefer="purchase"
                 onChange={(value) => onPatchLine(index, { item_uom_id: value, unit_cost: undefined })}
+              />
+            );
+          }
+          if (columnKey === "serials") {
+            if (!row.track_serials) return "—";
+            return (
+              <SerialNumbersField
+                mode="in"
+                value={row.serial_numbers}
+                quantity={Number(row.quantity) || 0}
+                itemId={row.item_id}
+                itemName={row.item_label || itemOptions.find((option) => option.value === row.item_id)?.label}
+                readOnly={readOnly}
+                onChange={(serials) => onPatchLine(index, { serial_numbers: serials })}
               />
             );
           }

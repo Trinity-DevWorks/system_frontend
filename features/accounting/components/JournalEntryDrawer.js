@@ -1,5 +1,6 @@
 "use client";
 
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
 import { postWithBudgetWarning } from "@/features/budgets/components/BudgetWarningList";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
@@ -479,16 +480,19 @@ export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCre
             <Button className="ms-auto" onClick={forceClose}>
               {t("drawerClose")}
             </Button>
-            {entryId != null && access.canPrint && isDocumentPdfPrintable("journal_entry", status) ? (
-              <>
-                <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(entryId, record?.entry_number)}>
-                  {t("actionPrint")}
-                </Button>
-                <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(entryId, record?.entry_number)}>
-                  {t("actionDownloadPdf")}
-                </Button>
-              </>
-            ) : null}
+            <DocumentMoreMenu
+              disabled={submitting}
+              loading={isPrintPending || isDownloadPending}
+              items={
+                entryId != null && access.canPrint && isDocumentPdfPrintable("journal_entry", status)
+                  ? documentOutputItems({
+                      t,
+                      onPrint: () => printPdf(entryId, record?.entry_number),
+                      onDownloadPdf: () => downloadPdf(entryId, record?.entry_number),
+                    })
+                  : []
+              }
+            />
             {status === "posted" && isManual && access.canReverse ? (
               <Button
                 danger

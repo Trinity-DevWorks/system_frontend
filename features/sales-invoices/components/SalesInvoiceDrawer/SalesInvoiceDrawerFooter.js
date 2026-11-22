@@ -3,8 +3,10 @@
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import { postedByDisplayName } from "./SalesInvoiceDrawerHeaderMeta";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
-import { DownOutlined } from "@ant-design/icons";
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
+import { DownOutlined, FileExclamationOutlined, PrinterOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Space } from "antd";
+import { useTranslations } from "next-intl";
 import { useSyncExternalStore } from "react";
 
 /** "post" = post on account without paying; "pay" = open the payment window. */
@@ -95,6 +97,7 @@ function FooterPostedMeta({ t, postedBy, postedAt }) {
  *   onPrintReceipt?: () => void;
  *   receiptLoading?: boolean;
  *   onDownloadPdf?: () => void;
+ *   onEmail?: () => void;
  *   onCreateReceipt?: () => void;
  *   onCreateCreditNote?: () => void;
  * }} props
@@ -125,10 +128,12 @@ export default function SalesInvoiceDrawerFooter({
   onPrintReceipt,
   receiptLoading = false,
   onDownloadPdf,
+  onEmail,
   onCreateReceipt,
   onCreateCreditNote,
 }) {
   // Main button repeats the last choice (like Save / Save and new / Save and close).
+  const tEmail = useTranslations("DocumentEmail");
   const lastPostIntent = useSyncExternalStore(subscribePostIntent, readPostIntent, () => /** @type {PostIntent} */ ("pay"));
   const postLabel = (/** @type {PostIntent} */ intent) => (intent === "post" ? t("actionPost") : t("actionPostAndPay"));
   const runPost = (/** @type {PostIntent} */ intent) => {
@@ -154,31 +159,27 @@ export default function SalesInvoiceDrawerFooter({
         <Button className="shrink-0" onClick={forceClose}>
           {t("drawerClose")}
         </Button>
-        {showPdf ? (
-          <>
-            {onPrint ? (
-              <Button className="shrink-0" loading={printLoading} disabled={submitting} onClick={onPrint}>
-                {t("actionPrint")}
-              </Button>
-            ) : null}
-            {onPrintReceipt ? (
-              <Button className="shrink-0" loading={receiptLoading} disabled={submitting} onClick={onPrintReceipt}>
-                {t("actionPrintReceipt")}
-              </Button>
-            ) : null}
-            <Button className="shrink-0" loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
-              {t("actionDownloadPdf")}
-            </Button>
-          </>
-        ) : null}
+        <DocumentMoreMenu
+          disabled={submitting}
+          loading={printLoading || receiptLoading || pdfLoading}
+          items={[
+            ...(showPdf
+              ? [
+                  ...documentOutputItems({ t, onPrint }),
+                  onPrintReceipt
+                    ? { key: "receipt", icon: <PrinterOutlined />, label: t("actionPrintReceipt"), onClick: onPrintReceipt }
+                    : null,
+                  ...documentOutputItems({ t, onDownloadPdf, onEmail, emailLabel: tEmail("actionMenu") }),
+                ]
+              : []),
+            showCreateCreditNote && onCreateCreditNote
+              ? { key: "credit-note", icon: <FileExclamationOutlined />, label: t("actionCreateCreditNote"), onClick: onCreateCreditNote }
+              : null,
+          ]}
+        />
         {showReverse ? (
           <Button className="shrink-0" danger disabled={submitting} loading={submitting} onClick={onReverse}>
             {t("actionReverse")}
-          </Button>
-        ) : null}
-        {showCreateCreditNote ? (
-          <Button className="shrink-0" onClick={onCreateCreditNote}>
-            {t("actionCreateCreditNote")}
           </Button>
         ) : null}
         {showCreateReceipt ? (

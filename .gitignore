@@ -41,3 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+
+# Local tools (phone scanner tunnel, one-off scripts)
+.phone-scan-origin
+.tools/
+scripts/patch-recurring-i18n.mjs

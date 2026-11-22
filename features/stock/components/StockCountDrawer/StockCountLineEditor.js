@@ -1,5 +1,6 @@
 "use client";
 
+import SerialNumbersField from "../SerialNumbersField";
 import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/ResourceDrawerPanelHeader";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
@@ -116,6 +117,9 @@ export default function StockCountLineEditor({
 }) {
   const showLotColumn = lines.some((line) => line.track_lots);
 
+  const showSerialColumn = lines.some((line) => line.track_serials);
+  const tSerials = useTranslations("SerialNumbers");
+
   const columns = useMemo(
     () => [
       { key: "item", label: t("cntLineItem"), width: "minmax(220px, 1fr)" },
@@ -124,9 +128,10 @@ export default function StockCountLineEditor({
       { key: "variance", label: t("cntLineVariance"), width: "120px" },
       { key: "uom", label: t("cntLineUom"), width: "110px" },
       ...(showLotColumn ? [{ key: "lot", label: t("cntLineLot"), width: "220px" }] : []),
+      ...(showSerialColumn ? [{ key: "serials", label: tSerials("column"), width: "140px" }] : []),
       { key: "unit_cost", label: t("cntLineUnitCost"), width: "130px" },
     ],
-    [t, showLotColumn],
+    [t, tSerials, showLotColumn, showSerialColumn],
   );
 
   return (
@@ -188,6 +193,8 @@ export default function StockCountLineEditor({
                     item_id: value,
                     theoretical_quantity: undefined,
                     track_lots: Boolean(selected?.track_lots),
+                    track_serials: Boolean(selected?.track_serials),
+                    serial_numbers: [],
                     item_uom_label: typeof selected?.item_uom_label === "string" ? selected.item_uom_label : "",
                     lot_id: undefined,
                     lot_number: "",
@@ -214,6 +221,23 @@ export default function StockCountLineEditor({
           }
           if (columnKey === "uom") {
             return <span className="truncate">{row.item_uom_label || "—"}</span>;
+          }
+          if (columnKey === "serials") {
+            if (!row.track_serials) return "—";
+            const variance = Number(cntLineVariance(row)) || 0;
+            if (variance === 0) return "—";
+            return (
+              <SerialNumbersField
+                mode={variance < 0 ? "out" : "in"}
+                value={row.serial_numbers}
+                quantity={Math.abs(variance)}
+                itemId={row.item_id}
+                itemName={itemOptions.find((option) => option.value === row.item_id)?.label}
+                warehouseId={warehouseId}
+                readOnly={readOnly}
+                onChange={(serials) => onPatchLine(index, { serial_numbers: serials })}
+              />
+            );
           }
           if (columnKey === "lot") {
             if (!row.track_lots) return "—";

@@ -15,6 +15,8 @@ import { assignNewLotExpiry } from "./stockLotUtils";
  *   item_label?: string;
  *   lot_id?: number;
  *   track_lots?: boolean;
+ *   track_serials?: boolean;
+ *   serial_numbers?: string[];
  * }} AdjCreateSeed
  */
 
@@ -29,6 +31,7 @@ import { assignNewLotExpiry } from "./stockLotUtils";
  *   lot_number?: string;
  *   expiry_date?: string;
  *   track_lots?: boolean;
+ *   track_serials?: boolean;
  *   item_uom_label?: string;
  *   notes?: string;
  * }} AdjLineFormRow
@@ -60,6 +63,8 @@ export function getEmptyAdjLine() {
     lot_number: "",
     expiry_date: "",
     track_lots: false,
+    track_serials: false,
+    serial_numbers: [],
     notes: "",
   };
 }
@@ -78,6 +83,7 @@ export function getSeededAdjLine(seed = null) {
     item_label: typeof seed.item_label === "string" ? seed.item_label : "",
     lot_id: seed.lot_id != null ? Number(seed.lot_id) : undefined,
     track_lots: Boolean(seed.track_lots || seed.lot_id),
+    track_serials: Boolean(seed.track_serials),
   };
 }
 
@@ -109,6 +115,8 @@ export function mapAdjLinesFromApi(lines) {
     lot_number: typeof line.lot?.lot_number === "string" ? line.lot.lot_number : "",
     expiry_date: typeof line.lot?.expiry_date === "string" ? line.lot.expiry_date : "",
     track_lots: Boolean(line.item?.track_lots),
+    track_serials: Boolean(line.item?.track_serials),
+    serial_numbers: Array.isArray(line.serial_numbers) ? line.serial_numbers.map(String) : [],
     item_uom_label:
       typeof line.item_uom?.uom?.code === "string"
         ? line.item_uom.uom.code
@@ -139,6 +147,9 @@ export function isAdjLineComplete(line) {
   if (line.track_lots && line.lot_id == null && !String(line.lot_number ?? "").trim()) {
     return false;
   }
+  if (line.track_serials && (line.serial_numbers?.length ?? 0) !== Math.abs(Number(line.quantity) || 0)) {
+    return false;
+  }
   return true;
 }
 
@@ -159,6 +170,7 @@ function toAdjLinePayload(line) {
   const lotNumber = String(line.lot_number ?? "").trim();
   if (lotNumber && line.lot_id == null) row.lot_number = lotNumber;
   assignNewLotExpiry(row, line);
+  if (line.track_serials) row.serial_numbers = Array.isArray(line.serial_numbers) ? line.serial_numbers : [];
   const notes = typeof line.notes === "string" ? line.notes.trim() : "";
   if (notes) row.notes = notes;
   return row;

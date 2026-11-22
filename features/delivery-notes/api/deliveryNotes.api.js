@@ -1,5 +1,7 @@
 import { tenantRequest } from "@/lib/axios";
 import { fetchPaginatedResource, fetchResourceNames } from "@/lib/tables/paginatedList";
+import { downloadPdf } from "@/shared/api/downloadPdf";
+import { documentPdfFilename } from "@/shared/utils/documentPdf";
 
 /** @param {Record<string, string | number | undefined>} [params] */
 export function fetchDeliveryNotes(params = {}) {
@@ -84,4 +86,12 @@ export async function fetchDeliverableOrders(customerId) {
 /** @param {string} id */
 export function deliveryNotePdfUrl(id) {
   return `delivery-notes/${id}/pdf`;
+}
+
+/**
+ * Download (or print, with `mode: "print"`) the delivery note PDF.
+ * @param {string} id @param {string | null | undefined} number @param {{ locale?: string; mode?: "download" | "print" }} [options]
+ */
+export function downloadDeliveryNotePdf(id, number, options = {}) {
+  return downloadPdf(deliveryNotePdfUrl(id), documentPdfFilename(number, "delivery-note"), options);
 }

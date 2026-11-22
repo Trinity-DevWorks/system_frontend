@@ -1,5 +1,6 @@
 "use client";
 
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
 import { useListPrices } from "@/features/price-lists/hooks/useListPrices";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
@@ -14,6 +15,7 @@ import { formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import { mapSalesInvoiceCustomerOption } from "@/features/sales-invoices/utils/salesInvoiceDrawerUtils";
 import { customerIsExemptOnDate, previewInvoiceTotals } from "@/features/sales-invoices/utils/salesInvoiceTax";
 import { useSalesInvoiceDrawerData } from "@/features/sales-invoices/queries/useSalesInvoiceDrawerData";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
 import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
 import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -384,6 +386,17 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     recordId != null &&
     access.canPrint &&
     isDocumentPdfPrintable(config.kind === "quotation" ? "sales_quotation" : "sales_order", status);
+  const tEmail = useTranslations("DocumentEmail");
+  // Emailing a draft quotation marks it sent once the email has gone out (a few seconds, on the queue).
+  const email = useSendDocumentEmail({
+    onQueued: () => {
+      if (config.kind !== "quotation" || status !== "draft") return;
+      window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: config.listKey });
+        if (recordId) queryClient.invalidateQueries({ queryKey: [...config.detailPrefix, recordId] });
+      }, 5000);
+    },
+  });
 
   const submitting =
     saveMutation.isPending ||
@@ -495,6 +508,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
       tApiErrors={tApiErrors}
       footer={
         <div className="flex w-full min-w-0 items-center gap-3">
+          {email.dialog}
           {config.kind === "quotation" ? (
             <div className="sales-invoice-drawer-footer-posted">
               <span className="sales-invoice-drawer-footer-posted-item">
@@ -573,30 +587,34 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
                 {t("drawerSave")}
               </Button>
             ) : null}
-            {showPdf ? (
-              <>
-                <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(recordId, number)}>
-                  {t("actionPrint")}
-                </Button>
-                <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(recordId, number)}>
-                  {t("actionDownloadPdf")}
-                </Button>
-              </>
-            ) : null}
-            {config.kind === "quotation" && status === "draft" && mode !== "create" && access.canEdit ? (
-              <Button type="primary" disabled={submitting || dirty} onClick={() => runAction("send")}>
-                {t("actionSend")}
+            {/* Unsaved changes: the customer must never get an outdated version. */}
+            <DocumentMoreMenu
+              disabled={submitting || dirty}
+              loading={isPrintPending || isDownloadPending}
+              items={
+                showPdf
+                  ? documentOutputItems({
+                      t,
+                      onPrint: () => printPdf(recordId, number),
+                      onDownloadPdf: () => downloadPdf(recordId, number),
+                      onEmail: () =>
+                        recordId &&
+                        email.open(config.kind === "quotation" ? "sales_quotation" : "sales_order", recordId, number),
+                      emailLabel: tEmail("actionMenu"),
+                    })
+                  : []
+              }
+            />
+            {/* No "Send" step: emailing the quotation marks it sent, and the customer may accept a draft directly. */}
+            {config.kind === "quotation" && status === "sent" && access.canEdit ? (
+              <Button disabled={submitting} onClick={() => runAction("reject")}>
+                {t("actionReject")}
               </Button>
             ) : null}
-            {config.kind === "quotation" && status === "sent" && access.canEdit ? (
-              <>
-                <Button disabled={submitting} onClick={() => runAction("reject")}>
-                  {t("actionReject")}
-                </Button>
-                <Button type="primary" disabled={submitting} onClick={() => runAction("accept")}>
-                  {t("actionAccept")}
-                </Button>
-              </>
+            {config.kind === "quotation" && (status === "draft" || status === "sent") && mode !== "create" && access.canEdit ? (
+              <Button type="primary" disabled={submitting || dirty} onClick={() => runAction("accept")}>
+                {t("actionAccept")}
+              </Button>
             ) : null}
             {config.kind === "quotation" && status === "accepted" && access.canEdit ? (
               <Button type="primary" disabled={submitting} onClick={() => runAction("convert")}>

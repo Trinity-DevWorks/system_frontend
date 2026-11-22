@@ -5,7 +5,9 @@ import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/Resou
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { Select, Typography } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
+import SerialNumbersField from "../SerialNumbersField";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
 import { formatStockQuantity } from "../../utils/formatStockQuantity";
 import { useStockBalanceOnHand } from "../../queries/useStockBalanceOnHand";
@@ -103,6 +105,9 @@ export default function StockAdjustmentLineEditor({
 }) {
   const showLotColumn = lines.some((line) => line.track_lots);
 
+  const showSerialColumn = lines.some((line) => line.track_serials);
+  const tSerials = useTranslations("SerialNumbers");
+
   const columns = useMemo(
     () => [
       { key: "item", label: t("adjLineItem"), width: "minmax(200px, 1fr)" },
@@ -110,9 +115,10 @@ export default function StockAdjustmentLineEditor({
       { key: "quantity", label: t("adjLineQuantity"), width: "130px" },
       { key: "uom", label: t("adjLineUom"), width: "150px" },
       ...(showLotColumn ? [{ key: "lot", label: t("adjLineLot"), width: "220px" }] : []),
+      ...(showSerialColumn ? [{ key: "serials", label: tSerials("column"), width: "140px" }] : []),
       { key: "unit_cost", label: t("adjLineUnitCost"), width: "130px" },
     ],
-    [t, showLotColumn],
+    [t, tSerials, showLotColumn, showSerialColumn],
   );
 
   return (
@@ -148,6 +154,8 @@ export default function StockAdjustmentLineEditor({
                     item_id: value,
                     item_uom_id: PO_BASE_UOM,
                     track_lots: Boolean(selected?.track_lots),
+                    track_serials: Boolean(selected?.track_serials),
+                    serial_numbers: [],
                     lot_id: undefined,
                     lot_number: "",
                     expiry_date: "",
@@ -178,6 +186,22 @@ export default function StockAdjustmentLineEditor({
                 t={t}
                 prefer="base"
                 onChange={(value) => onPatchLine(index, { item_uom_id: value, unit_cost: undefined })}
+              />
+            );
+          }
+          if (columnKey === "serials") {
+            if (!row.track_serials) return "—";
+            const qty = Number(row.quantity) || 0;
+            return (
+              <SerialNumbersField
+                mode={qty < 0 ? "out" : "in"}
+                value={row.serial_numbers}
+                quantity={Math.abs(qty)}
+                itemId={row.item_id}
+                itemName={itemOptions.find((option) => option.value === row.item_id)?.label}
+                warehouseId={warehouseId}
+                readOnly={readOnly}
+                onChange={(serials) => onPatchLine(index, { serial_numbers: serials })}
               />
             );
           }

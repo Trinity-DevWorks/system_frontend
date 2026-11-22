@@ -57,6 +57,7 @@ export function useStockCountDrawerData({ open }) {
           value: item.id,
           label: formatItemOptionLabel(item),
           track_lots: Boolean(item.track_lots),
+          track_serials: Boolean(item.track_serials),
           item_uom_label:
             typeof item.base_uom?.code === "string"
               ? item.base_uom.code

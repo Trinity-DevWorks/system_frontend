@@ -1,5 +1,6 @@
 "use client";
 
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import { postedByDisplayName } from "./PurchaseInvoiceDrawerHeaderMeta";
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
@@ -101,18 +102,11 @@ export default function PurchaseInvoiceDrawerFooter({
         <Button className="shrink-0" onClick={forceClose}>
           {t("drawerClose")}
         </Button>
-        {showPdf ? (
-          <>
-            {onPrint ? (
-              <Button className="shrink-0" loading={printLoading} disabled={submitting} onClick={onPrint}>
-                {t("actionPrint")}
-              </Button>
-            ) : null}
-            <Button className="shrink-0" loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
-              {t("actionDownloadPdf")}
-            </Button>
-          </>
-        ) : null}
+        <DocumentMoreMenu
+          disabled={submitting}
+          loading={printLoading || pdfLoading}
+          items={showPdf ? documentOutputItems({ t, onPrint, onDownloadPdf }) : []}
+        />
         {showReverse ? (
           <Button className="shrink-0" danger disabled={submitting} loading={submitting} onClick={onReverse}>
             {t("actionReverse")}

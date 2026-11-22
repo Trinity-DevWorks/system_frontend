@@ -16,6 +16,11 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
+import { useResourceAccess } from "@/lib/permissions";
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
+import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { downloadDeliveryNotePdf } from "../../api/deliveryNotes.api";
 import { App, Button, Form, Space } from "antd";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -92,6 +97,13 @@ export default function DeliveryNoteDrawer({
   // Posted / reversed notes are read-only even when opened for edit.
   const loadedStatus = /** @type {string | undefined} */ (detailQuery.data?.status);
   const readOnly = mode === "view" || (mode === "edit" && loadedStatus != null && loadedStatus !== "draft");
+  const tEmail = useTranslations("DocumentEmail");
+  const printAccess = useResourceAccess("delivery_notes");
+  const email = useSendDocumentEmail();
+  const deliveryNumber = /** @type {string | undefined} */ (/** @type {any} */ (detailQuery.data)?.delivery_number);
+  const pdf = useDocumentPdfDownload({ download: downloadDeliveryNotePdf, errorTitle: t("pdfError") });
+  const canEmail =
+    deliveryNoteId != null && printAccess.canPrint && (loadedStatus === "posted" || loadedStatus === "reversed");
 
   // "Create delivery note" from a sales order: fill the create drawer, nothing is saved yet.
   const seedQuery = useQuery({
@@ -285,10 +297,28 @@ export default function DeliveryNoteDrawer({
       tApiErrors={tApiErrors}
       footer={
         <div className="flex w-full min-w-0 items-center gap-3">
+          {email.dialog}
           <Space className="ms-auto shrink-0">
             <Button onClick={readOnly ? forceClose : requestClose} disabled={busy}>
               {readOnly ? t("drawerClose") : t("drawerCancel")}
             </Button>
+            {readOnly ? (
+              <DocumentMoreMenu
+                disabled={busy}
+                loading={pdf.isPrintPending || pdf.isDownloadPending}
+                items={
+                  canEmail
+                    ? documentOutputItems({
+                        t,
+                        onPrint: () => pdf.printPdf(String(deliveryNoteId), deliveryNumber),
+                        onDownloadPdf: () => pdf.downloadPdf(String(deliveryNoteId), deliveryNumber),
+                        onEmail: () => email.open("delivery_note", String(deliveryNoteId), deliveryNumber),
+                        emailLabel: tEmail("actionMenu"),
+                      })
+                    : []
+                }
+              />
+            ) : null}
             {!readOnly ? (
               <>
                 <Button loading={submitting} disabled={actionsDisabled} onClick={handleSave}>

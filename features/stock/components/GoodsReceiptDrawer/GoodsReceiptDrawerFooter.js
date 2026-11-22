@@ -21,6 +21,9 @@ import StockDocumentDrawerFooter from "../StockDocumentDrawerFooter";
  *   onDelete: () => void;
  *   onPrint?: () => void;
  *   onDownloadPdf?: () => void;
+ *   onReverse?: () => void;
+ *   showReverse?: boolean;
+ *   moreItems?: (import("@/shared/components/resource-drawer/DocumentMoreMenu").MoreItem | null)[];
  * }} props
  */
 export default function GoodsReceiptDrawerFooter(props) {

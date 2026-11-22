@@ -27,12 +27,13 @@ import {
   FileDoneOutlined,
   FilePdfOutlined,
   LockOutlined,
+  MailOutlined,
   MoreOutlined,
   PrinterOutlined,
-  SendOutlined,
   StopOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, DatePicker, Dropdown, Form, Select, Spin, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
@@ -129,6 +130,15 @@ function CommercialDocumentsTable({ config }) {
     download: config.api.downloadPdf,
     errorTitle: t("pdfError"),
   });
+  const tEmail = useTranslations("DocumentEmail");
+  // Emailing a draft quotation marks it sent once the email has gone out: refresh the list then.
+  const email = useSendDocumentEmail({
+    onQueued: () => {
+      if (config.kind !== "quotation") return;
+      window.setTimeout(() => queryClient.invalidateQueries({ queryKey: config.listKey }), 5000);
+    },
+  });
+  const openEmail = email.open;
 
   const runAction = useCallback(
     (record, /** @type {string} */ action) => {
@@ -283,10 +293,8 @@ function CommercialDocumentsTable({ config }) {
             access.canEdit && status === "draft"
               ? { key: "edit", icon: <EditOutlined />, label: t("actionEdit"), onClick: () => openEditDrawer(record) }
               : null,
-            quotationActions && status === "draft"
-              ? { key: "send", icon: <SendOutlined />, label: t("actionSend"), onClick: () => runAction(record, "send") }
-              : null,
-            quotationActions && status === "sent"
+            // No "Send" step: emailing marks the quotation sent; a draft can be accepted directly.
+            quotationActions && (status === "draft" || status === "sent")
               ? { key: "accept", icon: <CheckOutlined />, label: t("actionAccept"), onClick: () => runAction(record, "accept") }
               : null,
             quotationActions && status === "sent"
@@ -323,6 +331,19 @@ function CommercialDocumentsTable({ config }) {
                   onClick: () => downloadPdf(normalizeEntityId(record?.id), record?.[config.numberField]),
                 }
               : null,
+            access.canPrint && isDocumentPdfPrintable(config.kind === "quotation" ? "sales_quotation" : "sales_order", status)
+              ? {
+                  key: "email",
+                  icon: <MailOutlined />,
+                  label: tEmail("actionMenu"),
+                  onClick: () =>
+                    openEmail(
+                      config.kind === "quotation" ? "sales_quotation" : "sales_order",
+                      String(normalizeEntityId(record?.id)),
+                      record?.[config.numberField],
+                    ),
+                }
+              : null,
             access.canDelete && status === "draft"
               ? { key: "delete", icon: <DeleteOutlined />, danger: true, label: t("actionDelete"), onClick: () => handleDelete(record) }
               : null,
@@ -353,10 +374,12 @@ function CommercialDocumentsTable({ config }) {
       handleDelete,
       invoiceAccess.canAdd,
       openEditDrawer,
+      openEmail,
       openViewDrawer,
       printPdf,
       runAction,
       t,
+      tEmail,
     ],
   );
   const columns = useDocumentBranchColumns(baseColumns);
@@ -442,6 +465,7 @@ function CommercialDocumentsTable({ config }) {
         scrollX={1100}
         pagination={pagination}
       />
+      {email.dialog}
     </div>
   );
 }

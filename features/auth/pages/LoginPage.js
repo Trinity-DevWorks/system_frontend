@@ -209,7 +209,8 @@ function LoginFormInner({ initialHost }) {
           label={
             <span className="flex w-full items-center justify-between gap-3">
               <span>{t("password")}</span>
-              <Link href="/forgot-password" className="login-inline-link text-sm font-medium">
+              {/* Out of the tab order: Tab goes email → password. Still clickable. */}
+              <Link href="/forgot-password" tabIndex={-1} className="login-inline-link text-sm font-medium">
                 {t("forgotPassword")}
               </Link>
             </span>

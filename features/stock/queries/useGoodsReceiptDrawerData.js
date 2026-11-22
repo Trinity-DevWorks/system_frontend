@@ -4,6 +4,7 @@
  * refetch catalogs just to render a read-only drawer.
  */
 
+import { partySelectOption } from "@/shared/utils/partySelectOptions";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { fetchPurchaseOrders } from "../api/purchaseOrders.api";
 import { fetchItemNames } from "@/features/items/index";
@@ -94,14 +95,7 @@ export function useGoodsReceiptDrawerData({
     () =>
       (suppliersQuery.data ?? [])
         .filter((s) => s?.is_active !== false)
-        .map((s) => {
-          const code = typeof s.supplier_code === "string" ? s.supplier_code.trim() : "";
-          const name = String(s.name ?? s.id);
-          return {
-            value: s.id,
-            label: code ? `${code} — ${name}` : name,
-          };
-        }),
+        .map((s) => partySelectOption(s, "supplier_code")),
     [suppliersQuery.data],
   );
 
@@ -113,6 +107,7 @@ export function useGoodsReceiptDrawerData({
           value: item.id,
           label: formatItemOptionLabel(item),
           track_lots: Boolean(item.track_lots),
+          track_serials: Boolean(item.track_serials),
         })),
     [itemsQuery.data],
   );

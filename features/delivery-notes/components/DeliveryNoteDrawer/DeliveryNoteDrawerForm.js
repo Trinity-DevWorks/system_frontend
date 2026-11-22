@@ -2,6 +2,7 @@
 
 import { fetchCustomerNames } from "@/features/customers/api/customers.api";
 import { fetchStockLots } from "@/features/stock/api/stock.api";
+import SerialNumbersField from "@/features/stock/components/SerialNumbersField";
 import { fetchWarehouseNames } from "@/features/warehouses/api/warehouses.api";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { dayjsDatePattern } from "@/lib/tenant-format";
@@ -19,6 +20,11 @@ import {
   fetchSaleItemOptionsPage,
 } from "@/shared/components/selects/ItemPickers";
 import ServerSearchSelect from "@/shared/components/selects/ServerSearchSelect";
+import { CUSTOMERS_LIST_QUERY_KEY } from "@/features/customers";
+import {
+  SALES_INVOICE_CUSTOMER_SELECTOR_PARAMS,
+  fetchSalesInvoiceCustomerSelectorPage,
+} from "@/features/sales-invoices/api/salesInvoiceSelectors.api";
 import { useQuery } from "@tanstack/react-query";
 import { App, Col, DatePicker, Form, Input, Row, Select, Typography } from "antd";
 import { useTranslations } from "next-intl";
@@ -100,7 +106,9 @@ function DeliveryNoteLineEditor({ value, onChange, readOnly, warehouseId, t }) {
         item_label: option?.label ?? null,
         item_uom_id: null,
         lot_id: null,
+        serial_numbers: [],
         track_lots: option?.track_lots === true,
+        track_serials: option?.track_serials === true,
       });
       if (!itemId) return;
       defaultSaleUom(String(itemId))
@@ -116,6 +124,8 @@ function DeliveryNoteLineEditor({ value, onChange, readOnly, warehouseId, t }) {
 
   // Lot is only needed for lot-tracked items; hide the column when no line has one.
   const showLot = lines.some((line) => line?.track_lots === true || line?.lot_id != null);
+  const showSerials = lines.some((line) => line?.track_serials === true);
+  const tSerials = useTranslations("SerialNumbers");
   const columns = useMemo(
     () => [
       { key: "line_no", label: "#", width: "56px" },
@@ -123,8 +133,9 @@ function DeliveryNoteLineEditor({ value, onChange, readOnly, warehouseId, t }) {
       { key: "uom", label: t("colUnit"), width: "160px" },
       { key: "quantity", label: t("colQuantity"), width: "140px" },
       ...(showLot ? [{ key: "lot", label: t("colLot"), width: "minmax(160px, 1fr)" }] : []),
+      ...(showSerials ? [{ key: "serials", label: tSerials("column"), width: "140px" }] : []),
     ],
-    [showLot, t],
+    [showLot, showSerials, t, tSerials],
   );
 
   return (
@@ -193,6 +204,21 @@ function DeliveryNoteLineEditor({ value, onChange, readOnly, warehouseId, t }) {
               />
             );
           }
+          if (columnKey === "serials") {
+            if (row.track_serials !== true) return <span className="item-lines-readonly-uom">{"—"}</span>;
+            return (
+              <SerialNumbersField
+                mode="out"
+                value={row.serial_numbers}
+                quantity={Number(row.quantity) || 0}
+                itemId={row.item_id}
+                itemName={row.item_label}
+                warehouseId={row.warehouse_id ?? warehouseId}
+                readOnly={readOnly}
+                onChange={(serials) => patch(index, { serial_numbers: serials })}
+              />
+            );
+          }
           if (row.track_lots !== true && row.lot_id == null) {
             return <span className="item-lines-readonly-uom">{"—"}</span>;
           }
@@ -235,7 +261,11 @@ export default function DeliveryNoteDrawerForm({ form, readOnly, t }) {
     () =>
       (Array.isArray(customersQuery.data) ? customersQuery.data : []).map((c) => ({
         value: String(c.id),
-        label: [c.customer_code, c.name].filter(Boolean).join(" — "),
+        label: String(c.name ?? c.customer_code ?? c.id),
+        subLabel: c.phone || undefined,
+        title: c.customer_code || undefined,
+        customer_code: c.customer_code || undefined,
+        phone: c.phone || undefined,
       })),
     [customersQuery.data],
   );
@@ -329,12 +359,21 @@ export default function DeliveryNoteDrawerForm({ form, readOnly, t }) {
                   label={<ResourceDrawerFieldLabel text={t("fieldCustomer")} required />}
                   rules={[{ required: true, message: t("fieldCustomerRequired") }]}
                 >
-                  <Select
-                    showSearch
-                    optionFilterProp="label"
-                    loading={customersQuery.isPending}
-                    options={customerOptions}
+                  {/* Same customer search as the sales invoice: by code, name or phone. */}
+                  <ServerSearchSelect
+                    className="w-full"
                     onChange={onCustomerChange}
+                    fetchPage={fetchSalesInvoiceCustomerSelectorPage}
+                    queryKey={CUSTOMERS_LIST_QUERY_KEY}
+                    queryParams={SALES_INVOICE_CUSTOMER_SELECTOR_PARAMS}
+                    recentKind="delivery-note-customer"
+                    seedOptions={customerOptions}
+                    recentLabel={t("selectorRecent")}
+                    clearRecentLabel={t("selectorClearRecent")}
+                    resultsLabel={t("selectorResults")}
+                    loadMoreLabel={t("selectorLoadMore")}
+                    emptyLabel={t("selectorEmpty")}
+                    typeToSearchLabel={t("selectorTypeToSearch")}
                     getPopupContainer={drawerSelectGetPopup}
                   />
                 </Form.Item>

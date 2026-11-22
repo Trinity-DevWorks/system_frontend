@@ -37,6 +37,7 @@ import {
   PURCHASE_INVOICE_ITEM_SELECTOR_PARAMS,
 } from "../../api/purchaseInvoiceSelectors.api";
 import { PiFocusStop } from "./purchaseInvoiceDrawerKeyboard";
+import SerialNumbersField from "@/features/stock/components/SerialNumbersField";
 
 /**
  * @param {{
@@ -536,6 +537,7 @@ export default function PurchaseInvoiceLineEditor({
         label: line.item_label?.trim() || existing?.label || id,
         track_inventory: Boolean(line.track_inventory ?? existing?.track_inventory),
         track_lots: Boolean(line.track_lots ?? existing?.track_lots),
+        track_serials: Boolean(line.track_serials ?? existing?.track_serials),
         vat_percentage:
           line.vat_percentage != null
             ? Number(line.vat_percentage)
@@ -546,6 +548,11 @@ export default function PurchaseInvoiceLineEditor({
     }
     return [...byId.values()];
   }, [itemOptions, lines]);
+
+  const tSerials = useTranslations("SerialNumbers");
+  const tScale = useTranslations("ScaleBarcodes");
+  const showSerialColumn = lines.some((line) => line.track_serials);
+  const showLotColumn = lines.some((line) => line.track_lots || line.lot_id != null);
 
   const columns = useMemo(
     () => [
@@ -571,14 +578,15 @@ export default function PurchaseInvoiceLineEditor({
       { key: "uom", label: t("lineUom"), width: "120px" },
       { key: "conversion", label: t("lineConversion"), width: "30px" },
       { key: "warehouse", label: t("lineWarehouse"), width: "minmax(140px, 0.7fr)" },
-      { key: "lot", label: t("lineLot"), width: "80px" },
+      ...(showLotColumn ? [{ key: "lot", label: t("lineLot"), width: "80px" }] : []),
+      ...(showSerialColumn ? [{ key: "serials", label: tSerials("column"), width: "110px" }] : []),
       { key: "quantity", label: t("lineQuantity"), width: "120px" },
       { key: "unit_price", label: t("lineUnitPrice"), width: "120px" },
       { key: "discount_percent", label: t("lineDiscountPercent"), width: "90px" },
       { key: "tax_rate", label: t("lineTaxRate"), width: "40px" },
       { key: "line_total", label: t("lineTotal"), width: "140px" },
     ],
-    [allLinesSelected, lines.length, readOnly, someLinesSelected, t, toggleAllLinesSelected],
+    [allLinesSelected, lines.length, readOnly, showLotColumn, showSerialColumn, someLinesSelected, t, tSerials, toggleAllLinesSelected],
   );
 
   const handleLineBarcodeSearch = async (index, rawCode, row) => {
@@ -586,11 +594,19 @@ export default function PurchaseInvoiceLineEditor({
     if (!code || readOnly || barcodePendingIndex != null) return;
     setBarcodePendingIndex(index);
     try {
-      const result = /** @type {{ item?: Record<string, unknown>; item_uom?: Record<string, unknown> }} */ (
+      const result = /** @type {{ item?: Record<string, unknown>; item_uom?: Record<string, unknown>; scale?: Record<string, any> }} */ (
         await lookupItemByBarcode(code)
       );
       const item = result?.item;
       if (!item?.id) return;
+      // A price-only scale label carries a selling price, not a quantity we can buy.
+      if (result?.scale && result.scale.value_type === "price" && result.scale.weight == null) {
+        notification.error({
+          title: t("linesTitle"),
+          description: tScale("purchasePriceLabelRefused"),
+        });
+        return;
+      }
       if (item.allow_purchase === false) {
         notification.error({
           title: t("linesTitle"),
@@ -813,6 +829,20 @@ export default function PurchaseInvoiceLineEditor({
                   onChange={(value) => applyPatch(index, { warehouse_id: value, lot_id: undefined })}
                 />
               </PiFocusStop>
+            );
+          }
+          if (columnKey === "serials") {
+            if (!row.track_serials) return <span className="item-lines-readonly-uom">{"\u2014"}</span>;
+            return (
+              <SerialNumbersField
+                mode="in"
+                value={row.serial_numbers}
+                quantity={(Number(row.quantity) || 0) * (Number(row.conversion_factor) || 1)}
+                itemId={row.item_id}
+                itemName={row.item_label}
+                readOnly={readOnly || grnLinked}
+                onChange={(serials) => applyPatch(index, { serial_numbers: serials })}
+              />
             );
           }
           if (columnKey === "lot") {

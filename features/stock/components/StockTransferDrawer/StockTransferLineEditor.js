@@ -5,7 +5,9 @@ import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/Resou
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { Select, Typography } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
+import SerialNumbersField from "../SerialNumbersField";
 import { STOCK_TRANSFER_BASE_UOM } from "../../utils/stockTransferDrawerUtils";
 import { formatStockQuantity } from "../../utils/formatStockQuantity";
 import { isPersistedEntityId } from "@/lib/entityId";
@@ -111,9 +113,8 @@ export default function StockTransferLineEditor({
 }) {
   const showLotColumn = useMemo(
     () =>
-      stockableItems.some((item) => item?.track_lots === true) ||
       lines.some((line) => line.track_lots || line.lot_id != null),
-    [stockableItems, lines],
+    [lines],
   );
 
   const showProgressColumns = useMemo(
@@ -121,10 +122,14 @@ export default function StockTransferLineEditor({
     [readOnly, lines],
   );
 
+  const showSerialColumn = lines.some((line) => line.track_serials);
+  const tSerials = useTranslations("SerialNumbers");
+
   const columns = useMemo(
     () => [
       { key: "item", label: t("transferLineItem"), width: "minmax(240px, 1fr)" },
       ...(showLotColumn ? [{ key: "lot", label: t("transferLineLot"), width: "220px" }] : []),
+      ...(showSerialColumn ? [{ key: "serials", label: tSerials("column"), width: "140px" }] : []),
       ...(!readOnly ? [{ key: "on_hand", label: t("transferLineOnHand"), width: "110px" }] : []),
       { key: "quantity", label: t("transferLineQuantity"), width: "120px" },
       ...(showProgressColumns
@@ -135,7 +140,7 @@ export default function StockTransferLineEditor({
         : []),
       { key: "uom", label: t("transferLineUom"), width: "160px" },
     ],
-    [t, showLotColumn, showProgressColumns, readOnly],
+    [t, tSerials, showLotColumn, showSerialColumn, showProgressColumns, readOnly],
   );
 
   return (
@@ -175,8 +180,24 @@ export default function StockTransferLineEditor({
                     item_uom_id: STOCK_TRANSFER_BASE_UOM,
                     lot_id: undefined,
                     track_lots: Boolean(item?.track_lots),
+                    track_serials: Boolean(item?.track_serials),
                   });
                 }}
+              />
+            );
+          }
+          if (columnKey === "serials") {
+            if (!row.track_serials) return "—";
+            return (
+              <SerialNumbersField
+                mode="out"
+                value={row.serial_numbers}
+                quantity={Number(row.quantity) || 0}
+                itemId={row.item_id}
+                itemName={row.item_label}
+                warehouseId={fromWarehouseId}
+                readOnly={readOnly}
+                onChange={(serials) => onPatchLine(index, { serial_numbers: serials })}
               />
             );
           }
