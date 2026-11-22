@@ -1,13 +1,14 @@
 "use client";
 
 import { useDrawerSubmitShortcut } from "@/shared/components/resource-drawer/useDrawerSubmitShortcut";
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
 import { Button, Space } from "antd";
 
 /**
  * Shared footer for inventory document drawers.
  *
  * Edit:  audit meta on the far left · Delete · Cancel, Save, primary on the right
- * View:  audit meta on the far left · Close and extras on the right
+ * View:  audit meta on the far left · Close, More ▾ (Print / Download PDF / moreItems) and extras on the right
  *
  * @param {{
  *   readOnly: boolean;
@@ -18,6 +19,7 @@ import { Button, Space } from "antd";
  *   saveDisabled?: boolean;
  *   primaryDisabled?: boolean;
  *   showDelete?: boolean;
+ *   deleteBesideCancel?: boolean;
  *   showPrimary?: boolean;
  *   showReverse?: boolean;
  *   showPdf?: boolean;
@@ -36,6 +38,7 @@ import { Button, Space } from "antd";
  *   onReverse?: () => void;
  *   onPrint?: () => void;
  *   onDownloadPdf?: () => void;
+ *   moreItems?: (import("@/shared/components/resource-drawer/DocumentMoreMenu").MoreItem | null | false | undefined)[];
  * }} props
  */
 export default function StockDocumentDrawerFooter({
@@ -47,6 +50,7 @@ export default function StockDocumentDrawerFooter({
   saveDisabled = false,
   primaryDisabled = false,
   showDelete = false,
+  deleteBesideCancel = false,
   showPrimary = false,
   showReverse = false,
   showPdf = false,
@@ -65,6 +69,7 @@ export default function StockDocumentDrawerFooter({
   onReverse,
   onPrint,
   onDownloadPdf,
+  moreItems = [],
 }) {
   useDrawerSubmitShortcut({
     enabled: !readOnly,
@@ -83,18 +88,14 @@ export default function StockDocumentDrawerFooter({
           <Button className="shrink-0" onClick={forceClose}>
             {t("drawerClose")}
           </Button>
-          {showPdf ? (
-            <>
-              {onPrint ? (
-                <Button loading={printLoading} disabled={submitting} onClick={onPrint}>
-                  {t("actionPrint")}
-                </Button>
-              ) : null}
-              <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
-                {t("actionDownloadPdf")}
-              </Button>
-            </>
-          ) : null}
+          <DocumentMoreMenu
+            disabled={submitting}
+            loading={printLoading || pdfLoading}
+            items={[
+              ...(showPdf ? documentOutputItems({ t, onPrint, onDownloadPdf }) : []),
+              ...moreItems,
+            ]}
+          />
           {showReverse ? (
             <Button danger disabled={submitting} loading={submitting} onClick={onReverse}>
               {reverseLabel ?? t("actionReverse")}
@@ -113,7 +114,7 @@ export default function StockDocumentDrawerFooter({
     <div className="flex w-full min-w-0 flex-wrap items-center gap-3">
       {meta}
       <Space wrap>
-        {showDelete ? (
+        {showDelete && !deleteBesideCancel ? (
           <Button danger disabled={submitting} onClick={onDelete}>
             {t("actionDelete")}
           </Button>
@@ -121,6 +122,12 @@ export default function StockDocumentDrawerFooter({
         {startExtras}
       </Space>
       <Space wrap className="ms-auto shrink-0">
+        {/* Optional: Delete with the other buttons on the right, just before Cancel. */}
+        {showDelete && deleteBesideCancel ? (
+          <Button danger disabled={submitting} onClick={onDelete}>
+            {t("actionDelete")}
+          </Button>
+        ) : null}
         <Button onClick={requestClose} disabled={submitting}>
           {t("drawerCancel")}
         </Button>

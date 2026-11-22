@@ -27,7 +27,9 @@ export function buildLinesGridTemplate(
   columns,
   actionsWidth = ITEM_LINES_GRID_ACTIONS_WIDTH,
 ) {
-  const widths = columns.map((col) => col.width ?? ITEM_LINES_GRID_DEFAULT_COLUMN_WIDTH);
+  const widths = columns.map(
+    (col) => col.width ?? ITEM_LINES_GRID_DEFAULT_COLUMN_WIDTH,
+  );
   if (actionsWidth == null) return widths.join(" ");
   return [...widths, actionsWidth].join(" ");
 }
@@ -51,6 +53,7 @@ export function buildLinesGridTemplate(
  *   showDeleteColumn?: boolean;
  *   getRowMenuItems?: (line: unknown, index: number) => import("antd").MenuProps["items"] | null | undefined;
  *   renderField: (line: unknown, index: number, columnKey: string) => import("react").ReactNode;
+ *   renderRowDetail?: (line: unknown, index: number) => import("react").ReactNode;
  *   readOnly?: boolean;
  *   actionsColumnWidth?: string;
  * }} props
@@ -67,12 +70,17 @@ export default function LinesGrid({
   showDeleteColumn = true,
   getRowMenuItems,
   renderField,
+  renderRowDetail,
   readOnly = false,
   actionsColumnWidth = ITEM_LINES_GRID_ACTIONS_WIDTH,
 }) {
   const contextMenuZIndex = useLinesGridContextMenuZIndex();
   const gridTemplateColumns = useMemo(
-    () => buildLinesGridTemplate(columns, showDeleteColumn ? actionsColumnWidth : null),
+    () =>
+      buildLinesGridTemplate(
+        columns,
+        showDeleteColumn ? actionsColumnWidth : null,
+      ),
     [actionsColumnWidth, columns, showDeleteColumn],
   );
 
@@ -87,7 +95,9 @@ export default function LinesGrid({
   );
 
   const closeContextMenu = useCallback(() => {
-    setContextMenu((prev) => (prev.open ? { ...prev, open: false, rowIndex: null, items: [] } : prev));
+    setContextMenu((prev) =>
+      prev.open ? { ...prev, open: false, rowIndex: null, items: [] } : prev,
+    );
   }, []);
 
   const handleRowContextMenu = useCallback(
@@ -120,7 +130,10 @@ export default function LinesGrid({
             </span>
           ))}
           {showDeleteColumn ? (
-            <span className="item-lines-col-label item-lines-col-actions" aria-hidden />
+            <span
+              className="item-lines-col-label item-lines-col-actions"
+              aria-hidden
+            />
           ) : null}
         </div>
 
@@ -129,7 +142,9 @@ export default function LinesGrid({
             key={index}
             className={[
               "item-lines-row",
-              contextMenu.open && contextMenu.rowIndex === index ? "item-lines-row-menu-open" : "",
+              contextMenu.open && contextMenu.rowIndex === index
+                ? "item-lines-row-menu-open"
+                : "",
             ]
               .filter(Boolean)
               .join(" ")}
@@ -153,6 +168,15 @@ export default function LinesGrid({
                 />
               )
             ) : null}
+            {/* Optional extra fields for this line, on their own full-width strip under it. */}
+            {renderRowDetail
+              ? (() => {
+                  const detail = renderRowDetail(line, index);
+                  return detail ? (
+                    <div style={{ gridColumn: "1 / -1" }}>{detail}</div>
+                  ) : null;
+                })()
+              : null}
           </div>
         ))}
       </div>

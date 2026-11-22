@@ -19,6 +19,8 @@ export const STOCK_TRANSFER_BASE_UOM = "__stock_transfer_base_uom__";
  *   item_uom_id?: number | string;
  *   lot_id?: number;
  *   track_lots?: boolean;
+ *   track_serials?: boolean;
+ *   serial_numbers?: string[];
  *   notes?: string;
  * }} TransferLineFormRow
  */
@@ -41,6 +43,8 @@ export function getEmptyTransferLine() {
     item_uom_id: STOCK_TRANSFER_BASE_UOM,
     lot_id: undefined,
     track_lots: false,
+    track_serials: false,
+    serial_numbers: [],
     notes: "",
   };
 }
@@ -72,6 +76,8 @@ export function mapTransferLinesFromApi(lines) {
     item_uom_id: line.item_uom_id != null ? Number(line.item_uom_id) : STOCK_TRANSFER_BASE_UOM,
     lot_id: line.lot_id != null ? Number(line.lot_id) : undefined,
     track_lots: Boolean(line.item?.track_lots || line.lot_id != null),
+    track_serials: Boolean(line.item?.track_serials),
+    serial_numbers: Array.isArray(line.serial_numbers) ? line.serial_numbers.map(String) : [],
     notes: typeof line.notes === "string" ? line.notes : "",
   }));
 }
@@ -92,13 +98,16 @@ export function getValidTransferLines(lines) {
       (line) => isTransferLineComplete(line),
     )
     .map((line) => {
-      /** @type {{ item_id: string; quantity: number; item_uom_id?: number; lot_id?: number; notes?: string }} */
+      /** @type {{ item_id: string; quantity: number; item_uom_id?: number; lot_id?: number; serial_numbers?: string[]; notes?: string }} */
       const row = {
         item_id: String(line.item_id),
         quantity: Number(line.quantity),
       };
       if (line.lot_id != null && line.lot_id !== "") {
         row.lot_id = Number(line.lot_id);
+      }
+      if (line.track_serials) {
+        row.serial_numbers = Array.isArray(line.serial_numbers) ? line.serial_numbers : [];
       }
       if (
         line.item_uom_id != null &&

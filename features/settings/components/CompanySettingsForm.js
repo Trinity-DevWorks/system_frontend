@@ -287,6 +287,22 @@ export default function CompanySettingsForm({
           />
         </Form.Item>
       ) : null}
+      <Form.Item
+        name="budget_warnings_enabled"
+        label={t("fieldBudgetWarnings")}
+        extra={t("fieldBudgetWarningsHelp")}
+        valuePropName="checked"
+      >
+        <Switch checkedChildren={t("switchOn")} unCheckedChildren={t("switchOff")} />
+      </Form.Item>
+      <Form.Item name="budget_warning_scope" label={t("fieldBudgetWarningScope")} extra={t("fieldBudgetWarningScopeHelp")}>
+        <Select
+          options={[
+            { value: "month", label: t("budgetScopeMonth") },
+            { value: "ytd", label: t("budgetScopeYtd") },
+          ]}
+        />
+      </Form.Item>
     </Form>
   );
 }

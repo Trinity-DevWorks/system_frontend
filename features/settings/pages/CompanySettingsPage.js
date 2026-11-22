@@ -38,6 +38,8 @@ const SETTINGS_FIELD_KEYS = [
   "price_decimal_places",
   "fiscal_year_start_month",
   "books_closed_through",
+  "budget_warnings_enabled",
+  "budget_warning_scope",
 ];
 
 function emptyToNull(value) {
@@ -62,6 +64,8 @@ function settingsToFormValues(settings, booksClosedThrough = null) {
     price_decimal_places: settings.priceDecimalPlaces,
     fiscal_year_start_month: settings.fiscalYearStartMonth,
     books_closed_through: booksClosedThrough,
+    budget_warnings_enabled: settings.budgetWarningsEnabled,
+    budget_warning_scope: settings.budgetWarningScope,
   };
 }
 
@@ -146,6 +150,8 @@ export default function CompanySettingsPage() {
         price_rounding_mode: values.price_rounding_mode,
         price_decimal_places: Number(values.price_decimal_places),
         fiscal_year_start_month: Number(values.fiscal_year_start_month),
+        budget_warnings_enabled: Boolean(values.budget_warnings_enabled),
+        budget_warning_scope: values.budget_warning_scope === "ytd" ? "ytd" : "month",
       });
       const nextLock = values.books_closed_through ?? null;
       if (showPeriodLock && nextLock !== savedLockDate) {

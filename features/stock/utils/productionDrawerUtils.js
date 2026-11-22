@@ -16,6 +16,8 @@ import { assignNewLotExpiry, expiryDatePayload } from "./stockLotUtils";
  *   lot_id?: number;
  *   lot_number?: string;
  *   track_lots?: boolean;
+ *   track_serials?: boolean;
+ *   serial_numbers?: string[];
  *   item_uom_label?: string;
  *   notes?: string;
  * }} PrdLineFormRow
@@ -46,6 +48,8 @@ export function getEmptyPrdLine() {
     lot_id: undefined,
     lot_number: "",
     track_lots: false,
+    track_serials: false,
+    serial_numbers: [],
     notes: "",
   };
 }
@@ -99,6 +103,8 @@ export function scaleRecipeToLines(recipe, produceQty, previousLines = []) {
       lot_id: previous?.lot_id,
       lot_number: "",
       track_lots: Boolean(row.ingredient_item?.track_lots),
+      track_serials: Boolean(row.ingredient_item?.track_serials),
+      serial_numbers: previous?.serial_numbers ?? [],
       item_uom_label:
         typeof row.uom?.code === "string" ? row.uom.code : typeof row.uom?.name === "string" ? row.uom.name : "",
       notes: typeof previous?.notes === "string" ? previous.notes : "",
@@ -119,6 +125,7 @@ export function mapPrdRecordToForm(record) {
     lot_id: record.lot_id != null ? Number(record.lot_id) : undefined,
     lot_number: typeof record.lot?.lot_number === "string" ? record.lot.lot_number : "",
     expiry_date: typeof record.lot?.expiry_date === "string" ? record.lot.expiry_date : undefined,
+    serial_numbers: Array.isArray(record.serial_numbers) ? record.serial_numbers.map(String) : [],
   };
 }
 
@@ -136,6 +143,8 @@ export function mapPrdLinesFromApi(lines) {
     lot_id: line.lot_id != null ? Number(line.lot_id) : undefined,
     lot_number: typeof line.lot?.lot_number === "string" ? line.lot.lot_number : "",
     track_lots: Boolean(line.item?.track_lots),
+    track_serials: Boolean(line.item?.track_serials),
+    serial_numbers: Array.isArray(line.serial_numbers) ? line.serial_numbers.map(String) : [],
     item_uom_label:
       typeof line.item_uom?.uom?.code === "string"
         ? line.item_uom.uom.code
@@ -161,6 +170,7 @@ export function isPrdLineComplete(line) {
   if (line.track_lots && line.lot_id == null) {
     return false;
   }
+  if (line.track_serials && (line.serial_numbers?.length ?? 0) !== Number(line.quantity)) return false;
   return true;
 }
 
@@ -176,6 +186,7 @@ function toPrdLinePayload(line) {
   if (line.theoretical_quantity != null) row.theoretical_quantity = Number(line.theoretical_quantity);
   if (line.item_uom_id != null) row.item_uom_id = Number(line.item_uom_id);
   if (line.lot_id != null) row.lot_id = Number(line.lot_id);
+  if (line.track_serials) row.serial_numbers = Array.isArray(line.serial_numbers) ? line.serial_numbers : [];
   const notes = typeof line.notes === "string" ? line.notes.trim() : "";
   if (notes) row.notes = notes;
   return row;
@@ -278,6 +289,7 @@ export function prdHeaderToPayload(values) {
   const lotNumber = typeof values.lot_number === "string" ? values.lot_number.trim() : "";
   if (lotNumber && values.lot_id == null) payload.lot_number = lotNumber;
   assignNewLotExpiry(payload, values);
+  if (Array.isArray(values.serial_numbers)) payload.serial_numbers = values.serial_numbers;
   return payload;
 }
 

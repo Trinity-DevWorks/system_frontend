@@ -159,22 +159,24 @@ function TrialBalanceTable() {
                 allowEmpty={[true, true]}
                 format={dayjsDatePattern()}
               />
-              <Select
-                className="min-w-40"
-                allowClear={lockedBranchId == null}
-                disabled={lockedBranchId != null}
-                placeholder={t("branchAll")}
-                value={selectedBranchId}
-                onChange={(value) => setBranchId(value ?? undefined)}
-                options={accessibleBranches
-                  .map((branch) => {
-                    const id = Number(branch.id);
-                    if (!Number.isFinite(id)) return null;
-                    return { value: id, label: String(branch.name ?? id) };
-                  })
-                  .filter(Boolean)}
-                loading={branchesPending}
-              />
+              {accessibleBranches.length > 1 ? (
+                <Select
+                  className="min-w-40"
+                  allowClear={lockedBranchId == null}
+                  disabled={lockedBranchId != null}
+                  placeholder={t("branchAll")}
+                  value={selectedBranchId}
+                  onChange={(value) => setBranchId(value ?? undefined)}
+                  options={accessibleBranches
+                    .map((branch) => {
+                      const id = Number(branch.id);
+                      if (!Number.isFinite(id)) return null;
+                      return { value: id, label: String(branch.name ?? id) };
+                    })
+                    .filter(Boolean)}
+                  loading={branchesPending}
+                />
+              ) : null}
               <Select
                 className="w-40"
                 value={level ?? 0}

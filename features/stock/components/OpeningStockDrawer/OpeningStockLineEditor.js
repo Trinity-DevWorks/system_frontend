@@ -5,10 +5,12 @@ import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/Resou
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { Select } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { PO_BASE_UOM } from "../../utils/purchaseOrderDrawerUtils";
 import StockLineUomField from "../StockLineUomField";
 import InboundLotFields from "../InboundLotFields";
+import SerialNumbersField from "../SerialNumbersField";
 import InboundSuggestedUnitCostSync from "../InboundSuggestedUnitCostSync";
 
 /**
@@ -36,6 +38,8 @@ export default function OpeningStockLineEditor({
   t,
 }) {
   const showLotColumn = lines.some((line) => line.track_lots);
+  const showSerialColumn = lines.some((line) => line.track_serials);
+  const tSerials = useTranslations("SerialNumbers");
 
   const columns = useMemo(
     () => [
@@ -43,9 +47,10 @@ export default function OpeningStockLineEditor({
       { key: "quantity", label: t("osLineQuantity"), width: "120px" },
       { key: "uom", label: t("osLineUom"), width: "150px" },
       ...(showLotColumn ? [{ key: "lot", label: t("osLineLot"), width: "220px" }] : []),
+      ...(showSerialColumn ? [{ key: "serials", label: tSerials("column"), width: "140px" }] : []),
       { key: "unit_cost", label: t("osLineUnitCost"), width: "130px" },
     ],
-    [t, showLotColumn],
+    [t, tSerials, showLotColumn, showSerialColumn],
   );
 
   return (
@@ -81,6 +86,8 @@ export default function OpeningStockLineEditor({
                     item_id: value,
                     item_uom_id: PO_BASE_UOM,
                     track_lots: Boolean(selected?.track_lots),
+                    track_serials: Boolean(selected?.track_serials),
+                    serial_numbers: [],
                     lot_id: undefined,
                     lot_number: "",
                     expiry_date: "",
@@ -99,6 +106,20 @@ export default function OpeningStockLineEditor({
                 t={t}
                 prefer="base"
                 onChange={(value) => onPatchLine(index, { item_uom_id: value, unit_cost: undefined })}
+              />
+            );
+          }
+          if (columnKey === "serials") {
+            if (!row.track_serials) return "—";
+            return (
+              <SerialNumbersField
+                mode="in"
+                value={row.serial_numbers}
+                quantity={Number(row.quantity) || 0}
+                itemId={row.item_id}
+                itemName={row.item_label || itemOptions.find((option) => option.value === row.item_id)?.label}
+                readOnly={readOnly}
+                onChange={(serials) => onPatchLine(index, { serial_numbers: serials })}
               />
             );
           }

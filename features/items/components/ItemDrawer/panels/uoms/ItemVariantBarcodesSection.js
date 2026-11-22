@@ -2,14 +2,19 @@
 
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
-import { createItemBarcode, deleteItemBarcode, updateItemBarcode } from "../../../../api/itemBarcodes.api";
+import {
+  createItemBarcode,
+  deleteItemBarcode,
+  generateItemBarcode,
+  updateItemBarcode,
+} from "../../../../api/itemBarcodes.api";
 import {
   isItemBarcodeRow,
   itemBarcodesQueryKey,
   removeItemBarcodeFromCache,
   setItemBarcodeInCache,
 } from "../../../../queries/itemBarcodesQueryCache";
-import { DeleteOutlined, StarFilled, StarOutlined } from "@ant-design/icons";
+import { BarcodeOutlined, DeleteOutlined, StarFilled, StarOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Input } from "antd";
 import { useCallback, useState } from "react";
@@ -70,6 +75,20 @@ export default function ItemVariantBarcodesSection({ itemId, itemUomId, barcodes
     onError: (err) => message.error(getLocalizedApiErrorMessage(tApiErrors, err)),
   });
 
+  // Server picks the next free in-store EAN-13 and saves it in one step.
+  const generateMutation = useMutation({
+    mutationFn: () => generateItemBarcode(itemId, itemUomId),
+    onSuccess: (saved) => {
+      if (isItemBarcodeRow(saved)) {
+        setItemBarcodeInCache(queryClient, itemId, saved);
+      } else {
+        invalidateOnFallback();
+      }
+      message.success(t("barcodeGenerated"));
+    },
+    onError: (err) => message.error(getLocalizedApiErrorMessage(tApiErrors, err)),
+  });
+
   const setPrimaryMutation = useMutation({
     mutationFn: (barcodeId) => updateItemBarcode(itemId, barcodeId, { is_primary: true }),
     onSuccess: (saved) => {
@@ -101,7 +120,10 @@ export default function ItemVariantBarcodesSection({ itemId, itemUomId, barcodes
   };
 
   const pending =
-    createMutation.isPending || setPrimaryMutation.isPending || deleteMutation.isPending;
+    createMutation.isPending ||
+    generateMutation.isPending ||
+    setPrimaryMutation.isPending ||
+    deleteMutation.isPending;
 
   return (
     <section className="px-5 pb-[18px] pt-4">
@@ -184,6 +206,16 @@ export default function ItemVariantBarcodesSection({ itemId, itemUomId, barcodes
             onClick={addBarcode}
           >
             {t("variantBarcodesAdd")}
+          </Button>
+          <Button
+            icon={<BarcodeOutlined />}
+            className="shrink-0 max-[420px]:w-full"
+            loading={generateMutation.isPending}
+            disabled={pending}
+            title={t("barcodeGenerateHelp")}
+            onClick={() => generateMutation.mutate()}
+          >
+            {t("barcodeGenerate")}
           </Button>
         </div>
       ) : null}

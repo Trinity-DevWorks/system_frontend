@@ -1,5 +1,7 @@
 "use client";
 
+import SerialNumbersField from "@/features/stock/components/SerialNumbersField";
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
@@ -15,6 +17,8 @@ import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { fetchWarehouseNames } from "@/features/warehouses/api/warehouses.api";
 import { WAREHOUSES_LIST_QUERY_KEY } from "@/features/warehouses/queries/warehousesQueryKeys";
 import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
+import { isEmailableType } from "@/features/document-email/api/documentEmail.api";
 import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Checkbox, Col, DatePicker, Form, Input, Modal, Row, Select, Space, Table, Tag } from "antd";
@@ -122,6 +126,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
         Number(line.allowanceAmount ?? 0),
         Boolean(line.restock),
         line.warehouseId ?? null,
+        line.serials ?? [],
       ]),
     });
   }, [config.dateField, config.invoiceField, config.partyField, form]);
@@ -225,6 +230,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
         line_total: type === "allowance" ? line.allowanceAmount : undefined,
         warehouse_id: line.warehouseId || null,
         ...(config.showRestock ? { restock: Boolean(line.restock) } : {}),
+        ...(line.trackSerials && type === "return" ? { serial_numbers: line.serials ?? [] } : {}),
       }));
   }, [config.lineInvoiceField, config.showRestock, lines, type]);
 
@@ -288,6 +294,8 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
     onError: (err) => notification.error({ title: t("applyError"), description: getLocalizedApiErrorMessage(tApiErrors, err) }),
   });
 
+  const tEmail = useTranslations("DocumentEmail");
+  const email = useSendDocumentEmail();
   const { downloadPdf, printPdf, isPrintPending, isDownloadPending } = useDocumentPdfDownload({
     download: config.api.downloadPdf,
     errorTitle: t("pdfError"),
@@ -321,6 +329,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
   });
   useDrawerSubmitShortcut({ enabled: !readOnly, submitting: saveMutation.isPending, onSave: () => submit(false), saveDisabled: !access.canEdit && mode !== "create", onPost: () => submit(true), postDisabled: !hasAmount || !access.canEdit });
 
+  const tSerials = useTranslations("SerialNumbers");
   const columns = useMemo(
     () => [
       { title: t("colItem"), dataIndex: "label", width: 220, ellipsis: true },
@@ -368,8 +377,26 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
             ),
           }]
         : []),
+      ...(type === "return" && lines.some((line) => line.trackSerials)
+        ? [{
+            title: tSerials("column"),
+            width: 130,
+            render: (_, line) =>
+              line.trackSerials ? (
+                <SerialNumbersField
+                  mode="pick"
+                  value={line.serials}
+                  choices={line.soldSerials}
+                  quantity={(Number(line.returnQty) || 0) * (Number(line.conversion) || 1)}
+                  itemName={line.label}
+                  readOnly={readOnly}
+                  onChange={(serials) => setLines((prev) => prev.map((row) => (row.invoiceLineId === line.invoiceLineId ? { ...row, serials } : row)))}
+                />
+              ) : "—",
+          }]
+        : []),
     ],
-    [config.showRestock, currencyMark, readOnly, t, type, warehousesQuery.data],
+    [config.showRestock, currencyMark, lines, readOnly, t, tSerials, type, warehousesQuery.data],
   );
 
   const title = mode === "create" ? t("drawerTitleCreate") : readOnly ? t("drawerTitleView") : t("drawerTitleEdit");
@@ -394,6 +421,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
         headerExtra={status ? <Tag color={creditDocumentStatusTagColor(status)}>{getCreditDocumentStatusLabel(t, status)}</Tag> : null}
         footer={
           <div className="flex w-full min-w-0 items-center gap-3">
+            {email.dialog}
             <div className="sales-invoice-drawer-footer-posted">
               <span className="sales-invoice-drawer-footer-posted-item">
                 <span className="sales-invoice-drawer-footer-posted-label">{t("fieldPostedBy")}</span>
@@ -405,16 +433,23 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
               </span>
             </div>
             {readOnly ? <Button className="shrink-0" onClick={forceClose}>{t("drawerClose")}</Button> : null}
-            {documentId != null && access.canPrint && isDocumentPdfPrintable(config.documentKey, status) ? (
-              <>
-                <Button className="shrink-0" loading={isPrintPending} disabled={submitting} onClick={() => printPdf(documentId, record?.[config.numberField])}>
-                  {t("actionPrint")}
-                </Button>
-                <Button className="shrink-0" loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(documentId, record?.[config.numberField])}>
-                  {t("actionDownloadPdf")}
-                </Button>
-              </>
-            ) : null}
+            <DocumentMoreMenu
+              disabled={submitting}
+              loading={isPrintPending || isDownloadPending}
+              items={
+                documentId != null && access.canPrint && isDocumentPdfPrintable(config.documentKey, status)
+                  ? documentOutputItems({
+                      t,
+                      onPrint: () => printPdf(documentId, record?.[config.numberField]),
+                      onDownloadPdf: () => downloadPdf(documentId, record?.[config.numberField]),
+                      onEmail: isEmailableType(config.documentKey)
+                        ? () => email.open(config.documentKey, documentId, record?.[config.numberField])
+                        : null,
+                      emailLabel: tEmail("actionMenu"),
+                    })
+                  : []
+              }
+            />
             {readOnly && status === "posted" && access.canReverse ? (
               <Button className="shrink-0" danger loading={reverseMutation.isPending} onClick={() => modal.confirm({ title: t("reverseConfirmTitle"), content: t("reverseConfirmContent"), okText: t("actionReverse"), okButtonProps: { danger: true }, cancelText: t("drawerCancel"), onOk: () => closeConfirmOnError(reverseMutation.mutateAsync()) })}>
                 {t("actionReverse")}
@@ -575,6 +610,9 @@ function creditLinesFromInvoice(sources, saved, lineInvoiceField, noteType) {
       returnQty: source.allow_return === false ? 0 : (match ? Number(match.quantity || 0) : 0),
       allowanceAmount: match && noteType === "allowance" ? Number(match.line_total || 0) : 0,
       trackInventory: Boolean(source.track_inventory),
+      trackSerials: Boolean(source.track_serials),
+      soldSerials: Array.isArray(source.serial_numbers) ? source.serial_numbers.map(String) : [],
+      serials: Array.isArray(match?.serial_numbers) ? match.serial_numbers.map(String) : [],
     };
   });
 }

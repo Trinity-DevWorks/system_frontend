@@ -5,7 +5,9 @@ import ResourceDrawerPanelHeader from "@/shared/components/resource-drawer/Resou
 import { isPersistedEntityId } from "@/lib/entityId";
 import { formatStockQuantity } from "../../utils/formatStockQuantity";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
+import SerialNumbersField from "../SerialNumbersField";
 import StockLotSelect from "../StockLotSelect";
 import { useTransferLineLotOptions } from "../../queries/useStockTransferDrawerData";
 
@@ -51,6 +53,9 @@ function PrdLineLotField({ itemId, warehouseId, value, readOnly, t, onChange }) 
 export default function ProductionLineEditor({ lines, readOnly, warehouseId, onPatchLine, t }) {
   const showLotColumn = lines.some((line) => line.track_lots);
 
+  const showSerialColumn = lines.some((line) => line.track_serials);
+  const tSerials = useTranslations("SerialNumbers");
+
   const columns = useMemo(
     () => [
       { key: "item", label: t("prdLineItem"), width: "minmax(220px, 1fr)" },
@@ -58,8 +63,9 @@ export default function ProductionLineEditor({ lines, readOnly, warehouseId, onP
       { key: "quantity", label: t("prdLineQuantity"), width: "120px" },
       { key: "uom", label: t("prdLineUom"), width: "110px" },
       ...(showLotColumn ? [{ key: "lot", label: t("prdLineLot"), width: "200px" }] : []),
+      ...(showSerialColumn ? [{ key: "serials", label: tSerials("column"), width: "140px" }] : []),
     ],
-    [t, showLotColumn],
+    [t, tSerials, showLotColumn, showSerialColumn],
   );
 
   return (
@@ -90,6 +96,21 @@ export default function ProductionLineEditor({ lines, readOnly, warehouseId, onP
           }
           if (columnKey === "uom") {
             return <span className="truncate">{row.item_uom_label || "—"}</span>;
+          }
+          if (columnKey === "serials") {
+            if (!row.track_serials) return "—";
+            return (
+              <SerialNumbersField
+                mode="out"
+                value={row.serial_numbers}
+                quantity={Number(row.quantity) || 0}
+                itemId={row.item_id}
+                itemName={row.item_label}
+                warehouseId={warehouseId}
+                readOnly={readOnly}
+                onChange={(serials) => onPatchLine(index, { serial_numbers: serials })}
+              />
+            );
           }
           if (columnKey === "lot") {
             if (!row.track_lots) return "—";

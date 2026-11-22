@@ -1,5 +1,7 @@
 "use client";
 
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
+import { postWithBudgetWarning } from "@/features/budgets/components/BudgetWarningList";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
@@ -35,6 +37,7 @@ import {
 } from "../api/accounting.api";
 import {
   SOURCE_DOCUMENT_FEATURE,
+  sourceDocumentRecordId,
   amountUnits,
   journalStatusTagColor,
   unitsToAmount,
@@ -123,6 +126,7 @@ export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCre
   const { settings } = useCompanySettings();
   const currencySymbol = settings.primaryCurrencySymbol;
   const tApiErrors = useTranslations("ApiErrors");
+  const tBudgets = useTranslations("Budgets");
   const { message, modal, notification } = App.useApp();
   const access = useResourceAccess("journal_entries");
   const queryClient = useQueryClient();
@@ -305,10 +309,21 @@ export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCre
     (/** @type {boolean} */ shouldPost) => {
       form
         .validateFields()
-        .then((values) => saveMutation.mutate({ values, shouldPost }))
+        .then((values) => {
+          if (!shouldPost) return saveMutation.mutate({ values, shouldPost });
+          // Over budget is a warning ("Post anyway?"), never a block.
+          return postWithBudgetWarning({
+            source: "journal_entry",
+            id: mode === "create" ? null : entryId,
+            modal,
+            notification,
+            tBudgets,
+            post: () => saveMutation.mutateAsync({ values, shouldPost: true }).catch(() => undefined),
+          });
+        })
         .catch(() => {});
     },
-    [form, saveMutation],
+    [form, saveMutation, mode, entryId, modal, notification, tBudgets],
   );
 
   const shouldConfirmDiscard = useCallback(
@@ -465,16 +480,19 @@ export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCre
             <Button className="ms-auto" onClick={forceClose}>
               {t("drawerClose")}
             </Button>
-            {entryId != null && access.canPrint && isDocumentPdfPrintable("journal_entry", status) ? (
-              <>
-                <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(entryId, record?.entry_number)}>
-                  {t("actionPrint")}
-                </Button>
-                <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(entryId, record?.entry_number)}>
-                  {t("actionDownloadPdf")}
-                </Button>
-              </>
-            ) : null}
+            <DocumentMoreMenu
+              disabled={submitting}
+              loading={isPrintPending || isDownloadPending}
+              items={
+                entryId != null && access.canPrint && isDocumentPdfPrintable("journal_entry", status)
+                  ? documentOutputItems({
+                      t,
+                      onPrint: () => printPdf(entryId, record?.entry_number),
+                      onDownloadPdf: () => downloadPdf(entryId, record?.entry_number),
+                    })
+                  : []
+              }
+            />
             {status === "posted" && isManual && access.canReverse ? (
               <Button
                 danger
@@ -555,7 +573,7 @@ export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCre
                       <ConfigProvider componentDisabled={false}>
                         <Button
                           className="flex h-8 w-full items-center justify-start px-3 font-normal"
-                          onClick={() => openDrawer({ featureId: sourceFeature, id: String(record.source_id), mode: "view" })}
+                          onClick={() => openDrawer({ featureId: sourceFeature, id: sourceDocumentRecordId(record.source_type, record.source_id), mode: "view" })}
                         >
                           {t(`source_${record.source_type}`)}
                           {record.source_event === "reverse" ? ` (${t("eventReverse")})` : ""} {record.source_number ?? ""}
@@ -574,6 +592,16 @@ export default function JournalEntryDrawer({ open, mode, entryId, onClose, onCre
                   </Form.Item>
                 </Col>
               </Row>
+              {record?.recurring_template ? (
+                <ConfigProvider componentDisabled={false}>
+                  <Tag
+                    className="mb-2 cursor-pointer"
+                    onClick={() => openDrawer({ featureId: "recurringEntries", id: String(record.recurring_template.id), mode: "view" })}
+                  >
+                    {t("recurringTag", { number: record.recurring_template.template_number ?? "" })}
+                  </Tag>
+                </ConfigProvider>
+              ) : null}
               {record?.reversal_of_id || record?.reversal_id ? (
                 <ConfigProvider componentDisabled={false}>
                   <div className="mt-2 text-sm">

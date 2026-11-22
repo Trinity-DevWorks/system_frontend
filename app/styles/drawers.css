@@ -1220,3 +1220,18 @@
   padding: 0;
   line-height: 1;
 }
+
+/* Budget drawer: the grid fills the full-screen drawer; only the grid scrolls. */
+.resource-crud-drawer-body:has(.budget-grid-fill) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+  padding-bottom: 12px !important;
+}
+
+.resource-crud-drawer-body:has(.budget-grid-fill) > .relative {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0 !important;
+}

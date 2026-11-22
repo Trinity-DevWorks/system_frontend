@@ -3,7 +3,8 @@
  * Mirrors the backend `*_PDF_NOT_ALLOWED` rules (docs/printing-plan.md).
  */
 export const DOCUMENT_PDF_PRINTABLE_STATUSES = /** @type {const} */ ({
-  sales_quotation: ["sent", "accepted", "converted"],
+  // Drafts too: printing / emailing is how a quotation reaches the customer (emailing marks it sent).
+  sales_quotation: ["draft", "sent", "accepted", "converted"],
   sales_order: ["confirmed", "partially_invoiced", "invoiced"],
   sales_invoice: ["posted", "reversed"],
   sales_credit_note: ["posted", "reversed"],
@@ -17,6 +18,7 @@ export const DOCUMENT_PDF_PRINTABLE_STATUSES = /** @type {const} */ ({
   goods_receipt: ["posted", "reversed"],
   stock_transfer: ["in_transit", "partially_received", "received"],
   journal_entry: ["posted", "reversed"],
+  fixed_asset: ["draft", "active", "fully_depreciated", "disposed"],
 });
 
 /**

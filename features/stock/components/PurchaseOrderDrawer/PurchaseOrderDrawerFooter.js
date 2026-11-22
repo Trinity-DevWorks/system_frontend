@@ -1,7 +1,9 @@
 "use client";
 
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
 import { formatTenantDateTime } from "@/lib/tenant-format";
 import { Button, Space } from "antd";
+import { useTranslations } from "next-intl";
 
 /**
  * @param {unknown} user
@@ -56,6 +58,7 @@ function AuditItem({ label, value }) {
  *   onDelete: () => void;
  *   onPrint?: () => void;
  *   onDownloadPdf: () => void;
+ *   onEmail?: () => void;
  *   onMarkSent: () => void;
  *   onReceive: () => void;
  * }} props
@@ -87,9 +90,11 @@ export default function PurchaseOrderDrawerFooter({
   onDelete,
   onPrint,
   onDownloadPdf,
+  onEmail,
   onMarkSent,
   onReceive,
 }) {
+  const tEmail = useTranslations("DocumentEmail");
   return (
     <div className="flex w-full min-w-0 items-center gap-3">
       {!isNew ? (
@@ -123,18 +128,15 @@ export default function PurchaseOrderDrawerFooter({
             {t("actionCancelPo")}
           </Button>
         ) : null}
-        {showPdf ? (
-          <>
-            {onPrint ? (
-              <Button loading={printLoading} disabled={submitting} onClick={onPrint}>
-                {t("actionPrint")}
-              </Button>
-            ) : null}
-            <Button loading={pdfLoading} disabled={submitting} onClick={onDownloadPdf}>
-              {t("actionDownloadPdf")}
-            </Button>
-          </>
-        ) : null}
+        <DocumentMoreMenu
+          disabled={submitting}
+          loading={printLoading || pdfLoading}
+          items={
+            showPdf
+              ? documentOutputItems({ t, onPrint, onDownloadPdf, onEmail, emailLabel: tEmail("actionMenu") })
+              : []
+          }
+        />
         {showMarkSent ? (
           <Button disabled={submitting} onClick={onMarkSent}>
             {t("actionMarkPoSent")}

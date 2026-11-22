@@ -17,7 +17,8 @@ async function fetchSupplierLedgerOption(id) {
   if (row.id == null || row.id === "") return null;
   const code = typeof row.supplier_code === "string" ? row.supplier_code.trim() : "";
   const name = String(row.name ?? row.id);
-  return { value: row.id, label: code || name, name, title: name };
+  const phone = typeof row.phone === "string" ? row.phone.trim() : "";
+  return { value: row.id, label: name, subLabel: phone || undefined, name, title: code || undefined };
 }
 
 export const supplierLedgerConfig = {
@@ -33,6 +34,7 @@ export const supplierLedgerConfig = {
   fetchPartyOption: fetchSupplierLedgerOption,
   endpointFor: (/** @type {string} */ partyId) => `suppliers/${partyId}/ledger-entries`,
   exportEndpointFor: (/** @type {string} */ partyId) => `suppliers/${partyId}/ledger-export`,
+  emailType: /** @type {const} */ ("supplier_statement"),
   typeLabelKey: {
     purchase_invoice: "typePurchaseInvoice",
     payment: "typePayment",

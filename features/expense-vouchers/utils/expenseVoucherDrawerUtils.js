@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 
 /** An empty expense line. */
 export function getEmptyExpenseLine() {
-  return { account_id: undefined, description: "", amount: null, vat_group_id: undefined };
+  return { account_id: undefined, description: "", amount: null, vat_group_id: undefined, spread: false, deferral_period: null, deferral_recognition_account_id: undefined, deferral_method: "straight_line_monthly" };
 }
 
 /** Form defaults for a new expense voucher. */
@@ -46,7 +46,7 @@ function snapshot(v) {
     String(v?.payee ?? "").trim(),
     String(v?.reference ?? "").trim(),
     String(v?.notes ?? "").trim(),
-    lines.map((l) => [numberOrNull(l?.account_id), String(l?.description ?? "").trim(), numberOrNull(l?.amount), numberOrNull(l?.vat_group_id)]),
+    lines.map((l) => [numberOrNull(l?.account_id), String(l?.description ?? "").trim(), numberOrNull(l?.amount), numberOrNull(l?.vat_group_id), Boolean(l?.spread), dateString(Array.isArray(l?.deferral_period) ? l.deferral_period[0] : null), dateString(Array.isArray(l?.deferral_period) ? l.deferral_period[1] : null), numberOrNull(l?.deferral_recognition_account_id), l?.deferral_method ?? null]),
   ]);
 }
 
@@ -84,6 +84,11 @@ export function recordToFormValues(r) {
       description: l.description ?? "",
       amount: numberOrNull(l.amount),
       vat_group_id: l.vat_group_id ?? undefined,
+      spread: Boolean(l.deferral_start_date),
+      deferral_period: l.deferral_start_date && l.deferral_end_date ? [dayjs(String(l.deferral_start_date)), dayjs(String(l.deferral_end_date))] : null,
+      deferral_recognition_account_id: l.deferral_recognition_account_id ?? undefined,
+      deferral_method: l.deferral_method ?? "straight_line_monthly",
+      deferral_schedule: l.deferral_schedule ?? null,
     })),
   };
 }
@@ -109,6 +114,10 @@ export function expenseVoucherFormValuesToPayload(values) {
         description: trimOrNull(l.description),
         amount: numberOrNull(l.amount),
         vat_group_id: l.vat_group_id == null || l.vat_group_id === "" ? null : Number(l.vat_group_id),
+        deferral_start_date: l.spread && Array.isArray(l.deferral_period) ? dateString(l.deferral_period[0]) : null,
+        deferral_end_date: l.spread && Array.isArray(l.deferral_period) ? dateString(l.deferral_period[1]) : null,
+        deferral_recognition_account_id: l.spread ? numberOrNull(l.deferral_recognition_account_id) : null,
+        deferral_method: l.spread ? l.deferral_method || "straight_line_monthly" : null,
       })),
   };
 }

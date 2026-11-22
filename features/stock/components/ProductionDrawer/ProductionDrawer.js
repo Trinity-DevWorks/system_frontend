@@ -242,6 +242,7 @@ export default function ProductionDrawer({
         value: currentId,
         label: formatItemOptionLabel(current),
         track_lots: Boolean(current?.track_lots),
+        track_serials: Boolean(current?.track_serials),
       });
     }
     return options;
@@ -252,6 +253,11 @@ export default function ProductionDrawer({
     selectedProduce?.track_lots ??
       detailQuery.data?.item?.track_lots ??
       tableSeedRecord?.item?.track_lots,
+  );
+  const produceTrackSerials = Boolean(
+    selectedProduce?.track_serials ??
+      detailQuery.data?.item?.track_serials ??
+      tableSeedRecord?.item?.track_serials,
   );
   const hasIngredients = recipeHasIngredients(recipe) || lines.some(isPrdLinePersistable);
   const canSubmitRequired = useMemo(
@@ -380,6 +386,7 @@ export default function ProductionDrawer({
         itemOptions={itemOptions}
         itemsPending={drawerData.itemsPending}
         produceTrackLots={produceTrackLots}
+        produceTrackSerials={produceTrackSerials}
         recipeUom={recipeUomLabel(recipe)}
         recipePending={Boolean(watchedItemId) && recipeQuery.isFetching}
         recipeMissing={recipeMissing}

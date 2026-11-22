@@ -83,6 +83,8 @@ export function mapPurchaseOrderToGrnCreateSeed(order) {
       lot_number: "",
       expiry_date: "",
       track_lots: Boolean(item?.track_lots),
+      track_serials: Boolean(item?.track_serials),
+      serial_numbers: [],
       open_quantity: open,
       item_uom_label:
         typeof uom?.code === "string" ? uom.code : typeof uom?.name === "string" ? uom.name : "",

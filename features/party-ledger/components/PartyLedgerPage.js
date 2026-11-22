@@ -14,7 +14,9 @@ import {
   useStockTableFilters,
 } from "@/features/stock/components/StockTableFilters/StockTableFilters";
 import { useQuery } from "@tanstack/react-query";
-import { App, DatePicker, Form, Select, Spin } from "antd";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
+import { MailOutlined } from "@ant-design/icons";
+import { App, Button, DatePicker, Form, Select, Spin } from "antd";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
@@ -38,6 +40,7 @@ import { formatLedgerAmount, getPartyLedgerColumns } from "./getPartyLedgerColum
  *   fetchPartyOption: (id: string) => Promise<Record<string, unknown> | null>;
  *   endpointFor: (partyId: string) => string;
  *   exportEndpointFor: (partyId: string) => string;
+ *   emailType: "customer_statement" | "supplier_statement";
  *   typeLabelKey: Record<string, string>;
  *   documentFeature: Record<string, string>;
  * }} config
@@ -46,6 +49,8 @@ function PartyLedgerTable({ config }) {
   const t = useTranslations(config.i18n);
   const tSelector = useTranslations(config.selectorI18n);
   const tApiErrors = useTranslations("ApiErrors");
+  const tEmail = useTranslations("DocumentEmail");
+  const email = useSendDocumentEmail();
   const { notification } = App.useApp();
   const { openDrawer } = useGlobalDrawer();
   const router = useRouter();
@@ -243,7 +248,7 @@ function PartyLedgerTable({ config }) {
               <label className="flex items-center gap-2">
                 <span className="shrink-0 text-sm">{t("filterParty")}</span>
                 <ServerSearchSelect
-                  className="w-52"
+                  className="w-72"
                   allowClear
                   placeholder={tSelector(config.partyPlaceholderKey)}
                   value={partyId}
@@ -262,6 +267,20 @@ function PartyLedgerTable({ config }) {
                 />
               </label>
               {filterToggle}
+              <Button
+                icon={<MailOutlined />}
+                disabled={!ready}
+                onClick={() =>
+                  partyId &&
+                  email.open(config.emailType, partyId, null, {
+                    date_from: dateFrom ?? null,
+                    date_to: dateTo ?? null,
+                    currency_id: currencyId ?? null,
+                  })
+                }
+              >
+                {tEmail("emailStatement")}
+              </Button>
             </div>
           ),
           filterBar,
@@ -289,6 +308,7 @@ function PartyLedgerTable({ config }) {
         scrollX={currencyId ? 980 : 1100}
         pagination={pagination}
       />
+      {email.dialog}
     </div>
   );
 }

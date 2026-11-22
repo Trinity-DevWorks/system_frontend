@@ -1,5 +1,6 @@
 "use client";
 
+import DocumentMoreMenu, { documentOutputItems } from "@/shared/components/resource-drawer/DocumentMoreMenu";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { PartyBalanceLabel } from "@/shared/components/party/PartyBalancePopover";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
@@ -31,6 +32,9 @@ import { fetchPaymentMethodNames } from "@/features/payment-methods/api/paymentM
 import { getActiveBranchId } from "@/lib/active-branch";
 import { PAYMENT_METHODS_LIST_QUERY_KEY } from "@/features/payment-methods/queries/paymentMethodsQueryKeys";
 import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
+import { isEmailableType } from "@/features/document-email/api/documentEmail.api";
+import { PrinterOutlined } from "@ant-design/icons";
 import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Col, DatePicker, Form, Input, Row, Select, Space, Tag } from "antd";
@@ -651,6 +655,8 @@ export default function PaymentDocumentDrawer({
     },
   });
 
+  const tEmail = useTranslations("DocumentEmail");
+  const email = useSendDocumentEmail();
   const { downloadPdf, printPdf, printReceipt, isPrintPending, isDownloadPending, isReceiptPending } = useDocumentPdfDownload({
     download: config.api.downloadPdf,
     errorTitle: t("pdfError"),
@@ -925,6 +931,7 @@ export default function PaymentDocumentDrawer({
       footer={
         readOnly ? (
           <div className="flex w-full min-w-0 items-center gap-3">
+            {email.dialog}
             <div className="sales-invoice-drawer-footer-posted">
               <span className="sales-invoice-drawer-footer-posted-item">
                 <span className="sales-invoice-drawer-footer-posted-label">{t("fieldPostedBy")}</span>
@@ -940,21 +947,33 @@ export default function PaymentDocumentDrawer({
               </span>
             </div>
             <Button onClick={forceClose}>{t("drawerClose")}</Button>
-            {documentId != null && access.canPrint && isDocumentPdfPrintable(/** @type {any} */ (config.documentKey), status) ? (
-              <>
-                <Button loading={isPrintPending} disabled={submitting} onClick={() => printPdf(documentId, number)}>
-                  {t("actionPrint")}
-                </Button>
-                {config.receiptPrint ? (
-                  <Button loading={isReceiptPending} disabled={submitting} onClick={() => printReceipt(documentId, number)}>
-                    {t("actionPrintReceipt")}
-                  </Button>
-                ) : null}
-                <Button loading={isDownloadPending} disabled={submitting} onClick={() => downloadPdf(documentId, number)}>
-                  {t("actionDownloadPdf")}
-                </Button>
-              </>
-            ) : null}
+            <DocumentMoreMenu
+              disabled={submitting}
+              loading={isPrintPending || isReceiptPending || isDownloadPending}
+              items={
+                documentId != null && access.canPrint && isDocumentPdfPrintable(/** @type {any} */ (config.documentKey), status)
+                  ? [
+                      ...documentOutputItems({ t, onPrint: () => printPdf(documentId, number) }),
+                      config.receiptPrint
+                        ? {
+                            key: "receipt",
+                            icon: <PrinterOutlined />,
+                            label: t("actionPrintReceipt"),
+                            onClick: () => printReceipt(documentId, number),
+                          }
+                        : null,
+                      ...documentOutputItems({
+                        t,
+                        onDownloadPdf: () => downloadPdf(documentId, number),
+                        onEmail: isEmailableType(config.documentKey)
+                          ? () => email.open(config.documentKey, documentId, number)
+                          : null,
+                        emailLabel: tEmail("actionMenu"),
+                      }),
+                    ]
+                  : []
+              }
+            />
             {status === "posted" && access.canReverse ? (
               <Button
                 danger

@@ -104,11 +104,12 @@ export function mapSalesInvoiceCustomerOption(customer) {
   const name = String(customer.name ?? customer.id);
   const phone = typeof customer.phone === "string" ? customer.phone.trim() : "";
   const email = typeof customer.email === "string" ? customer.email.trim() : "";
-  const title = salesInvoiceCustomerHoverTitle({ name, phone });
   return {
     value: customer.id,
-    label: code || name,
-    title,
+    // Shown by name, with the phone on the right in the dropdown and the code on hover. All three are searchable.
+    label: name,
+    subLabel: phone || undefined,
+    title: code || undefined,
     status: customer.status,
     customer_code: code || undefined,
     name,
@@ -161,6 +162,7 @@ export function mapSalesInvoiceItemOption(item) {
     searchText: `${item.sku ?? ""} ${item.item_code ?? ""} ${item.plu_code ?? ""} ${item.name ?? ""}`,
     track_inventory: Boolean(item.track_inventory),
     track_lots: Boolean(item.track_lots),
+    track_serials: Boolean(item.track_serials),
     vat_percentage: Number.isFinite(vatFromGroup) ? vatFromGroup : Number.isFinite(vatDirect) ? vatDirect : 0,
   };
 }
@@ -229,6 +231,8 @@ export function findSalesInvoiceItemOptionByCode(options, raw) {
  *   line_total?: string | number;
  *   track_inventory?: boolean;
  *   track_lots?: boolean;
+ *   track_serials?: boolean;
+ *   serial_numbers?: string[];
  *   sales_order_line_id?: number;
  *   delivery_note_line_id?: number;
  *   order_remaining_quantity?: number;
@@ -284,6 +288,7 @@ export function getEmptySalesInvoiceLine() {
     item_uom_id: SI_BASE_UOM,
     warehouse_id: undefined,
     lot_id: undefined,
+    serial_numbers: [],
     unit_price: undefined,
     discount_percent: 0,
     description: "",
@@ -429,6 +434,8 @@ export function mapSalesInvoiceLinesFromApi(lines, exchangeRate = 1) {
     line_total: line.line_total,
     track_inventory: Boolean(line.item?.track_inventory),
     track_lots: Boolean(line.item?.track_lots),
+    track_serials: Boolean(line.item?.track_serials),
+    serial_numbers: Array.isArray(line.serial_numbers) ? line.serial_numbers.map(String) : [],
     sales_order_line_id: line.sales_order_line_id != null ? Number(line.sales_order_line_id) : undefined,
     delivery_note_line_id: line.delivery_note_line_id != null ? Number(line.delivery_note_line_id) : undefined,
     order_remaining_quantity:
@@ -464,6 +471,10 @@ export function getValidSalesInvoiceLines(lines) {
     }
     if (line.lot_id != null) {
       row.lot_id = Number(line.lot_id);
+    }
+    // Lines from a delivery note show its serials; only other lines send them.
+    if (line.track_serials && line.delivery_note_line_id == null) {
+      row.serial_numbers = Array.isArray(line.serial_numbers) ? line.serial_numbers : [];
     }
     if (line.discount_percent != null) {
       row.discount_percent = Number(line.discount_percent);
@@ -552,27 +563,54 @@ export function salesInvoiceLinePatchFromBarcodeLookup(
   const sameItem = row.item_id != null && String(row.item_id) === itemId;
   const trackInventory = Boolean(item.track_inventory);
   const description = salesInvoiceItemDescription(item);
-  const incrementQuantity = Boolean(options.incrementQuantity);
+  // A scale label carries its own quantity (weight, count, or worked out from the label price)
+  // and is a separate weighing: it never adds to the quantity already on the line.
+  const scale = result?.scale && typeof result.scale === "object" ? result.scale : null;
+  const incrementQuantity = !scale && Boolean(options.incrementQuantity);
+  const scaleQuantity = scale ? Number(scale.quantity) : NaN;
   return {
     barcode: scannedBarcode,
+    scale_label: scale
+      ? {
+          value_type: scale.value_type,
+          value: scale.value,
+          unit: scale.unit,
+          embedded_price: scale.embedded_price,
+          embedded_currency: scale.embedded_currency,
+          format_name: scale.format_name,
+          lot_number: scale.lot_number ?? null,
+          expiry: scale.expiry ?? null,
+        }
+      : null,
     item_id: itemId,
     item_label: salesInvoiceItemCodeLabel(item),
     item_uom_id: itemUom?.id != null ? Number(itemUom.id) : SI_BASE_UOM,
     conversion_factor: itemUom?.conversion_factor != null ? itemUom.conversion_factor : 1,
-    ...linePriceFromPrimary(itemUom?.selling_price, options.rate ?? 1, options.priceDecimals ?? 2),
+    // Price labels keep the unit price that matches the label (price lists must not replace it).
+    ...linePriceFromPrimary(
+      // A label with weight and price sets its own price per unit.
+      scale?.unit_price_primary != null ? scale.unit_price_primary : itemUom?.selling_price,
+      options.rate ?? 1,
+      options.priceDecimals ?? 2,
+      scale?.price_source === "scale" ? "scale" : "catalog",
+    ),
     description,
     track_inventory: trackInventory,
     track_lots: Boolean(item.track_lots),
+    track_serials: Boolean(item.track_serials),
     warehouse_id: trackInventory ? (row.warehouse_id ?? headerWarehouseId) : undefined,
-    lot_id: sameItem ? row.lot_id : undefined,
+    // A scale label may carry its lot (GS1 AI 10).
+    lot_id: scale?.lot_id != null ? Number(scale.lot_id) : sameItem ? row.lot_id : undefined,
+    serial_numbers: sameItem ? row.serial_numbers : [],
     vat_percentage:
       item.vat_group && item.vat_group.percentage != null
         ? Number(item.vat_group.percentage)
         : item.vat_percentage != null
           ? Number(item.vat_percentage)
           : 0,
-    quantity:
-      incrementQuantity && row.quantity != null && Number(row.quantity) > 0
+    quantity: scale && Number.isFinite(scaleQuantity) && scaleQuantity > 0
+      ? scaleQuantity
+      : incrementQuantity && row.quantity != null && Number(row.quantity) > 0
         ? Number(row.quantity) + 1
         : 1,
     discount_percent: incrementQuantity ? row.discount_percent ?? 0 : 0,
@@ -596,12 +634,15 @@ export function salesInvoiceLinePatchFromItemPick(picked, headerWarehouseId) {
       barcode: "",
       item_uom_id: SI_BASE_UOM,
       lot_id: undefined,
+      serial_numbers: [],
+      scale_label: null,
       warehouse_id: undefined,
       unit_price: undefined,
       ...UNTRACKED_LINE_PRICE,
       conversion_factor: 1,
       track_inventory: false,
       track_lots: false,
+      track_serials: false,
       vat_percentage: 0,
       tax_rate: undefined,
       line_total: undefined,
@@ -617,12 +658,15 @@ export function salesInvoiceLinePatchFromItemPick(picked, headerWarehouseId) {
     barcode: "",
     item_uom_id: SI_BASE_UOM,
     lot_id: undefined,
+    serial_numbers: [],
+    scale_label: null,
     warehouse_id: trackInventory ? headerWarehouseId : undefined,
     unit_price: undefined,
     ...UNTRACKED_LINE_PRICE,
     conversion_factor: 1,
     track_inventory: trackInventory,
     track_lots: Boolean(picked.track_lots),
+    track_serials: Boolean(picked.track_serials),
     vat_percentage: picked.vat_percentage ?? 0,
     tax_rate: undefined,
     line_total: undefined,

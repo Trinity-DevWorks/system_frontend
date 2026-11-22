@@ -3,7 +3,9 @@
 import { formatStockQuantity } from "../../utils/formatStockQuantity";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { Button, Input, Modal, Table } from "antd";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import SerialNumbersField from "../SerialNumbersField";
 
 /**
  * @param {unknown} value
@@ -92,6 +94,9 @@ function StockTransferReceiveModalBody({
     return notes;
   });
 
+  const tSerials = useTranslations("SerialNumbers");
+  const [serialsById, setSerialsById] = useState(/** @type {Record<string, string[]>} */ ({}));
+
   const fillAllOpen = () => {
     /** @type {Record<string, number | null>} */
     const next = {};
@@ -107,9 +112,12 @@ function StockTransferReceiveModalBody({
       const qty = toQty(qtyById[String(line.id)]);
       if (!id || qty <= 0) return null;
       const notes = (notesById[String(line.id)] ?? "").trim();
-      /** @type {{ stock_transfer_line_id: number; quantity: number; notes?: string }} */
+      /** @type {{ stock_transfer_line_id: number; quantity: number; notes?: string; serial_numbers?: string[] }} */
       const row = { stock_transfer_line_id: id, quantity: qty };
       if (notes) row.notes = notes;
+      // No serials picked: the server takes every unit still in transit when the quantity covers them.
+      const serials = serialsById[String(line.id)];
+      if (Array.isArray(serials) && serials.length > 0) row.serial_numbers = serials;
       return row;
     })
     .filter(Boolean);
@@ -123,12 +131,16 @@ function StockTransferReceiveModalBody({
       render: (_v, record) =>
         typeof record.item?.name === "string" ? record.item.name : t("transferLineItem"),
     },
-    {
-      title: t("transferLineLot"),
-      key: "lot",
-      width: 120,
-      render: (_v, record) => record.lot?.lot_number || "\u2014",
-    },
+    ...(openLines.some((line) => line.lot_id != null || line.item?.track_lots)
+      ? [
+        {
+          title: t("transferLineLot"),
+          key: "lot",
+          width: 120,
+          render: (_v, record) => record.lot?.lot_number || "\u2014",
+        },
+        ]
+      : []),
     {
       title: t("transferLineQuantity"),
       key: "ordered",
@@ -167,6 +179,29 @@ function StockTransferReceiveModalBody({
         />
       ),
     },
+    ...(openLines.some((line) => line.item?.track_serials)
+      ? [
+          {
+            title: tSerials("column"),
+            key: "serials",
+            width: 130,
+            render: (_v, record) =>
+              record.item?.track_serials ? (
+                <SerialNumbersField
+                  mode="pick"
+                  value={serialsById[String(record.id)] ?? []}
+                  choices={Array.isArray(record.serials_in_transit) ? record.serials_in_transit : []}
+                  quantity={toQty(qtyById[String(record.id)])}
+                  itemName={record.item?.name}
+                  pickHint={tSerials("pickTransitHint")}
+                  onChange={(serials) => setSerialsById((prev) => ({ ...prev, [String(record.id)]: serials }))}
+                />
+              ) : (
+                "\u2014"
+              ),
+          },
+        ]
+      : []),
     {
       title: t("transferFieldNotes"),
       key: "notes",

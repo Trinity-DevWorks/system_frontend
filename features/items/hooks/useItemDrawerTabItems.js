@@ -7,6 +7,7 @@ import { useMemo } from "react";
  */
 
 import ItemAttachmentsPanel from "../components/ItemDrawer/panels/ItemAttachmentsPanel";
+import ItemPriceHistoryPanel from "../components/ItemDrawer/panels/ItemPriceHistoryPanel";
 import ItemDrawerGeneralForm from "../components/ItemDrawer/components/ItemDrawerGeneralForm";
 import ItemVariantsPanel from "../components/ItemDrawer/panels/ItemVariantsPanel";
 import {
@@ -131,6 +132,20 @@ export function useItemDrawerTabItems({
           tApiErrors={tApiErrors}
           active={open && resolvedActiveTab === "uoms"}
           queryEnabled={tabsEnabled}
+        />
+      ),
+    });
+
+    items.push({
+      key: "priceHistory",
+      label: t("tabPriceHistory"),
+      hidePanelHeading: true,
+      children: (
+        <ItemPriceHistoryPanel
+          itemId={persistedItemId}
+          active={open && resolvedActiveTab === "priceHistory"}
+          t={t}
+          tApiErrors={tApiErrors}
         />
       ),
     });

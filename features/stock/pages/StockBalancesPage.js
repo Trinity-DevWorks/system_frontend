@@ -108,6 +108,7 @@ function StockBalancesTable() {
                 item_label: typeof record?.item?.name === "string" ? record.item.name : undefined,
                 lot_id: record?.lot_id != null ? Number(record.lot_id) : undefined,
                 track_lots: Boolean(record?.item?.track_lots || record?.lot_id),
+                track_serials: Boolean(record?.item?.track_serials),
               })
           : undefined,
       }),

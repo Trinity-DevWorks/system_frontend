@@ -4,7 +4,9 @@ import { dayjsDatePattern } from "@/lib/tenant-format";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { Alert, Col, DatePicker, Form, Input, Row, Select, Space } from "antd";
 import dayjs from "dayjs";
+import { useTranslations } from "next-intl";
 import InboundLotFields from "../InboundLotFields";
+import SerialNumbersField from "../SerialNumbersField";
 
 /**
  * @param {{
@@ -16,6 +18,7 @@ import InboundLotFields from "../InboundLotFields";
  *   itemOptions: { value: string; label: string; track_lots?: boolean }[];
  *   itemsPending: boolean;
  *   produceTrackLots: boolean;
+ *   produceTrackSerials?: boolean;
  *   recipeUom?: string;
  *   recipePending: boolean;
  *   recipeMissing: boolean;
@@ -32,6 +35,7 @@ export default function ProductionDrawerForm({
   itemOptions,
   itemsPending,
   produceTrackLots,
+  produceTrackSerials = false,
   recipeUom,
   recipePending,
   recipeMissing,
@@ -43,6 +47,8 @@ export default function ProductionDrawerForm({
   const lotId = Form.useWatch("lot_id", form);
   const lotNumber = Form.useWatch("lot_number", form);
   const expiryDate = Form.useWatch("expiry_date", form);
+  const produceQuantity = Form.useWatch("quantity", form);
+  const tSerials = useTranslations("SerialNumbers");
 
   return (
     <Form form={form} layout="vertical" disabled={readOnly}>
@@ -148,6 +154,18 @@ export default function ProductionDrawerForm({
             />
           </Form.Item>
         </>
+      ) : null}
+
+      {produceTrackSerials ? (
+        <Form.Item name="serial_numbers" label={tSerials("producedSerials")} tooltip={tSerials("producedSerialsHelp")}>
+          <SerialNumbersField
+            mode="in"
+            quantity={Number(produceQuantity) || 0}
+            itemId={itemId}
+            itemName={itemOptions.find((option) => option.value === itemId)?.label}
+            readOnly={readOnly}
+          />
+        </Form.Item>
       ) : null}
 
       <Form.Item name="notes" label={t("prdFieldNotes")}>

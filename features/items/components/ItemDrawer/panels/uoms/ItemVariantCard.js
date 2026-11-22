@@ -1,12 +1,13 @@
 "use client";
 
+import { RESTAURANT_FEATURES } from "@/lib/business-profile";
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { formatTenantMoney } from "@/lib/tenant-format";
 import ItemVariantBarcodesSection from "./ItemVariantBarcodesSection";
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import { Button, Checkbox, Radio, Select, Tooltip, Typography } from "antd";
+import { Button, Checkbox, Input, Radio, Select, Tooltip, Typography } from "antd";
 import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
 import { APP_DISMISS_BUTTON_PROPS } from "@/shared/components/buttons/appDismissButtonProps";
 
@@ -19,9 +20,13 @@ function VariantPricingGrid({ values, t }) {
   const cells = [
     { label: t("uomFieldSell"), value: price(values.selling_price) },
     { label: t("uomFieldCost"), value: price(values.cost_price) },
-    { label: t("uomColTakeaway"), value: price(values.takeaway_price) },
-    { label: t("uomColDineIn"), value: price(values.dine_in_price) },
-    { label: t("uomColDelivery"), value: price(values.delivery_price) },
+    ...(RESTAURANT_FEATURES
+      ? [
+          { label: t("uomColTakeaway"), value: price(values.takeaway_price) },
+          { label: t("uomColDineIn"), value: price(values.dine_in_price) },
+          { label: t("uomColDelivery"), value: price(values.delivery_price) },
+        ]
+      : []),
   ];
 
   return (
@@ -277,6 +282,8 @@ export default function ItemVariantCard({
                   onChange={(v) => onPatch({ cost_price: v ?? undefined })}
                 />
               </VariantFormField>
+              {RESTAURANT_FEATURES ? (
+                <>
               <VariantFormField label={t("uomColTakeaway")}>
                 <TenantNumberInput
                   kind="money"
@@ -305,6 +312,16 @@ export default function ItemVariantCard({
                   min={0}
                   value={values.delivery_price}
                   onChange={(v) => onPatch({ delivery_price: v ?? undefined })}
+                />
+              </VariantFormField>
+                </>
+              ) : null}
+              <VariantFormField label={t("uomFieldReason")}>
+                <Input
+                  value={values.reason ?? ""}
+                  maxLength={500}
+                  placeholder={t("uomFieldReasonPlaceholder")}
+                  onChange={(event) => onPatch({ reason: event.target.value })}
                 />
               </VariantFormField>
             </div>

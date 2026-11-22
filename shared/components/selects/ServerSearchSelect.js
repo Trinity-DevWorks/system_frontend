@@ -371,8 +371,19 @@ export default function ServerSearchSelect({
           </span>
         );
       }
-      const content = optionRender ? optionRender(option) : option.label;
       const data = option?.data && typeof option.data === "object" ? option.data : null;
+      const subLabel = typeof data?.subLabel === "string" && data.subLabel.trim() ? data.subLabel.trim() : null;
+      // e.g. customers: the name, with the code in grey on the right.
+      const content = optionRender ? (
+        optionRender(option)
+      ) : subLabel ? (
+        <span className="flex min-w-0 items-center justify-between gap-3">
+          <span className="truncate">{option.label}</span>
+          <span className="shrink-0 text-xs opacity-60">{subLabel}</span>
+        </span>
+      ) : (
+        option.label
+      );
       const title =
         typeof data?.title === "string" && data.title.trim()
           ? data.title.trim()
@@ -427,6 +438,15 @@ export default function ServerSearchSelect({
     onChange?.(next, picked);
   };
 
+  /** @param {unknown} option */
+  const withSubLabel = (option) =>
+    Boolean(option) &&
+    typeof option === "object" &&
+    (typeof option.subLabel === "string"
+      ? option.subLabel !== ""
+      : Array.isArray(option.options) && option.options.some(withSubLabel));
+  const hasSubLabels = selectOptions.some(withSubLabel);
+
   const handlePopupScroll = (event) => {
     if (!hasMorePages) return;
     const target = event.target;
@@ -439,6 +459,8 @@ export default function ServerSearchSelect({
   return (
     <Select
       key={addNewResetKey}
+      // Rows with a code on the right (e.g. customers) need room even in a narrow field.
+      popupMatchSelectWidth={hasSubLabels ? 300 : true}
       {...rest}
       value={value}
       onChange={handleChange}

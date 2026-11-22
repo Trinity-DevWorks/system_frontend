@@ -22,7 +22,7 @@ export function getAllowedTabKeys(
 ) {
   const keys = ["general"];
   if (!tabsEnabled) return keys;
-  keys.push("uoms");
+  keys.push("uoms", "priceHistory");
   if (showVariantsTab) keys.push("variants");
   if (showRecipeTab) keys.push("recipe");
   if (showBundleTab) keys.push("bundle");
@@ -62,6 +62,7 @@ export function getItemDrawerDefaults() {
     sku: "",
     item_code: undefined,
     plu_code: undefined,
+    is_scale_item: false,
     item_type_id: undefined,
     category_id: undefined,
     brand_id: undefined,
@@ -70,11 +71,15 @@ export function getItemDrawerDefaults() {
     description: undefined,
     track_inventory: true,
     track_lots: false,
+    track_serials: false,
+    warranty_months: null,
     costing_method: "",
     allow_sale: true,
     allow_purchase: true,
     allow_return: true,
     is_landed_cost: false,
+    is_fixed_asset: false,
+    fixed_asset_category_id: undefined,
     weight: undefined,
     volume: undefined,
     is_active: true,

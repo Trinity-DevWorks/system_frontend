@@ -14,6 +14,7 @@ import { useResourceAccess } from "@/lib/permissions";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import { deleteSalesInvoice, downloadSalesInvoicePdf, postSalesInvoice, reverseSalesInvoice } from "../api/salesInvoices.api";
 import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
 import { salesOrderConfig } from "@/features/sales-orders/salesOrderConfig";
 import { fetchCustomerNames } from "@/features/customers/index";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -265,6 +266,10 @@ function SalesInvoicesTable() {
   });
   const handlePrint = useCallback((record) => printPdf(record?.id, record?.invoice_number), [printPdf]);
   const handleDownloadPdf = useCallback((record) => downloadPdf(record?.id, record?.invoice_number), [downloadPdf]);
+  const tEmail = useTranslations("DocumentEmail");
+  const email = useSendDocumentEmail();
+  const openEmail = email.open;
+  const handleEmail = useCallback((record) => openEmail("sales_invoice", record?.id, record?.invoice_number), [openEmail]);
 
   const baseColumns = useMemo(
     () =>
@@ -278,8 +283,10 @@ function SalesInvoicesTable() {
         onCreateCreditNote: creditNoteAccess.canAdd ? handleCreateCreditNote : undefined,
         onPrint: access.canPrint ? handlePrint : undefined,
         onDownloadPdf: access.canPrint ? handleDownloadPdf : undefined,
+        onEmail: access.canPrint ? handleEmail : undefined,
+        emailLabel: tEmail("actionMenu"),
       }),
-    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, access.canPrint, receiptAccess.canAdd, creditNoteAccess.canAdd, handlePrint, handleDownloadPdf, openViewDrawer, openEditDrawer, handlePost, handleDelete, handleReverse, handleCreateReceipt, handleCreateCreditNote],
+    [t, access.canView, access.canEdit, access.canDelete, access.canReverse, access.canPrint, receiptAccess.canAdd, creditNoteAccess.canAdd, handlePrint, handleDownloadPdf, handleEmail, tEmail, openViewDrawer, openEditDrawer, handlePost, handleDelete, handleReverse, handleCreateReceipt, handleCreateCreditNote],
   );
   const columns = useDocumentBranchColumns(baseColumns);
 
@@ -352,6 +359,7 @@ function SalesInvoicesTable() {
         scrollX={1360}
         pagination={pagination}
       />
+      {email.dialog}
     </div>
   );
 }

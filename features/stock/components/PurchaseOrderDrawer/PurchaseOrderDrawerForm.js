@@ -1,6 +1,7 @@
 "use client";
 
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
+import { partyFilterOption, partyLabelRender, partyOptionRender } from "@/shared/utils/partySelectOptions";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { dayjsDatePattern } from "@/lib/tenant-format";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
@@ -49,7 +50,10 @@ export default function PurchaseOrderDrawerForm({
             >
               <Select
                 showSearch
-                optionFilterProp="label"
+                filterOption={partyFilterOption}
+                optionRender={partyOptionRender}
+                labelRender={partyLabelRender(supplierOptions)}
+                popupMatchSelectWidth={300}
                 className="w-full"
                 placeholder={t("poSupplierPlaceholder")}
                 options={supplierOptions}

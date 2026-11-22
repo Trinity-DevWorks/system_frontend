@@ -296,6 +296,7 @@ export default function StockRevaluationLineEditor({
                     onPatchLine(index, {
                       item_id: value,
                       track_lots: Boolean(selected?.track_lots),
+                      track_serials: Boolean(selected?.track_serials),
                       lot_id: undefined,
                       lot_number: "",
                       quantity_on_hand: undefined,

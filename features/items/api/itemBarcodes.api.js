@@ -19,6 +19,18 @@ export function createItemBarcode(itemId, body) {
 }
 
 /**
+ * Adds the next in-store EAN-13 barcode (200…) to the item / unit.
+ * @param {number | string} itemId
+ * @param {number | null} itemUomId
+ * @returns {Promise<unknown>}
+ */
+export function generateItemBarcode(itemId, itemUomId) {
+  return tenantRequest("POST", `items/${itemId}/barcodes/generate`, {
+    item_uom_id: itemUomId,
+  });
+}
+
+/**
  * @param {number | string} itemId
  * @param {number | string} barcodeId
  * @param {Record<string, unknown>} body

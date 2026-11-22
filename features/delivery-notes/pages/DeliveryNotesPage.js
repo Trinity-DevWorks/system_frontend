@@ -13,7 +13,8 @@ import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { createInvoiceFromDeliveryNote, deliveryNotePdfUrl, postDeliveryNote, reverseDeliveryNote } from "../api/deliveryNotes.api";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { printPdf } from "@/shared/api/downloadPdf";
-import { FileDoneOutlined, PrinterOutlined } from "@ant-design/icons";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
+import { FileDoneOutlined, MailOutlined, PrinterOutlined } from "@ant-design/icons";
 import { DELIVERY_NOTES_LIST_QUERY_KEY } from "../queries/deliveryNotesQueryKeys";
 import { useTranslations } from "next-intl";
 import { Suspense, useMemo, useState } from "react";
@@ -22,6 +23,9 @@ function DeliveryNotesTable() {
   const t = useTranslations("DeliveryNotes");
   const tApiErrors = useTranslations("ApiErrors");
   const tDataTable = useTranslations("DataTable");
+  const tEmail = useTranslations("DocumentEmail");
+  const email = useSendDocumentEmail();
+  const openEmail = email.open;
   const { notification, modal, message } = App.useApp();
   const access = useResourceAccess("delivery_notes");
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -122,6 +126,13 @@ function DeliveryNotesTable() {
                 }),
               ),
           },
+          {
+            key: "email",
+            label: tEmail("actionMenu"),
+            icon: <MailOutlined />,
+            disabled: !access.canPrint || (record?.status !== "posted" && record?.status !== "reversed"),
+            onClick: () => openEmail("delivery_note", String(record.id), record?.delivery_number),
+          },
         ],
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,6 +185,7 @@ function DeliveryNotesTable() {
         enableColumnDrag
         pagination={pagination}
       />
+      {email.dialog}
     </div>
   );
 }

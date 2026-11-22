@@ -5,8 +5,8 @@ import LinesGrid from "@/shared/components/lines-grid/LinesGrid";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { isPersistedEntityId } from "@/lib/entityId";
 import { formatTenantMoneyWithSymbol, formatTenantNumber } from "@/lib/tenant-format";
-import { ClearOutlined, CopyOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
-import { App, Checkbox, Input, Select } from "antd";
+import { ClearOutlined, CopyOutlined, DashboardOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
+import { App, Checkbox, Input, Select, Tooltip } from "antd";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import LinePriceInput from "@/shared/components/lines-grid/LinePriceInput";
 import { linePriceFromPrimary, manualLinePrice } from "@/lib/currency/documentExchangeRate";
@@ -28,6 +28,7 @@ import {
   SALES_INVOICE_ITEM_SELECTOR_PARAMS,
 } from "../../api/salesInvoiceSelectors.api";
 import { SiFocusStop } from "./salesInvoiceDrawerKeyboard";
+import SerialNumbersField from "@/features/stock/components/SerialNumbersField";
 
 /**
  * @param {{
@@ -481,6 +482,7 @@ export default function SalesInvoiceLineEditor({
         label: line.item_label?.trim() || existing?.label || id,
         track_inventory: Boolean(line.track_inventory ?? existing?.track_inventory),
         track_lots: Boolean(line.track_lots ?? existing?.track_lots),
+        track_serials: Boolean(line.track_serials ?? existing?.track_serials),
         vat_percentage:
           line.vat_percentage != null
             ? Number(line.vat_percentage)
@@ -491,6 +493,11 @@ export default function SalesInvoiceLineEditor({
     }
     return [...byId.values()];
   }, [itemOptions, lines]);
+
+  const tSerials = useTranslations("SerialNumbers");
+  const tScale = useTranslations("ScaleBarcodes");
+  const showSerialColumn = lines.some((line) => line.track_serials);
+  const showLotColumn = lines.some((line) => line.track_lots || line.lot_id != null);
 
   const columns = useMemo(
     () => [
@@ -516,14 +523,15 @@ export default function SalesInvoiceLineEditor({
       { key: "uom", label: t("lineUom"), width: "120px" },
       { key: "conversion", label: t("lineConversion"), width: "30px" },
       { key: "warehouse", label: t("lineWarehouse"), width: "minmax(140px, 0.7fr)" },
-      { key: "lot", label: t("lineLot"), width: "80px" },
+      ...(showLotColumn ? [{ key: "lot", label: t("lineLot"), width: "80px" }] : []),
+      ...(showSerialColumn ? [{ key: "serials", label: tSerials("column"), width: "110px" }] : []),
       { key: "quantity", label: t("lineQuantity"), width: "120px" },
       { key: "unit_price", label: t("lineUnitPrice"), width: "120px" },
       { key: "discount_percent", label: t("lineDiscountPercent"), width: "90px" },
       { key: "tax_rate", label: t("lineTaxRate"), width: "40px" },
       { key: "line_total", label: t("lineTotal"), width: "140px" },
     ],
-    [allLinesSelected, lines.length, readOnly, someLinesSelected, t, toggleAllLinesSelected],
+    [allLinesSelected, lines.length, readOnly, showLotColumn, someLinesSelected, showSerialColumn, t, tSerials, toggleAllLinesSelected],
   );
 
   const handleLineBarcodeSearch = async (index, rawCode, row) => {
@@ -531,7 +539,7 @@ export default function SalesInvoiceLineEditor({
     if (!code || readOnly || barcodePendingIndex != null) return;
     setBarcodePendingIndex(index);
     try {
-      const result = /** @type {{ item?: Record<string, unknown>; item_uom?: Record<string, unknown> }} */ (
+      const result = /** @type {{ item?: Record<string, unknown>; item_uom?: Record<string, unknown>; scale?: Record<string, any> }} */ (
         await lookupItemByBarcode(code)
       );
       const item = result?.item;
@@ -554,6 +562,14 @@ export default function SalesInvoiceLineEditor({
       if (patch) {
         onPatchLine(index, patch);
         lastAppliedBarcodeRef.current[index] = code;
+        // Scale label notes (label price differs from the item price, best-before passed…).
+        const scaleWarnings = Array.isArray(result?.scale?.warnings) ? result.scale.warnings : [];
+        for (const warning of scaleWarnings) {
+          notification.warning({
+            title: tScale("lineScaleTag"),
+            description: tScale(`warning_${warning.code}`, warning.params ?? {}),
+          });
+        }
         const recent = mapSalesInvoiceItemOption(item);
         if (recent) rememberRecentSelectorOption(SALES_INVOICE_ITEM_RECENT_KIND, recent);
       }
@@ -616,6 +632,20 @@ export default function SalesInvoiceLineEditor({
                     onPatchLine(index, { barcode: event.target.value });
                   }}
                   onBlur={(event) => restoreCommittedBarcode(index, event.currentTarget.value)}
+                  suffix={
+                    row.scale_label ? (
+                      <Tooltip
+                        title={tScale(`lineScale_${row.scale_label.value_type}`, {
+                          value: Number(row.scale_label.value ?? 0),
+                          unit: row.scale_label.unit ?? "",
+                          price: Number(row.scale_label.embedded_price ?? 0),
+                          currency: row.scale_label.embedded_currency ?? "",
+                        })}
+                      >
+                        <DashboardOutlined className="text-[var(--ant-color-primary)]" aria-label={tScale("lineScaleTag")} />
+                      </Tooltip>
+                    ) : undefined
+                  }
                   onPressEnter={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -751,9 +781,25 @@ export default function SalesInvoiceLineEditor({
                   warehouseOptions={warehouseOptions}
                   readOnly={readOnly}
                   t={t}
-                  onChange={(value) => onPatchLine(index, { warehouse_id: value, lot_id: undefined })}
+                  onChange={(value) => onPatchLine(index, { warehouse_id: value, lot_id: undefined, serial_numbers: [] })}
                 />
               </SiFocusStop>
+            );
+          }
+          if (columnKey === "serials") {
+            if (!row.track_serials) return "—";
+            const fromDelivery = row.delivery_note_line_id != null;
+            return (
+              <SerialNumbersField
+                mode="out"
+                value={row.serial_numbers}
+                quantity={(Number(row.quantity) || 0) * (Number(row.conversion_factor) || 1)}
+                itemId={row.item_id}
+                itemName={row.item_label}
+                warehouseId={row.warehouse_id}
+                readOnly={readOnly || fromDelivery}
+                onChange={(serials) => onPatchLine(index, { serial_numbers: serials })}
+              />
             );
           }
           if (columnKey === "lot") {

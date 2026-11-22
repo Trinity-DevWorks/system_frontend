@@ -13,6 +13,8 @@ import { normalizeEntityId } from "@/lib/entityId";
  *   theoretical_quantity?: number;
  *   lot_id?: number;
  *   track_lots?: boolean;
+ *   track_serials?: boolean;
+ *   serial_numbers?: string[];
  *   item_uom_label?: string;
  *   notes?: string;
  * }} BexLineFormRow
@@ -88,6 +90,8 @@ export function scaleBundleToLines(components, kitQty, previousLines = []) {
       theoretical_quantity: theoretical,
       lot_id: previous?.lot_id,
       track_lots: Boolean(row.child_item?.track_lots),
+      track_serials: Boolean(row.child_item?.track_serials),
+      serial_numbers: previous?.serial_numbers ?? [],
       item_uom_label:
         typeof uom?.code === "string" ? uom.code : typeof uom?.name === "string" ? uom.name : "",
       notes: typeof previous?.notes === "string" ? previous.notes : "",
@@ -120,6 +124,8 @@ export function mapBexLinesFromApi(lines) {
     theoretical_quantity: line.theoretical_quantity != null ? Number(line.theoretical_quantity) : undefined,
     lot_id: line.lot_id != null ? Number(line.lot_id) : undefined,
     track_lots: Boolean(line.item?.track_lots),
+    track_serials: Boolean(line.item?.track_serials),
+    serial_numbers: Array.isArray(line.serial_numbers) ? line.serial_numbers.map(String) : [],
     item_uom_label:
       typeof line.item?.base_uom?.code === "string"
         ? line.item.base_uom.code
@@ -143,6 +149,7 @@ export function isBexLinePersistable(line) {
 export function isBexLineComplete(line) {
   if (!isBexLinePersistable(line)) return false;
   if (line.track_lots && line.lot_id == null) return false;
+  if (line.track_serials && (line.serial_numbers?.length ?? 0) !== Number(line.quantity)) return false;
   return true;
 }
 
@@ -157,6 +164,7 @@ function toBexLinePayload(line) {
   };
   if (line.theoretical_quantity != null) row.theoretical_quantity = Number(line.theoretical_quantity);
   if (line.lot_id != null) row.lot_id = Number(line.lot_id);
+  if (line.track_serials) row.serial_numbers = Array.isArray(line.serial_numbers) ? line.serial_numbers : [];
   const notes = typeof line.notes === "string" ? line.notes.trim() : "";
   if (notes) row.notes = notes;
   return row;

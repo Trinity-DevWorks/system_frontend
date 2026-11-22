@@ -17,6 +17,8 @@ import { assignNewLotExpiry } from "./stockLotUtils";
  *   lot_number?: string;
  *   expiry_date?: string;
  *   track_lots?: boolean;
+ *   track_serials?: boolean;
+ *   serial_numbers?: string[];
  *   item_uom_label?: string;
  *   notes?: string;
  * }} CntLineFormRow
@@ -51,6 +53,8 @@ export function getEmptyCntLine() {
     lot_number: "",
     expiry_date: "",
     track_lots: false,
+    track_serials: false,
+    serial_numbers: [],
     notes: "",
   };
 }
@@ -81,6 +85,8 @@ export function mapCntLinesFromApi(lines) {
     lot_number: typeof line.lot?.lot_number === "string" ? line.lot.lot_number : "",
     expiry_date: typeof line.lot?.expiry_date === "string" ? line.lot.expiry_date : "",
     track_lots: Boolean(line.item?.track_lots),
+    track_serials: Boolean(line.item?.track_serials),
+    serial_numbers: Array.isArray(line.serial_numbers) ? line.serial_numbers.map(String) : [],
     item_uom_label: cntUomLabel(line.item),
     notes: typeof line.notes === "string" ? line.notes : "",
   }));
@@ -136,6 +142,9 @@ export function isCntLineComplete(line) {
   if (line.track_lots && line.lot_id == null && !String(line.lot_number ?? "").trim()) {
     return false;
   }
+  if (line.track_serials && (line.serial_numbers?.length ?? 0) !== Math.abs(cntLineVariance(line) ?? 0)) {
+    return false;
+  }
   return true;
 }
 
@@ -160,6 +169,7 @@ function toCntLinePayload(line) {
     row.lot_number = lotNumber;
     assignNewLotExpiry(row, line);
   }
+  if (line.track_serials) row.serial_numbers = Array.isArray(line.serial_numbers) ? line.serial_numbers : [];
   const notes = typeof line.notes === "string" ? line.notes.trim() : "";
   if (notes) row.notes = notes;
   return row;

@@ -6,6 +6,7 @@ import { useResourceAccess } from "@/lib/permissions";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { formatTenantDate, formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@/i18n/navigation";
 import { Alert, App, Button, Table, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { closeFiscalYear, fetchFiscalYears, reverseFiscalYear } from "../api/accounting.api";
@@ -84,6 +85,25 @@ export default function FiscalYearsPage() {
       {query.isError ? (
         <Alert type="error" showIcon title={t("loadError")} description={getLocalizedApiErrorMessage(tApiErrors, query.error)} />
       ) : null}
+
+      {rows.filter((row) => row.warnings && (row.warnings.pending_deferral_lines || row.warnings.failed_recurring_runs)).map((row) => (
+        <Alert
+          key={`warn-${row.ends_on}`}
+          type="warning"
+          showIcon
+          title={t("closeWarningsTitle", { year: formatTenantDate(row.ends_on) })}
+          description={
+            <div className="flex flex-col gap-1">
+              {row.warnings.pending_deferral_lines ? (
+                <Link href="/main/accounting/deferral-schedules">{t("pendingDeferralLines", { count: row.warnings.pending_deferral_lines.count, amount: money(row.warnings.pending_deferral_lines.amount_primary, currencySymbol) })}</Link>
+              ) : null}
+              {row.warnings.failed_recurring_runs ? (
+                <Link href="/main/accounting/recurring-entries">{t("failedRecurringRuns", { count: row.warnings.failed_recurring_runs.count })}</Link>
+              ) : null}
+            </div>
+          }
+        />
+      ))}
 
       <Table
         size="middle"

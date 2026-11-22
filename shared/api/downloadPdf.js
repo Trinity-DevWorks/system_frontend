@@ -86,36 +86,82 @@ export function savePdfBlob(blob, filename) {
   URL.revokeObjectURL(objectUrl);
 }
 
+const PRINT_FRAME_ID = "erp-pdf-print-frame";
+
+/** @type {string | null} */
+let printFrameUrl = null;
+
+/** Drop the previous print frame (kept alive until the next print so its dialog isn't cut off). */
+function removePrintFrame() {
+  document.getElementById(PRINT_FRAME_ID)?.remove();
+  if (printFrameUrl) URL.revokeObjectURL(printFrameUrl);
+  printFrameUrl = null;
+}
+
 /**
- * Open the PDF in a new tab and trigger the browser print dialog (ERP-style direct print).
+ * Fallback: show the PDF in a new tab (the user prints with Ctrl+P / the viewer's print button).
+ * @param {string} objectUrl
+ */
+function openPdfTab(objectUrl) {
+  // No "noopener": with it window.open always returns null, so a blocked popup can't be detected.
+  const win = window.open(objectUrl, "_blank");
+  if (!win) {
+    const error = new Error("Request failed");
+    error.details = { code: "PDF_PRINT_POPUP_BLOCKED" };
+    throw error;
+  }
+  win.opener = null;
+}
+
+/**
+ * Print the PDF straight from the current page: it loads into a hidden iframe and the
+ * browser print dialog opens on top of the app (no new tab, no download).
+ * Falls back to opening the PDF in a new tab when the browser refuses to print the frame.
  *
  * @param {Blob} blob
  */
 export async function openPdfBlobForPrint(blob) {
   const pdfBlob =
     blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
+  removePrintFrame();
   const objectUrl = URL.createObjectURL(pdfBlob);
-  const win = window.open(objectUrl, "_blank", "noopener,noreferrer");
-  if (!win) {
-    URL.revokeObjectURL(objectUrl);
-    const error = new Error("Request failed");
-    error.details = { code: "PDF_PRINT_POPUP_BLOCKED" };
-    throw error;
+  printFrameUrl = objectUrl;
+
+  const frame = document.createElement("iframe");
+  frame.id = PRINT_FRAME_ID;
+  frame.setAttribute("aria-hidden", "true");
+  frame.tabIndex = -1;
+  // Not display:none — Chrome doesn't load the PDF viewer in a hidden frame.
+  frame.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;";
+
+  await new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve(undefined);
+    };
+    frame.onload = finish;
+    // Some browsers never fire load for a PDF frame.
+    window.setTimeout(finish, 3000);
+    frame.src = objectUrl;
+    document.body.appendChild(frame);
+  });
+
+  // Give the PDF viewer a moment to render the pages before printing.
+  await new Promise((resolve) => window.setTimeout(resolve, 300));
+
+  try {
+    const win = frame.contentWindow;
+    if (!win) throw new Error("no frame window");
+    win.focus();
+    win.print();
+  } catch {
+    // e.g. Firefox/Safari refusing to print a PDF frame — show it in a tab instead.
+    document.getElementById(PRINT_FRAME_ID)?.remove();
+    openPdfTab(objectUrl);
   }
-
-  const triggerPrint = () => {
-    try {
-      win.focus();
-      win.print();
-    } catch {
-      // Browser may block scripted print; the tab still shows the PDF for manual Ctrl+P.
-    }
-  };
-
-  // Blob PDF tabs often never fire a reliable load event — retry briefly, then leave the tab open.
-  window.setTimeout(triggerPrint, 400);
-  window.setTimeout(triggerPrint, 1200);
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120_000);
 }
 
 /**

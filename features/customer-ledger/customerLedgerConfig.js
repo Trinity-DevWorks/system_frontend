@@ -26,11 +26,13 @@ function partyOption(party, codeField) {
   if (row.id == null || row.id === "") return null;
   const code = typeof row[codeField] === "string" ? row[codeField].trim() : "";
   const name = String(row.name ?? row.id);
+  const phone = typeof row.phone === "string" ? row.phone.trim() : "";
   return {
     value: row.id,
-    label: code || name,
+    label: name,
+    subLabel: phone || undefined,
     name,
-    title: name,
+    title: code || undefined,
   };
 }
 
@@ -48,6 +50,7 @@ export const customerLedgerConfig = {
   fetchPartyOption: fetchCustomerLedgerOption,
   endpointFor: (/** @type {string} */ partyId) => `customers/${partyId}/ledger-entries`,
   exportEndpointFor: (/** @type {string} */ partyId) => `customers/${partyId}/ledger-export`,
+  emailType: /** @type {const} */ ("customer_statement"),
   typeLabelKey: {
     invoice: "typeInvoice",
     payment: "typePayment",

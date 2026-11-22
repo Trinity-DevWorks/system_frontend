@@ -12,6 +12,7 @@ import { useResourceDrawerCloseFlow } from "@/shared/components/resource-drawer/
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { downloadSalesInvoicePdf, fetchSalesInvoice } from "../../api/salesInvoices.api";
+import { useSendDocumentEmail } from "@/features/document-email/hooks/useSendDocumentEmail";
 import { useDocumentPdfDownload } from "@/shared/hooks/useDocumentPdfDownload";
 import { isDocumentPdfPrintable } from "@/shared/utils/documentPdf";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -611,6 +612,7 @@ export default function SalesInvoiceDrawer({
                 vat_percentage: line.vat_percentage,
                 track_inventory: line.track_inventory,
                 track_lots: line.track_lots,
+                track_serials: line.track_serials,
               },
             ]),
         ),
@@ -727,6 +729,11 @@ export default function SalesInvoiceDrawer({
   const handlePrint = useCallback(() => {
     printPdf(invoiceId, loadedNumber);
   }, [printPdf, invoiceId, loadedNumber]);
+
+  const email = useSendDocumentEmail();
+  const handleEmail = useCallback(() => {
+    if (invoiceId != null) email.open("sales_invoice", invoiceId, loadedNumber);
+  }, [email, invoiceId, loadedNumber]);
 
   const handlePrintReceipt = useCallback(() => {
     printReceipt(invoiceId, loadedNumber);
@@ -914,44 +921,48 @@ export default function SalesInvoiceDrawer({
       detailError={detailQuery.error}
       tApiErrors={tApiErrors}
       footer={
-        <SalesInvoiceDrawerFooter
-          readOnly={readOnly}
-          t={t}
-          forceClose={forceClose}
-          requestClose={requestClose}
-          submitting={submitting}
-          saveDisabled={!canSubmitRequired}
-          postDisabled={!canSubmitRequired || !access.canEdit}
-          showDelete={!readOnly && invoiceId != null && access.canDelete}
-          showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse && !isOpeningInvoice}
-          showPdf={invoiceId != null && access.canPrint && !isOpeningInvoice && isDocumentPdfPrintable("sales_invoice", effectiveStatus)}
-          pdfLoading={isDownloadPending}
-          printLoading={isPrintPending}
-          onPrint={handlePrint}
-          onPrintReceipt={handlePrintReceipt}
-          receiptLoading={isReceiptPending}
-          onDownloadPdf={handleDownloadPdf}
-          showCreateReceipt={
-            effectiveStatus === "posted" &&
-            invoiceId != null &&
-            receiptAccess.canAdd &&
-            Number(displayTotals?.net_to_pay) > 0
-          }
-          showCreateCreditNote={
-            invoiceId != null &&
-            creditNoteAccess.canAdd &&
-            salesInvoiceHasCreditableBalance(detailQuery.data ?? tableSeedRecord)
-          }
-          onReverse={handleReverse}
-          onCreateCreditNote={handleCreateCreditNote}
-          onCreateReceipt={handleRecordPayment}
-          postedBy={loadedPostedBy}
-          postedAt={loadedPostedAt}
-          onSave={handleSave}
-          onPost={handlePost}
-          onQuickPost={handleQuickPost}
-          onDelete={handleDelete}
-        />
+        <>
+          <SalesInvoiceDrawerFooter
+            readOnly={readOnly}
+            t={t}
+            forceClose={forceClose}
+            requestClose={requestClose}
+            submitting={submitting}
+            saveDisabled={!canSubmitRequired}
+            postDisabled={!canSubmitRequired || !access.canEdit}
+            showDelete={!readOnly && invoiceId != null && access.canDelete}
+            showReverse={effectiveStatus === "posted" && invoiceId != null && access.canReverse && !isOpeningInvoice}
+            showPdf={invoiceId != null && access.canPrint && !isOpeningInvoice && isDocumentPdfPrintable("sales_invoice", effectiveStatus)}
+            pdfLoading={isDownloadPending}
+            printLoading={isPrintPending}
+            onPrint={handlePrint}
+            onPrintReceipt={handlePrintReceipt}
+            receiptLoading={isReceiptPending}
+            onDownloadPdf={handleDownloadPdf}
+            onEmail={handleEmail}
+            showCreateReceipt={
+              effectiveStatus === "posted" &&
+              invoiceId != null &&
+              receiptAccess.canAdd &&
+              Number(displayTotals?.net_to_pay) > 0
+            }
+            showCreateCreditNote={
+              invoiceId != null &&
+              creditNoteAccess.canAdd &&
+              salesInvoiceHasCreditableBalance(detailQuery.data ?? tableSeedRecord)
+            }
+            onReverse={handleReverse}
+            onCreateCreditNote={handleCreateCreditNote}
+            onCreateReceipt={handleRecordPayment}
+            postedBy={loadedPostedBy}
+            postedAt={loadedPostedAt}
+            onSave={handleSave}
+            onPost={handlePost}
+            onQuickPost={handleQuickPost}
+            onDelete={handleDelete}
+          />
+          {email.dialog}
+        </>
       }
     >
       <SalesInvoiceDrawerForm
