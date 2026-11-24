@@ -19,9 +19,10 @@ import {
  *   search: string;
  *   onChange: (next: Array<Record<string, unknown>>) => void;
  *   t: (key: string, values?: Record<string, unknown>) => string;
- * }} props
+ *   flags?: readonly import("../utils/permissionsMatrixUtils").PermFlag[];
+ * }} props `flags` defaults to every tenant flag; central passes the subset its catalog stores.
  */
-export default function PermissionMatrixTable({ rows, readOnly, search, onChange, t }) {
+export default function PermissionMatrixTable({ rows, readOnly, search, onChange, t, flags = PERM_FLAGS }) {
   const filteredRows = useMemo(() => {
     const q = String(search ?? "").trim().toLowerCase();
     if (!q) return rows;
@@ -139,7 +140,7 @@ export default function PermissionMatrixTable({ rows, readOnly, search, onChange
         );
       },
     },
-    ...PERM_FLAGS.map((flag) => {
+    ...flags.map((flag) => {
       const state = columnCheckState(filteredRows, flag);
       return {
         title: (

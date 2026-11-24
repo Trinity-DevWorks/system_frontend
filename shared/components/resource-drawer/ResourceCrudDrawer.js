@@ -182,7 +182,7 @@ export default function ResourceCrudDrawer({
       open={open}
       onClose={handleClose}
       afterOpenChange={handleAfterOpenChange}
-      destroyOnClose
+      destroyOnHidden
       maskClosable={!submitting}
       closable={false}
       footer={footer}

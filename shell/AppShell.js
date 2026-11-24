@@ -18,6 +18,7 @@ import { clearQueryCacheOnAuthChange } from "@/lib/clear-query-cache-on-auth";
 import { useTenantModules } from "@/lib/tenant-modules";
 import { usePermissions } from "@/lib/permissions";
 import { useCompanySettings } from "@/lib/company-settings";
+import { usePlatformBranding } from "@/lib/platform-branding";
 import { hasUiLocaleOverride } from "@/lib/ui-locale-preference";
 import { useQueryClient } from "@tanstack/react-query";
 import { App, Layout, theme as antdTheme } from "antd";
@@ -54,14 +55,15 @@ export default function AppShell({ children, initialCollapsed = false }) {
   const { can: canPermission } = usePermissions();
   const { settings, isReady: settingsReady } = useCompanySettings();
   const { profile } = useCompanyProfile();
+  const { name: platformName } = usePlatformBranding();
 
   const workspaceBrand = useMemo(() => {
     const name =
       typeof profile.company_name === "string"
         ? profile.company_name.trim()
         : "";
-    return name || t("brand");
-  }, [profile.company_name, t]);
+    return name || platformName;
+  }, [profile.company_name, platformName]);
 
   /** Apply tenant preferred_language once when user has not overridden UI locale. */
   useEffect(() => {

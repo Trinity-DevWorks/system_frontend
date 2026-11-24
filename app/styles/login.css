@@ -187,28 +187,21 @@
   background: color-mix(in srgb, var(--login-accent-sky) 18%, transparent);
 }
 
-.login-brand-mena {
+.login-brand-name {
   font-size: 1.85rem;
   font-weight: 800;
   letter-spacing: 0.22em;
-  line-height: 1;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
   background: linear-gradient(90deg, var(--login-accent), var(--login-accent-sky));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-.login-brand-solutions {
-  padding-block-start: 0.2rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.38em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--login-accent) 72%, #64748b);
-}
-
-html.dark .login-brand-solutions {
-  color: color-mix(in srgb, var(--login-accent-sky) 80%, #e2e8f0);
+/* Letter spacing breaks joined Arabic glyphs. */
+.login-brand-name:dir(rtl) {
+  letter-spacing: 0;
 }
 
 .login-brand-wordmark-rule {

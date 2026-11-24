@@ -6,6 +6,8 @@ import { useRouter, Link } from "@/i18n/navigation";
 import { BRANCH_CONTEXT_QUERY_KEY, setActiveBranchId } from "@/lib/active-branch";
 import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { AUTH_ME_QUERY_KEY } from "@/lib/auth-me";
+import { CENTRAL_AUTH_ME_QUERY_KEY } from "@/lib/central-auth-me";
+import { CENTRAL_HOME_PATH } from "@/features/central/registry";
 import { clearQueryCacheOnAuthChange } from "@/lib/clear-query-cache-on-auth";
 import { syncLocalPreferenceUserId } from "@/lib/local-preference-scope";
 import { consumePendingAuthErrorCode } from "@/lib/pending-auth-error";
@@ -56,7 +58,7 @@ function LoginFormInner({ initialHost }) {
 
   useEffect(() => {
     if (!loginSuccess) return undefined;
-    const destination = isCentralLogin ? "/central" : "/main/overview";
+    const destination = isCentralLogin ? CENTRAL_HOME_PATH : "/main/overview";
     const timer = window.setTimeout(() => {
       router.replace(destination);
     }, LOGIN_SUCCESS_REDIRECT_MS);
@@ -75,7 +77,16 @@ function LoginFormInner({ initialHost }) {
 
         setSessionToken(isCentralLogin ? "central" : "tenant", bearerToken);
 
-        if (!isCentralLogin) {
+        if (isCentralLogin) {
+          const me = response?.user;
+          if (me && typeof me === "object") {
+            queryClient.setQueryData(CENTRAL_AUTH_ME_QUERY_KEY, {
+              ...me,
+              permissions: response?.permissions ?? me.permissions,
+            });
+            syncLocalPreferenceUserId(me);
+          }
+        } else {
           const branchContext = response?.branch_context;
           const activeId = branchContext?.active_branch_id;
           if (activeId != null) {
