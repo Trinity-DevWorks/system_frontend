@@ -16,6 +16,7 @@ import { fetchUnitGroupNames } from "@/features/unit-groups/index";
 import { fetchVatGroupNames } from "@/features/vat-groups/index";
 import { useQuery } from "@tanstack/react-query";
 import { Form } from "antd";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 import { itemUomsQueryKey } from "../queries/itemUomsQueryCache";
 import { findItemTypeById, flagsForItemType, requiredGeneralFieldsValid } from "../utils/itemDrawerUtils";
@@ -58,6 +59,7 @@ export function useItemDrawerData({
   mapSeedToCacheRow,
   mapRecordToFormValues,
 }) {
+  const tItems = useTranslations("Items");
   const { detailEnabled, tableSeedMatches, fetchRemoteDetail, detailQuery } = useResourceDrawerDetailSync({
     open,
     mode,
@@ -128,7 +130,7 @@ export function useItemDrawerData({
   const showBundleTab = typeCode === "BUNDLE";
   const showRecipeTab = typeCode === "PRODUCE";
 
-  const itemTypeOptions = useMemo(() => mapItemTypeOptions(itemTypesQuery.data ?? []), [itemTypesQuery.data]);
+  const itemTypeOptions = useMemo(() => mapItemTypeOptions(itemTypesQuery.data ?? [], tItems), [itemTypesQuery.data, tItems]);
   const categoryTreeData = useMemo(
     () =>
       buildCategoryTreeData(categoriesQuery.data ?? [], {

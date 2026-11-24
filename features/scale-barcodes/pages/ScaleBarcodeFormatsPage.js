@@ -6,6 +6,7 @@ import { useResourceAccess } from "@/lib/permissions";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
 import { useTenantPaginatedTable } from "@/lib/tables/useTenantPaginatedTable";
+import ScaleOutdatedBanner from "@/features/scale-exports/components/ScaleOutdatedBanner";
 import ActiveStatusBadge from "@/shared/components/tables/ActiveStatusBadge";
 import AppDataTable from "@/shared/components/tables/AppDataTable";
 import { DeleteOutlined, EditOutlined, EyeOutlined, MoreOutlined } from "@ant-design/icons";
@@ -115,6 +116,7 @@ function ScaleBarcodeFormatsTable() {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <ScaleOutdatedBanner className="!mb-3" />
       <AppDataTable
         tableId="scale-barcode-formats"
         columns={columns}

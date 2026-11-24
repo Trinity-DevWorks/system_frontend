@@ -63,6 +63,7 @@ export function getItemDrawerDefaults() {
     item_code: undefined,
     plu_code: undefined,
     is_scale_item: false,
+    shelf_life_days: undefined,
     item_type_id: undefined,
     category_id: undefined,
     brand_id: undefined,

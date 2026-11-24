@@ -13,6 +13,7 @@ import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSe
 import LookupTreeSelectWithCreate from "@/shared/components/resource-drawer/LookupTreeSelectWithCreate";
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import ScalePluField from "./ScalePluField";
 import { fetchAssetCategories } from "@/features/fixed-assets/api/fixedAssets.api";
 import { useQuery } from "@tanstack/react-query";
 import { Col, ColorPicker, Divider, Form, Input, Row, Select, Switch } from "antd";
@@ -47,6 +48,7 @@ const { TextArea } = Input;
  *   onOpenBrandDrawer?: () => void;
  *   onOpenUnitGroupDrawer?: () => void;
  *   onOpenVatGroupDrawer?: () => void;
+ *   itemId?: string | number | null;
  * }} props
  */
 export default function ItemDrawerGeneralForm({
@@ -68,6 +70,7 @@ export default function ItemDrawerGeneralForm({
   onOpenBrandDrawer,
   onOpenUnitGroupDrawer,
   onOpenVatGroupDrawer,
+  itemId = null,
 }) {
   const isActive = Form.useWatch("is_active", form);
   const allowSale = Form.useWatch("allow_sale", form);
@@ -147,7 +150,7 @@ export default function ItemDrawerGeneralForm({
             <Input placeholder={t("fieldSkuPlaceholder")} />
           </Form.Item>
         </Col>
-        <Col xs={24} md={12}>
+        <Col xs={24} md={scaleItem ? 8 : 12}>
           <Form.Item
             name="item_type_id"
             label={<ResourceDrawerFieldLabel text={t("fieldItemType")} required />}
@@ -163,7 +166,7 @@ export default function ItemDrawerGeneralForm({
             />
           </Form.Item>
         </Col>
-        <Col xs={24} md={12}>
+        <Col xs={24} md={scaleItem ? 8 : 12}>
           <Form.Item
             name="plu_code"
             label={
@@ -182,9 +185,19 @@ export default function ItemDrawerGeneralForm({
                 : undefined
             }
           >
-            <Input placeholder={t("fieldPluPlaceholder")} inputMode={scaleItem ? "numeric" : undefined} />
+            <ScalePluField form={form} readOnly={readOnly} scaleItem={Boolean(scaleItem)} itemId={itemId} t={t} placeholder={t("fieldPluPlaceholder")} />
           </Form.Item>
         </Col>
+        {scaleItem ? (
+          <Col xs={24} md={8}>
+            <Form.Item
+              name="shelf_life_days"
+              label={<ResourceDrawerFieldLabel text={t("fieldShelfLife")} help={t("fieldShelfLifeHelp")} optional optionalSuffix={optionalSuffix} />}
+            >
+              <TenantNumberInput kind="integer" min={0} max={3650} className="w-full" placeholder={t("fieldShelfLifePlaceholder")} />
+            </Form.Item>
+          </Col>
+        ) : null}
         <Col xs={24} md={12}>
           <LookupSelectWithCreate
             form={form}

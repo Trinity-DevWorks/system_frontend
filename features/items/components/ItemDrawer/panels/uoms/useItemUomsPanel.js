@@ -34,6 +34,7 @@ import { UOM_DRAFT_ROW_ID } from "./uomsPanelConstants";
 import { UNIT_OF_MEASUREMENTS_LIST_QUERY_KEY } from "@/features/unit-of-measurements";
 import { ITEMS_LIST_QUERY_KEY, itemDetailQueryKey } from "../../../../queries/itemsQueryKeys";
 import { invalidateTenantListQueries } from "@/lib/tables/tenantListCache";
+import { SCALE_EXPORT_STATUS_QUERY_KEY } from "@/features/scale-exports/api/scaleExports.api";
 
 /** @typedef {import("../itemDrawerPanelsState").UomInlineValues} UomInlineValues */
 
@@ -90,6 +91,17 @@ export function useItemUomsPanel({ itemId, unitGroupId, readOnly, t, tApiErrors,
           ? previousList.find((row) => row?.id === editingId)
           : null;
       const rebased = body?.is_base === true && previousRow != null && !previousRow.is_base;
+      const detail = /** @type {{ is_scale_item?: boolean } | undefined} */ (
+        queryClient.getQueryData(itemDetailQueryKey(itemId))
+      );
+      const priceChanged =
+        body != null &&
+        "selling_price" in body &&
+        (previousRow == null || Number(previousRow.selling_price ?? 0) !== Number(body.selling_price ?? 0));
+      if (detail?.is_scale_item && priceChanged) {
+        void queryClient.invalidateQueries({ queryKey: SCALE_EXPORT_STATUS_QUERY_KEY });
+        message.info(t("fieldScalePriceReminder"));
+      }
 
       if (rebased || body?.is_base === true) {
         void queryClient.invalidateQueries({ queryKey: itemUomsQueryKeyValue });
