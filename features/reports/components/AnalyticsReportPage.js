@@ -246,6 +246,10 @@ function AnalyticsReportView({ config }) {
           if (c.key === "entry" && text && row?.entry_id) {
             return <DrawerLink onOpen={() => openDrawer({ featureId: "journalEntries", id: String(row.entry_id), mode: "view" })}>{text}</DrawerLink>;
           }
+          // Serial reports: the serial number opens the unit with its history.
+          if (c.key === "serial" && text && row?.serial_id) {
+            return <DrawerLink onOpen={() => openDrawer({ featureId: "stockSerials", id: String(row.serial_id), mode: "view" })}>{text}</DrawerLink>;
+          }
           const docFeature = c.key === "document" && row?.source_id ? SOURCE_DOCUMENT_FEATURE[String(row.source_type)] : null;
           if (docFeature && text) {
             return <DrawerLink onOpen={() => openDrawer({ featureId: docFeature, id: String(row.source_id), mode: "view" })}>{text}</DrawerLink>;

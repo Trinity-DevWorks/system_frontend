@@ -119,6 +119,10 @@ export function itemFormValuesToPayload(values) {
     item_code: itemCode,
     plu_code: values.plu_code ? String(values.plu_code).trim() : null,
     is_scale_item: values.allow_sale !== false && values.is_scale_item === true,
+    shelf_life_days:
+      values.allow_sale !== false && values.is_scale_item === true && values.shelf_life_days != null && values.shelf_life_days !== ""
+        ? Number(values.shelf_life_days)
+        : null,
     item_type_id: Number(values.item_type_id),
     category_id: optionalRelationId(values.category_id),
     brand_id: values.brand_id != null && values.brand_id !== "" ? Number(values.brand_id) : null,
@@ -221,6 +225,7 @@ export function mapItemRecordToFormValues(r) {
     item_code: r.item_code ?? undefined,
     plu_code: r.plu_code ?? undefined,
     is_scale_item: Boolean(r.is_scale_item),
+    shelf_life_days: r.shelf_life_days ?? undefined,
     item_type_id: r.item_type_id ?? r.item_type?.id ?? undefined,
     category_id: r.category_id ?? r.category?.id ?? undefined,
     brand_id: r.brand_id ?? r.brand?.id ?? undefined,

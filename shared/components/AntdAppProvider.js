@@ -23,9 +23,15 @@ import {
 } from "react";
 import dayjs from "@/lib/dayjs";
 
+/** antd's ar_EG has no Form.optional, so forms showed the English "(optional)". */
+const arLocale = {
+  ...arEG,
+  Form: { ...arEG.Form, optional: "(اختياري)" },
+};
+
 const antdLocales = {
   en: enUS,
-  ar: arEG,
+  ar: arLocale,
 };
 
 const dayjsLocales = {
