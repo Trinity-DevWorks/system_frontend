@@ -5,44 +5,56 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Card, Form, Input, Segmented, Select, Spin, Tag, Typography } from "antd";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import {
-  DOCUMENT_EMAIL_TYPES,
-  EMAIL_TEMPLATES_QUERY_KEY,
-  fetchEmailTemplates,
-  resetEmailTemplate,
-  saveEmailTemplate,
-} from "../api/documentEmail.api";
+/** Tenant rows carry `document_type`, platform rows `type`. @param {Record<string, any>} row */
+const rowType = (row) => row.document_type ?? row.type;
 
 /**
- * Settings → Email → the subject / body each document is sent with, per language.
- * @param {{ readOnly: boolean }} props
+ * Settings → Email → the subject / body of each email, per language. Used by tenant Settings → Email
+ * (one text per document type) and central Settings → Email (account emails such as password reset).
+ *
+ * @param {{
+ *   readOnly: boolean;
+ *   namespace: string;
+ *   queryKey: readonly unknown[];
+ *   fetchTemplates: () => Promise<{ templates: Record<string, any>[], placeholders: string[] }>;
+ *   saveTemplate: (type: string, locale: string, body: { subject: string, body: string }) => Promise<unknown>;
+ *   resetTemplate: (type: string, locale: string) => Promise<unknown>;
+ *   types: { value: string, label: string }[];
+ * }} props `namespace` holds the texts (same keys as `EmailSettings`).
  */
-export default function EmailTemplatesCard({ readOnly }) {
-  const t = useTranslations("EmailSettings");
-  const tDoc = useTranslations("DocumentEmail");
+export default function EmailTemplatesCard({
+  readOnly,
+  namespace,
+  queryKey,
+  fetchTemplates,
+  saveTemplate,
+  resetTemplate,
+  types,
+}) {
+  const t = useTranslations(namespace);
   const tApiErrors = useTranslations("ApiErrors");
   const { notification, modal } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
-  const [type, setType] = useState(/** @type {string} */ (DOCUMENT_EMAIL_TYPES[0]));
+  const [type, setType] = useState(/** @type {string} */ (types[0]?.value ?? ""));
   const [locale, setLocale] = useState("en");
   /** Last focused field + caret, so a placeholder chip goes where the user was typing. */
   const focus = useRef(/** @type {{ field: "subject" | "body"; start: number; end: number }} */ ({ field: "body", start: -1, end: -1 }));
 
-  const query = useQuery({ queryKey: EMAIL_TEMPLATES_QUERY_KEY, queryFn: fetchEmailTemplates });
-  const current = query.data?.templates.find((row) => row.document_type === type && row.locale === locale);
+  const query = useQuery({ queryKey, queryFn: fetchTemplates });
+  const current = query.data?.templates.find((row) => rowType(row) === type && row.locale === locale);
   const placeholders = query.data?.placeholders ?? [];
 
   useEffect(() => {
     if (current) form.setFieldsValue({ subject: current.subject, body: current.body });
   }, [current, form]);
 
-  const onSaved = () => queryClient.invalidateQueries({ queryKey: EMAIL_TEMPLATES_QUERY_KEY });
+  const onSaved = () => queryClient.invalidateQueries({ queryKey });
   const onError = (error) =>
     notification.error({ title: t("templateSaveError"), description: getLocalizedApiErrorMessage(tApiErrors, error) });
 
   const save = useMutation({
-    mutationFn: (values) => saveEmailTemplate(type, locale, values),
+    mutationFn: (values) => saveTemplate(type, locale, values),
     onSuccess: async () => {
       await onSaved();
       notification.success({ title: t("templateSaved") });
@@ -50,7 +62,7 @@ export default function EmailTemplatesCard({ readOnly }) {
     onError,
   });
   const reset = useMutation({
-    mutationFn: () => resetEmailTemplate(type, locale),
+    mutationFn: () => resetTemplate(type, locale),
     onSuccess: async () => {
       await onSaved();
       notification.success({ title: t("templateReset") });
@@ -93,14 +105,18 @@ export default function EmailTemplatesCard({ readOnly }) {
       ) : (
         <>
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <Select
-              className="min-w-64"
-              value={type}
-              onChange={setType}
-              showSearch
-              optionFilterProp="label"
-              options={DOCUMENT_EMAIL_TYPES.map((value) => ({ value, label: tDoc(`type_${value}`) }))}
-            />
+            {types.length > 1 ? (
+              <Select
+                className="min-w-64"
+                value={type}
+                onChange={setType}
+                showSearch
+                optionFilterProp="label"
+                options={types}
+              />
+            ) : (
+              <Typography.Text strong>{types[0]?.label}</Typography.Text>
+            )}
             <Segmented
               value={locale}
               onChange={(value) => setLocale(String(value))}

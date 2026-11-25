@@ -17,9 +17,11 @@ import {
   BgColorsOutlined,
   CreditCardOutlined,
   DashboardOutlined,
+  FundOutlined,
   HistoryOutlined,
   KeyOutlined,
   LockOutlined,
+  MailOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
   ShopOutlined,
@@ -45,6 +47,7 @@ export const CENTRAL_FEATURES = [
   { id: "centralTenants", path: "/central/tenants", section: "platform", labelKey: "navTenants", icon: ShopOutlined, permission: "tenants" },
   { id: "centralModules", path: "/central/modules", section: "platform", labelKey: "navModules", icon: AppstoreOutlined, permission: "modules" },
   { id: "centralPlans", path: "/central/plans", section: "platform", labelKey: "navPlans", icon: CreditCardOutlined, permission: "plans" },
+  { id: "centralUsage", path: "/central/usage", section: "platform", labelKey: "navUsage", icon: FundOutlined, permission: "tenant_usage" },
 
   { id: "centralUsers", path: "/central/users", section: "administration", labelKey: "navUsers", icon: TeamOutlined, permission: "users" },
   { id: "centralRoles", path: "/central/roles", section: "administration", labelKey: "navRoles", icon: KeyOutlined, permission: "roles" },
@@ -52,6 +55,7 @@ export const CENTRAL_FEATURES = [
   { id: "centralAuditLog", path: "/central/audit-log", section: "administration", labelKey: "navAuditLog", icon: HistoryOutlined, permission: "audits" },
 
   { id: "centralPlatformSettings", path: "/central/settings", section: "settings", labelKey: "navPlatformSettings", icon: BgColorsOutlined, permission: "platform_settings" },
+  { id: "centralPlatformEmail", path: "/central/settings/email", section: "settings", labelKey: "navPlatformEmail", icon: MailOutlined, permission: "platform_email" },
 
   // Reached from the header avatar menu; every signed-in central user may edit their own profile.
   { id: "centralProfile", path: "/central/profile", section: "administration", nav: false },

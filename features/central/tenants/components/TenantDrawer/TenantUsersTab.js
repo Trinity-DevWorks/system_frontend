@@ -38,7 +38,7 @@ export default function TenantUsersTab({ tenantId, canEdit, t, tApiErrors }) {
 
   /** Reset link shown once after it is created. */
   const [resetResult, setResetResult] = useState(
-    /** @type {{ email: string, url: string, expires_at: string, email_sent: boolean } | null} */ (null),
+    /** @type {{ email: string, url: string, expires_at: string, email_sent: boolean, email_configured?: boolean } | null} */ (null),
   );
   /** User being made owner (confirm dialog), and whether to demote the current owners. */
   const [ownerTarget, setOwnerTarget] = useState(/** @type {Record<string, any> | null} */ (null));
@@ -73,6 +73,7 @@ export default function TenantUsersTab({ tenantId, canEdit, t, tApiErrors }) {
     modal.confirm({
       title: t("usersResetConfirmTitle"),
       content: t("usersResetConfirmContent", { email: record.email }),
+      // The result dialog says whether it was emailed or only the link is available.
       okText: t("usersResetConfirmOk"),
       cancelText: t("drawerCancel"),
       onOk: () => resetMutation.mutateAsync(String(record.id)).catch(() => {}),
@@ -220,7 +221,14 @@ export default function TenantUsersTab({ tenantId, canEdit, t, tApiErrors }) {
       >
         {resetResult ? (
           <div className="flex flex-col gap-3">
-            {resetResult.email_sent ? (
+            {resetResult.email_configured === false ? (
+              <Alert
+                type="warning"
+                showIcon
+                title={t("usersResetEmailNotConfigured")}
+                description={t("usersResetEmailNotConfiguredHint", { email: resetResult.email })}
+              />
+            ) : resetResult.email_sent ? (
               <Alert type="success" showIcon title={t("usersResetEmailSent", { email: resetResult.email })} />
             ) : (
               <Alert type="warning" showIcon title={t("usersResetEmailFailed", { email: resetResult.email })} />

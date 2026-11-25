@@ -37,45 +37,47 @@ export default function PrintSettingsPage() {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 p-4">
-      <Typography.Title level={4} className="!mb-0">
-        {t("title")}
-      </Typography.Title>
-      <Typography.Text type="secondary">{t("subtitle")}</Typography.Text>
-      {query.isError ? <Alert type="error" showIcon title={getLocalizedApiErrorMessage(tApiErrors, query.error)} /> : null}
-      {query.isPending ? (
-        <div className="flex min-h-40 items-center justify-center">
-          <Spin />
-        </div>
-      ) : (
-        <Card className="max-w-2xl">
-          <Form form={form} layout="vertical" disabled={readOnly} onFinish={(values) => mutation.mutate(values)}>
-            <Form.Item name="paper" label={t("paper")} rules={[{ required: true }]} extra={t("paperHint")}>
-              <Select
-                className="!w-48"
-                options={["a4", "a5", "letter"].map((value) => ({ value, label: t(`paper_${value}`) }))}
-              />
-            </Form.Item>
-            <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-              {SWITCHES.map((name) => (
-                <Form.Item key={name} name={name} label={t(name)} valuePropName="checked">
-                  <Switch />
-                </Form.Item>
-              ))}
-            </div>
-            <Form.Item name="footer_text" label={t("footer_text")} extra={t("footerHint")}>
-              <Input maxLength={500} showCount />
-            </Form.Item>
-            <Form.Item name="terms_text" label={t("terms_text")} extra={t("termsHint")}>
-              <Input.TextArea rows={4} maxLength={5000} />
-            </Form.Item>
-            {readOnly ? null : (
-              <Button type="primary" htmlType="submit" loading={mutation.isPending}>
-                {t("save")}
-              </Button>
-            )}
-          </Form>
-        </Card>
-      )}
+      <div className="mx-auto flex w-full max-w-2xl min-w-0 flex-col gap-3">
+        <Typography.Title level={4} className="!mb-0">
+          {t("title")}
+        </Typography.Title>
+        <Typography.Text type="secondary">{t("subtitle")}</Typography.Text>
+        {query.isError ? <Alert type="error" showIcon title={getLocalizedApiErrorMessage(tApiErrors, query.error)} /> : null}
+        {query.isPending ? (
+          <div className="flex min-h-40 items-center justify-center">
+            <Spin />
+          </div>
+        ) : (
+          <Card className="max-w-2xl">
+            <Form form={form} layout="vertical" disabled={readOnly} onFinish={(values) => mutation.mutate(values)}>
+              <Form.Item name="paper" label={t("paper")} rules={[{ required: true }]} extra={t("paperHint")}>
+                <Select
+                  className="!w-48"
+                  options={["a4", "a5", "letter"].map((value) => ({ value, label: t(`paper_${value}`) }))}
+                />
+              </Form.Item>
+              <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                {SWITCHES.map((name) => (
+                  <Form.Item key={name} name={name} label={t(name)} valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+                ))}
+              </div>
+              <Form.Item name="footer_text" label={t("footer_text")} extra={t("footerHint")}>
+                <Input maxLength={500} showCount />
+              </Form.Item>
+              <Form.Item name="terms_text" label={t("terms_text")} extra={t("termsHint")}>
+                <Input.TextArea rows={4} maxLength={5000} />
+              </Form.Item>
+              {readOnly ? null : (
+                <Button type="primary" htmlType="submit" loading={mutation.isPending}>
+                  {t("save")}
+                </Button>
+              )}
+            </Form>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
