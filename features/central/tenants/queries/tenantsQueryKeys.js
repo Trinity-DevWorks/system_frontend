@@ -16,3 +16,8 @@ export function centralTenantDetailQueryKey(id) {
 export function centralTenantModulesQueryKey(id) {
   return [...CENTRAL_TENANTS_LIST_QUERY_KEY, id, "modules"];
 }
+
+/** @param {string} id */
+export function centralTenantUsersQueryKey(id) {
+  return [...CENTRAL_TENANTS_LIST_QUERY_KEY, id, "users"];
+}

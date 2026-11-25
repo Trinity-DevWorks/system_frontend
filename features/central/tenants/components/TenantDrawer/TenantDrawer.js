@@ -31,10 +31,11 @@ import TenantDetailsTab from "./TenantDetailsTab";
 import TenantModulesTab from "./TenantModulesTab";
 import TenantStatusTab from "./TenantStatusTab";
 import TenantSubscriptionTab from "./TenantSubscriptionTab";
+import TenantUsersTab from "./TenantUsersTab";
 
 /**
  * Create: provision form (with plan). View / edit: tabs for details (rename), subscription (plan),
- * modules (read-only, from the plan) and status.
+ * users (support: reset links, owner), modules (read-only, from the plan) and status.
  *
  * @param {{
  *   open: boolean;
@@ -54,6 +55,7 @@ export default function TenantDrawer({ open, mode, tenantId, onClose, onCreated,
   const lastCreateIntent = usePersistedSaveIntent(TENANT_CREATE_SAVE_INTENT_KEY, TENANT_CREATE_SAVE_INTENT_EVENT);
   const tenantAccess = useCentralResourceAccess("tenants");
   const modulesAccess = useCentralResourceAccess("tenant_modules");
+  const usersAccess = useCentralResourceAccess("tenant_users");
 
   const isCreate = mode === "create";
   const readOnly = mode === "view";
@@ -180,6 +182,21 @@ export default function TenantDrawer({ open, mode, tenantId, onClose, onCreated,
         />
       ),
     });
+    if (usersAccess.canView) {
+      items.push({
+        key: "users",
+        label: t("tabUsers"),
+        panelDescription: t("tabUsersDescription"),
+        children: (
+          <TenantUsersTab
+            tenantId={tenantId}
+            canEdit={usersAccess.canEdit && !readOnly}
+            t={t}
+            tApiErrors={tApiErrors}
+          />
+        ),
+      });
+    }
     if (modulesAccess.canView) {
       items.push({
         key: "modules",
@@ -216,6 +233,8 @@ export default function TenantDrawer({ open, mode, tenantId, onClose, onCreated,
     record,
     readOnly,
     modulesAccess.canView,
+    usersAccess.canView,
+    usersAccess.canEdit,
     subscriptionMutation,
     tenantAccess.canEdit,
     tenantAccess.canDelete,

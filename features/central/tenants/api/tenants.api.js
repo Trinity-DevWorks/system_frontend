@@ -71,3 +71,41 @@ export function fetchCentralTenantModules(id) {
 export function updateCentralTenantSubscription(id, body) {
   return centralRequest("PUT", `tenants/${encodeURIComponent(id)}/subscription`, body);
 }
+
+/**
+ * The tenant's users (read-only): owner flag, roles, last login.
+ * @param {string} id
+ * @returns {Promise<Record<string, unknown>[]>}
+ */
+export async function fetchCentralTenantUsers(id) {
+  const data = await centralRequest("GET", `tenants/${encodeURIComponent(id)}/users`);
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * Emails a password-reset link to the user and returns it once for the central admin.
+ * @param {string} id tenant id
+ * @param {string} userId
+ * @returns {Promise<{ email: string, url: string, expires_at: string, email_sent: boolean }>}
+ */
+export function sendCentralTenantUserResetLink(id, userId) {
+  return centralRequest(
+    "POST",
+    `tenants/${encodeURIComponent(id)}/users/${encodeURIComponent(userId)}/password-reset`,
+  );
+}
+
+/**
+ * Makes the user an Owner; with `demoteOthers` the current owner(s) become Admin.
+ * @param {string} id tenant id
+ * @param {string} userId
+ * @param {boolean} demoteOthers
+ * @returns {Promise<{ users: Record<string, unknown>[], owner: Record<string, unknown> | null }>}
+ */
+export function makeCentralTenantOwner(id, userId, demoteOthers) {
+  return centralRequest(
+    "POST",
+    `tenants/${encodeURIComponent(id)}/users/${encodeURIComponent(userId)}/make-owner`,
+    { demote_others: demoteOthers },
+  );
+}
