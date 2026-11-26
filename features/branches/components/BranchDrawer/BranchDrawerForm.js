@@ -104,6 +104,15 @@ export default function BranchDrawerForm({
       <Form.Item name="price_list_id" label={t("fieldPriceList")} extra={t("fieldPriceListHint")}>
         <PriceListSelect disabled={readOnly} />
       </Form.Item>
+      <Form.Item name="return_default" label={t("fieldReturnDefault")} extra={t("fieldReturnDefaultHint")}>
+        <Select
+          disabled={readOnly}
+          options={[
+            { value: "restock", label: t("returnRestock") },
+            { value: "waste", label: t("returnWaste") },
+          ]}
+        />
+      </Form.Item>
       <Form.Item name="is_default" label={t("fieldDefault")} valuePropName="checked">
         <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />
       </Form.Item>

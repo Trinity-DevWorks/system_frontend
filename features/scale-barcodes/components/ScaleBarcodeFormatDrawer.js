@@ -165,6 +165,14 @@ export default function ScaleBarcodeFormatDrawer({ open, mode, formatId, tableSe
     onSuccess: (record, { intent }) => {
       message.success(t("saved"));
       invalidateTenantListQueries(queryClient, SCALE_BARCODE_FORMATS_QUERY_KEY);
+      const tooLong = Array.isArray(record?.warnings?.plu_too_long) ? record.warnings.plu_too_long : [];
+      if (tooLong.length) {
+        notification.warning({
+          title: t("warningPluTooLongTitle", { count: tooLong.length }),
+          description: tooLong.slice(0, 8).map((i) => `${i.name} (${i.plu_code})`).join(", "),
+          duration: 10,
+        });
+      }
       if (!creating) {
         forceClose();
         return;

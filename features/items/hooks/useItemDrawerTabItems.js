@@ -112,6 +112,7 @@ export function useItemDrawerTabItems({
             onOpenBrandDrawer={readOnly ? undefined : openNestedBrandDrawer}
             onOpenUnitGroupDrawer={readOnly ? undefined : openNestedUnitGroupDrawer}
             onOpenVatGroupDrawer={readOnly ? undefined : openNestedVatGroupDrawer}
+            itemId={persistedItemId || null}
           />
         ),
       },

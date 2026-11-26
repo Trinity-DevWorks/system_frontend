@@ -41,6 +41,7 @@ function snapshot(v) {
     valid_to: dateString(v.valid_to),
     is_default: v.is_default === true,
     is_active: v.is_active !== false,
+    prices_include_tax: v.prices_include_tax === true,
     items: items.map((row) => {
       const r = /** @type {Record<string, unknown>} */ (row ?? {});
       return [
@@ -95,6 +96,7 @@ export function toPriceListCacheRow(row) {
     valid_to: row.valid_to ?? null,
     is_default: row.is_default === true,
     is_active: row.is_active !== false,
+    prices_include_tax: row.prices_include_tax === true,
     items_count: row.items_count ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -117,6 +119,7 @@ export function recordToFormValues(r) {
     valid_to: r.valid_to ? dayjs(String(r.valid_to)) : null,
     is_default: r.is_default === true,
     is_active: r.is_active !== false,
+    prices_include_tax: r.prices_include_tax === true,
     items: items.map((row) => {
       const it = /** @type {Record<string, unknown>} */ (row);
       return {
@@ -154,6 +157,7 @@ export function priceListFormValuesToPayload(values) {
     valid_to: dateString(values.valid_to),
     is_default: values.is_default === true,
     is_active: values.is_active !== false,
+    prices_include_tax: values.prices_include_tax === true,
     items: items
       .map((row) => /** @type {Record<string, unknown>} */ (row ?? {}))
       .filter((row) => row.item_id && row.item_uom_id)

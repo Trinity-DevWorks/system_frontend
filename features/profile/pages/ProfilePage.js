@@ -1,6 +1,7 @@
 "use client";
 
 import UserAvatarSection from "@/features/users/components/UserAvatarSection";
+import ApprovalPinCard from "../components/ApprovalPinCard";
 import { AUTH_ME_QUERY_KEY, useAuthMe } from "@/lib/auth-me";
 import {
   applyApiFieldErrors,
@@ -387,6 +388,8 @@ export default function ProfilePage() {
         ) : null}
         </Form>
       </Card>
+
+      <ApprovalPinCard hasPin={Boolean(me.has_approval_pin)} />
     </div>
   );
 }

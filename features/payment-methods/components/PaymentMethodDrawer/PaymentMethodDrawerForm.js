@@ -52,6 +52,9 @@ export default function PaymentMethodDrawerForm({
           }))}
         />
       </Form.Item>
+      <Form.Item name="provider" label={t("fieldProvider")} extra={t("fieldProviderHint")}>
+        <Input maxLength={64} allowClear placeholder={t("fieldProviderPlaceholder")} />
+      </Form.Item>
       <Form.Item name="currency_id" label={t("fieldCurrency")}>
         <Select
           allowClear

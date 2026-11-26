@@ -13,6 +13,7 @@ import LookupSelectWithCreate from "@/shared/components/resource-drawer/LookupSe
 import LookupTreeSelectWithCreate from "@/shared/components/resource-drawer/LookupTreeSelectWithCreate";
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
+import ScalePluField from "./ScalePluField";
 import { fetchAssetCategories } from "@/features/fixed-assets/api/fixedAssets.api";
 import { useQuery } from "@tanstack/react-query";
 import { Col, ColorPicker, Divider, Form, Input, Row, Select, Switch } from "antd";
@@ -47,6 +48,7 @@ const { TextArea } = Input;
  *   onOpenBrandDrawer?: () => void;
  *   onOpenUnitGroupDrawer?: () => void;
  *   onOpenVatGroupDrawer?: () => void;
+ *   itemId?: string | number | null;
  * }} props
  */
 export default function ItemDrawerGeneralForm({
@@ -68,6 +70,7 @@ export default function ItemDrawerGeneralForm({
   onOpenBrandDrawer,
   onOpenUnitGroupDrawer,
   onOpenVatGroupDrawer,
+  itemId = null,
 }) {
   const isActive = Form.useWatch("is_active", form);
   const allowSale = Form.useWatch("allow_sale", form);
@@ -78,6 +81,12 @@ export default function ItemDrawerGeneralForm({
   const trackSerials = Form.useWatch("track_serials", form);
   const landedCost = Form.useWatch("is_landed_cost", form);
   const fixedAsset = Form.useWatch("is_fixed_asset", form);
+  const itemTypeId = Form.useWatch("item_type_id", form);
+  const allowReturn = Form.useWatch("allow_return", form);
+  // PRODUCE items may be made when sold (their recipe's ingredients leave stock, not the item).
+  const typeCode = String((itemTypeOptions ?? []).find((o) => String(o.value) === String(itemTypeId))?.code ?? "").toUpperCase();
+  const isProduce = typeCode === "PRODUCE";
+  const hasGoods = trackInventory === true || isProduce || typeCode === "BUNDLE";
   const categories = useQuery({
     queryKey: ["tenant", "fixed-asset-categories", "item-form"],
     queryFn: () => fetchAssetCategories({ per_page: 100, active: true }),
@@ -147,7 +156,7 @@ export default function ItemDrawerGeneralForm({
             <Input placeholder={t("fieldSkuPlaceholder")} />
           </Form.Item>
         </Col>
-        <Col xs={24} md={12}>
+        <Col xs={24} md={scaleItem ? 8 : 12}>
           <Form.Item
             name="item_type_id"
             label={<ResourceDrawerFieldLabel text={t("fieldItemType")} required />}
@@ -163,7 +172,7 @@ export default function ItemDrawerGeneralForm({
             />
           </Form.Item>
         </Col>
-        <Col xs={24} md={12}>
+        <Col xs={24} md={scaleItem ? 8 : 12}>
           <Form.Item
             name="plu_code"
             label={
@@ -182,9 +191,19 @@ export default function ItemDrawerGeneralForm({
                 : undefined
             }
           >
-            <Input placeholder={t("fieldPluPlaceholder")} inputMode={scaleItem ? "numeric" : undefined} />
+            <ScalePluField form={form} readOnly={readOnly} scaleItem={Boolean(scaleItem)} itemId={itemId} t={t} placeholder={t("fieldPluPlaceholder")} />
           </Form.Item>
         </Col>
+        {scaleItem ? (
+          <Col xs={24} md={8}>
+            <Form.Item
+              name="shelf_life_days"
+              label={<ResourceDrawerFieldLabel text={t("fieldShelfLife")} help={t("fieldShelfLifeHelp")} optional optionalSuffix={optionalSuffix} />}
+            >
+              <TenantNumberInput kind="integer" min={0} max={3650} className="w-full" placeholder={t("fieldShelfLifePlaceholder")} />
+            </Form.Item>
+          </Col>
+        ) : null}
         <Col xs={24} md={12}>
           <LookupSelectWithCreate
             form={form}
@@ -283,6 +302,29 @@ export default function ItemDrawerGeneralForm({
             </Form.Item>
           </div>
         ) : null}
+        {trackInventory && !trackLots && !trackSerials ? (
+          <div className="item-general-form-toggle-cell">
+            <ResourceDrawerFieldLabel text={t("fieldNegativeStock")} help={t("fieldNegativeStockHelp")} />
+            <Form.Item name="negative_stock" noStyle>
+              <Select
+                className="min-w-[150px]"
+                options={[
+                  { value: "", label: t("negativeStockInherit") },
+                  { value: "allow", label: t("negativeStockAllow") },
+                  { value: "never", label: t("negativeStockNever") },
+                ]}
+              />
+            </Form.Item>
+          </div>
+        ) : null}
+        {isProduce ? (
+          <div className="item-general-form-toggle-cell">
+            <ResourceDrawerFieldLabel text={t("fieldMakeOnSale")} help={t("fieldMakeOnSaleHelp")} />
+            <Form.Item name="make_on_sale" valuePropName="checked" noStyle>
+              <Switch />
+            </Form.Item>
+          </div>
+        ) : null}
         {allowSale !== false ? (
           <div className="item-general-form-toggle-cell">
             <ResourceDrawerFieldLabel text={t("fieldScaleItem")} help={t("fieldScaleItemHelp")} />
@@ -318,6 +360,21 @@ export default function ItemDrawerGeneralForm({
             showSearch
             optionFilterProp="label"
             options={(categories.data?.rows ?? []).map((row) => ({ value: Number(row.id), label: `${row.code} — ${row.name}` }))}
+          />
+        </Form.Item>
+      ) : null}
+      {hasGoods && allowSale !== false && allowReturn !== false ? (
+        <Form.Item
+          name="return_default"
+          label={<ResourceDrawerFieldLabel text={t("fieldReturnDefault")} help={t("fieldReturnDefaultHelp")} optional optionalSuffix={optionalSuffix} />}
+        >
+          <Select
+            allowClear
+            placeholder={t("returnDefaultBranch")}
+            options={[
+              { value: "restock", label: t("returnRestock") },
+              { value: "waste", label: t("returnWaste") },
+            ]}
           />
         </Form.Item>
       ) : null}
@@ -519,6 +576,28 @@ export default function ItemDrawerGeneralForm({
             <Switch />
           </Form.Item>
         </div>
+        {allowSale !== false ? (
+          <>
+            <div className="item-general-form-toggle-cell">
+              <ResourceDrawerFieldLabel text={t("fieldOpenPrice")} help={t("fieldOpenPriceHelp")} />
+              <Form.Item name="open_price" valuePropName="checked" noStyle>
+                <Switch />
+              </Form.Item>
+            </div>
+            <div className="item-general-form-toggle-cell">
+              <ResourceDrawerFieldLabel text={t("fieldAllowPriceChange")} help={t("fieldAllowPriceChangeHelp")} />
+              <Form.Item name="allow_price_change" valuePropName="checked" noStyle>
+                <Switch />
+              </Form.Item>
+            </div>
+            <div className="item-general-form-toggle-cell">
+              <ResourceDrawerFieldLabel text={t("fieldAllowDiscount")} help={t("fieldAllowDiscountHelp")} />
+              <Form.Item name="allow_discount" valuePropName="checked" noStyle>
+                <Switch />
+              </Form.Item>
+            </div>
+          </>
+        ) : null}
         <div className="item-general-form-toggle-cell item-general-form-toggle-cell--status">
           <ResourceDrawerFieldLabel text={t("fieldStatus")} help={t("fieldStatusHelp")} />
           <div className="item-general-form-status-control">

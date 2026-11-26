@@ -119,7 +119,13 @@ export function itemFormValuesToPayload(values) {
     item_code: itemCode,
     plu_code: values.plu_code ? String(values.plu_code).trim() : null,
     is_scale_item: values.allow_sale !== false && values.is_scale_item === true,
+    shelf_life_days:
+      values.allow_sale !== false && values.is_scale_item === true && values.shelf_life_days != null && values.shelf_life_days !== ""
+        ? Number(values.shelf_life_days)
+        : null,
     item_type_id: Number(values.item_type_id),
+    make_on_sale: values.make_on_sale === true,
+    return_default: values.return_default === "restock" || values.return_default === "waste" ? values.return_default : null,
     category_id: optionalRelationId(values.category_id),
     brand_id: values.brand_id != null && values.brand_id !== "" ? Number(values.brand_id) : null,
     unit_group_id: Number(values.unit_group_id),
@@ -150,6 +156,11 @@ export function itemFormValuesToPayload(values) {
     allow_sale: values.allow_sale === true,
     allow_purchase: values.allow_purchase === true,
     allow_return: values.allow_return !== false,
+    open_price: values.open_price === true,
+    allow_price_change: values.allow_price_change !== false,
+    allow_discount: values.allow_discount !== false,
+    // Lots and serials never go negative; '' = the warehouse's rule.
+    negative_stock: values.track_lots || values.track_serials ? null : values.negative_stock === "allow" || values.negative_stock === "never" ? values.negative_stock : null,
     is_landed_cost: values.track_inventory !== true && values.is_fixed_asset !== true && values.is_landed_cost === true,
     is_fixed_asset: values.track_inventory !== true && values.is_landed_cost !== true && values.is_fixed_asset === true,
     fixed_asset_category_id: values.track_inventory !== true && values.is_fixed_asset === true && values.fixed_asset_category_id != null
@@ -221,6 +232,9 @@ export function mapItemRecordToFormValues(r) {
     item_code: r.item_code ?? undefined,
     plu_code: r.plu_code ?? undefined,
     is_scale_item: Boolean(r.is_scale_item),
+    shelf_life_days: r.shelf_life_days ?? undefined,
+    make_on_sale: Boolean(r.make_on_sale),
+    return_default: r.return_default ?? undefined,
     item_type_id: r.item_type_id ?? r.item_type?.id ?? undefined,
     category_id: r.category_id ?? r.category?.id ?? undefined,
     brand_id: r.brand_id ?? r.brand?.id ?? undefined,
@@ -243,6 +257,10 @@ export function mapItemRecordToFormValues(r) {
     allow_sale: Boolean(r.allow_sale),
     allow_purchase: Boolean(r.allow_purchase),
     allow_return: r.allow_return !== false,
+    open_price: r.open_price === true,
+    allow_price_change: r.allow_price_change !== false,
+    allow_discount: r.allow_discount !== false,
+    negative_stock: r.negative_stock ?? "",
     is_landed_cost: r.is_landed_cost === true,
     is_fixed_asset: r.is_fixed_asset === true,
     fixed_asset_category_id: r.fixed_asset_category_id ?? undefined,

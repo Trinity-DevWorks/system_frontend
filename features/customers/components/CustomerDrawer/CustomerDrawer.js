@@ -2,6 +2,7 @@
 
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
+import CustomerSerialsPanel from "@/features/stock/components/CustomerSerialsPanel";
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
 import { useStackedLookupCreate } from "@/lib/drawer/useStackedLookupCreate";
 import ResourceAttachmentsPanel from "@/shared/components/resource-drawer/ResourceAttachmentsPanel";
@@ -443,6 +444,7 @@ export default function CustomerDrawer({
         queryKey={customerAttachmentsQueryKey}
         api={customersAttachmentsApi}
       />
+      <CustomerSerialsPanel customerId={customerId} />
     </ResourceCrudDrawer>
   );
 }

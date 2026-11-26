@@ -20,13 +20,21 @@ export function resolveItemTypeCode(detailRecord, itemTypes, itemTypeId) {
   return String(type?.code ?? "").toUpperCase();
 }
 
-/** @param {unknown[]} rows */
-export function mapItemTypeOptions(rows) {
-  return rows.map((row) => ({
-    value: row.id,
-    label: row.name ?? row.code,
-    code: row.code,
-  }));
+/**
+ * System types are stored with raw names ("inventory"), so they are labelled from i18n by code.
+ * @param {unknown[]} rows
+ * @param {((key: string) => string) & { has?: (key: string) => boolean }} [t] Items translator
+ */
+export function mapItemTypeOptions(rows, t) {
+  return rows.map((row) => {
+    const key = `itemType_${String(row.code ?? "").toUpperCase()}`;
+    const translated = row.is_system !== false && t?.has?.(key) ? t(key) : null;
+    return {
+      value: row.id,
+      label: translated ?? row.name ?? row.code,
+      code: row.code,
+    };
+  });
 }
 
 /** @param {unknown[]} rows */

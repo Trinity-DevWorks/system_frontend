@@ -13,9 +13,6 @@
  *   barcode: string;
  *   selling_price?: number;
  *   cost_price?: number;
- *   takeaway_price?: number;
- *   dine_in_price?: number;
- *   delivery_price?: number;
  *   reason?: string;
  *   is_base: boolean;
  *   is_default_sale: boolean;
@@ -30,9 +27,6 @@ export function defaultUomInlineValues() {
     barcode: "",
     selling_price: undefined,
     cost_price: undefined,
-    takeaway_price: undefined,
-    dine_in_price: undefined,
-    delivery_price: undefined,
     reason: "",
     is_base: false,
     is_default_sale: false,
@@ -48,9 +42,6 @@ export function rowToUomInlineValues(row) {
     barcode: row.barcode != null ? String(row.barcode) : "",
     selling_price: row.selling_price != null ? Number(row.selling_price) : undefined,
     cost_price: row.cost_price != null ? Number(row.cost_price) : undefined,
-    takeaway_price: row.takeaway_price != null ? Number(row.takeaway_price) : undefined,
-    dine_in_price: row.dine_in_price != null ? Number(row.dine_in_price) : undefined,
-    delivery_price: row.delivery_price != null ? Number(row.delivery_price) : undefined,
     reason: "",
     is_base: Boolean(row.is_base),
     is_default_sale: Boolean(row.is_default_sale),
@@ -66,9 +57,6 @@ export function uomInlineValuesToBody(values) {
     barcode: null,
     selling_price: values.selling_price ?? null,
     cost_price: values.cost_price ?? null,
-    takeaway_price: values.takeaway_price ?? null,
-    dine_in_price: values.dine_in_price ?? null,
-    delivery_price: values.delivery_price ?? null,
     reason: values.reason?.trim() ? values.reason.trim() : null,
     is_base: values.is_base,
     is_default_sale: values.is_default_sale,

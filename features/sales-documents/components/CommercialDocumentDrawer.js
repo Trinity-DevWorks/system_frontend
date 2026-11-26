@@ -10,7 +10,9 @@ import { getLocalizedApiErrorMessage } from "@/lib/api-error-notify";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import { useGlobalDrawer } from "@/lib/drawer/GlobalDrawerContext";
 import { useResourceAccess } from "@/lib/permissions";
-import { useCompanySettings } from "@/lib/company-settings";
+import { tenantPricesIncludeTax, useCompanySettings } from "@/lib/company-settings";
+import { useDocumentTaxMode } from "../hooks/useDocumentTaxMode";
+import DocumentTaxModeNote from "./DocumentTaxModeNote";
 import { formatTenantDateTime, formatTenantMoney } from "@/lib/tenant-format";
 import { mapSalesInvoiceCustomerOption } from "@/features/sales-invoices/utils/salesInvoiceDrawerUtils";
 import { customerIsExemptOnDate, previewInvoiceTotals } from "@/features/sales-invoices/utils/salesInvoiceTax";
@@ -104,7 +106,24 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
   const exchangeRate = Form.useWatch("exchange_rate", form);
   const headerDiscountType = Form.useWatch("header_discount_type", form);
   const headerDiscountValue = Form.useWatch("header_discount_value", form);
-  useListPrices({ lines, setLines, customerId, currencyId, exchangeRate, date: documentDate, enabled: Boolean(customerId) });
+  const documentIncludesTax = useDocumentTaxMode({
+    record: mode === "create" ? null : (detailQuery.data ?? null),
+    customerId,
+    currencyId,
+    date: documentDate,
+    settings,
+  });
+  useListPrices({
+    lines,
+    setLines,
+    customerId,
+    currencyId,
+    exchangeRate,
+    date: documentDate,
+    enabled: Boolean(customerId),
+    pricesIncludeTax: documentIncludesTax,
+    companyIncludesTax: tenantPricesIncludeTax(settings),
+  });
   const drawerData = useSalesInvoiceDrawerData({
     open,
     t,
@@ -318,7 +337,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
       const saved = /** @type {Record<string, any>} */ (await persist(values));
       const id = saved?.id != null ? String(saved.id) : recordId != null ? String(recordId) : null;
       if (id == null) throw new Error("Missing sales order id after save");
-      return config.api.action(id, "confirm", discountApproval ? { discount_approval: discountApproval } : undefined);
+      return config.api.action(id, "confirm", discountApproval ? { approval: discountApproval } : undefined);
     },
     onSuccess: (confirmed) => {
       message.success(t("actionSuccess"));
@@ -430,7 +449,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
     lines,
     itemsById: new Map(),
     taxEnabled: settings.taxEnabled,
-    pricesIncludeTax: settings.taxPriceMode === "inclusive",
+    pricesIncludeTax: documentIncludesTax,
     customerExempt,
     headerDiscount: headerDiscountPreview({ header_discount_type: headerDiscountType, header_discount_value: headerDiscountValue }),
     settings,
@@ -642,7 +661,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
                     : () =>
                         withApproval((discountApproval) =>
                           actionMutation.mutateAsync(
-                            discountApproval ? { action: "confirm", body: { discount_approval: discountApproval } } : "confirm",
+                            discountApproval ? { action: "confirm", body: { approval: discountApproval } } : "confirm",
                           ),
                         ).catch(() => {})
                 }
@@ -701,7 +720,7 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
             priceDecimals={settings.priceDecimalPlaces}
             currencySymbol={symbol}
             taxEnabled={settings.taxEnabled}
-            pricesIncludeTax={settings.taxPriceMode === "inclusive"}
+            pricesIncludeTax={documentIncludesTax}
             customerExempt={customerExempt}
             settings={settings}
             onChange={setLines}
@@ -710,6 +729,9 @@ export default function CommercialDocumentDrawer({ open, mode, recordId, onClose
             <Summary label={t("subtotal")} value={formatTenantMoney(display?.subtotal)} />
             <HeaderDiscountField readOnly={!editable} currencySymbol={symbol} />
             <Summary label={t("discountTotal")} value={formatTenantMoney(display?.discount_total)} />
+            <div className="flex justify-end">
+              <DocumentTaxModeNote pricesIncludeTax={documentIncludesTax} taxEnabled={Boolean(settings.taxEnabled)} />
+            </div>
             <Summary label={t("taxTotal")} value={formatTenantMoney(display?.tax_total)} />
             <Summary label={t("grandTotal")} value={formatTenantMoney(display?.grand_total)} />
           </div>

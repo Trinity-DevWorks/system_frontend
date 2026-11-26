@@ -1,6 +1,7 @@
 "use client";
 
 import { useListPrices } from "@/features/price-lists/hooks/useListPrices";
+import { useDocumentTaxMode } from "@/features/sales-documents/hooks/useDocumentTaxMode";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 
 import ResourceCrudDrawer from "@/shared/components/resource-drawer/ResourceCrudDrawer";
@@ -30,6 +31,7 @@ import SalesInvoiceDrawerForm from "./SalesInvoiceDrawerForm";
 import SalesInvoiceDrawerHeaderMeta from "./SalesInvoiceDrawerHeaderMeta";
 import SalesInvoiceLineEditor from "./SalesInvoiceLineEditor";
 import SalesInvoiceTotals from "./SalesInvoiceTotals";
+import SalesInvoicePayments from "./SalesInvoicePayments";
 import { getActiveBranchId } from "@/lib/active-branch";
 import SalesInvoicePaymentModal from "./SalesInvoicePaymentModal";
 import { rememberRecentSelectorOption } from "@/lib/recentSelectorOptions";
@@ -416,6 +418,13 @@ export default function SalesInvoiceDrawer({
     }),
     [headerRate, exchangeRateLocked, primaryCode, documentCurrencyCode, documentCurrencySymbol],
   );
+  const documentIncludesTax = useDocumentTaxMode({
+    record: mode === "create" ? null : (detailQuery.data ?? null),
+    customerId,
+    currencyId,
+    date: formValuesWatch?.invoice_date ?? null,
+    settings,
+  });
   useListPrices({
     lines,
     setLines,
@@ -424,6 +433,8 @@ export default function SalesInvoiceDrawer({
     exchangeRate: headerRate,
     date: formValuesWatch?.invoice_date ?? null,
     enabled: !readOnly && customerReady,
+    pricesIncludeTax: documentIncludesTax,
+    companyIncludesTax: tenantPricesIncludeTax(settings),
   });
   const exchangeRateHelp = exchangeRateLocked
     ? undefined
@@ -591,11 +602,11 @@ export default function SalesInvoiceDrawer({
     );
     return {
       taxEnabled: Boolean(settings.taxEnabled),
-      pricesIncludeTax: tenantPricesIncludeTax(settings),
+      pricesIncludeTax: documentIncludesTax,
       customerExempt,
       settings,
     };
-  }, [drawerData.customerDetail, formValuesWatch?.invoice_date, settings]);
+  }, [drawerData.customerDetail, formValuesWatch?.invoice_date, settings, documentIncludesTax]);
 
   const headerDiscountType = formValuesWatch?.header_discount_type;
   const headerDiscountValue = formValuesWatch?.header_discount_value;
@@ -663,24 +674,50 @@ export default function SalesInvoiceDrawer({
 
   const { withApproval, approvalModal } = useDiscountApproval();
   // Post and "Record payment" both open the payment modal; Post sends the invoice and its payments together.
-  const [paymentModal, setPaymentModal] = useState(/** @type {null | { mode: "post" | "record"; values?: Record<string, unknown> }} */ (null));
+  const [paymentModal, setPaymentModal] = useState(
+    /** @type {null | { mode: "post" | "record"; values?: Record<string, unknown>; requestId?: string }} */ (null),
+  );
+  // A saved draft with changes not saved yet: Post saves them and posts in the same call, after asking.
+  const confirmUnsavedThenPost = useCallback(
+    (proceed) => {
+      const dirty = invoiceId != null && (isLinesDirty || isSalesInvoiceHeaderDirtyVsBaseline(form, headerBaseline));
+      if (!dirty) {
+        proceed();
+        return;
+      }
+      modal.confirm(
+        withConfirmKeyboard({
+          title: t("postUnsavedTitle"),
+          content: t("postUnsavedContent"),
+          okText: t("postUnsavedOk"),
+          onOk: proceed,
+        }),
+      );
+    },
+    [invoiceId, isLinesDirty, form, headerBaseline, modal, t],
+  );
+  // One id per post attempt: a double click or a retried request posts the invoice once.
+  const newPostRequestId = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
   const handlePost = useCallback(() => {
     form
       .validateFields()
-      .then((values) => setPaymentModal({ mode: "post", values }))
+      .then((values) => confirmUnsavedThenPost(() => setPaymentModal({ mode: "post", values, requestId: newPostRequestId() })))
       .catch(() => {});
-  }, [form]);
+  }, [form, confirmUnsavedThenPost]);
   // Post without the payment window: the whole invoice stays on account.
   const handleQuickPost = useCallback(() => {
     form
       .validateFields()
       .then((values) =>
-        withApproval((discountApproval) =>
-          postMutation.mutateAsync({ values, payments: [], keepExtraAsCredit: false, discountApproval }),
-        ),
+        confirmUnsavedThenPost(() => {
+          const requestId = newPostRequestId();
+          withApproval((discountApproval) =>
+            postMutation.mutateAsync({ values, payments: [], keepExtraAsCredit: false, discountApproval, requestId }),
+          ).catch(() => {});
+        }),
       )
       .catch(() => {});
-  }, [form, withApproval, postMutation]);
+  }, [form, withApproval, postMutation, confirmUnsavedThenPost]);
   const handleRecordPayment = useCallback(() => setPaymentModal({ mode: "record" }), []);
   const handlePaymentSubmit = useCallback(
     (body) => {
@@ -693,6 +730,7 @@ export default function SalesInvoiceDrawer({
                 payments: body.payments,
                 keepExtraAsCredit: body.keep_extra_as_credit,
                 discountApproval,
+                requestId: paymentModal.requestId,
               }),
             )
           : recordPaymentMutation.mutateAsync(body);
@@ -840,7 +878,7 @@ export default function SalesInvoiceDrawer({
         : t("drawerTitleEdit");
   const title = loadedNumber ? `${baseTitle} # ${loadedNumber}` : baseTitle;
 
-  // Receipts created from the invoice's payments, shown as header links (one per receipt).
+  // Receipts of payments recorded after posting, shown as header links (one per receipt).
   const invoiceReceiptLinks = (() => {
     const payments = Array.isArray(detailQuery.data?.payments) ? detailQuery.data.payments : [];
     /** @type {Map<string, { id: string; number: string }>} */
@@ -1025,7 +1063,21 @@ export default function SalesInvoiceDrawer({
           readOnly={readOnly || submitting}
           totals={displayTotals}
           currencySymbol={documentCurrencySymbol}
+          pricesIncludeTax={documentIncludesTax}
+          taxEnabled={Boolean(settings.taxEnabled)}
         />
+        {effectiveStatus !== "draft" ? (
+          <SalesInvoicePayments
+            payments={detailQuery.data?.payments}
+            currencySymbol={documentCurrencySymbol}
+            invoiceCurrencyId={currencyId}
+            extraCredit={detailQuery.data?.extra_credit}
+            extraCreditUsed={detailQuery.data?.extra_credit_used}
+            onOpenReceipt={
+              receiptAccess.canView ? (id) => openStackedDrawer({ featureId: "customerReceipts", id, mode: "view" }) : null
+            }
+          />
+        ) : null}
       </SalesInvoiceDrawerForm>
       {approvalModal}
       <SalesInvoicePaymentModal
@@ -1034,6 +1086,7 @@ export default function SalesInvoiceDrawer({
         amountDue={paymentModal?.mode === "record" ? displayTotals?.net_to_pay : displayTotals?.grand_total}
         currencyId={currencyId}
         customerId={formValuesWatch?.customer_id ?? null}
+        invoiceId={invoiceId != null ? String(invoiceId) : null}
         exchangeRate={formValuesWatch?.exchange_rate}
         branchId={detailQuery.data?.branch_id ?? getActiveBranchId()}
         invoiceMethodId={formValuesWatch?.payment_method_id}

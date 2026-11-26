@@ -42,6 +42,7 @@ import {
  *   amountDue: unknown;
  *   currencyId: unknown;
  *   customerId?: unknown;
+ *   invoiceId?: string | null;
  *   exchangeRate?: unknown;
  *   branchId?: unknown;
  *   invoiceMethodId?: unknown;
@@ -57,6 +58,7 @@ export default function SalesInvoicePaymentModal({
   amountDue,
   currencyId,
   customerId = null,
+  invoiceId = null,
   exchangeRate = null,
   branchId = null,
   invoiceMethodId = null,
@@ -81,8 +83,8 @@ export default function SalesInvoicePaymentModal({
 
   // The customer's credit from earlier overpayments, valued in the invoice currency.
   const creditQuery = useQuery({
-    queryKey: ["tenant", "customer-receipts", "available-credit", customerId, currencyId],
-    queryFn: () => fetchCustomerAvailableCredit(String(customerId), currencyId),
+    queryKey: ["tenant", "customer-receipts", "available-credit", customerId, currencyId, invoiceId],
+    queryFn: () => fetchCustomerAvailableCredit(String(customerId), currencyId, invoiceId),
     enabled: open && customerId != null && customerId !== "",
     staleTime: 0,
   });

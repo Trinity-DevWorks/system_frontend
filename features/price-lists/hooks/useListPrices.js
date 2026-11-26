@@ -21,9 +21,11 @@ import { resolvePrices } from "../api/priceLists.api";
  *   exchangeRate: unknown;
  *   date: unknown;
  *   enabled: boolean;
+ *   pricesIncludeTax?: boolean | null;
+ *   companyIncludesTax?: boolean;
  * }} args
  */
-export function useListPrices({ lines, setLines, customerId, currencyId, exchangeRate, date, enabled }) {
+export function useListPrices({ lines, setLines, customerId, currencyId, exchangeRate, date, enabled, pricesIncludeTax = null, companyIncludesTax = false }) {
   const inflight = useRef(/** @type {Map<number, string>} */ (new Map()));
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function useListPrices({ lines, setLines, customerId, currencyId, exchang
       if (!line || line.item_id == null || line.item_id === "") return;
       const eligible = line.price_source === "catalog" || (line.price_source === "document" && line.price_list_code);
       if (!eligible) return;
-      const key = [customerId ?? "", currencyId, rate, dateString ?? "", line.item_id, line.item_uom_id ?? "", line.quantity ?? ""].join("|");
+      const key = [customerId ?? "", currencyId, rate, dateString ?? "", pricesIncludeTax ?? "", line.item_id, line.item_uom_id ?? "", line.quantity ?? ""].join("|");
       if (line.price_key === key || inflight.current.get(index) === key) return;
       pending.push({ index, key, line });
     });
@@ -51,6 +53,7 @@ export function useListPrices({ lines, setLines, customerId, currencyId, exchang
         currency_id: Number(currencyId),
         exchange_rate: rate,
         date: dateString,
+        prices_include_tax: typeof pricesIncludeTax === "boolean" ? pricesIncludeTax : null,
         lines: pending.map((p) => ({
           item_id: String(p.line.item_id),
           item_uom_id: p.line.item_uom_id != null && p.line.item_uom_id !== "" ? Number(p.line.item_uom_id) : null,
@@ -73,7 +76,13 @@ export function useListPrices({ lines, setLines, customerId, currencyId, exchang
               const r = results[at];
               const fromList = r && r.unit_price != null && r.price_source !== "catalog" && r.price_source !== "none";
               if (!fromList) {
-                return { ...line, price_key: p.key };
+                // The unit's selling price is written in the company's mode; in a document of the other mode
+                // the server sends it converted (incl ÷ (1+VAT), excl × (1+VAT)).
+                const converted =
+                  r && r.price_source === "catalog" && r.unit_price != null && typeof pricesIncludeTax === "boolean" && pricesIncludeTax !== companyIncludesTax;
+                return converted
+                  ? { ...line, unit_price: Number(r.unit_price), price_base: undefined, price_rate: rate, price_key: p.key, line_total: undefined }
+                  : { ...line, price_key: p.key };
               }
               return {
                 ...line,
@@ -97,5 +106,5 @@ export function useListPrices({ lines, setLines, customerId, currencyId, exchang
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [lines, setLines, customerId, currencyId, exchangeRate, date, enabled]);
+  }, [lines, setLines, customerId, currencyId, exchangeRate, date, enabled, pricesIncludeTax, companyIncludesTax]);
 }

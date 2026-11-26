@@ -90,6 +90,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
     return true;
   }
   if (isActive !== Boolean(defaults.is_active)) return true;
+  if ((v.negative_stock || "") !== (defaults.negative_stock || "")) return true;
   if (!defaultFlagsEqual(flags, defaults)) return true;
   return false;
 }
@@ -119,6 +120,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (asTrimmed(v.description) !== asTrimmed(row.description)) return true;
   if (managerId !== rowManagerId) return true;
   if (isActive !== Boolean(row.is_active)) return true;
+  if ((v.negative_stock || "") !== (row.negative_stock || "")) return true;
   if (!defaultFlagsEqual(flags, rowFlags)) return true;
   return false;
 }
@@ -154,6 +156,7 @@ export function toWarehouseCacheRow(row) {
     manager_id: row.manager_id ?? null,
     manager_name: row.manager_name ?? null,
     is_active: Boolean(row.is_active),
+    negative_stock: row.negative_stock ?? null,
     is_default: Boolean(row.is_default),
     is_default_sales: Boolean(row.is_default_sales),
     is_default_production: Boolean(row.is_default_production),
@@ -198,6 +201,7 @@ export function warehouseFormValuesToPayload(values) {
     description: trimOrNull(values.description),
     manager_id: managerId == null || managerId === "" ? null : String(managerId),
     is_active: Boolean(values.is_active),
+    negative_stock: values.negative_stock === "allow" || values.negative_stock === "block" ? values.negative_stock : null,
     ...flags,
   };
 }

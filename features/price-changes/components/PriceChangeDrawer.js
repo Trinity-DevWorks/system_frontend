@@ -1,6 +1,5 @@
 "use client";
 
-import { isShownPriceField } from "@/lib/business-profile";
 import { fetchBrandNames } from "@/features/brands/api/brands.api";
 import { fetchCategoryNames } from "@/features/categories/api/categories.api";
 import { fetchItemNames } from "@/features/items/api/items.api";
@@ -53,14 +52,7 @@ import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const FIELDS = [
-  "selling_price",
-  "cost_price",
-  "takeaway_price",
-  "dine_in_price",
-  "delivery_price",
-  "price_list_price",
-].filter(isShownPriceField);
+const FIELDS = ["selling_price", "cost_price", "price_list_price"];
 const RULES = ["percent", "amount", "margin"];
 const ROUNDINGS = [
   { value: "none", labelKey: "roundingNone" },

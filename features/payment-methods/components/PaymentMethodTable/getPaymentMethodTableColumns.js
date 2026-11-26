@@ -70,7 +70,8 @@ export function getPaymentMethodTableColumns(t, actions = {}) {
       dataIndex: "type",
       key: "type",
       width: 140,
-      render: (value) => getPaymentMethodTypeLabel(value, t),
+      // Generic type, with its provider (brand) when set: "Card · Visa".
+      render: (value, row) => (row?.provider ? `${getPaymentMethodTypeLabel(value, t)} · ${row.provider}` : getPaymentMethodTypeLabel(value, t)),
     },
     {
       title: t("colCurrency"),
