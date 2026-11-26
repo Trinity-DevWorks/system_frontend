@@ -5,6 +5,7 @@ import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
 import { formatTenantMoneyWithSymbol } from "@/lib/tenant-format";
 import { Form, Input } from "antd";
 import HeaderDiscountField from "@/features/sales-documents/components/HeaderDiscountField";
+import DocumentTaxModeNote from "@/features/sales-documents/components/DocumentTaxModeNote";
 
 /**
  * @param {{
@@ -20,9 +21,11 @@ import HeaderDiscountField from "@/features/sales-documents/components/HeaderDis
  *     net_to_pay?: string | number;
  *   } | null;
  *   currencySymbol?: string;
+ *   pricesIncludeTax?: boolean;
+ *   taxEnabled?: boolean;
  * }} props
  */
-export default function SalesInvoiceTotals({ t, readOnly, totals = null, currencySymbol = "" }) {
+export default function SalesInvoiceTotals({ t, readOnly, totals = null, currencySymbol = "", pricesIncludeTax = false, taxEnabled = false }) {
   const money = (value) => (value != null ? formatTenantMoneyWithSymbol(value, currencySymbol) || "\u2014" : "\u2014");
 
   return (
@@ -44,6 +47,9 @@ export default function SalesInvoiceTotals({ t, readOnly, totals = null, currenc
           <AmountRow label={t("totalDiscount")} value={money(totals?.discount_total)} />
         </div>
         <div className="sales-invoice-totals-amount-section">
+          <div className="flex justify-end">
+            <DocumentTaxModeNote pricesIncludeTax={pricesIncludeTax} taxEnabled={taxEnabled} />
+          </div>
           <AmountRow label={t("totalTax")} value={money(totals?.tax_total)} />
           <AmountRow label={t("totalGrand")} value={money(totals?.grand_total)} />
           <div className="resource-drawer-pricing-card">

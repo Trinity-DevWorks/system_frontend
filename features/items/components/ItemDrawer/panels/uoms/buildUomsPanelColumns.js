@@ -1,4 +1,3 @@
-import { RESTAURANT_FEATURES } from "@/lib/business-profile";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import { closeConfirmOnError } from "@/lib/drawer/closeConfirmOnError";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
@@ -150,39 +149,6 @@ export function buildUomsPanelColumns(ctx) {
       align: "center",
       render: (_v, r) => renderPriceCell("cost_price", _v, r),
     },
-    ...(RESTAURANT_FEATURES
-      ? [
-        {
-          title: t("uomColTakeaway"),
-          key: "takeaway",
-          width: 100,
-          align: "center",
-          render: (_v, r) => renderPriceCell("takeaway_price", _v, r),
-        },
-        ]
-      : []),
-    ...(RESTAURANT_FEATURES
-      ? [
-        {
-          title: t("uomColDineIn"),
-          key: "dineIn",
-          width: 100,
-          align: "center",
-          render: (_v, r) => renderPriceCell("dine_in_price", _v, r),
-        },
-        ]
-      : []),
-    ...(RESTAURANT_FEATURES
-      ? [
-        {
-          title: t("uomColDelivery"),
-          key: "delivery",
-          width: 100,
-          align: "center",
-          render: (_v, r) => renderPriceCell("delivery_price", _v, r),
-        },
-        ]
-      : []),
     {
       title: t("uomColBase"),
       key: "base",

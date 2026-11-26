@@ -10,11 +10,9 @@ import { applyApiFieldErrors } from "@/lib/drawer/applyApiFieldErrors";
 import {
   createSalesInvoice,
   deleteSalesInvoice,
-  fetchSalesInvoice,
+  postNewSalesInvoice,
   postSalesInvoice,
   reverseSalesInvoice,
-  syncSalesInvoiceLines,
-  syncSalesInvoicePayments,
   recordSalesInvoicePayments,
   updateSalesInvoice,
 } from "../api/salesInvoices.api";
@@ -83,8 +81,8 @@ export function useSalesInvoiceDrawerMutations({
       if (invoiceId == null) {
         return createSalesInvoice(salesInvoiceCreatePayload(values, lines));
       }
-      await updateSalesInvoice(invoiceId, salesInvoiceHeaderToPayload(values));
-      return syncSalesInvoiceLines(invoiceId, { lines: getValidSalesInvoiceLines(lines) }).then(() => fetchSalesInvoice(invoiceId));
+      // One call: the header and the lines are saved together.
+      return updateSalesInvoice(invoiceId, { ...salesInvoiceHeaderToPayload(values), lines: getValidSalesInvoiceLines(lines) });
     },
     onError: (err) => {
       if (!applyApiFieldErrors(form, err)) {
@@ -110,21 +108,20 @@ export function useSalesInvoiceDrawerMutations({
   });
 
   const postMutation = useMutation({
-    // `payments`: rows from the payment modal, posted with the invoice (none = all on account).
-    mutationFn: async ({ values, payments = [], keepExtraAsCredit = false, discountApproval = null }) => {
-      let id = invoiceId;
-      if (id == null) {
-        const created = await createSalesInvoice(salesInvoiceCreatePayload(values, lines));
-        id = normalizeEntityId(created?.id);
-        if (id == null) throw new Error("Missing sales invoice id after create");
-      } else {
-        await updateSalesInvoice(id, salesInvoiceHeaderToPayload(values));
-        await syncSalesInvoiceLines(id, { lines: getValidSalesInvoiceLines(lines) });
-      }
-      // Payments go last: they are checked against the final totals.
-      await syncSalesInvoicePayments(id, { payments, keep_extra_as_credit: Boolean(keepExtraAsCredit) });
-      // A manager's login when the discount is above the poster's limit.
-      return postSalesInvoice(id, discountApproval ? { discount_approval: discountApproval } : undefined);
+    // One call: the invoice as shown (header, lines) and the payments from the payment modal (none = all on
+    // account) are saved and posted together, all or nothing. `requestId` keeps a retry from posting twice.
+    mutationFn: async ({ values, payments = [], keepExtraAsCredit = false, discountApproval = null, requestId }) => {
+      const document = invoiceId == null
+        ? salesInvoiceCreatePayload(values, lines)
+        : { ...salesInvoiceHeaderToPayload(values), lines: getValidSalesInvoiceLines(lines) };
+      const body = {
+        ...document,
+        payments,
+        keep_extra_as_credit: Boolean(keepExtraAsCredit),
+        // A manager's PIN when the discount or the credit limit needs approval.
+        ...(discountApproval ? { approval: discountApproval } : {}),
+      };
+      return invoiceId == null ? postNewSalesInvoice(body, requestId) : postSalesInvoice(invoiceId, body, requestId);
     },
     onError: (err) => {
       // The approval popup shows these itself.

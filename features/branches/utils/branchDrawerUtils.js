@@ -43,6 +43,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (String(v.manager_id ?? "") !== String(defaults.manager_id ?? "")) return true;
   if ((v.is_active !== false) !== Boolean(defaults.is_active)) return true;
   if (Boolean(v.is_default) !== Boolean(defaults.is_default)) return true;
+  if ((v.return_default ?? "restock") !== (defaults.return_default ?? "restock")) return true;
   return false;
 }
 
@@ -63,6 +64,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (String(v.manager_id ?? "") !== String(row.manager_id ?? "")) return true;
   if ((v.is_active !== false) !== Boolean(row.is_active)) return true;
   if (Boolean(v.is_default) !== Boolean(row.is_default)) return true;
+  if ((v.return_default ?? "restock") !== (row.return_default ?? "restock")) return true;
   return false;
 }
 
@@ -95,6 +97,7 @@ export function toBranchCacheRow(row) {
     manager_name: row.manager_name ?? null,
     is_active: Boolean(row.is_active),
     is_default: Boolean(row.is_default),
+    return_default: row.return_default ?? "restock",
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -137,6 +140,7 @@ export function branchFormValuesToPayload(values) {
     manager_id: managerId == null || managerId === "" ? null : String(managerId),
     is_active: Boolean(values.is_active),
     is_default: Boolean(values.is_default),
+    return_default: values.return_default === "waste" ? "waste" : "restock",
     ...(values.price_list_id !== undefined ? { price_list_id: values.price_list_id == null ? null : Number(values.price_list_id) } : {}),
   };
 }

@@ -124,7 +124,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
         line.invoiceLineId,
         Number(line.returnQty ?? 0),
         Number(line.allowanceAmount ?? 0),
-        Boolean(line.restock),
+        line.returnAction ?? null,
         line.warehouseId ?? null,
         line.serials ?? [],
       ]),
@@ -229,7 +229,7 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
         quantity: type === "allowance" || line.allowReturn === false ? 0 : line.returnQty,
         line_total: type === "allowance" ? line.allowanceAmount : undefined,
         warehouse_id: line.warehouseId || null,
-        ...(config.showRestock ? { restock: Boolean(line.restock) } : {}),
+        ...(config.showRestock && line.hasGoods ? { return_action: line.returnAction ?? "restock" } : {}),
         ...(line.trackSerials && type === "return" ? { serial_numbers: line.serials ?? [] } : {}),
       }));
   }, [config.lineInvoiceField, config.showRestock, lines, type]);
@@ -354,22 +354,31 @@ export default function CreditDocumentDrawer({ open, mode, documentId, onClose, 
       },
       ...(config.showRestock && type === "return"
         ? [{
-            title: t("colRestock"),
-            width: 110,
-            render: (_, line) => (
-              <Checkbox
-                disabled={readOnly || !line.trackInventory}
-                checked={Boolean(line.restock)}
-                onChange={(event) => setLines((prev) => prev.map((row) => (row.invoiceLineId === line.invoiceLineId ? { ...row, restock: event.target.checked } : row)))}
-              />
-            ),
+            // Returned goods: back in stock, or written off as waste (cost to the Waste account).
+            title: t("colReturnAction"),
+            width: 190,
+            render: (_, line) =>
+              line.hasGoods ? (
+                <Select
+                  className="w-full"
+                  disabled={readOnly}
+                  value={line.returnAction ?? "restock"}
+                  options={[
+                    { value: "restock", label: t("returnRestock") },
+                    { value: "waste", label: t("returnWaste") },
+                  ]}
+                  onChange={(value) => setLines((prev) => prev.map((row) => (row.invoiceLineId === line.invoiceLineId ? { ...row, returnAction: value } : row)))}
+                />
+              ) : (
+                "—"
+              ),
           }, {
             title: t("colWarehouse"),
             width: 180,
             render: (_, line) => (
               <Select
                 className="w-full"
-                disabled={readOnly || !line.restock}
+                disabled={readOnly || !line.hasGoods || line.returnAction === "waste"}
                 value={line.warehouseId ?? undefined}
                 options={(warehousesQuery.data ?? []).map((row) => ({ value: row.id, label: row.name }))}
                 onChange={(value) => setLines((prev) => prev.map((row) => (row.invoiceLineId === line.invoiceLineId ? { ...row, warehouseId: value } : row)))}
@@ -605,7 +614,9 @@ function creditLinesFromInvoice(sources, saved, lineInvoiceField, noteType) {
       creditable: source.creditable_total,
       conversion: Number(source.conversion_factor || 1) || 1,
       warehouseId: match?.warehouse_id ?? source.warehouse_id ?? null,
-      restock: match ? match.restock !== false : true,
+      // Saved choice, else the default (item, then made-on-sale = waste, then the branch).
+      returnAction: match?.return_action ?? (match ? (match.restock !== false ? "restock" : "waste") : (source.default_return_action ?? "restock")),
+      hasGoods: source.has_goods !== undefined ? Boolean(source.has_goods) : Boolean(source.track_inventory),
       allowReturn: source.allow_return !== false,
       returnQty: source.allow_return === false ? 0 : (match ? Number(match.quantity || 0) : 0),
       allowanceAmount: match && noteType === "allowance" ? Number(match.line_total || 0) : 0,

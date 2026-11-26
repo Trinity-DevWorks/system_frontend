@@ -22,6 +22,7 @@ const DEFAULTS = {
   name: "",
   direction: "both",
   is_active: true,
+  is_waste: false,
   notes: "",
 };
 
@@ -34,6 +35,7 @@ function mapReasonToForm(record) {
     name: typeof record.name === "string" ? record.name : "",
     direction: typeof record.direction === "string" ? record.direction : "both",
     is_active: record.is_active !== false,
+    is_waste: record.is_waste === true,
     notes: typeof record.notes === "string" ? record.notes : "",
   };
 }
@@ -47,6 +49,7 @@ function reasonToPayload(values) {
     name: typeof values.name === "string" ? values.name.trim() : "",
     direction: values.direction,
     is_active: values.is_active !== false,
+    is_waste: values.is_waste === true,
     notes: typeof values.notes === "string" && values.notes.trim() ? values.notes.trim() : null,
   };
 }
@@ -62,6 +65,7 @@ function isReasonDirty(form, baseline) {
     String(values.name ?? "").trim() !== String(baseline.name ?? "").trim() ||
     (values.direction ?? "both") !== (baseline.direction ?? "both") ||
     Boolean(values.is_active) !== Boolean(baseline.is_active) ||
+    Boolean(values.is_waste) !== Boolean(baseline.is_waste) ||
     String(values.notes ?? "").trim() !== String(baseline.notes ?? "").trim()
   );
 }
@@ -271,6 +275,9 @@ export default function AdjustmentReasonDrawer({
           <Select options={directionOptions} />
         </Form.Item>
         <Form.Item name="is_active" label={t("adjReasonFieldActive")} valuePropName="checked">
+          <Switch />
+        </Form.Item>
+        <Form.Item name="is_waste" label={t("adjReasonFieldWaste")} extra={t("adjReasonFieldWasteHint")} valuePropName="checked">
           <Switch />
         </Form.Item>
         <Form.Item name="notes" label={t("adjReasonFieldNotes")}>

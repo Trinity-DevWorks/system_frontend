@@ -9,6 +9,7 @@ import { usePersistedSaveIntent } from "@/lib/drawer/persistedSaveIntent";
 import { QUERY_STALE_TIME } from "@/lib/queryStaleTime";
 import { fetchCurrencyNames } from "@/features/currencies/index";
 import { useQuery } from "@tanstack/react-query";
+import { tenantPricesIncludeTax, useCompanySettings } from "@/lib/company-settings";
 import { fetchPriceList } from "../../api/priceLists.api";
 import { App, Form } from "antd";
 import { useTranslations } from "next-intl";
@@ -60,6 +61,9 @@ export default function PriceListDrawer({
 
   const readOnly = mode === "view";
 
+  const { settings } = useCompanySettings();
+  // A new list starts with the company's setting.
+  const companyIncludesTax = tenantPricesIncludeTax(settings);
   const defaults = useMemo(
     () => ({
       code: "",
@@ -70,9 +74,10 @@ export default function PriceListDrawer({
       valid_to: null,
       is_default: false,
       is_active: true,
+      prices_include_tax: companyIncludesTax,
       items: [],
     }),
-    [],
+    [companyIncludesTax],
   );
 
   const mapSeedToCacheRow = useCallback((seed) => toPriceListCacheRow(seed), []);

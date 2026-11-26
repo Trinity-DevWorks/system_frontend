@@ -81,6 +81,13 @@ export function getPriceListTableColumns(t, actions = {}) {
         value ? <Tag color="blue">{t("defaultTag")}</Tag> : "—",
     },
     {
+      title: t("colPricesIncludeTax"),
+      dataIndex: "prices_include_tax",
+      key: "prices_include_tax",
+      width: 120,
+      render: (value) => (value ? t("pricesInclTag") : t("pricesExclTag")),
+    },
+    {
       title: t("colItemsCount"),
       dataIndex: "items_count",
       key: "items_count",

@@ -155,13 +155,21 @@ function CustomerChequesView() {
             ),
           },
           {
-            title: t("colReceipt"),
+            title: t("colSource"),
             key: "receipt",
-            render: (_, row) => (
-              <Button type="link" className="px-0" onClick={() => openStackedDrawer({ featureId: "customerReceipts", id: String(row.customer_receipt_id), mode: "view" })}>
-                {row.receipt_number ?? "—"}
-              </Button>
-            ),
+            // From a receipt, or taken with a sales invoice (no receipt).
+            render: (_, row) =>
+              row.customer_receipt_id ? (
+                <Button type="link" className="px-0" onClick={() => openStackedDrawer({ featureId: "customerReceipts", id: String(row.customer_receipt_id), mode: "view" })}>
+                  {row.receipt_number ?? "—"}
+                </Button>
+              ) : row.sales_invoice_id ? (
+                <Button type="link" className="px-0" onClick={() => openStackedDrawer({ featureId: "salesInvoices", id: String(row.sales_invoice_id), mode: "view" })}>
+                  {row.invoice_number ?? "—"}
+                </Button>
+              ) : (
+                "—"
+              ),
           },
           {
             title: "",

@@ -1,6 +1,5 @@
 "use client";
 
-import { RESTAURANT_FEATURES } from "@/lib/business-profile";
 import ResourceDrawerFieldLabel from "@/shared/components/resource-drawer/ResourceDrawerFieldLabel";
 import { drawerSelectGetPopup } from "@/shared/components/resource-drawer/drawerFormUtils";
 import TenantNumberInput from "@/shared/components/inputs/TenantNumberInput";
@@ -20,13 +19,6 @@ function VariantPricingGrid({ values, t }) {
   const cells = [
     { label: t("uomFieldSell"), value: price(values.selling_price) },
     { label: t("uomFieldCost"), value: price(values.cost_price) },
-    ...(RESTAURANT_FEATURES
-      ? [
-          { label: t("uomColTakeaway"), value: price(values.takeaway_price) },
-          { label: t("uomColDineIn"), value: price(values.dine_in_price) },
-          { label: t("uomColDelivery"), value: price(values.delivery_price) },
-        ]
-      : []),
   ];
 
   return (
@@ -140,9 +132,6 @@ export default function ItemVariantCard({
     : {
         selling_price: row.selling_price,
         cost_price: row.cost_price,
-        takeaway_price: row.takeaway_price,
-        dine_in_price: row.dine_in_price,
-        delivery_price: row.delivery_price,
       };
 
   return (
@@ -282,40 +271,6 @@ export default function ItemVariantCard({
                   onChange={(v) => onPatch({ cost_price: v ?? undefined })}
                 />
               </VariantFormField>
-              {RESTAURANT_FEATURES ? (
-                <>
-              <VariantFormField label={t("uomColTakeaway")}>
-                <TenantNumberInput
-                  kind="money"
-                  className="!w-full"
-                  style={{ width: "100%" }}
-                  min={0}
-                  value={values.takeaway_price}
-                  onChange={(v) => onPatch({ takeaway_price: v ?? undefined })}
-                />
-              </VariantFormField>
-              <VariantFormField label={t("uomColDineIn")}>
-                <TenantNumberInput
-                  kind="money"
-                  className="!w-full"
-                  style={{ width: "100%" }}
-                  min={0}
-                  value={values.dine_in_price}
-                  onChange={(v) => onPatch({ dine_in_price: v ?? undefined })}
-                />
-              </VariantFormField>
-              <VariantFormField label={t("uomColDelivery")}>
-                <TenantNumberInput
-                  kind="money"
-                  className="!w-full"
-                  style={{ width: "100%" }}
-                  min={0}
-                  value={values.delivery_price}
-                  onChange={(v) => onPatch({ delivery_price: v ?? undefined })}
-                />
-              </VariantFormField>
-                </>
-              ) : null}
               <VariantFormField label={t("uomFieldReason")}>
                 <Input
                   value={values.reason ?? ""}

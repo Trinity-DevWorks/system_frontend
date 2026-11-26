@@ -54,12 +54,14 @@ export const customerLedgerConfig = {
   typeLabelKey: {
     invoice: "typeInvoice",
     payment: "typePayment",
+    sale_payment: "typeSalePayment",
     credit_note: "typeCreditNote",
     refund: "typeRefund",
   },
   documentFeature: {
     invoice: "salesInvoices",
     payment: "customerReceipts",
+    sale_payment: "salesInvoices",
     credit_note: "salesCreditNotes",
     refund: "customerRefunds",
   },

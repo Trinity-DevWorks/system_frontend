@@ -1,6 +1,5 @@
 "use client";
 
-import { isShownPriceField } from "@/lib/business-profile";
 import { useReportBranch } from "@/features/accounting/useReportBranch";
 import { fetchCategoryNames } from "@/features/categories/api/categories.api";
 import { fetchSupplierNames } from "@/features/suppliers/api/suppliers.api";
@@ -35,7 +34,7 @@ import { REPORTS_QUERY_KEY, downloadAnalyticsReport, fetchAnalyticsReport } from
 /** Columns whose values are codes the page translates (e.g. cash flow categories, movement types). */
 const TRANSLATED = { category: "val_", type: "val_", description: "val_", field: "val_", source: "val_", asset_status: "val_fa_", automatic: "val_" };
 
-const PRICE_FIELDS = ["selling_price", "cost_price", "takeaway_price", "dine_in_price", "delivery_price", "price_list_price"].filter(isShownPriceField);
+const PRICE_FIELDS = ["selling_price", "cost_price", "price_list_price"];
 const PRICE_SOURCES = ["manual", "import", "bulk", "price_change_doc", "variant_generate"];
 
 /**
@@ -50,6 +49,7 @@ const PRICE_SOURCES = ["manual", "import", "bulk", "price_change_doc", "variant_
  *   needs?: string[];
  *   serverTable?: boolean;
  *   daysLabelKey?: string;
+ *   sourceOptions?: string[];
  * }} AnalyticsReportConfig
  *
  * serverTable: search, sort and pagination run on the backend (large grouped reports).
@@ -387,13 +387,32 @@ function AnalyticsReportView({ config }) {
     <Select allowClear className="min-w-40" placeholder={t("filterField")} value={get("field")} onChange={(v) => setParams({ field: v })} options={PRICE_FIELDS.map((f) => ({ value: f, label: t(`val_${f}`) }))} />
   ) : null;
   const sourceEl = has("source") ? (
-    <Select allowClear className="min-w-40" placeholder={t("filterSource")} value={get("source")} onChange={(v) => setParams({ source: v })} options={PRICE_SOURCES.map((s) => ({ value: s, label: t(`val_${s}`) }))} />
+    <Select allowClear className="min-w-40" placeholder={t("filterSource")} value={get("source")} onChange={(v) => setParams({ source: v })} options={(config.sourceOptions ?? PRICE_SOURCES).map((s) => ({ value: s, label: t(`val_${s}`) }))} />
   ) : null;
   const categoryEl = has("category") ? (
     <Select allowClear showSearch optionFilterProp="label" className="min-w-44" placeholder={t("filterCategory")} value={get("category_id")} onChange={(v) => setParams({ category_id: v })} options={nameOptions(categoriesQuery.data)} loading={categoriesQuery.isPending} />
   ) : null;
   const userEl = has("user") ? (
     <Select allowClear showSearch optionFilterProp="label" className="min-w-44" placeholder={t("filterUser")} value={get("user_id")} onChange={(v) => setParams({ user_id: v })} options={nameOptions(usersQuery.data)} loading={usersQuery.isPending} />
+  ) : null;
+  const itemEl = has("item") ? (
+    <div className="w-72">
+      <ServerSearchSelect
+        value={get("item_id")}
+        onChange={(v) => setParams({ item_id: v ? String(v) : undefined })}
+        fetchPage={fetchSaleItemOptionsPage}
+        queryKey={SALE_ITEM_OPTIONS_QUERY_KEY}
+        recentKind="report-item"
+        placeholder={t("itemPlaceholder")}
+        allowClear
+        recentLabel={tSelector("selectorRecent")}
+        clearRecentLabel={tSelector("selectorClearRecent")}
+        resultsLabel={tSelector("selectorResults")}
+        loadMoreLabel={tSelector("selectorLoadMore")}
+        emptyLabel={tSelector("selectorEmpty")}
+        typeToSearchLabel={tSelector("selectorTypeToSearch")}
+      />
+    </div>
   ) : null;
   const supplierEl = has("supplier") ? (
     <Select allowClear showSearch optionFilterProp="label" className="min-w-44" placeholder={t("filterSupplier")} value={get("supplier_id")} onChange={(v) => setParams({ supplier_id: v })} options={nameOptions(suppliersQuery.data)} loading={suppliersQuery.isPending} />
@@ -417,6 +436,8 @@ function AnalyticsReportView({ config }) {
     ...(daysChip ? [{ label: t(config.daysLabelKey ?? "days"), value: daysChip }] : []),
     ...(has("includeExpired") && get("include_expired") === "1" ? [{ label: t("includeExpired"), value: "✓" }] : []),
     ...(accountChip ? [{ label: t("filterAccounts"), value: accountChip }] : []),
+    ...(has("item") && get("item_id") ? [{ label: t("filterItem"), value: "✓" }] : []),
+    ...(has("source") && get("source") ? [{ label: t("filterSource"), value: t(`val_${get("source")}`) }] : []),
   ];
   const { toggle: filterToggle, filterBar } = useStockTableFilters({
     activeCount: filterSummary.length,
@@ -430,6 +451,8 @@ function AnalyticsReportView({ config }) {
         include_expired: undefined,
         account_from: undefined,
         account_to: undefined,
+        item_id: undefined,
+        source: undefined,
         ...(branch.lockedBranchId == null ? { branch: undefined } : {}),
       }),
     children: (
@@ -441,6 +464,12 @@ function AnalyticsReportView({ config }) {
         {warehouseEl ? <Form.Item label={t("filterWarehouse")}>{warehouseEl}</Form.Item> : null}
         {daysEl ? <Form.Item label={t(config.daysLabelKey ?? "days")}>{daysEl}</Form.Item> : null}
         {accountRangeEl ? <Form.Item label={t("filterAccounts")}>{accountRangeEl}</Form.Item> : null}
+        {itemEl ? <Form.Item label={t("filterItem")}>{itemEl}</Form.Item> : null}
+        {sourceEl ? <Form.Item label={t("filterSource")}>{sourceEl}</Form.Item> : null}
+        {fieldEl ? <Form.Item label={t("filterField")}>{fieldEl}</Form.Item> : null}
+        {categoryEl ? <Form.Item label={t("filterCategory")}>{categoryEl}</Form.Item> : null}
+        {userEl ? <Form.Item label={t("filterUser")}>{userEl}</Form.Item> : null}
+        {supplierEl ? <Form.Item label={t("filterSupplier")}>{supplierEl}</Form.Item> : null}
         {includeExpiredEl ? <Form.Item label=" ">{includeExpiredEl}</Form.Item> : null}
       </div>
     ),
@@ -456,25 +485,7 @@ function AnalyticsReportView({ config }) {
           {groupByEl}
           {branchEl}
           {warehouseEl}
-          {has("item") ? (
-            <div className="w-72">
-              <ServerSearchSelect
-                value={get("item_id")}
-                onChange={(v) => setParams({ item_id: v ? String(v) : undefined })}
-                fetchPage={fetchSaleItemOptionsPage}
-                queryKey={SALE_ITEM_OPTIONS_QUERY_KEY}
-                recentKind="report-item"
-                placeholder={t("itemPlaceholder")}
-                allowClear
-                recentLabel={tSelector("selectorRecent")}
-                clearRecentLabel={tSelector("selectorClearRecent")}
-                resultsLabel={tSelector("selectorResults")}
-                loadMoreLabel={tSelector("selectorLoadMore")}
-                emptyLabel={tSelector("selectorEmpty")}
-                typeToSearchLabel={tSelector("selectorTypeToSearch")}
-              />
-            </div>
-          ) : null}
+          {itemEl}
           {daysEl}
           {includeExpiredEl}
           {accountRangeEl}

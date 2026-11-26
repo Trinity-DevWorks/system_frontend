@@ -24,6 +24,7 @@ export function isCreateDirtyVsDefaults(form, defaults) {
   if (String(v.code ?? "").trim() !== String(defaults.code ?? "").trim()) return true;
   if (String(v.name ?? "").trim() !== String(defaults.name ?? "").trim()) return true;
   if (String(v.type ?? "") !== String(defaults.type ?? "cash")) return true;
+  if (String(v.provider ?? "").trim() !== String(defaults.provider ?? "").trim()) return true;
   const vCur = v.currency_id == null || v.currency_id === "" ? null : Number(v.currency_id);
   const dCur = defaults.currency_id == null || defaults.currency_id === "" ? null : Number(defaults.currency_id);
   if (vCur !== dCur) return true;
@@ -45,6 +46,7 @@ export function isEditDirtyVsLoaded(form, row) {
   if (String(v.code ?? "").trim() !== String(row.code ?? "").trim()) return true;
   if (String(v.name ?? "").trim() !== String(row.name ?? "").trim()) return true;
   if (String(v.type ?? "") !== String(row.type ?? "")) return true;
+  if (String(v.provider ?? "").trim() !== String(row.provider ?? "").trim()) return true;
   const vCur = v.currency_id == null || v.currency_id === "" ? null : Number(v.currency_id);
   const rCur = row.currency_id == null ? null : Number(row.currency_id);
   if (vCur !== rCur) return true;
@@ -76,6 +78,7 @@ export function toPaymentMethodCacheRow(row) {
     code: row.code,
     name: row.name,
     type: row.type,
+    provider: row.provider ?? null,
     currency_id: row.currency_id,
     currency_code: row.currency_code,
     currency_name: row.currency_name,
@@ -108,6 +111,7 @@ export function paymentMethodFormValuesToPayload(values) {
     code: String(values.code ?? "").trim(),
     name: String(values.name ?? "").trim(),
     type: String(values.type ?? "cash"),
+    provider: String(values.provider ?? "").trim() || null,
     currency_id: cur == null || cur === "" ? null : Number(cur),
     requires_reference: Boolean(values.requires_reference),
     supports_change: Boolean(values.supports_change),

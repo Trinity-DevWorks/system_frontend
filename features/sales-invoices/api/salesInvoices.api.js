@@ -84,20 +84,39 @@ export function recordSalesInvoicePayments(invoiceId, body) {
 }
 
 /**
- * The customer's credit (posted receipts with money left), each with its value in `currencyId`.
+ * The customer's credit (receipts with money left, and money kept on invoices paid above their total),
+ * each with its value in `currencyId`. `exceptInvoiceId` leaves out that invoice's own credit.
  * @param {string} customerId
  * @param {unknown} currencyId
- * @returns {Promise<Array<{ receipt_id: string; receipt_number: string; unapplied_amount: string; currency_code: string; in_invoice_currency: string | null }>>}
+ * @param {string | null} [exceptInvoiceId]
+ * @returns {Promise<Array<{ source_type: "receipt" | "invoice"; source_id: string; source_number: string; unapplied_amount: string; currency_code: string; in_invoice_currency: string | null }>>}
  */
-export async function fetchCustomerAvailableCredit(customerId, currencyId) {
+export async function fetchCustomerAvailableCredit(customerId, currencyId, exceptInvoiceId = null) {
   const qs = new URLSearchParams({ customer_id: String(customerId) });
   if (currencyId != null && currencyId !== "") qs.set("currency_id", String(currencyId));
+  if (exceptInvoiceId) qs.set("except_invoice_id", String(exceptInvoiceId));
   const data = await tenantRequest("GET", `customer-receipts/available-credit?${qs.toString()}`);
   return Array.isArray(data) ? data : [];
 }
 
-export function postSalesInvoice(invoiceId, body = undefined) {
-  return tenantRequest("POST", `sales-invoices/${invoiceId}/post`, body);
+/**
+ * Posts in one call: the changes sent with it (header, lines, payments) are saved and the invoice posted,
+ * all or nothing. `requestId` makes a retry (double click, lost response) post only once.
+ * @param {string} invoiceId
+ * @param {Record<string, unknown>} [body]
+ * @param {string} [requestId]
+ */
+export function postSalesInvoice(invoiceId, body = undefined, requestId = undefined) {
+  return tenantRequest("POST", `sales-invoices/${invoiceId}/post`, body, requestId ? { headers: { "Idempotency-Key": requestId } } : {});
+}
+
+/**
+ * Creates and posts a new invoice in one call.
+ * @param {Record<string, unknown>} body
+ * @param {string} [requestId]
+ */
+export function postNewSalesInvoice(body, requestId = undefined) {
+  return tenantRequest("POST", "sales-invoices/post", body, requestId ? { headers: { "Idempotency-Key": requestId } } : {});
 }
 
 /** @param {string} invoiceId */

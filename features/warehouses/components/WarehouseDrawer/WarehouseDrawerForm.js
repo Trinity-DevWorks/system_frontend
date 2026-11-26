@@ -133,6 +133,16 @@ export default function WarehouseDrawerForm({
       <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
         <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />
       </Form.Item>
+      <Form.Item name="negative_stock" label={t("fieldNegativeStock")} tooltip={t("fieldNegativeStockHelp")}>
+        <Select
+          disabled={readOnly}
+          options={[
+            { value: "", label: t("negativeStockInherit") },
+            { value: "allow", label: t("negativeStockAllow") },
+            { value: "block", label: t("negativeStockBlock") },
+          ]}
+        />
+      </Form.Item>
       <Form.Item name="is_default" label={t("fieldDefault")} valuePropName="checked">
         <Switch checkedChildren={t("defaultYes")} unCheckedChildren={t("defaultNo")} />
       </Form.Item>
