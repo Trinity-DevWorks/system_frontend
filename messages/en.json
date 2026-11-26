@@ -237,7 +237,9 @@
     "navScaleExportTemplates": "Scale export templates",
     "navScaleLabelTemplates": "Scale label templates",
     "navScaleExport": "Scale export",
-    "navPrintScaleLabels": "Print scale labels"
+    "navPrintScaleLabels": "Print scale labels",
+    "navWaste": "Waste",
+    "navNegativeStock": "Negative stock"
   },
   "Notifications": {
     "markAllRead": "Mark all as read",
@@ -450,7 +452,23 @@
     "avatarFileTooLarge": "Image is too large.",
     "avatarRemoveConfirmTitle": "Remove avatar?",
     "avatarRemoveConfirmOk": "Remove",
-    "avatarRemoveConfirmCancel": "Cancel"
+    "avatarRemoveConfirmCancel": "Cancel",
+    "pinTitle": "Approval PIN",
+    "pinHelp": "Your PIN approves things at the counter (a discount above a cashier's limit, a sale over a customer's credit limit) when your role is allowed to approve them.",
+    "pinIsSet": "PIN set",
+    "pinNotSet": "No PIN",
+    "pinSet": "Set PIN",
+    "pinChange": "Change PIN",
+    "pinRemove": "Remove PIN",
+    "pinNew": "New PIN",
+    "pinConfirm": "Repeat the PIN",
+    "pinRequired": "Enter the PIN.",
+    "pinFormat": "4 to 6 digits.",
+    "pinMismatch": "The two PINs are not the same.",
+    "pinSaved": "PIN saved.",
+    "pinRemoved": "PIN removed.",
+    "pinError": "The PIN could not be saved.",
+    "pinPasswordRequired": "Enter your current password."
   },
   "CompanyProfile": {
     "companyDetails": "Company details",
@@ -889,9 +907,6 @@
     "uomColBarcode": "Barcode",
     "uomColSell": "Selling price",
     "uomColCost": "Cost price",
-    "uomColTakeaway": "Takeaway price",
-    "uomColDineIn": "Dine-in price",
-    "uomColDelivery": "Delivery price",
     "uomColBase": "Base",
     "uomColDefaultSale": "Default sale",
     "uomColDefaultPurchase": "Default purchase",
@@ -1013,9 +1028,6 @@
     "sectionPos": "POS",
     "priceField_selling_price": "Selling price",
     "priceField_cost_price": "Cost price",
-    "priceField_takeaway_price": "Takeaway price",
-    "priceField_dine_in_price": "Dine-in price",
-    "priceField_delivery_price": "Delivery price",
     "priceField_price_list_price": "Price list price",
     "priceSource_manual": "Manual edit",
     "priceSource_import": "Import",
@@ -1042,7 +1054,25 @@
     "fieldScalePriceReminder": "After changing the price, send the new prices to the scales.",
     "fieldShelfLife": "Shelf life (days)",
     "fieldShelfLifeHelp": "Printed labels show use-by = packed date + these days. Also sent to scales that print their own labels.",
-    "fieldShelfLifePlaceholder": "e.g. 5"
+    "fieldShelfLifePlaceholder": "e.g. 5",
+    "fieldMakeOnSale": "Made on sale",
+    "fieldMakeOnSaleHelp": "On: selling this item takes its recipe's ingredients out of stock (recipe quantity × quantity sold ÷ yield) instead of the item itself. Off: make it in advance with a production and sell it from stock.",
+    "fieldReturnDefault": "When a customer returns it",
+    "fieldReturnDefaultHelp": "What a credit note line does with the returned goods by default. Empty: the branch default (made-on-sale items: write off as waste). It can be changed on each line.",
+    "returnDefaultBranch": "Branch default",
+    "returnRestock": "Put back in stock",
+    "returnWaste": "Write off as waste",
+    "fieldOpenPrice": "Open price",
+    "fieldOpenPriceHelp": "No fixed price: the price is typed on each sale (it must be above zero).",
+    "fieldAllowPriceChange": "Price can be changed",
+    "fieldAllowPriceChangeHelp": "Off: a sale keeps the normal price (price list, else the unit's selling price). Posting a changed price is refused.",
+    "fieldAllowDiscount": "Can be discounted",
+    "fieldAllowDiscountHelp": "Off: no line discount, and a bill discount skips this item.",
+    "fieldNegativeStock": "Negative stock",
+    "fieldNegativeStockHelp": "Can this item be sold with no stock? \"Never\" always wins; \"Warehouse setting\" uses the warehouse, then the company rule. Items with lots or serials never go negative.",
+    "negativeStockInherit": "Warehouse setting",
+    "negativeStockAllow": "Allow",
+    "negativeStockNever": "Never"
   },
   "Categories": {
     "title": "Categories",
@@ -1548,7 +1578,12 @@
     "paginationEmpty": "No items",
     "paginationTotal": "{start}-{end} of {total}",
     "paginationPerPage": "{size} / page",
-    "paginationPageSizeAria": "Rows per page"
+    "paginationPageSizeAria": "Rows per page",
+    "fieldNegativeStock": "Negative stock",
+    "fieldNegativeStockHelp": "Can stock go below zero in this warehouse? An item's own setting wins; \"Company setting\" uses the company rule.",
+    "negativeStockInherit": "Company setting",
+    "negativeStockAllow": "Allow",
+    "negativeStockBlock": "Block"
   },
   "Branches": {
     "title": "Branches",
@@ -1628,7 +1663,11 @@
     "paginationPerPage": "{size} / page",
     "paginationPageSizeAria": "Rows per page",
     "fieldPriceList": "Price list",
-    "fieldPriceListHint": "Default selling prices for this record. Leave empty to use the next level (customer → group → branch → company default)."
+    "fieldPriceListHint": "Default selling prices for this record. Leave empty to use the next level (customer → group → branch → company default).",
+    "fieldReturnDefault": "Customer returns",
+    "fieldReturnDefaultHint": "What a credit note line does with returned goods by default in this branch. An item can have its own default, and each line can be changed.",
+    "returnRestock": "Put back in stock",
+    "returnWaste": "Write off as waste"
   },
   "Stock": {
     "actionDownloadPdf": "Download PDF",
@@ -2330,7 +2369,10 @@
     "colCntNumber": "CNT number",
     "colCountDate": "Counted",
     "colReserved": "Reserved",
-    "colAvailable": "Available"
+    "colAvailable": "Available",
+    "adjReasonFieldWaste": "Counts as waste",
+    "adjReasonFieldWasteHint": "Stock taken out for this reason (spoiled, expired, damaged) goes to the Waste account and the waste report.",
+    "movementType_recipe_sale": "Recipe sale"
   },
   "PaymentMethods": {
     "title": "Payment methods",
@@ -2406,7 +2448,10 @@
     "paginationPerPage": "{size} / page",
     "paginationPageSizeAria": "Rows per page",
     "fieldCashBankAccounts": "Cash / bank accounts",
-    "fieldSharedAccount": "Shared"
+    "fieldSharedAccount": "Shared",
+    "fieldProvider": "Provider",
+    "fieldProviderHint": "Optional brand or network, e.g. Visa or Mastercard for a card, Whish Money for a wallet.",
+    "fieldProviderPlaceholder": "e.g. Visa"
   },
   "PaymentTerms": {
     "title": "Payment terms",
@@ -3606,7 +3651,10 @@
     "openingTag": "Opening",
     "actionRecordPayment": "Record payment",
     "recordPaymentSuccess": "Payment recorded.",
-    "recordPaymentError": "Could not record the payment"
+    "recordPaymentError": "Could not record the payment",
+    "postUnsavedTitle": "Unsaved changes",
+    "postUnsavedContent": "This invoice has changes that are not saved yet. Posting will save them and post the invoice.",
+    "postUnsavedOk": "Post anyway"
   },
   "CustomerReceipts": {
     "actionDownloadPdf": "Download PDF",
@@ -3921,7 +3969,10 @@
     "unsavedTitle": "Discard changes?",
     "unsavedContent": "You have unsaved changes in this credit note.",
     "unsavedLeave": "Discard",
-    "unsavedStay": "Keep editing"
+    "unsavedStay": "Keep editing",
+    "colReturnAction": "Returned goods",
+    "returnRestock": "Put back in stock",
+    "returnWaste": "Write off as waste"
   },
   "PurchaseDebitNotes": {
     "actionDownloadPdf": "Download PDF",
@@ -4679,7 +4730,7 @@
       "STOCK_MOVEMENT_ZERO_QUANTITY": "Stock movement quantity cannot be zero.",
       "STOCK_ADJUSTMENT_ZERO_BASE_QUANTITY": "Adjustment quantity is too small after unit conversion.",
       "STOCK_ITEM_UOM_MISMATCH": "The selected unit does not belong to this item.",
-      "STOCK_INSUFFICIENT": "Insufficient stock for this movement.",
+      "STOCK_INSUFFICIENT": "Not enough stock of \"{item}\" in {warehouse}.",
       "DOCUMENT_REVERSE_STOCK_CONSUMED": "Stock from this document has already been issued and cannot be reversed.",
       "OPENING_STOCK_NOT_POSTED": "Only a posted opening stock document can be reversed.",
       "STOCK_ADJUSTMENT_NOT_POSTED": "Only a posted stock adjustment can be reversed.",
@@ -5511,7 +5562,8 @@
     "loadError": "Could not load the customer ledger.",
     "exportError": "Could not export the customer ledger.",
     "typeCreditNote": "Credit note",
-    "typeRefund": "Customer refund"
+    "typeRefund": "Customer refund",
+    "typeSalePayment": "Paid at sale"
   },
   "SupplierLedger": {
     "filterParty": "Supplier",
@@ -5756,7 +5808,8 @@
     "mappingMissing": "Not mapped",
     "source_cash_bank_opening_balance": "Cash/bank opening balance",
     "source_landed_cost": "Landed cost",
-    "role_landed_cost_clearing": "Landed cost clearing"
+    "role_landed_cost_clearing": "Landed cost clearing",
+    "role_waste_expense": "Waste and spoilage"
   },
   "FinancialReports": {
     "colDescription": "Description",
@@ -5923,7 +5976,14 @@
     "addPriceRow": "Add price",
     "noPrices": "No prices yet.",
     "fieldReason": "Reason",
-    "fieldReasonPlaceholder": "Why is this price changing?"
+    "fieldReasonPlaceholder": "Why is this price changing?",
+    "fieldPricesIncludeTax": "Prices include VAT",
+    "fieldPricesIncludeTaxHint": "A new document priced from this list uses this. A price from a list in the other mode is converted with the item's VAT rate.",
+    "colPricesIncludeTax": "VAT",
+    "pricesInclTag": "Includes VAT",
+    "pricesExclTag": "Excludes VAT",
+    "documentPricesIncludeTax": "Prices include VAT",
+    "documentPricesExcludeTax": "Prices exclude VAT"
   },
   "CashBankAccounts": {
     "title": "Cash & Bank Accounts",
@@ -6828,16 +6888,21 @@
     "col_supplier": "Supplier",
     "val_selling_price": "Selling price",
     "val_cost_price": "Cost price",
-    "val_takeaway_price": "Takeaway price",
-    "val_dine_in_price": "Dine-in price",
-    "val_delivery_price": "Delivery price",
     "val_price_list_price": "Price list",
     "val_manual": "Manual",
     "val_import": "Import",
     "val_bulk": "Bulk",
     "val_price_change_doc": "Price change",
     "val_variant_generate": "Variant",
-    "col_item": "Item"
+    "col_item": "Item",
+    "val_recipe_sale": "Recipe sale",
+    "wasteTitle": "Waste",
+    "col_day": "Date",
+    "col_branch": "Branch",
+    "val_return": "Customer return",
+    "val_spoilage": "Spoilage",
+    "filterItem": "Item",
+    "negativeStockTitle": "Negative stock"
   },
   "PriceChanges": {
     "add": "New price change",
@@ -6886,9 +6951,6 @@
     "status_cancelled": "Cancelled",
     "field_selling_price": "Selling price",
     "field_cost_price": "Cost price",
-    "field_takeaway_price": "Takeaway",
-    "field_dine_in_price": "Dine-in",
-    "field_delivery_price": "Delivery",
     "field_price_list_price": "Price list",
     "rule_percent": "Percent",
     "rule_amount": "Amount",
@@ -6944,9 +7006,9 @@
   },
   "PrintSettings": {
     "title": "Print settings",
-    "subtitle": "How printed documents and PDFs look.",
+    "subtitle": "How printed documents and PDFs look, for the whole company.",
     "paper": "Paper size",
-    "paperHint": "Used for all full-page documents. Receipts always print on 80mm rolls.",
+    "paperHint": "Page size for printed documents. Sales invoices and customer receipts can also print on a thermal roll: give them their own settings below.",
     "paper_a4": "A4",
     "paper_a5": "A5",
     "paper_letter": "Letter",
@@ -6960,7 +7022,18 @@
     "termsHint": "Printed after the notes on every document.",
     "save": "Save",
     "saved": "Print settings saved",
-    "saveError": "Could not save print settings"
+    "saveError": "Could not save print settings",
+    "paper_roll80": "80mm thermal roll",
+    "paper_roll58": "58mm thermal roll",
+    "defaultsTitle": "Company default",
+    "overridesTitle": "Per document type",
+    "overridesHelp": "These document types use their own settings instead of the company default.",
+    "addOverride": "Add document type",
+    "noOverrides": "Every document type uses the company default.",
+    "documentType": "Document type",
+    "edit": "Edit",
+    "remove": "Remove",
+    "removeConfirm": "{type} will use the company default again."
   },
   "ItemVariants": {
     "intro": "Pick attributes and values, then generate. Each combination becomes its own item with its own code, prices and stock. The template item itself is not sold.",
@@ -7078,16 +7151,20 @@
   },
   "DiscountApproval": {
     "title": "Manager approval",
-    "explain": "This discount is above your limit. A manager must enter their login to approve it.",
-    "email": "Manager email",
-    "emailRequired": "Enter the manager email.",
-    "password": "Password",
-    "passwordRequired": "Enter the password.",
+    "explain": "This discount is above your limit. Someone allowed to approve it must choose their name and enter their PIN.",
     "approve": "Approve",
     "cancel": "Cancel",
-    "invalid": "This login cannot approve the discount.",
-    "throttled": "Too many attempts. Try again in a minute.",
-    "failed": "The document could not be posted."
+    "invalid": "This PIN cannot approve this.",
+    "throttled": "Too many wrong PINs. Try again in a few minutes.",
+    "failed": "The document could not be posted.",
+    "explainCreditLimit": "This sale goes over the customer's credit limit. Someone allowed to approve it must choose their name and enter their PIN.",
+    "approver": "Approved by",
+    "approverPlaceholder": "Choose who approves",
+    "approverRequired": "Choose who approves.",
+    "pin": "PIN",
+    "pinRequired": "Enter the PIN.",
+    "pinFormat": "4 to 6 digits.",
+    "noApprovers": "No one who can approve this has set a PIN yet. They can set one in their profile."
   },
   "SalesInvoicePayments": {
     "currency": "Currency",
@@ -7132,7 +7209,12 @@
     "chequeDueDate": "Due date",
     "changeReturnedIn": "Change returned in {code}. Click to switch currency.",
     "keptAsCredit": "Kept as credit:",
-    "keepExtraAsCredit": "Keep the extra as customer credit"
+    "keepExtraAsCredit": "Keep the extra as customer credit",
+    "keptAsCreditAmount": "Kept as credit: {amount}",
+    "bounced": "Cheque bounced {date}",
+    "paidLater": "Receipt {number}",
+    "creditLeft": "Customer credit kept on this invoice: {amount} (used {used})",
+    "paidAtSale": "Paid with the sale"
   },
   "LandedCosts": {
     "drawerTitle": "Landed cost",
@@ -7281,7 +7363,8 @@
     "bounceConfirm": "Mark cheque {number} as bounced? Its receipt is reversed and the invoice is open again.",
     "bounceSuccess": "Cheque marked as bounced.",
     "bounceError": "Could not mark the cheque as bounced",
-    "noAccess": "You do not have access to customer cheques."
+    "noAccess": "You do not have access to customer cheques.",
+    "colSource": "Receipt / invoice"
   },
   "Budgets": {
     "add": "New budget",
@@ -7658,7 +7741,8 @@
     "move_transfer_write_off": "Lost in transfer",
     "ref_stock_transfer_receipt": "Transfer receipt",
     "ref_stock_transfer_closure": "Transfer closure",
-    "pickTransitHint": "Choose which units arrived. Leave empty when all units still in transit arrive."
+    "pickTransitHint": "Choose which units arrived. Leave empty when all units still in transit arrive.",
+    "move_recipe_sale": "Used in a recipe sale"
   },
   "ScaleBarcodes": {
     "title": "Scale barcode format",

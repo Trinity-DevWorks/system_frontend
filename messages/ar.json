@@ -237,7 +237,9 @@
     "navScaleExportTemplates": "قوالب تصدير الميزان",
     "navScaleLabelTemplates": "قوالب ملصقات الميزان",
     "navScaleExport": "تصدير الميزان",
-    "navPrintScaleLabels": "طباعة ملصقات الميزان"
+    "navPrintScaleLabels": "طباعة ملصقات الميزان",
+    "navWaste": "الهدر",
+    "navNegativeStock": "المخزون السالب"
   },
   "Notifications": {
     "markAllRead": "تعليم الكل كمقروء",
@@ -450,7 +452,23 @@
     "avatarFileTooLarge": "الصورة كبيرة جدًا.",
     "avatarRemoveConfirmTitle": "إزالة الصورة الشخصية؟",
     "avatarRemoveConfirmOk": "إزالة",
-    "avatarRemoveConfirmCancel": "إلغاء"
+    "avatarRemoveConfirmCancel": "إلغاء",
+    "pinTitle": "رمز الموافقة",
+    "pinHelp": "رمزك يوافق على العمليات عند الصندوق (خصم أعلى من حد الكاشير، بيع يتجاوز حد ائتمان العميل) عندما يكون دورك مخوّلًا بذلك.",
+    "pinIsSet": "الرمز محدد",
+    "pinNotSet": "لا يوجد رمز",
+    "pinSet": "تحديد الرمز",
+    "pinChange": "تغيير الرمز",
+    "pinRemove": "حذف الرمز",
+    "pinNew": "الرمز الجديد",
+    "pinConfirm": "أعد كتابة الرمز",
+    "pinRequired": "أدخل الرمز.",
+    "pinFormat": "من 4 إلى 6 أرقام.",
+    "pinMismatch": "الرمزان غير متطابقين.",
+    "pinSaved": "تم حفظ الرمز.",
+    "pinRemoved": "تم حذف الرمز.",
+    "pinError": "تعذّر حفظ الرمز.",
+    "pinPasswordRequired": "أدخل كلمة المرور الحالية."
   },
   "CompanyProfile": {
     "companyDetails": "تفاصيل الشركة",
@@ -889,9 +907,6 @@
     "uomColBarcode": "الباركود",
     "uomColSell": "سعر البيع",
     "uomColCost": "سعر التكلفة",
-    "uomColTakeaway": "سعر السفري",
-    "uomColDineIn": "سعر داخل الصالة",
-    "uomColDelivery": "سعر التوصيل",
     "uomColBase": "أساس",
     "uomColDefaultSale": "بيع افتراضي",
     "uomColDefaultPurchase": "شراء افتراضي",
@@ -1013,9 +1028,6 @@
     "sectionPos": "نقاط البيع",
     "priceField_selling_price": "سعر البيع",
     "priceField_cost_price": "سعر التكلفة",
-    "priceField_takeaway_price": "سعر السفري",
-    "priceField_dine_in_price": "سعر الصالة",
-    "priceField_delivery_price": "سعر التوصيل",
     "priceField_price_list_price": "سعر قائمة الأسعار",
     "priceSource_manual": "تعديل يدوي",
     "priceSource_import": "استيراد",
@@ -1042,7 +1054,25 @@
     "fieldScalePriceReminder": "بعد تغيير السعر، أرسل الأسعار الجديدة إلى الموازين.",
     "fieldShelfLife": "مدة الصلاحية (أيام)",
     "fieldShelfLifeHelp": "الملصقات المطبوعة تُظهر «يستهلك قبل» = تاريخ التعبئة + هذه الأيام. تُرسل أيضًا للموازين التي تطبع ملصقاتها.",
-    "fieldShelfLifePlaceholder": "مثال: 5"
+    "fieldShelfLifePlaceholder": "مثال: 5",
+    "fieldMakeOnSale": "يُحضَّر عند البيع",
+    "fieldMakeOnSaleHelp": "مفعّل: بيع هذا الصنف يُخرج مكونات وصفته من المخزون (كمية الوصفة × الكمية المباعة ÷ الناتج) بدل الصنف نفسه. غير مفعّل: يُحضَّر مسبقًا بأمر إنتاج ويُباع من المخزون.",
+    "fieldReturnDefault": "عند إرجاعه من العميل",
+    "fieldReturnDefaultHelp": "ما يفعله سطر إشعار الدائن بالبضاعة المرتجعة افتراضيًا. فارغ: الافتراضي للفرع (الأصناف المحضّرة عند البيع: شطب كهدر). يمكن تغييره في كل سطر.",
+    "returnDefaultBranch": "الافتراضي للفرع",
+    "returnRestock": "إعادة إلى المخزون",
+    "returnWaste": "شطب كهدر",
+    "fieldOpenPrice": "سعر مفتوح",
+    "fieldOpenPriceHelp": "لا سعر ثابت: يُكتب السعر في كل بيع (يجب أن يكون أكبر من صفر).",
+    "fieldAllowPriceChange": "يمكن تغيير السعر",
+    "fieldAllowPriceChangeHelp": "غير مفعّل: البيع يبقى بالسعر العادي (قائمة الأسعار، وإلا سعر بيع الوحدة). يُرفض ترحيل سعر مُغيَّر.",
+    "fieldAllowDiscount": "يقبل الخصم",
+    "fieldAllowDiscountHelp": "غير مفعّل: لا خصم على السطر، وخصم الفاتورة لا يشمل هذا الصنف.",
+    "fieldNegativeStock": "المخزون السالب",
+    "fieldNegativeStockHelp": "هل يمكن بيع هذا الصنف بدون مخزون؟ \"أبداً\" له الأولوية دائماً؛ \"إعداد المستودع\" يستخدم المستودع ثم قاعدة الشركة. الأصناف ذات الدفعات أو الأرقام التسلسلية لا تنزل تحت الصفر.",
+    "negativeStockInherit": "إعداد المستودع",
+    "negativeStockAllow": "سماح",
+    "negativeStockNever": "أبداً"
   },
   "Categories": {
     "title": "التصنيفات",
@@ -1548,7 +1578,12 @@
     "paginationEmpty": "لا عناصر",
     "paginationTotal": "{start}–{end} من {total}",
     "paginationPerPage": "{size} / صفحة",
-    "paginationPageSizeAria": "عدد الصفوف في الصفحة"
+    "paginationPageSizeAria": "عدد الصفوف في الصفحة",
+    "fieldNegativeStock": "المخزون السالب",
+    "fieldNegativeStockHelp": "هل يمكن أن ينزل المخزون تحت الصفر في هذا المستودع؟ إعداد الصنف له الأولوية؛ \"إعداد الشركة\" يستخدم قاعدة الشركة.",
+    "negativeStockInherit": "إعداد الشركة",
+    "negativeStockAllow": "سماح",
+    "negativeStockBlock": "منع"
   },
   "Branches": {
     "title": "الفروع",
@@ -1628,7 +1663,11 @@
     "paginationPerPage": "{size} / صفحة",
     "paginationPageSizeAria": "عدد الصفوف في الصفحة",
     "fieldPriceList": "قائمة الأسعار",
-    "fieldPriceListHint": "أسعار البيع الافتراضية لهذا السجل. اتركها فارغة لاستخدام المستوى التالي (العميل ← المجموعة ← الفرع ← الافتراضية للشركة)."
+    "fieldPriceListHint": "أسعار البيع الافتراضية لهذا السجل. اتركها فارغة لاستخدام المستوى التالي (العميل ← المجموعة ← الفرع ← الافتراضية للشركة).",
+    "fieldReturnDefault": "مرتجعات العملاء",
+    "fieldReturnDefaultHint": "ما يفعله سطر إشعار الدائن بالبضاعة المرتجعة افتراضيًا في هذا الفرع. يمكن للصنف أن يكون له افتراضي خاص، ويمكن تغيير كل سطر.",
+    "returnRestock": "إعادة إلى المخزون",
+    "returnWaste": "شطب كهدر"
   },
   "Stock": {
     "actionDownloadPdf": "تنزيل PDF",
@@ -2330,7 +2369,10 @@
     "colCntNumber": "رقم الجرد",
     "colCountDate": "تاريخ الجرد",
     "colReserved": "محجوز",
-    "colAvailable": "متاح"
+    "colAvailable": "متاح",
+    "adjReasonFieldWaste": "يُحسب هدرًا",
+    "adjReasonFieldWasteHint": "المخزون المُخرج لهذا السبب (تالف، منتهي الصلاحية، مكسور) يذهب إلى حساب الهدر وتقرير الهدر.",
+    "movementType_recipe_sale": "بيع بوصفة"
   },
   "PaymentMethods": {
     "title": "طرق الدفع",
@@ -2406,7 +2448,10 @@
     "paginationPerPage": "{size} / صفحة",
     "paginationPageSizeAria": "عدد الصفوف في الصفحة",
     "fieldCashBankAccounts": "الصناديق / الحسابات المصرفية",
-    "fieldSharedAccount": "مشترك"
+    "fieldSharedAccount": "مشترك",
+    "fieldProvider": "المزوّد",
+    "fieldProviderHint": "اسم العلامة أو الشبكة (اختياري)، مثل Visa أو Mastercard للبطاقة، Whish Money للمحفظة.",
+    "fieldProviderPlaceholder": "مثل Visa"
   },
   "PaymentTerms": {
     "title": "شروط الدفع",
@@ -3606,7 +3651,10 @@
     "openingTag": "افتتاحية",
     "actionRecordPayment": "تسجيل دفعة",
     "recordPaymentSuccess": "تم تسجيل الدفعة.",
-    "recordPaymentError": "تعذّر تسجيل الدفعة"
+    "recordPaymentError": "تعذّر تسجيل الدفعة",
+    "postUnsavedTitle": "تغييرات غير محفوظة",
+    "postUnsavedContent": "في هذه الفاتورة تغييرات لم تُحفظ بعد. الترحيل سيحفظها ويرحّل الفاتورة.",
+    "postUnsavedOk": "رحّل على أي حال"
   },
   "CustomerReceipts": {
     "actionDownloadPdf": "تنزيل PDF",
@@ -3921,7 +3969,10 @@
     "unsavedTitle": "تجاهل التغييرات؟",
     "unsavedContent": "هذا الإشعار الدائن فيه تغييرات غير محفوظة.",
     "unsavedLeave": "تجاهل",
-    "unsavedStay": "متابعة التعديل"
+    "unsavedStay": "متابعة التعديل",
+    "colReturnAction": "البضاعة المرتجعة",
+    "returnRestock": "إعادة إلى المخزون",
+    "returnWaste": "شطب كهدر"
   },
   "PurchaseDebitNotes": {
     "actionDownloadPdf": "تنزيل PDF",
@@ -4679,7 +4730,7 @@
       "STOCK_MOVEMENT_ZERO_QUANTITY": "لا يمكن أن تكون كمية حركة المخزون صفراً.",
       "STOCK_ADJUSTMENT_ZERO_BASE_QUANTITY": "كمية التعديل صغيرة جداً بعد تحويل الوحدة.",
       "STOCK_ITEM_UOM_MISMATCH": "الوحدة المختارة لا تنتمي إلى هذا الصنف.",
-      "STOCK_INSUFFICIENT": "المخزون غير كافٍ لهذه الحركة.",
+      "STOCK_INSUFFICIENT": "لا يوجد مخزون كافٍ من \"{item}\" في {warehouse}.",
       "DOCUMENT_REVERSE_STOCK_CONSUMED": "مخزون هذا المستند صُرف بالفعل ولا يمكن عكسه.",
       "OPENING_STOCK_NOT_POSTED": "يمكن عكس مستند المخزون الافتتاحي المرحّل فقط.",
       "STOCK_ADJUSTMENT_NOT_POSTED": "يمكن عكس تسوية المخزون المرحّلة فقط.",
@@ -5511,7 +5562,8 @@
     "loadError": "تعذّر تحميل كشف حساب العميل.",
     "exportError": "تعذّر تصدير كشف حساب العميل.",
     "typeCreditNote": "إشعار دائن",
-    "typeRefund": "استرداد للعميل"
+    "typeRefund": "استرداد للعميل",
+    "typeSalePayment": "مدفوع عند البيع"
   },
   "SupplierLedger": {
     "filterParty": "المورد",
@@ -5756,7 +5808,8 @@
     "mappingMissing": "غير مربوط",
     "source_cash_bank_opening_balance": "رصيد افتتاحي لصندوق/مصرف",
     "source_landed_cost": "تكاليف الاستيراد",
-    "role_landed_cost_clearing": "حساب وسيط لتكاليف الاستيراد"
+    "role_landed_cost_clearing": "حساب وسيط لتكاليف الاستيراد",
+    "role_waste_expense": "الهدر والتلف"
   },
   "FinancialReports": {
     "colDescription": "البيان",
@@ -5923,7 +5976,14 @@
     "addPriceRow": "إضافة سعر",
     "fieldReason": "السبب",
     "fieldReasonPlaceholder": "لماذا يتغير هذا السعر؟",
-    "noPrices": "لا توجد أسعار بعد."
+    "noPrices": "لا توجد أسعار بعد.",
+    "fieldPricesIncludeTax": "الأسعار شاملة الضريبة",
+    "fieldPricesIncludeTaxHint": "المستند الجديد المُسعَّر من هذه القائمة يستخدم هذا. السعر من قائمة بالوضع الآخر يُحوَّل بنسبة ضريبة الصنف.",
+    "colPricesIncludeTax": "الضريبة",
+    "pricesInclTag": "شاملة الضريبة",
+    "pricesExclTag": "غير شاملة الضريبة",
+    "documentPricesIncludeTax": "الأسعار شاملة الضريبة",
+    "documentPricesExcludeTax": "الأسعار غير شاملة الضريبة"
   },
   "CashBankAccounts": {
     "title": "حسابات الصناديق والمصارف",
@@ -6828,16 +6888,21 @@
     "col_supplier": "المورد",
     "val_selling_price": "سعر البيع",
     "val_cost_price": "سعر التكلفة",
-    "val_takeaway_price": "سعر السفري",
-    "val_dine_in_price": "سعر الصالة",
-    "val_delivery_price": "سعر التوصيل",
     "val_price_list_price": "قائمة الأسعار",
     "val_manual": "يدوي",
     "val_import": "استيراد",
     "val_bulk": "جماعي",
     "val_price_change_doc": "مستند تغيير سعر",
     "val_variant_generate": "متغير",
-    "col_item": "الصنف"
+    "col_item": "الصنف",
+    "val_recipe_sale": "بيع بوصفة",
+    "wasteTitle": "الهدر",
+    "col_day": "التاريخ",
+    "col_branch": "الفرع",
+    "val_return": "مرتجع عميل",
+    "val_spoilage": "تلف",
+    "filterItem": "الصنف",
+    "negativeStockTitle": "المخزون السالب"
   },
   "PriceChanges": {
     "add": "تغيير سعر جديد",
@@ -6886,9 +6951,6 @@
     "status_cancelled": "ملغى",
     "field_selling_price": "سعر البيع",
     "field_cost_price": "سعر التكلفة",
-    "field_takeaway_price": "سفري",
-    "field_dine_in_price": "صالة",
-    "field_delivery_price": "توصيل",
     "field_price_list_price": "قائمة الأسعار",
     "rule_percent": "نسبة",
     "rule_amount": "مبلغ",
@@ -6944,9 +7006,9 @@
   },
   "PrintSettings": {
     "title": "إعدادات الطباعة",
-    "subtitle": "شكل المستندات المطبوعة وملفات PDF.",
+    "subtitle": "شكل المستندات المطبوعة وملفات PDF على مستوى الشركة.",
     "paper": "حجم الورق",
-    "paperHint": "يستخدم لكل المستندات كاملة الصفحة. الإيصالات تطبع دائماً على لفائف 80 مم.",
+    "paperHint": "مقاس الصفحة للمستندات المطبوعة. يمكن طباعة فواتير البيع وسندات القبض على ورق حراري أيضاً: أضف لها إعدادات خاصة أدناه.",
     "paper_a4": "A4",
     "paper_a5": "A5",
     "paper_letter": "Letter",
@@ -6960,7 +7022,18 @@
     "termsHint": "تطبع بعد الملاحظات في كل مستند.",
     "save": "حفظ",
     "saved": "تم حفظ إعدادات الطباعة",
-    "saveError": "تعذر حفظ إعدادات الطباعة"
+    "saveError": "تعذر حفظ إعدادات الطباعة",
+    "paper_roll80": "ورق حراري 80 ملم",
+    "paper_roll58": "ورق حراري 58 ملم",
+    "defaultsTitle": "الإعداد الافتراضي للشركة",
+    "overridesTitle": "حسب نوع المستند",
+    "overridesHelp": "أنواع المستندات هذه تستخدم إعداداتها الخاصة بدلاً من الإعداد الافتراضي للشركة.",
+    "addOverride": "إضافة نوع مستند",
+    "noOverrides": "كل أنواع المستندات تستخدم الإعداد الافتراضي للشركة.",
+    "documentType": "نوع المستند",
+    "edit": "تعديل",
+    "remove": "إزالة",
+    "removeConfirm": "سيعود {type} لاستخدام الإعداد الافتراضي للشركة."
   },
   "ItemVariants": {
     "intro": "اختر الخصائص والقيم ثم أنشئ المتغيرات. كل تركيبة تصبح صنفاً مستقلاً برمز وأسعار ومخزون خاص. صنف القالب نفسه لا يُباع.",
@@ -7078,16 +7151,20 @@
   },
   "DiscountApproval": {
     "title": "موافقة المدير",
-    "explain": "هذا الخصم أعلى من الحد المسموح لك. يجب أن يدخل المدير بيانات دخوله للموافقة.",
-    "email": "بريد المدير",
-    "emailRequired": "أدخل بريد المدير.",
-    "password": "كلمة المرور",
-    "passwordRequired": "أدخل كلمة المرور.",
+    "explain": "هذا الخصم أعلى من حدّك. يجب أن يختار شخص مخوّل اسمه ويدخل رمزه للموافقة.",
     "approve": "موافقة",
     "cancel": "إلغاء",
-    "invalid": "لا يمكن لهذا الحساب الموافقة على الخصم.",
-    "throttled": "محاولات كثيرة. حاول بعد دقيقة.",
-    "failed": "تعذر ترحيل المستند."
+    "invalid": "هذا الرمز لا يستطيع الموافقة على هذا.",
+    "throttled": "محاولات خاطئة كثيرة. حاول بعد بضع دقائق.",
+    "failed": "تعذر ترحيل المستند.",
+    "explainCreditLimit": "هذا البيع يتجاوز حد ائتمان العميل. يجب أن يختار شخص مخوّل اسمه ويدخل رمزه للموافقة.",
+    "approver": "الموافقة من",
+    "approverPlaceholder": "اختر من يوافق",
+    "approverRequired": "اختر من يوافق.",
+    "pin": "الرمز",
+    "pinRequired": "أدخل الرمز.",
+    "pinFormat": "من 4 إلى 6 أرقام.",
+    "noApprovers": "لم يضع أي شخص مخوّل رمزًا بعد. يمكنه وضعه من ملفه الشخصي."
   },
   "SalesInvoicePayments": {
     "currency": "العملة",
@@ -7132,7 +7209,12 @@
     "chequeDueDate": "تاريخ الاستحقاق",
     "changeReturnedIn": "يُعاد الباقي بـ {code}. اضغط لتبديل العملة.",
     "keptAsCredit": "يبقى كرصيد:",
-    "keepExtraAsCredit": "إبقاء الزيادة كرصيد للعميل"
+    "keepExtraAsCredit": "إبقاء الزيادة كرصيد للعميل",
+    "keptAsCreditAmount": "أُبقي كرصيد: {amount}",
+    "bounced": "شيك مرتجع {date}",
+    "paidLater": "إيصال {number}",
+    "creditLeft": "رصيد العميل المحفوظ على هذه الفاتورة: {amount} (المستخدم {used})",
+    "paidAtSale": "مدفوع مع البيع"
   },
   "LandedCosts": {
     "drawerTitle": "تكاليف الاستيراد",
@@ -7281,7 +7363,8 @@
     "bounceConfirm": "تسجيل الشيك {number} كمرتجع؟ يُعكس سنده وتعود الفاتورة مفتوحة.",
     "bounceSuccess": "تم تسجيل الشيك كمرتجع.",
     "bounceError": "تعذّر تسجيل الشيك كمرتجع",
-    "noAccess": "ليس لديك صلاحية شيكات العملاء."
+    "noAccess": "ليس لديك صلاحية شيكات العملاء.",
+    "colSource": "الإيصال / الفاتورة"
   },
   "Budgets": {
     "add": "موازنة جديدة",
@@ -7658,7 +7741,8 @@
     "move_transfer_write_off": "فُقد أثناء التحويل",
     "ref_stock_transfer_receipt": "استلام تحويل",
     "ref_stock_transfer_closure": "إغلاق تحويل",
-    "pickTransitHint": "اختر الوحدات التي وصلت. اتركها فارغة عند وصول كل الوحدات قيد النقل."
+    "pickTransitHint": "اختر الوحدات التي وصلت. اتركها فارغة عند وصول كل الوحدات قيد النقل.",
+    "move_recipe_sale": "مستخدم في بيع بوصفة"
   },
   "ScaleBarcodes": {
     "title": "صيغة باركود الميزان",

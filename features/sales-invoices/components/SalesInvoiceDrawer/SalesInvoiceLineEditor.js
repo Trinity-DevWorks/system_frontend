@@ -828,7 +828,8 @@ export default function SalesInvoiceLineEditor({
                   line={row}
                   pricing={pricing}
                   placeholder={t("lineUnitPricePlaceholder")}
-                  disabled={readOnly}
+                  // Fixed-price items keep the normal price; open-price items are typed.
+                  disabled={readOnly || (row.allow_price_change === false && row.open_price !== true)}
                   t={t}
                   onChange={(value) => onPatchLine(index, manualLinePrice(value, pricing.rate))}
                 />
@@ -845,7 +846,7 @@ export default function SalesInvoiceLineEditor({
                   max={100}
                   placeholder="0"
                   value={row.discount_percent}
-                  disabled={readOnly}
+                  disabled={readOnly || row.allow_discount === false}
                   onChange={(value) => onPatchLine(index, { discount_percent: value ?? 0 })}
                 />
               </SiFocusStop>

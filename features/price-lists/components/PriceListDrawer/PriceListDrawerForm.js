@@ -110,6 +110,9 @@ export default function PriceListDrawerForm({ form, readOnly, t, tSelector, curr
         <Form.Item name="is_default" label={t("fieldIsDefault")} valuePropName="checked" extra={t("fieldIsDefaultHint")}>
           <Switch />
         </Form.Item>
+        <Form.Item name="prices_include_tax" label={t("fieldPricesIncludeTax")} valuePropName="checked" extra={t("fieldPricesIncludeTaxHint")}>
+          <Switch />
+        </Form.Item>
         <Form.Item name="is_active" label={t("fieldStatus")} valuePropName="checked">
           <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />
         </Form.Item>

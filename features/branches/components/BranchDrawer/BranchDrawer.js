@@ -98,6 +98,7 @@ export default function BranchDrawer({
       manager_id: undefined,
       is_active: true,
       is_default: false,
+      return_default: "restock",
     }),
     [],
   );
@@ -117,6 +118,7 @@ export default function BranchDrawer({
       manager_id: r.manager_id == null ? undefined : String(r.manager_id),
       is_active: Boolean(r.is_active),
       is_default: Boolean(r.is_default),
+      return_default: r.return_default === "waste" ? "waste" : "restock",
     }),
     [],
   );
